@@ -1,0 +1,22 @@
+[package]
+name = "auth_clerk"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+common = { path = "../common" }
+axum = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+jsonwebtoken = "9.3.0"
+reqwest = { version = "0.12.4", features = ["json"] }
+chrono = "0.4.38"
+axum-extra = { workspace = true }
+async-trait = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+mockito = "1.4.0"

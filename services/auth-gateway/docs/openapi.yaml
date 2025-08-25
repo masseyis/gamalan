@@ -1,0 +1,31 @@
+openapi: 3.0.0
+info:
+  title: Auth Gateway API
+  version: 1.0.0
+paths:
+  /clerk/webhooks:
+    post:
+      summary: Clerk webhooks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad request
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+  /ready:
+    get:
+      summary: Readiness check
+      responses:
+        '200':
+          description: OK

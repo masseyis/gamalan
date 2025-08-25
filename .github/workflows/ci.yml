@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: 1.79
+        components: rustfmt, clippy
+
+    - name: Run rustfmt
+      run: cargo fmt --all -- --check
+
+    - name: Run clippy
+      run: cargo clippy --all-targets --all-features -- -D warnings
+
+    - name: Build
+      run: cargo build --workspace
+
+    - name: Run tests
+      run: |
+        docker-compose up -d
+        # Wait for postgres to be ready
+        sleep 5
+        cargo test --workspace
+
+    - name: Generate code coverage
+      run: |
+        cargo install --version 0.13.3 cargo-tarpaulin
+        cargo tarpaulin --workspace --out Html
+
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-report
+        path: tarpaulin-report.html

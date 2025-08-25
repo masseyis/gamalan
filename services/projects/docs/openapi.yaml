@@ -1,0 +1,80 @@
+openapi: 3.0.0
+info:
+  title: Projects API
+  version: 1.0.0
+paths:
+  /projects:
+    post:
+      summary: Create a new project
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                teamId:
+                  type: string
+                  format: uuid
+      responses:
+        '201':
+          description: Project created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  projectId:
+                    type: string
+                    format: uuid
+  /projects/{id}:
+    get:
+      summary: Get a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Project details
+  /projects/{id}/settings:
+    put:
+      summary: Update project settings
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                estimationScale:
+                  type: string
+                dorTemplate:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Project settings updated
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

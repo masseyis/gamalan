@@ -1,0 +1,80 @@
+openapi: 3.0.0
+info:
+  title: Readiness API
+  version: 1.0.0
+paths:
+  /readiness/{storyId}/evaluate:
+    post:
+      summary: Evaluate the readiness of a story
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: storyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Readiness evaluated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  score:
+                    type: integer
+                  missingItems:
+                    type: array
+                    items:
+                      type: string
+  /criteria/{storyId}/generate:
+    post:
+      summary: Generate BDD criteria for a story
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: storyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Criteria generated
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    given:
+                      type: string
+                    when:
+                      type: string
+                    then:
+                      type: string
+  /criteria/{storyId}:
+    get:
+      summary: Get the BDD criteria for a story
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: storyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Criteria list
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
