@@ -8,12 +8,12 @@ pub struct AppConfig {
 
 impl AppConfig {
     pub fn new() -> Result<Self> {
-        let clerk_jwks_url = std::env::var("CLERK_JWKS_URL")
-            .map_err(|_| anyhow!("CLERK_JWKS_URL must be set"))?;
-        let clerk_issuer = std::env::var("CLERK_ISSUER")
-            .map_err(|_| anyhow!("CLERK_ISSUER must be set"))?;
-        let clerk_audience = std::env::var("CLERK_AUDIENCE")
-            .map_err(|_| anyhow!("CLERK_AUDIENCE must be set"))?;
+        let clerk_jwks_url =
+            std::env::var("CLERK_JWKS_URL").map_err(|_| anyhow!("CLERK_JWKS_URL must be set"))?;
+        let clerk_issuer =
+            std::env::var("CLERK_ISSUER").map_err(|_| anyhow!("CLERK_ISSUER must be set"))?;
+        let clerk_audience =
+            std::env::var("CLERK_AUDIENCE").map_err(|_| anyhow!("CLERK_AUDIENCE must be set"))?;
 
         Ok(Self {
             clerk_jwks_url,

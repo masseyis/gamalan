@@ -4,14 +4,10 @@ pub mod jwks;
 use crate::claims::Claims;
 use crate::jwks::{Jwk, JwksCache};
 use async_trait::async_trait;
-use axum::{
-    extract::FromRequestParts,
-    http::request::Parts,
-    RequestPartsExt,
-};
+use axum::{extract::FromRequestParts, http::request::Parts, RequestPartsExt};
 
-use axum_extra::TypedHeader;
 use axum_extra::headers::{authorization::Bearer, Authorization};
+use axum_extra::TypedHeader;
 use common::AppError;
 use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation};
 use std::sync::Arc;
@@ -37,8 +33,11 @@ impl JwtVerifier {
     }
 
     pub async fn verify(&self, token: &str) -> Result<Claims, AppError> {
-        let header = decode_header(token).map_err(|_| AppError::Unauthorized("Invalid token".to_string()))?;
-        let kid = header.kid.ok_or_else(|| AppError::Unauthorized("Missing kid".to_string()))?;
+        let header = decode_header(token)
+            .map_err(|_| AppError::Unauthorized("Invalid token".to_string()))?;
+        let kid = header
+            .kid
+            .ok_or_else(|| AppError::Unauthorized("Missing kid".to_string()))?;
 
         let jwk = self.get_jwk(&kid).await?;
 
@@ -56,9 +55,15 @@ impl JwtVerifier {
             return Ok(jwk);
         }
 
-        self.jwks_cache.refresh().await.map_err(|_| AppError::InternalServerError)?;
+        self.jwks_cache
+            .refresh()
+            .await
+            .map_err(|_| AppError::InternalServerError)?;
 
-        self.jwks_cache.get_key(kid).await.ok_or_else(|| AppError::Unauthorized("Unknown kid".to_string()))
+        self.jwks_cache
+            .get_key(kid)
+            .await
+            .ok_or_else(|| AppError::Unauthorized("Unknown kid".to_string()))
     }
 }
 

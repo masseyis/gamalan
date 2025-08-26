@@ -1,8 +1,8 @@
 use axum::{
+    body::Body,
     http::{Request, StatusCode},
     middleware::Next,
     response::{IntoResponse, Response},
-    body::Body,
 };
 use thiserror::Error;
 use tracing::Level;
@@ -19,8 +19,7 @@ pub fn init_tracing() {
         .json()
         .finish();
 
-    tracing::subscriber::set_global_default(subscriber)
-        .expect("setting default subscriber failed");
+    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 }
 
 /// Axum middleware to extract the correlation ID from the request headers.
@@ -33,13 +32,11 @@ pub async fn correlation_id_extractor(mut req: Request<Body>, next: Next) -> Res
         .map(|s| s.to_string())
         .unwrap_or_else(|| Uuid::new_v4().to_string());
 
-    req.headers_mut()
-        .insert(X_REQUEST_ID, id.parse().unwrap());
+    req.headers_mut().insert(X_REQUEST_ID, id.parse().unwrap());
 
     let mut res = next.run(req).await;
 
-    res.headers_mut()
-        .insert(X_REQUEST_ID, id.parse().unwrap());
+    res.headers_mut().insert(X_REQUEST_ID, id.parse().unwrap());
 
     res
 }

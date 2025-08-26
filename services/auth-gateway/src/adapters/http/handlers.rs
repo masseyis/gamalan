@@ -1,10 +1,9 @@
 use crate::application::usecases::UserUsecases;
 use crate::domain::user::User;
 use axum::{
-    Extension,
     http::StatusCode,
     response::{IntoResponse, Response},
-    Json,
+    Extension, Json,
 };
 use chrono::Utc;
 use common::AppError;
