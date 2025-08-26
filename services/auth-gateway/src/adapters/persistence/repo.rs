@@ -27,11 +27,11 @@ impl UserRepository for UserRepositoryImpl {
                 updated_at = $5
             "#,
         )
-        .bind(&user.id)
+        .bind(user.id)
         .bind(&user.external_id)
         .bind(&user.email)
-        .bind(&user.created_at)
-        .bind(&user.updated_at)
+        .bind(user.created_at)
+        .bind(user.updated_at)
         .execute(&self.pool)
         .await
         .map_err(|_| AppError::InternalServerError)?;
