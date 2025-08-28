@@ -60,8 +60,8 @@ jobs:
           shuttle deploy
         working-directory: services/${{ matrix.service }}
         env:
-          # Add environment variables needed by services
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # Environment variables needed by services
+          # DATABASE_URL is automatically provided by Shuttle managed database
           CLERK_WEBHOOK_SECRET: ${{ secrets.CLERK_WEBHOOK_SECRET }}
           CLERK_JWKS_URL: ${{ secrets.CLERK_JWKS_URL }}
           CLERK_JWT_ISSUER: ${{ secrets.CLERK_JWT_ISSUER }}

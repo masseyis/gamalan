@@ -17,12 +17,13 @@ Add these secrets to your GitHub repository settings:
 #### Shuttle.rs Deployment
 ```
 SHUTTLE_API_KEY=your_shuttle_api_key_here
-DATABASE_URL=postgres://username:password@hostname:port/database
 CLERK_WEBHOOK_SECRET=your_clerk_webhook_secret
 CLERK_JWKS_URL=https://your-clerk-domain.clerk.accounts.dev/.well-known/jwks.json
 CLERK_JWT_ISSUER=https://your-clerk-domain.clerk.accounts.dev
 CLERK_JWT_AUDIENCE=your-application-id
 ```
+
+**Note:** `DATABASE_URL` is NOT needed - Shuttle automatically provides managed PostgreSQL databases for each service.
 
 #### Vercel Deployment
 ```
@@ -70,9 +71,15 @@ NEXT_PUBLIC_ENABLE_MOCK_DATA=false
 
 ### 4. Database Setup
 
-1. Create a PostgreSQL database (recommended: Supabase, Railway, or Neon)
-2. Add the connection string as `DATABASE_URL` in GitHub secrets
-3. The services will automatically run migrations on startup
+**No setup required!** 🎉
+
+Shuttle automatically provides managed PostgreSQL databases for each service. The databases are:
+- Created automatically on first deployment
+- Isolated per service for security
+- Migrations run automatically on startup
+- Connection strings are injected automatically
+
+Each service gets its own database instance, so you don't need to manage any database setup.
 
 ## Workflows
 
