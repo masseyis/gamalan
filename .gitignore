@@ -21,3 +21,4 @@ Shuttle.toml
 # IDE-specific files
 .idea/
 .vscode/
+# CI test
