@@ -1,6 +1,6 @@
 use crate::application::ports::{
-    AcceptanceCriterion, BacklogService, LlmService, PlanPackRepository, ReadinessService,
-    TaskPackRepository,
+    AcceptanceCriterion, BacklogService, LlmService, PlanPackGeneration, PlanPackRepository, ReadinessService,
+    StoryInfo, TaskInfo, TaskPackGeneration, TaskPackRepository,
 };
 use crate::domain::{
     AcceptanceCriteriaMap, AcceptanceCriterionCoverage, AcceptanceCriterionInfo, CommitPlan,
