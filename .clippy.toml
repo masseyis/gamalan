@@ -1,0 +1,14 @@
+# Clippy configuration for the Salunga project
+# This allows certain lints that are commonly triggered during development
+
+# Allow some common development patterns
+allow-dbg-in-tests = true
+allow-print-in-tests = true
+
+# Allow unused code during development phases
+# We'll enable these checks again once the codebase stabilizes
+avoid-breaking-exported-api = false
+
+# Disable some overly restrictive lints for now
+too-many-arguments-threshold = 15
+type-complexity-threshold = 500

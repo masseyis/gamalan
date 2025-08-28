@@ -11,7 +11,6 @@ async fn test_jwt_verifier_creation() {
 
     // This test just verifies that we can create a verifier without panicking
     // The JwtVerifier struct should be created successfully
-    assert!(true); // Test passes if we get here without panic
 }
 
 #[tokio::test]
