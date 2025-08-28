@@ -9,7 +9,9 @@ CREATE TABLE readiness_evals (
 CREATE TABLE criteria (
     id UUID PRIMARY KEY,
     story_id UUID NOT NULL,
+    ac_id TEXT NOT NULL,
     given TEXT NOT NULL,
     when TEXT NOT NULL,
-    then TEXT NOT NULL
+    then TEXT NOT NULL,
+    UNIQUE(story_id, ac_id)
 );

@@ -1,14 +1,126 @@
+use crate::application::ReadinessUsecases;
+use crate::domain::{AcceptanceCriterion, ReadinessEvaluation};
 use auth_clerk::Authenticated;
-use axum::{http::StatusCode, response::IntoResponse};
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    response::IntoResponse,
+    Json,
+};
+use common::AppError;
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use uuid::Uuid;
 
-pub async fn evaluate_readiness(_auth: Authenticated) -> impl IntoResponse {
-    (StatusCode::OK, "Readiness evaluated")
+#[derive(Debug, Deserialize)]
+pub struct GenerateCriteriaRequest {
+    // This endpoint uses the story info from the backlog service
 }
 
-pub async fn generate_criteria(_auth: Authenticated) -> impl IntoResponse {
-    (StatusCode::OK, "Criteria generated")
+#[derive(Debug, Deserialize)]
+pub struct AddCriteriaRequest {
+    pub criteria: Vec<CriterionRequest>,
 }
 
-pub async fn get_criteria(_auth: Authenticated) -> impl IntoResponse {
-    (StatusCode::OK, "Criteria list")
+#[derive(Debug, Deserialize)]
+pub struct CriterionRequest {
+    pub ac_id: String,
+    pub given: String,
+    pub when: String,
+    pub then: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct AcceptanceCriterionResponse {
+    pub id: Uuid,
+    pub story_id: Uuid,
+    pub ac_id: String,
+    pub given: String,
+    pub when: String,
+    pub then: String,
+}
+
+impl From<AcceptanceCriterion> for AcceptanceCriterionResponse {
+    fn from(criterion: AcceptanceCriterion) -> Self {
+        Self {
+            id: criterion.id,
+            story_id: criterion.story_id,
+            ac_id: criterion.ac_id,
+            given: criterion.given,
+            when: criterion.when,
+            then: criterion.then,
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct ReadinessEvaluationResponse {
+    pub score: i32,
+    pub missing_items: Vec<String>,
+}
+
+impl From<ReadinessEvaluation> for ReadinessEvaluationResponse {
+    fn from(eval: ReadinessEvaluation) -> Self {
+        Self {
+            score: eval.score,
+            missing_items: eval.missing_items,
+        }
+    }
+}
+
+pub async fn evaluate_readiness(
+    _auth: Authenticated,
+    Path(story_id): Path<Uuid>,
+    State(usecases): State<Arc<ReadinessUsecases>>,
+) -> Result<impl IntoResponse, AppError> {
+    let evaluation = usecases.evaluate_story_readiness(story_id).await?;
+    Ok(Json(ReadinessEvaluationResponse::from(evaluation)))
+}
+
+pub async fn generate_criteria(
+    _auth: Authenticated,
+    Path(story_id): Path<Uuid>,
+    State(usecases): State<Arc<ReadinessUsecases>>,
+) -> Result<impl IntoResponse, AppError> {
+    let criteria = usecases.generate_acceptance_criteria(story_id).await?;
+    let responses: Vec<AcceptanceCriterionResponse> = criteria
+        .into_iter()
+        .map(AcceptanceCriterionResponse::from)
+        .collect();
+    Ok(Json(responses))
+}
+
+pub async fn get_criteria(
+    Path(story_id): Path<Uuid>,
+    State(usecases): State<Arc<ReadinessUsecases>>,
+) -> Result<impl IntoResponse, AppError> {
+    let criteria = usecases.get_criteria_for_story(story_id).await?;
+    let responses: Vec<AcceptanceCriterionResponse> = criteria
+        .into_iter()
+        .map(AcceptanceCriterionResponse::from)
+        .collect();
+    Ok(Json(responses))
+}
+
+pub async fn add_criteria(
+    _auth: Authenticated,
+    Path(story_id): Path<Uuid>,
+    State(usecases): State<Arc<ReadinessUsecases>>,
+    Json(payload): Json<AddCriteriaRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    let criteria_tuples: Vec<(String, String, String, String)> = payload
+        .criteria
+        .into_iter()
+        .map(|c| (c.ac_id, c.given, c.when, c.then))
+        .collect();
+
+    let criteria = usecases
+        .add_acceptance_criteria(story_id, criteria_tuples)
+        .await?;
+    let responses: Vec<AcceptanceCriterionResponse> = criteria
+        .into_iter()
+        .map(AcceptanceCriterionResponse::from)
+        .collect();
+
+    Ok((StatusCode::CREATED, Json(responses)))
 }

@@ -51,6 +51,15 @@ paths:
                 items:
                   type: object
                   properties:
+                    id:
+                      type: string
+                      format: uuid
+                    storyId:
+                      type: string
+                      format: uuid
+                    ac_id:
+                      type: string
+                      description: Unique identifier for this acceptance criterion
                     given:
                       type: string
                     when:
@@ -60,8 +69,6 @@ paths:
   /criteria/{storyId}:
     get:
       summary: Get the BDD criteria for a story
-      security:
-        - bearerAuth: []
       parameters:
         - name: storyId
           in: path
@@ -72,6 +79,85 @@ paths:
       responses:
         '200':
           description: Criteria list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    storyId:
+                      type: string
+                      format: uuid
+                    ac_id:
+                      type: string
+                      description: Unique identifier for this acceptance criterion
+                    given:
+                      type: string
+                    when:
+                      type: string
+                    then:
+                      type: string
+    post:
+      summary: Add BDD criteria for a story
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: storyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                criteria:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      ac_id:
+                        type: string
+                        description: Unique identifier for this acceptance criterion
+                      given:
+                        type: string
+                      when:
+                        type: string
+                      then:
+                        type: string
+      responses:
+        '201':
+          description: Criteria added
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    storyId:
+                      type: string
+                      format: uuid
+                    ac_id:
+                      type: string
+                      description: Unique identifier for this acceptance criterion
+                    given:
+                      type: string
+                    when:
+                      type: string
+                    then:
+                      type: string
 components:
   securitySchemes:
     bearerAuth:

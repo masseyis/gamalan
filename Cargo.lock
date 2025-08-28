@@ -319,6 +319,7 @@ name = "backlog"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "auth_clerk",
  "axum 0.7.9",
  "common",
@@ -334,6 +335,7 @@ dependencies = [
  "tower-http 0.5.2",
  "utoipa",
  "utoipa-swagger-ui",
+ "uuid",
 ]
 
 [[package]]
@@ -2242,7 +2244,25 @@ dependencies = [
 name = "prompt-builder"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "async-trait",
+ "auth_clerk",
  "axum 0.7.9",
+ "chrono",
+ "common",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "shuttle-axum",
+ "shuttle-runtime",
+ "shuttle-shared-db",
+ "sqlx",
+ "thiserror 1.0.69",
+ "tokio",
+ "tower-http 0.5.2",
+ "utoipa",
+ "utoipa-swagger-ui",
+ "uuid",
 ]
 
 [[package]]
@@ -2411,6 +2431,7 @@ name = "readiness"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "auth_clerk",
  "axum 0.7.9",
  "common",
@@ -2426,6 +2447,7 @@ dependencies = [
  "tower-http 0.5.2",
  "utoipa",
  "utoipa-swagger-ui",
+ "uuid",
 ]
 
 [[package]]

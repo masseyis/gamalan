@@ -1,6 +1,5 @@
 use crate::application::ports::{
-    AcceptanceCriteriaRepository, LlmService, ReadinessEvaluationRepository,
-    StoryService,
+    AcceptanceCriteriaRepository, LlmService, ReadinessEvaluationRepository, StoryService,
 };
 use crate::domain::{AcceptanceCriterion, ReadinessCheck, ReadinessEvaluation};
 use common::AppError;
@@ -136,7 +135,8 @@ impl ReadinessUsecases {
 
         let invalid_refs = ac_refs
             .iter()
-            .filter(|ac_ref| !valid_ac_ids.contains(*ac_ref)).cloned()
+            .filter(|ac_ref| !valid_ac_ids.contains(*ac_ref))
+            .cloned()
             .collect();
 
         Ok(invalid_refs)

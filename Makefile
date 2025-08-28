@@ -40,6 +40,7 @@ migrate:
 	sqlx migrate run --source services/projects/migrations --database-url $$DATABASE_URL_PROJECTS
 	sqlx migrate run --source services/backlog/migrations --database-url $$DATABASE_URL_BACKLOG
 	sqlx migrate run --source services/readiness/migrations --database-url $$DATABASE_URL_READINESS
+	sqlx migrate run --source services/prompt-builder/migrations --database-url $$DATABASE_URL_PROMPT_BUILDER
 
 deploy-all:
 	@echo "Deploying all services to Shuttle..."
@@ -48,3 +49,9 @@ deploy-all:
 	cargo shuttle deploy -p services/projects
 	cargo shuttle deploy -p services/backlog
 	cargo shuttle deploy -p services/readiness
+	cargo shuttle deploy -p services/prompt-builder
+
+deploy-prompt-builder:
+	@echo "Deploying prompt-builder service to Shuttle..."
+	cargo install cargo-shuttle --locked
+	cargo shuttle deploy -p services/prompt-builder

@@ -1,5 +1,266 @@
 openapi: 3.0.0
 info:
-  title: Prompt Builder API (Stub)
+  title: Prompt Builder API
   version: 1.0.0
-paths: {}
+  description: AI-enhanced prompt generation service for Plan Packs and Task Packs
+paths:
+  /plans/from-story/{storyId}:
+    post:
+      summary: Generate Plan Pack from story
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: storyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '201':
+          description: Plan Pack generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanPack'
+        '409':
+          description: Story not ready for Plan Pack generation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  missing:
+                    type: array
+                    items:
+                      type: string
+  /plans/story/{storyId}:
+    get:
+      summary: Get Plan Pack by story ID
+      parameters:
+        - name: storyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Plan Pack found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanPack'
+        '404':
+          description: Plan Pack not found
+  /plans/story/{storyId}/regenerate:
+    put:
+      summary: Regenerate Plan Pack for story
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: storyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Plan Pack regenerated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanPack'
+  /work-packets/from-task/{taskId}:
+    post:
+      summary: Generate Task Pack from task
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '201':
+          description: Task Pack generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskPack'
+        '400':
+          description: Task not valid for Task Pack generation
+  /work-packets/task/{taskId}:
+    get:
+      summary: Get Task Pack by task ID
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Task Pack found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskPack'
+        '404':
+          description: Task Pack not found
+  /work-packets/task/{taskId}/markdown:
+    get:
+      summary: Get Task Pack as Markdown
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Task Pack Markdown
+          content:
+            text/markdown:
+              schema:
+                type: string
+        '404':
+          description: Task Pack not found
+  /work-packets/task/{taskId}/json:
+    get:
+      summary: Get Task Pack as JSON prompt
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Task Pack JSON prompt
+          content:
+            application/json:
+              schema:
+                type: object
+        '404':
+          description: Task Pack not found
+  /work-packets/task/{taskId}/regenerate:
+    put:
+      summary: Regenerate Task Pack for task
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Task Pack regenerated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskPack'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    PlanPack:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        storyId:
+          type: string
+          format: uuid
+        acceptanceCriteriaMap:
+          type: object
+        proposedTasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProposedTask'
+        architectureImpact:
+          type: string
+        risks:
+          type: array
+          items:
+            type: string
+        unknowns:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+    ProposedTask:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        acceptanceCriteriaRefs:
+          type: array
+          items:
+            type: string
+        estimatedEffort:
+          type: string
+        technicalNotes:
+          type: string
+    TaskPack:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        taskId:
+          type: string
+          format: uuid
+        planPackId:
+          type: string
+          format: uuid
+        objectives:
+          type: string
+        nonGoals:
+          type: array
+          items:
+            type: string
+        storyContext:
+          type: string
+        acceptanceCriteriaCovered:
+          type: array
+          items:
+            type: object
+        constraints:
+          type: object
+        testPlan:
+          type: object
+        doNotList:
+          type: object
+        commitPlan:
+          type: object
+        runInstructions:
+          type: array
+          items:
+            type: string
+        markdownContent:
+          type: string
+        jsonContent:
+          type: object
+        createdAt:
+          type: string
+          format: date-time

@@ -19,6 +19,9 @@ sqlx = { workspace = true }
 utoipa = { workspace = true }
 utoipa-swagger-ui = { workspace = true }
 tower-http = { workspace = true }
+async-trait = { workspace = true }
+uuid = { version = "1.8.0", features = ["v4", "serde"] }
+reqwest = { version = "0.12.4", features = ["json"] }
 
 [dev-dependencies]
 reqwest = { version = "0.12.4", features = ["json"] }

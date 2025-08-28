@@ -1,12 +1,31 @@
-# ai-agile
+# Salunga - AI-Enhanced Agile Project Management Platform
 
-This is a monorepo for a collection of Rust microservices for the ai-agile project.
+This is a monorepo for Salunga, an AI-enhanced agile project management platform combining Rust microservices backend with a modern Next.js frontend.
+
+## 🏗 Architecture
+
+### Frontend
+- **Next.js 15** web application (`apps/web/`)
+- **React 18** with TypeScript
+- **Tailwind CSS** + **shadcn/ui** components
+- **TanStack Query** for data fetching
+- **Clerk** for authentication
+
+### Backend
+- **Rust microservices** in `services/`
+- **PostgreSQL** database
+- **Shuttle** deployment platform
 
 ## Prerequisites
 
+### Backend Development
 - Rust 1.79+
 - Docker and Docker Compose
 - Shuttle CLI (`cargo install cargo-shuttle`)
+
+### Frontend Development
+- Node.js 20+
+- pnpm 9+
 
 ## Local Development
 
@@ -30,30 +49,72 @@ This is a monorepo for a collection of Rust microservices for the ai-agile proje
    cp .env.example .env
    ```
 
-4. **Run a service:**
+4. **Start backend services:**
 
    ```sh
    cargo run -p services/<service-name>
    ```
 
+5. **Start the frontend:**
+
+   ```sh
+   cd apps/web
+   cp .env.example .env.local  # Configure environment variables
+   pnpm install
+   pnpm dev
+   ```
+
+6. **Open your browser:**
+
+   Visit [http://localhost:3000](http://localhost:3000)
+
 ## Testing
 
+### Backend Testing
 ```sh
-make test
+make test      # Run Rust tests
+make coverage  # Generate coverage reports
 ```
 
-## Coverage
-
+### Frontend Testing
 ```sh
-make coverage
+cd apps/web
+pnpm test           # Unit tests
+pnpm test:e2e       # End-to-end tests
+pnpm test:coverage  # Coverage reports
 ```
 
 ## Deployment
 
-Deployment is handled by Shuttle. Each service can be deployed individually.
-
+### Backend Services (Shuttle)
 ```sh
 # Deploy a specific service
 cd services/<service-name>
 shuttle deploy
 ```
+
+### Frontend (Vercel)
+The frontend is automatically deployed to Vercel on push to main branch.
+
+## 📁 Project Structure
+
+```
+salunga/
+├── apps/
+│   └── web/                 # Next.js frontend application
+├── services/
+│   ├── auth-gateway/        # Authentication and routing
+│   ├── projects/           # Project management service
+│   ├── backlog/            # Backlog and story management
+│   ├── readiness/          # AI readiness assessment
+│   └── prompt-builder/     # AI prompt generation
+├── libs/
+│   ├── common/             # Shared utilities and types
+│   └── auth_clerk/         # Clerk authentication library
+└── docs/                   # Documentation
+```
+
+For detailed information about each component:
+- [Frontend Documentation](apps/web/README.md)
+- [API Documentation](docs/api.md)
+- [Contributing Guidelines](CONTRIBUTING.md)
