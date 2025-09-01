@@ -46,21 +46,27 @@ pub async fn correlation_id_extractor(mut req: Request<Body>, next: Next) -> Res
 pub enum AppError {
     #[error("internal server error")]
     InternalServerError,
-    #[error("not found: {0}")]
-    NotFound(String),
+    #[error("not found")]
+    NotFound,
     #[error("bad request: {0}")]
     BadRequest(String),
     #[error("unauthorized: {0}")]
     Unauthorized(String),
+    #[error("rate limit exceeded")]
+    RateLimitExceeded,
+    #[error("external service error: {0}")]
+    ExternalServiceError(String),
 }
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, error_message) = match self {
             AppError::InternalServerError => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
-            AppError::NotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
+            AppError::NotFound => (StatusCode::NOT_FOUND, self.to_string()),
             AppError::BadRequest(_) => (StatusCode::BAD_REQUEST, self.to_string()),
             AppError::Unauthorized(_) => (StatusCode::UNAUTHORIZED, self.to_string()),
+            AppError::RateLimitExceeded => (StatusCode::TOO_MANY_REQUESTS, self.to_string()),
+            AppError::ExternalServiceError(_) => (StatusCode::BAD_GATEWAY, self.to_string()),
         };
 
         (status, error_message).into_response()

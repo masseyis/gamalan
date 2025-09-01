@@ -1,0 +1,690 @@
+openapi: 3.0.3
+info:
+  title: Context Orchestrator API
+  description: |
+    The Context Orchestrator service provides natural language intent parsing and action execution
+    for agile project management workflows. It interprets user utterances in context of project
+    entities and orchestrates actions across backlog, readiness, and prompt-builder services.
+    
+    ## Key Features
+    - Natural language intent parsing with LLM integration
+    - Vector-based entity similarity search using Qdrant
+    - Tenant-isolated multi-user support
+    - Action validation and risk assessment
+    - Fallback heuristics when LLM services are unavailable
+    
+    ## Architecture
+    Built using hexagonal architecture with clear separation between domain logic,
+    application use cases, and external adapters for HTTP, persistence, and integrations.
+  version: 0.1.0
+  contact:
+    name: Salunga Engineering
+    url: https://github.com/salunga-engineering/ai-agile
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8003
+    description: Local development server
+  - url: https://context-orchestrator.shuttleapp.rs
+    description: Production server on Shuttle
+
+paths:
+  /interpret:
+    post:
+      summary: Interpret natural language utterance
+      description: |
+        Parses a natural language utterance into structured intent with entity references.
+        Uses vector similarity search to find relevant context entities, then applies
+        LLM-based intent parsing with fallback to heuristic parsing.
+      operationId: interpretUtterance
+      tags:
+        - Intent Processing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InterpretRequest'
+            examples:
+              update_status:
+                summary: Update story status
+                value:
+                  utterance: "Mark user login story as ready"
+                  context_limit: 10
+                  entity_types: ["story", "task"]
+                  require_confirmation: false
+              create_task:
+                summary: Create new task
+                value:
+                  utterance: "Create a task to implement user authentication"
+                  context_limit: 5
+                  entity_types: ["story"]
+                  require_confirmation: true
+      responses:
+        '200':
+          description: Intent successfully parsed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InterpretResponse'
+              examples:
+                update_status_response:
+                  summary: Status update intent
+                  value:
+                    intent:
+                      intent_type: "update_status"
+                      entities:
+                        - entity_id: "550e8400-e29b-41d4-a716-446655440000"
+                          entity_type: "story"
+                          role: "target"
+                      parameters:
+                        new_status: "Ready"
+                    confidence:
+                      llm_confidence: 0.9
+                      service_confidence: 0.8
+                      overall_confidence: 0.85
+                    candidates:
+                      - id: "550e8400-e29b-41d4-a716-446655440000"
+                        entity_type: "story"
+                        title: "User login story"
+                        description: "Implement user authentication system"
+                        status: "Todo"
+                        similarity_score: 0.92
+                        boost_reason: "title_match"
+                    requires_confirmation: false
+                    session_token: null
+        '400':
+          description: Bad request - invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                empty_utterance:
+                  summary: Empty utterance error
+                  value:
+                    error: "BadRequest"
+                    message: "Utterance cannot be empty"
+                    details: null
+                utterance_too_long:
+                  summary: Utterance too long
+                  value:
+                    error: "BadRequest"
+                    message: "Utterance too long (max 2000 characters)"
+                    details: null
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /act:
+    post:
+      summary: Execute structured action
+      description: |
+        Executes a structured action command against project entities.
+        Validates the action, checks permissions, and coordinates with
+        downstream services (backlog, readiness, prompt-builder) to perform
+        the requested operation.
+      operationId: executeAction
+      tags:
+        - Action Execution
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActRequest'
+            examples:
+              update_status:
+                summary: Update story status
+                value:
+                  action:
+                    action_type: "update_status"
+                    target_entities: ["550e8400-e29b-41d4-a716-446655440000"]
+                    parameters:
+                      new_status: "InProgress"
+                    require_confirmation: false
+                    risk_level: "low"
+                  session_token: null
+                  confirmed: null
+              create_task:
+                summary: Create new task
+                value:
+                  action:
+                    action_type: "create_task"
+                    target_entities: ["550e8400-e29b-41d4-a716-446655440000"]
+                    parameters:
+                      title: "Implement OAuth integration"
+                      description: "Add OAuth 2.0 support for third-party logins"
+                    require_confirmation: true
+                    risk_level: "medium"
+                  session_token: "123e4567-e89b-12d3-a456-426614174000"
+                  confirmed: true
+      responses:
+        '200':
+          description: Action executed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActResponse'
+              examples:
+                success_response:
+                  summary: Successful action execution
+                  value:
+                    success: true
+                    results:
+                      - service: "backlog"
+                        success: true
+                        message: "Story status updated to InProgress"
+                        affected_entities: ["550e8400-e29b-41d4-a716-446655440000"]
+                    rollback_token: "789e0123-e45b-67d8-a901-234567890abc"
+                    partial_success: false
+                partial_success_response:
+                  summary: Partial success with some failures
+                  value:
+                    success: false
+                    results:
+                      - service: "backlog"
+                        success: true
+                        message: "Story updated successfully"
+                        affected_entities: ["550e8400-e29b-41d4-a716-446655440000"]
+                      - service: "readiness"
+                        success: false
+                        message: "Failed to update readiness status"
+                        affected_entities: []
+                    rollback_token: "789e0123-e45b-67d8-a901-234567890abc"
+                    partial_success: true
+        '400':
+          description: Bad request - invalid action or parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict - action requires confirmation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /health:
+    get:
+      summary: Health check endpoint
+      description: Returns the health status of the context orchestrator service
+      operationId: healthCheck
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "healthy"
+                  service:
+                    type: string
+                    example: "context-orchestrator"
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: "2024-01-15T10:30:00Z"
+                required:
+                  - status
+                  - service
+                  - timestamp
+
+  /ready:
+    get:
+      summary: Readiness check endpoint
+      description: |
+        Returns the readiness status of the service and its dependencies.
+        Checks connectivity to PostgreSQL database and Qdrant vector store.
+      operationId: readinessCheck
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: ["ready", "not_ready"]
+                    example: "ready"
+                  service:
+                    type: string
+                    example: "context-orchestrator"
+                  checks:
+                    type: object
+                    properties:
+                      database:
+                        type: string
+                        enum: ["healthy", "unhealthy"]
+                        example: "healthy"
+                      qdrant:
+                        type: string
+                        enum: ["healthy", "unhealthy"]
+                        example: "healthy"
+                    required:
+                      - database
+                      - qdrant
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: "2024-01-15T10:30:00Z"
+                required:
+                  - status
+                  - service
+                  - checks
+                  - timestamp
+        '503':
+          description: Service not ready - dependencies unavailable
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "not_ready"
+                  service:
+                    type: string
+                    example: "context-orchestrator"
+                  checks:
+                    type: object
+                    properties:
+                      database:
+                        type: string
+                        example: "unhealthy"
+                      qdrant:
+                        type: string
+                        example: "healthy"
+
+components:
+  schemas:
+    InterpretRequest:
+      type: object
+      required:
+        - utterance
+      properties:
+        utterance:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          description: Natural language utterance to interpret
+          example: "Mark the user login story as ready"
+        context_limit:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+          description: Maximum number of context entities to consider
+          example: 10
+        entity_types:
+          type: array
+          items:
+            type: string
+            enum: ["story", "task", "project", "plan_pack", "task_pack", "acceptance_criterion"]
+          description: Filter to specific entity types for context search
+          example: ["story", "task"]
+        require_confirmation:
+          type: boolean
+          default: false
+          description: Whether the resulting action should require explicit confirmation
+          example: false
+
+    InterpretResponse:
+      type: object
+      required:
+        - intent
+        - confidence
+        - candidates
+        - requires_confirmation
+      properties:
+        intent:
+          $ref: '#/components/schemas/ParsedIntentDto'
+        confidence:
+          $ref: '#/components/schemas/ConfidenceDto'
+        candidates:
+          type: array
+          items:
+            $ref: '#/components/schemas/CandidateEntityDto'
+          description: Context entities that were considered during parsing
+        requires_confirmation:
+          type: boolean
+          description: Whether this intent requires user confirmation before execution
+          example: false
+        session_token:
+          type: string
+          format: uuid
+          nullable: true
+          description: Token for tracking multi-step interactions
+          example: "123e4567-e89b-12d3-a456-426614174000"
+
+    ActRequest:
+      type: object
+      required:
+        - action
+      properties:
+        action:
+          $ref: '#/components/schemas/ActionCommandDto'
+        session_token:
+          type: string
+          format: uuid
+          nullable: true
+          description: Session token from previous interpret call
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        confirmed:
+          type: boolean
+          nullable: true
+          description: User confirmation for high-risk actions
+          example: true
+
+    ActResponse:
+      type: object
+      required:
+        - success
+        - results
+        - partial_success
+      properties:
+        success:
+          type: boolean
+          description: Overall success status of the action
+          example: true
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActionResultDto'
+          description: Results from each service that processed the action
+        rollback_token:
+          type: string
+          format: uuid
+          nullable: true
+          description: Token that can be used to rollback this action
+          example: "789e0123-e45b-67d8-a901-234567890abc"
+        partial_success:
+          type: boolean
+          description: Whether some but not all operations succeeded
+          example: false
+
+    ParsedIntentDto:
+      type: object
+      required:
+        - intent_type
+        - entities
+        - parameters
+      properties:
+        intent_type:
+          type: string
+          enum: 
+            - "update_status"
+            - "assign_task"
+            - "create_item"
+            - "query_status"
+            - "search_items"
+            - "update_priority"
+            - "add_comment"
+            - "move_to_sprint"
+            - "generate_report"
+            - "archive"
+            - "unknown"
+          description: Classified intent type
+          example: "update_status"
+        entities:
+          type: array
+          items:
+            $ref: '#/components/schemas/EntityReferenceDto'
+          description: Entity references extracted from the utterance
+        parameters:
+          type: object
+          additionalProperties: true
+          description: Intent-specific parameters extracted from utterance
+          example:
+            new_status: "Ready"
+            priority: 2
+
+    EntityReferenceDto:
+      type: object
+      required:
+        - entity_id
+        - entity_type
+        - role
+      properties:
+        entity_id:
+          type: string
+          format: uuid
+          description: Unique identifier of the referenced entity
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        entity_type:
+          type: string
+          enum: ["story", "task", "project", "plan_pack", "task_pack", "acceptance_criterion"]
+          description: Type of the referenced entity
+          example: "story"
+        role:
+          type: string
+          description: Role of this entity in the intent (target, context, etc.)
+          example: "target"
+
+    ConfidenceDto:
+      type: object
+      required:
+        - llm_confidence
+        - service_confidence
+        - overall_confidence
+      properties:
+        llm_confidence:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          description: Confidence score from the LLM parsing (0.0 to 1.0)
+          example: 0.9
+        service_confidence:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          description: Service-level confidence based on context matching (0.0 to 1.0)
+          example: 0.8
+        overall_confidence:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          description: Combined confidence score (0.0 to 1.0)
+          example: 0.85
+
+    CandidateEntityDto:
+      type: object
+      required:
+        - id
+        - entity_type
+        - title
+        - similarity_score
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier of the entity
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        entity_type:
+          type: string
+          enum: ["story", "task", "project", "plan_pack", "task_pack", "acceptance_criterion"]
+          description: Type of entity
+          example: "story"
+        title:
+          type: string
+          description: Human-readable title of the entity
+          example: "User login story"
+        description:
+          type: string
+          nullable: true
+          description: Detailed description of the entity
+          example: "Implement user authentication system with email/password"
+        status:
+          type: string
+          nullable: true
+          description: Current status of the entity
+          example: "Todo"
+        similarity_score:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          description: Vector similarity score against the utterance
+          example: 0.92
+        boost_reason:
+          type: string
+          nullable: true
+          description: Reason for similarity boost (title_match, exact_match, etc.)
+          example: "title_match"
+
+    ActionCommandDto:
+      type: object
+      required:
+        - action_type
+        - target_entities
+        - parameters
+        - require_confirmation
+        - risk_level
+      properties:
+        action_type:
+          type: string
+          enum:
+            - "update_status"
+            - "assign_user"
+            - "update_priority"
+            - "add_comment"
+            - "create_task"
+            - "create_story"
+            - "move_to_sprint"
+            - "archive"
+          description: Type of action to execute
+          example: "update_status"
+        target_entities:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: UUIDs of entities targeted by this action
+          example: ["550e8400-e29b-41d4-a716-446655440000"]
+        parameters:
+          type: object
+          additionalProperties: true
+          description: Action-specific parameters
+          example:
+            new_status: "InProgress"
+            assignee_id: "user-123"
+        require_confirmation:
+          type: boolean
+          description: Whether this action requires user confirmation
+          example: false
+        risk_level:
+          type: string
+          enum: ["low", "medium", "high"]
+          description: Risk assessment level for this action
+          example: "low"
+
+    ActionResultDto:
+      type: object
+      required:
+        - service
+        - success
+        - message
+        - affected_entities
+      properties:
+        service:
+          type: string
+          description: Name of the service that processed this action
+          example: "backlog"
+        success:
+          type: boolean
+          description: Whether this service's operation succeeded
+          example: true
+        message:
+          type: string
+          description: Human-readable result message
+          example: "Story status updated successfully"
+        affected_entities:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Entities that were modified by this operation
+          example: ["550e8400-e29b-41d4-a716-446655440000"]
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error type identifier
+          example: "BadRequest"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Utterance cannot be empty"
+        details:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: Additional error details
+          example:
+            field: "utterance"
+            constraint: "non_empty"
+
+  securitySchemes:
+    ClerkJWT:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Clerk JWT token for user authentication. Include the token in the
+        Authorization header as: `Authorization: Bearer <jwt_token>`
+
+security:
+  - ClerkJWT: []
+
+tags:
+  - name: Intent Processing
+    description: Natural language interpretation and intent parsing
+  - name: Action Execution
+    description: Structured action command execution
+  - name: Health
+    description: Service health and readiness endpoints
+
+externalDocs:
+  description: Context Orchestrator Service Documentation
+  url: https://github.com/salunga-engineering/ai-agile/tree/main/services/context-orchestrator

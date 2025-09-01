@@ -1,0 +1,60 @@
+[package]
+name = "context-orchestrator"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "context_orchestrator"
+path = "src/lib.rs"
+
+[[bin]]
+name = "context-orchestrator"
+path = "src/main.rs"
+
+[dependencies]
+# Shuttle resources
+shuttle-runtime = "0.45.0"
+shuttle-axum = "0.45.0"
+shuttle-shared-db = { version = "0.45.0", features = ["postgres"] }
+shuttle-qdrant = "0.45.0"
+
+# Core
+axum = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+async-trait = { workspace = true }
+
+# Database
+sqlx = { workspace = true }
+qdrant-client = "1.10"
+
+# HTTP & API
+reqwest = { version = "0.12", features = ["json"] }
+utoipa = { workspace = true }
+utoipa-swagger-ui = { workspace = true }
+tower-http = { workspace = true }
+axum-extra = { workspace = true }
+
+# LLM & Embeddings
+async-openai = "0.23"
+tiktoken-rs = "0.5"
+
+# Utilities
+uuid = { version = "1.4", features = ["serde", "v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json"] }
+jsonschema = "0.17"
+sha2 = "0.10"
+
+# Local workspace dependencies
+common = { path = "../../libs/common" }
+auth_clerk = { path = "../../libs/auth_clerk" }
+
+[dev-dependencies]
+mockall = "0.12"
+wiremock = "0.6"
+tokio-test = "0.4"

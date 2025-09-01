@@ -8,6 +8,7 @@ members = [
     "services/backlog",
     "services/readiness",
     "services/prompt-builder",
+    "services/context-orchestrator",
     "services/sprint",
     "services/demo",
     "services/gh-integrator",
