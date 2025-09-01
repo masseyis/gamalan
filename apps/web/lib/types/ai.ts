@@ -94,3 +94,32 @@ export interface CommitPlan {
   preCommitChecks: string[]
   branchNamingConvention?: string
 }
+
+export interface CreatePlanPackRequest {
+  storyId: string
+  acceptanceCriteriaMap: AcceptanceCriteriaMap
+  architectureImpact?: string
+}
+
+export interface CreateTaskPackRequest {
+  taskId: string
+  planPackId?: string
+  objectives: string
+  constraints: TaskConstraints
+}
+
+export interface StoryAnalysis {
+  storyId: string
+  complexity: 'Low' | 'Medium' | 'High'
+  risks: string[]
+  suggestions: string[]
+  estimatedPoints?: number
+}
+
+export interface TaskAnalysis {
+  taskId: string
+  complexity: 'Low' | 'Medium' | 'High'
+  dependencies: string[]
+  clarifications: string[]
+  estimatedHours?: number
+}

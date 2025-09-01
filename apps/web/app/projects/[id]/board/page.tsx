@@ -11,7 +11,7 @@ import Link from 'next/link'
 import { projectsApi } from '@/lib/api/projects'
 import { backlogApi } from '@/lib/api/backlog'
 import { useToast } from '@/hooks/use-toast'
-import { Story, StoryStatus } from '@/lib/types/story'
+import { Story, StoryStatus, StoryPriority } from '@/lib/types/story'
 import { AIAssistant } from '@/components/ai/ai-assistant'
 import {
   DndContext,
@@ -56,7 +56,7 @@ function DraggableStoryCard({ story }: DraggableStoryCardProps) {
     transition,
   }
 
-  const priorityColors = {
+  const priorityColors: Record<StoryPriority, string> = {
     low: 'bg-gray-100 text-gray-700',
     medium: 'bg-blue-100 text-blue-700',
     high: 'bg-orange-100 text-orange-700',
@@ -78,8 +78,8 @@ function DraggableStoryCard({ story }: DraggableStoryCardProps) {
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
-              <Badge variant="outline" className={priorityColors[story.priority] || priorityColors.medium}>
-                {story.priority}
+              <Badge variant="outline" className={story.priority ? priorityColors[story.priority] : priorityColors.medium}>
+                {story.priority || 'medium'}
               </Badge>
               {story.storyPoints && (
                 <Badge variant="secondary">{story.storyPoints} pts</Badge>

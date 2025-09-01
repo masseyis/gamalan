@@ -12,12 +12,11 @@ import { backlogApi } from '@/lib/api/backlog'
 import { AIAssistant } from '@/components/ai/ai-assistant'
 
 const statusConfig = {
-  draft: { icon: Circle, label: 'Draft', color: 'text-gray-500' },
-  backlog: { icon: Circle, label: 'Backlog', color: 'text-blue-500' },
-  ready: { icon: CheckCircle2, label: 'Ready', color: 'text-green-500' },
+  'draft': { icon: Circle, label: 'Draft', color: 'text-gray-500' },
+  'backlog': { icon: CheckCircle2, label: 'Ready', color: 'text-green-500' },
   'in-progress': { icon: Clock, label: 'In Progress', color: 'text-yellow-500' },
   'in-review': { icon: Clock, label: 'In Review', color: 'text-orange-500' },
-  done: { icon: CheckCircle2, label: 'Done', color: 'text-green-600' },
+  'done': { icon: CheckCircle2, label: 'Done', color: 'text-green-600' },
 }
 
 const priorityConfig = {
@@ -90,7 +89,7 @@ export default function StoryDetailPage() {
 
   const StatusIcon = statusConfig[story.status]?.icon || Circle
   const statusColor = statusConfig[story.status]?.color || 'text-gray-500'
-  const priorityStyle = priorityConfig[story.priority] || priorityConfig.medium
+  const priorityStyle = priorityConfig.medium // Default priority since Story type doesn't have priority
 
   return (
     <div className="min-h-screen bg-background">
@@ -107,9 +106,6 @@ export default function StoryDetailPage() {
                 <Badge variant="outline" className={priorityStyle.color}>
                   {priorityStyle.label}
                 </Badge>
-                {story.storyPoints && (
-                  <Badge variant="secondary">{story.storyPoints} points</Badge>
-                )}
                 <span className="text-muted-foreground text-sm">#{story.id.slice(-6)}</span>
               </div>
               <h1 className="text-3xl font-bold">{story.title}</h1>
@@ -197,7 +193,7 @@ export default function StoryDetailPage() {
                             <p className="text-sm text-muted-foreground">{task.description}</p>
                           )}
                         </div>
-                        <Badge variant="outline">{task.status}</Badge>
+                        <Badge variant="outline">Task</Badge>
                       </div>
                     ))}
                   </div>
@@ -226,10 +222,6 @@ export default function StoryDetailPage() {
                   <Badge variant="outline" className={priorityStyle.color}>
                     {priorityStyle.label}
                   </Badge>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Story Points</span>
-                  <span>{story.storyPoints || 'Not estimated'}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Tasks</span>

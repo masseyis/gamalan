@@ -1,7 +1,7 @@
 export interface Project {
   id: string
   name: string
-  teamId: string
+  teamId?: string
   description?: string
   createdAt: string
   updatedAt: string
@@ -9,7 +9,7 @@ export interface Project {
 
 export interface CreateProjectRequest {
   name: string
-  teamId: string
+  teamId?: string
   description?: string
 }
 

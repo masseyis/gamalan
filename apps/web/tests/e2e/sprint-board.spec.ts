@@ -103,7 +103,8 @@ test.describe('Sprint Board', () => {
     // Columns should show counts or story points
     // This depends on implementation details
     const columns = page.locator('[data-testid="board-column"]')
-    await expect(columns).toHaveCountGreaterThan(3)
+    const count = await columns.count()
+    expect(count).toBeGreaterThan(3)
   })
 
   test('should navigate back to project', async ({ page }) => {

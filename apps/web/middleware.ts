@@ -18,7 +18,7 @@ export default function middleware(request: NextRequest) {
     // Routes that can always be accessed, and have
     // no authentication information
     ignoredRoutes: ['/api/webhooks(.*)'],
-  })(request)
+  })(request, {} as any)
 }
 
 export const config = {

@@ -55,7 +55,8 @@ test.describe('Responsive Design', () => {
       
       // Projects should be visible regardless of viewport
       if (await page.locator('[data-testid="project-card"]').first().isVisible()) {
-        await expect(page.locator('[data-testid="project-card"]')).toHaveCountGreaterThan(0)
+        const count = await page.locator('[data-testid="project-card"]').count()
+        expect(count).toBeGreaterThan(0)
       }
     }
   })
@@ -88,7 +89,8 @@ test.describe('Responsive Design', () => {
     // Stories should be stacked vertically on mobile
     const storyCards = page.locator('[data-testid="story-card"]')
     if (await storyCards.first().isVisible()) {
-      await expect(storyCards).toHaveCountGreaterThan(0)
+      const count = await storyCards.count()
+      expect(count).toBeGreaterThan(0)
     }
   })
 

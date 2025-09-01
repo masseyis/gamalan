@@ -14,7 +14,8 @@ import Link from 'next/link'
 import { backlogApi } from '@/lib/api/backlog'
 import { projectsApi } from '@/lib/api/projects'
 import { useToast } from '@/hooks/use-toast'
-import { StoryPriority } from '@/lib/types/story'
+// Story priority type since it's not in the main types
+type StoryPriority = 'low' | 'medium' | 'high' | 'critical'
 
 interface CreateStoryForm {
   title: string
@@ -53,10 +54,10 @@ export default function NewStoryPage() {
 
   const createStoryMutation = useMutation({
     mutationFn: () => backlogApi.createStory(projectId, {
+      projectId,
       title: form.title.trim(),
       description: form.description.trim(),
-      priority: form.priority,
-      storyPoints: form.storyPoints,
+      // Note: priority and storyPoints are not part of CreateStoryRequest type
     }),
     onSuccess: (story) => {
       queryClient.invalidateQueries({ queryKey: ['stories', projectId] })

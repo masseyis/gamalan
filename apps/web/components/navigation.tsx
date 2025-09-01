@@ -12,7 +12,9 @@ import {
   Settings, 
   Bell,
   Search,
-  Plus
+  Plus,
+  Sparkles,
+  Command
 } from 'lucide-react'
 
 function useUserSafe() {
@@ -33,16 +35,23 @@ export function Navigation() {
   
   const navigation = [
     {
-      name: 'Dashboard',
-      href: '/dashboard',
-      icon: LayoutDashboard,
-      current: pathname === '/dashboard'
+      name: 'Assistant',
+      href: '/assistant',
+      icon: Sparkles,
+      current: pathname === '/assistant',
+      isPrimary: true
     },
     {
       name: 'Projects',
       href: '/projects',
       icon: FolderOpen,
       current: pathname.startsWith('/projects')
+    },
+    {
+      name: 'Dashboard',
+      href: '/dashboard',
+      icon: LayoutDashboard,
+      current: pathname === '/dashboard'
     }
   ]
 
@@ -55,7 +64,7 @@ export function Navigation() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link href="/dashboard" className="flex items-center gap-3 group">
+          <Link href="/assistant" className="flex items-center gap-3 group">
             <div className="relative">
               <Image 
                 src="/logo-icon.png" 
@@ -85,10 +94,14 @@ export function Navigation() {
                         ? "bg-primary text-primary-foreground shadow-soft" 
                         : "hover:bg-primary/10 hover:text-primary"
                       }
+                      ${item.isPrimary ? "font-semibold" : ""}
                     `}
                   >
                     <Icon className="h-4 w-4" />
                     {item.name}
+                    {item.isPrimary && (
+                      <div className="h-1.5 w-1.5 bg-primary rounded-full ml-1" />
+                    )}
                   </Button>
                 </Link>
               )
@@ -97,9 +110,23 @@ export function Navigation() {
 
           {/* Right side actions */}
           <div className="flex items-center gap-3">
-            {/* Search - hidden on small screens */}
-            <Button variant="ghost" size="icon" className="hidden sm:flex hover:bg-primary/10 hover:text-primary">
-              <Search className="h-4 w-4" />
+            {/* Assistant Trigger - replaces search */}
+            <Button 
+              variant="ghost" 
+              className="hidden sm:flex hover:bg-primary/10 hover:text-primary gap-2 text-sm"
+              onClick={() => {
+                if (pathname !== '/assistant') {
+                  window.location.href = '/assistant'
+                } else {
+                  document.querySelector('textarea')?.focus()
+                }
+              }}
+            >
+              <Command className="h-4 w-4" />
+              <span>Ask AI</span>
+              <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+                <span className="text-xs">⌘</span>K
+              </kbd>
             </Button>
 
             {/* Notifications */}

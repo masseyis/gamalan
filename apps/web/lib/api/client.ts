@@ -92,6 +92,11 @@ export const promptBuilderClient = new ApiClient({
   baseURL: process.env.NEXT_PUBLIC_PROMPT_BUILDER_API_URL || 'http://localhost:8004',
 })
 
+export const orchestratorClient = new ApiClient({
+  baseURL: process.env.NEXT_PUBLIC_ORCHESTRATOR_API_URL || 'http://localhost:8005',
+  timeout: 15000, // Longer timeout for LLM processing
+})
+
 // Hook to setup authenticated clients
 export function useApiClient() {
   const { getToken } = useAuth()
@@ -103,6 +108,7 @@ export function useApiClient() {
       backlogClient.setAuthToken(token)
       readinessClient.setAuthToken(token)
       promptBuilderClient.setAuthToken(token)
+      orchestratorClient.setAuthToken(token)
     }
   }
 

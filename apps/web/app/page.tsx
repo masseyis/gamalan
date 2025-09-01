@@ -1,5 +1,4 @@
 import { redirect } from 'next/navigation'
-import DashboardPage from './dashboard/page'
 
 function getAuthSafe() {
   try {
@@ -21,5 +20,6 @@ export default function Home() {
     redirect('/sign-in')
   }
 
-  return <DashboardPage />
+  // Redirect to AI-first Assistant interface
+  redirect('/assistant')
 }

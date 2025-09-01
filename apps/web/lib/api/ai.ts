@@ -3,6 +3,7 @@ import {
   PlanPack, 
   TaskPack, 
   ReadinessCheck, 
+  ReadinessEvaluation,
   CreatePlanPackRequest,
   CreateTaskPackRequest,
   StoryAnalysis,
@@ -12,16 +13,29 @@ import {
 const useMockData = process.env.NEXT_PUBLIC_ENABLE_MOCK_DATA === 'true'
 
 const mockAI = {
-  checkStoryReadiness: async (projectId: string, storyId: string) => {
+  checkStoryReadiness: async (projectId: string, storyId: string): Promise<ReadinessEvaluation> => {
     await new Promise(resolve => setTimeout(resolve, 1500))
     return {
-      id: `readiness-${Date.now()}`,
       storyId,
-      status: 'ready' as const,
+      isReady: true,
       score: 85,
-      timestamp: new Date().toISOString(),
-      issues: [],
-      suggestions: []
+      checks: [
+        {
+          type: 'AcceptanceCriteria',
+          passed: true,
+          message: 'Story has well-defined acceptance criteria'
+        },
+        {
+          type: 'TaskCoverage',
+          passed: true,
+          message: 'All acceptance criteria are covered by tasks'
+        }
+      ],
+      suggestions: [
+        'Consider adding edge case scenarios',
+        'Verify API integration requirements'
+      ],
+      createdAt: new Date().toISOString()
     }
   },
 
@@ -256,11 +270,11 @@ export const aiApi = {
   },
 
   // Readiness Assessment API
-  async checkStoryReadiness(projectId: string, storyId: string): Promise<ReadinessCheck> {
+  async checkStoryReadiness(projectId: string, storyId: string): Promise<ReadinessEvaluation> {
     if (useMockData) {
       return mockAI.checkStoryReadiness(projectId, storyId)
     }
-    return readinessClient.post<ReadinessCheck>(`/projects/${projectId}/stories/${storyId}/readiness-check`)
+    return readinessClient.post<ReadinessEvaluation>(`/projects/${projectId}/stories/${storyId}/readiness-check`)
   },
 
   async getReadinessCheck(projectId: string, storyId: string, checkId: string): Promise<ReadinessCheck> {

@@ -1,4 +1,8 @@
-export type StoryStatus = 'Ready' | 'InProgress' | 'InReview' | 'Done'
+export type StoryStatus = 'backlog' | 'in-progress' | 'in-review' | 'done'
+
+export type TaskStatus = 'todo' | 'in-progress' | 'done' | 'blocked'
+
+export type StoryPriority = 'low' | 'medium' | 'high' | 'critical'
 
 export interface Story {
   id: string
@@ -6,6 +10,8 @@ export interface Story {
   title: string
   description?: string
   status: StoryStatus
+  priority?: StoryPriority
+  storyPoints?: number
   labels: string[]
   createdAt: string
   updatedAt: string
@@ -37,6 +43,8 @@ export interface CreateStoryRequest {
   projectId: string
   title: string
   description?: string
+  priority?: StoryPriority
+  storyPoints?: number
   labels?: string[]
 }
 

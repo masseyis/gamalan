@@ -1,16 +1,14 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { projectsApi } from '@/lib/api/projects'
-import { apiClients } from '@/lib/api/client'
+import { projectsClient } from '@/lib/api/client'
 
 // Mock the API client setup
 vi.mock('@/lib/api/client', () => ({
-  apiClients: {
-    projects: {
-      get: vi.fn(),
-      post: vi.fn(),
-      patch: vi.fn(),
-      delete: vi.fn(),
-    },
+  projectsClient: {
+    get: vi.fn(),
+    post: vi.fn(),
+    patch: vi.fn(),
+    delete: vi.fn(),
   },
 }))
 
@@ -31,11 +29,11 @@ describe('Projects API', () => {
         },
       ]
 
-      vi.mocked(apiClients.projects.get).mockResolvedValue(mockProjects)
+      vi.mocked(projectsClient.get).mockResolvedValue(mockProjects)
 
       const result = await projectsApi.getProjects()
 
-      expect(apiClients.projects.get).toHaveBeenCalledWith('/projects')
+      expect(projectsClient.get).toHaveBeenCalledWith('/projects')
       expect(result).toEqual(mockProjects)
     })
   })
@@ -51,11 +49,11 @@ describe('Projects API', () => {
         updatedAt: '2024-01-01T00:00:00Z',
       }
 
-      vi.mocked(apiClients.projects.get).mockResolvedValue(mockProject)
+      vi.mocked(projectsClient.get).mockResolvedValue(mockProject)
 
       const result = await projectsApi.getProject(projectId)
 
-      expect(apiClients.projects.get).toHaveBeenCalledWith(`/projects/${projectId}`)
+      expect(projectsClient.get).toHaveBeenCalledWith(`/projects/${projectId}`)
       expect(result).toEqual(mockProject)
     })
   })
@@ -73,11 +71,11 @@ describe('Projects API', () => {
         updatedAt: '2024-01-01T00:00:00Z',
       }
 
-      vi.mocked(apiClients.projects.post).mockResolvedValue(mockResponse)
+      vi.mocked(projectsClient.post).mockResolvedValue(mockResponse)
 
       const result = await projectsApi.createProject(createData)
 
-      expect(apiClients.projects.post).toHaveBeenCalledWith('/projects', createData)
+      expect(projectsClient.post).toHaveBeenCalledWith('/projects', createData)
       expect(result).toEqual(mockResponse)
     })
   })
@@ -90,11 +88,11 @@ describe('Projects API', () => {
         description: 'Updated description',
       }
 
-      vi.mocked(apiClients.projects.patch).mockResolvedValue(undefined)
+      vi.mocked(projectsClient.patch).mockResolvedValue(undefined)
 
       await projectsApi.updateProject(projectId, updateData)
 
-      expect(apiClients.projects.patch).toHaveBeenCalledWith(`/projects/${projectId}`, updateData)
+      expect(projectsClient.patch).toHaveBeenCalledWith(`/projects/${projectId}`, updateData)
     })
   })
 
@@ -102,11 +100,11 @@ describe('Projects API', () => {
     it('should delete a project', async () => {
       const projectId = 'test-id'
 
-      vi.mocked(apiClients.projects.delete).mockResolvedValue(undefined)
+      vi.mocked(projectsClient.delete).mockResolvedValue(undefined)
 
       await projectsApi.deleteProject(projectId)
 
-      expect(apiClients.projects.delete).toHaveBeenCalledWith(`/projects/${projectId}`)
+      expect(projectsClient.delete).toHaveBeenCalledWith(`/projects/${projectId}`)
     })
   })
 
@@ -118,11 +116,11 @@ describe('Projects API', () => {
         notifications: true,
       }
 
-      vi.mocked(apiClients.projects.patch).mockResolvedValue(undefined)
+      vi.mocked(projectsClient.patch).mockResolvedValue(undefined)
 
       await projectsApi.updateProjectSettings(projectId, settings)
 
-      expect(apiClients.projects.patch).toHaveBeenCalledWith(`/projects/${projectId}/settings`, settings)
+      expect(projectsClient.patch).toHaveBeenCalledWith(`/projects/${projectId}/settings`, settings)
     })
   })
 })

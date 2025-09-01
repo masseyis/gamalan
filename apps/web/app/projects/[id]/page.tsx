@@ -55,7 +55,7 @@ export default function ProjectDetailPage() {
   const storyStats = {
     total: stories?.length || 0,
     backlog: stories?.filter(s => s.status === 'backlog').length || 0,
-    ready: stories?.filter(s => s.status === 'ready').length || 0,
+    ready: stories?.filter(s => s.status === 'backlog').length || 0,
     inProgress: stories?.filter(s => s.status === 'in-progress').length || 0,
     done: stories?.filter(s => s.status === 'done').length || 0,
   }
@@ -213,7 +213,7 @@ export default function ProjectDetailPage() {
                           <CheckCircle className="h-4 w-4 text-green-500" />
                         ) : story.status === 'in-progress' ? (
                           <Clock className="h-4 w-4 text-salunga-accent" />
-                        ) : story.status === 'ready' ? (
+                        ) : story.status === 'backlog' ? (
                           <AlertCircle className="h-4 w-4 text-blue-500" />
                         ) : (
                           <div className="w-4 h-4 rounded-full bg-gray-400" />

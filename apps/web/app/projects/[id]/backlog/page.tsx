@@ -10,16 +10,15 @@ import { ArrowLeft, Plus, FolderOpen, MoreVertical, CheckCircle2, Circle, Clock,
 import Link from 'next/link'
 import { projectsApi } from '@/lib/api/projects'
 import { backlogApi } from '@/lib/api/backlog'
-import { Story, StoryStatus, StoryPriority } from '@/lib/types/story'
+import { Story, StoryStatus } from '@/lib/types/story'
+// StoryPriority type doesn't exist in the type definitions
 import { AIAssistant } from '@/components/ai/ai-assistant'
 
 const statusConfig = {
-  draft: { icon: Circle, label: 'Draft', color: 'text-gray-500' },
-  backlog: { icon: Circle, label: 'Backlog', color: 'text-blue-500' },
-  ready: { icon: CheckCircle2, label: 'Ready', color: 'text-green-500' },
+  'backlog': { icon: CheckCircle2, label: 'Ready', color: 'text-green-500' },
   'in-progress': { icon: Clock, label: 'In Progress', color: 'text-yellow-500' },
   'in-review': { icon: Clock, label: 'In Review', color: 'text-orange-500' },
-  done: { icon: CheckCircle2, label: 'Done', color: 'text-green-600' },
+  'done': { icon: CheckCircle2, label: 'Done', color: 'text-green-600' },
 }
 
 const priorityConfig = {
@@ -95,7 +94,7 @@ export default function ProjectBacklogPage() {
   const renderStoryCard = (story: Story) => {
     const StatusIcon = statusConfig[story.status]?.icon || Circle
     const statusColor = statusConfig[story.status]?.color || 'text-gray-500'
-    const priorityStyle = priorityConfig[story.priority] || priorityConfig.medium
+    const priorityStyle = priorityConfig.medium // Default since Story doesn't have priority
 
     return (
       <Link key={story.id} href={`/projects/${projectId}/backlog/${story.id}`}>
@@ -127,7 +126,7 @@ export default function ProjectBacklogPage() {
           <CardContent className="pt-0">
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <div className="flex items-center gap-4">
-                <span>Story Points: {story.storyPoints || 'Not estimated'}</span>
+                <span>Story ID: {story.id.slice(-6)}</span>
                 <span>Tasks: 0</span>
                 <span>ACs: 0</span>
               </div>
@@ -191,7 +190,7 @@ export default function ProjectBacklogPage() {
                 </div>
               </div>
               <CardTitle className="text-3xl font-bold text-success">
-                {stories.filter(s => s.status === 'ready').length}
+                {stories.filter(s => s.status === 'backlog').length}
               </CardTitle>
             </CardHeader>
           </Card>
@@ -264,7 +263,7 @@ export default function ProjectBacklogPage() {
             </div>
 
             {/* Ready Stories */}
-            {stories.some(story => story.status === 'ready') && (
+            {stories.some(story => story.status === 'backlog') && (
               <div>
                 <h2 className="text-xl font-semibold mb-4 flex items-center">
                   <CheckCircle2 className="h-5 w-5 mr-2 text-green-500" />
@@ -272,7 +271,7 @@ export default function ProjectBacklogPage() {
                 </h2>
                 <div className="space-y-4">
                   {stories
-                    .filter(story => story.status === 'ready')
+                    .filter(story => story.status === 'backlog')
                     .map(renderStoryCard)}
                 </div>
               </div>

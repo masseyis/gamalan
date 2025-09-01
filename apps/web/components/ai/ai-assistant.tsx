@@ -55,7 +55,7 @@ export function AIAssistant({ projectId, storyId, taskId, context = 'general' }:
     onSuccess: (data) => {
       toast({
         title: 'Readiness Check Complete',
-        description: `Story readiness: ${data.status}. Score: ${data.score}/100`
+        description: `Story readiness: ${data.isReady ? 'Ready' : 'Not Ready'}. Score: ${data.score}/100`
       })
     },
     onError: () => {
@@ -287,7 +287,7 @@ export function AIAssistant({ projectId, storyId, taskId, context = 'general' }:
     }
   })
 
-  const executeAction = async (actionId: string, actionFn: () => Promise<void>) => {
+  const executeAction = async (actionId: string, actionFn: () => Promise<any>) => {
     setActiveAction(actionId)
     try {
       await actionFn()
