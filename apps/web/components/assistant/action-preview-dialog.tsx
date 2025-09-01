@@ -152,7 +152,7 @@ export function ActionPreviewDialog() {
             Action Preview
           </DialogTitle>
           <DialogDescription>
-            Review what I'm planning to do before proceeding.
+            Review what I&apos;m planning to do before proceeding.
           </DialogDescription>
         </DialogHeader>
 
@@ -162,7 +162,7 @@ export function ActionPreviewDialog() {
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Lightbulb className="h-5 w-5 text-primary" />
-                What I'll Do
+                What I&apos;ll Do
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -238,7 +238,7 @@ export function ActionPreviewDialog() {
           {/* AI Reasoning */}
           <Card className="bg-muted/30">
             <CardHeader>
-              <CardTitle className="text-sm font-medium">Why I'm Suggesting This</CardTitle>
+              <CardTitle className="text-sm font-medium">Why I&apos;m Suggesting This</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground leading-relaxed">

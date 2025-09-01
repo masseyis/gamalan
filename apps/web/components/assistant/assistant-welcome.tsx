@@ -56,8 +56,8 @@ export function AssistantWelcome() {
           </div>
           <h1 className="text-2xl font-bold mb-2">Welcome to Your AI Assistant</h1>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            I'm here to help you stay on track with your agile workflow. Simply tell me what you want to do in natural language, 
-            and I'll help you get it done efficiently.
+            I&apos;m here to help you stay on track with your agile workflow. Simply tell me what you want to do in natural language, 
+            and I&apos;ll help you get it done efficiently.
           </p>
         </CardContent>
       </Card>
@@ -90,7 +90,7 @@ export function AssistantWelcome() {
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <p className="font-medium text-sm mb-1">
-                            "{example.text}"
+                            &ldquo;{example.text}&rdquo;
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {example.description}
@@ -149,7 +149,7 @@ export function AssistantWelcome() {
           💡 <strong>Tip:</strong> Use <kbd className="px-2 py-1 bg-muted rounded text-xs">Cmd+K</kbd> to quickly focus the assistant bar from anywhere
         </p>
         <p>
-          🎯 <strong>Be specific:</strong> The more context you provide, the more accurate I'll be
+          🎯 <strong>Be specific:</strong> The more context you provide, the more accurate I&apos;ll be
         </p>
       </div>
     </div>

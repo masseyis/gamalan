@@ -46,7 +46,7 @@ export default function AssistantPage() {
               <CardContent className="py-8 text-center text-muted-foreground">
                 <p className="text-lg">No suggestions at the moment</p>
                 <p className="text-sm mt-2">
-                  I'll notify you when there are opportunities to improve your workflow
+                  I&apos;ll notify you when there are opportunities to improve your workflow
                 </p>
               </CardContent>
             </Card>

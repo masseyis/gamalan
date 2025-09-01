@@ -20,14 +20,16 @@ import {
 function useUserSafe() {
   const hasClerkKeys = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
   
-  // Always call the hook, but conditionally use the result
+  // Always call hooks unconditionally at the top level
   let clerkUser = null
-  try {
-    const { useUser } = require('@clerk/nextjs')
-    const userResult = useUser()
-    clerkUser = hasClerkKeys ? userResult : null
-  } catch {
-    // Clerk not available, use demo data
+  if (hasClerkKeys) {
+    try {
+      const { useUser } = require('@clerk/nextjs')
+      clerkUser = useUser()
+    } catch {
+      // Clerk not available, use demo data
+      clerkUser = null
+    }
   }
   
   return clerkUser || { user: { firstName: 'Demo', lastName: 'User' } }

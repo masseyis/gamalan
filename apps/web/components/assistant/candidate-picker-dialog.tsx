@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -153,7 +153,7 @@ export function CandidatePickerDialog() {
   } = useAssistantStore()
 
   const isOpen = lastIntentResult?.ambiguous && !selectedCandidate
-  const candidates = lastIntentResult?.entities || []
+  const candidates = useMemo(() => lastIntentResult?.entities || [], [lastIntentResult?.entities])
 
   // Reset selection when dialog opens
   useEffect(() => {

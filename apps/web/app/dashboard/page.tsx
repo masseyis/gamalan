@@ -12,14 +12,16 @@ import { backlogApi } from '@/lib/api/backlog'
 function useUserSafe() {
   const hasClerkKeys = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
   
-  // Always call the hook, but conditionally use the result
+  // Always call hooks unconditionally at the top level
   let clerkUser = null
-  try {
-    const { useUser } = require('@clerk/nextjs')
-    const userResult = useUser()
-    clerkUser = hasClerkKeys ? userResult : null
-  } catch {
-    // Clerk not available, use demo data
+  if (hasClerkKeys) {
+    try {
+      const { useUser } = require('@clerk/nextjs')
+      clerkUser = useUser()
+    } catch {
+      // Clerk not available, use demo data
+      clerkUser = null
+    }
   }
   
   return clerkUser || { user: { firstName: 'Demo User' } }
@@ -65,10 +67,10 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-4xl font-bold text-gradient-primary">
-                Welcome back, {user?.firstName || 'User'}! 
+                Welcome back, {user?.firstName || 'User'}!
               </h1>
               <p className="text-muted-foreground mt-2 text-lg">
-                Here's an overview of your projects and recent activity.
+                Here&apos;s an overview of your projects and recent activity.
               </p>
             </div>
             <div className="glass p-4 rounded-xl animate-scale-in">
@@ -243,7 +245,7 @@ export default function DashboardPage() {
                 <div>
                   <CardTitle className="text-xl">Team Velocity</CardTitle>
                   <CardDescription className="mt-1">
-                    Your team's performance overview
+                    Your team&apos;s performance overview
                   </CardDescription>
                 </div>
                 <div className="p-2 bg-success/10 rounded-lg">

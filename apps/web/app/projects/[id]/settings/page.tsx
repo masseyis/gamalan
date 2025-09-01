@@ -163,7 +163,7 @@ export default function ProjectSettingsPage() {
             <CardHeader>
               <CardTitle>General Settings</CardTitle>
               <CardDescription>
-                Update your project's basic information
+                Update your project&apos;s basic information
               </CardDescription>
             </CardHeader>
             <CardContent>

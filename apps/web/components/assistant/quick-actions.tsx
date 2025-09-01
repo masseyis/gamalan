@@ -159,9 +159,9 @@ function QuickActionCard({ action }: { action: QuickAction }) {
               {action.description}
             </p>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <span>"</span>
+              <span>&ldquo;</span>
               <span className="italic">{action.utterance}</span>
-              <span>"</span>
+              <span>&rdquo;</span>
             </div>
           </div>
         </div>
@@ -243,7 +243,7 @@ export function QuickActions() {
             <strong>💡 Pro tip:</strong> You can also type custom requests directly
           </p>
           <p>
-            Try being specific with IDs like "Mark task ABC-123 as complete" or "Check if story XYZ-456 is ready"
+            Try being specific with IDs like &ldquo;Mark task ABC-123 as complete&rdquo; or &ldquo;Check if story XYZ-456 is ready&rdquo;
           </p>
         </CardContent>
       </Card>

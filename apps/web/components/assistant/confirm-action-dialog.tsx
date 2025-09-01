@@ -186,7 +186,7 @@ export function ConfirmActionDialog() {
                 <div className="font-medium mb-1">Important:</div>
                 <ul className="text-xs space-y-1 list-disc list-inside">
                   <li>This action cannot be easily undone</li>
-                  <li>It may affect other team members' work</li>
+                  <li>It may affect other team members&apos; work</li>
                   <li>Consider discussing with your team first</li>
                 </ul>
               </AlertDescription>
