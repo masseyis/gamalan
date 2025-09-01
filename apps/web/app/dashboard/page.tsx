@@ -8,18 +8,21 @@ import { useQuery } from '@tanstack/react-query'
 import { projectsApi } from '@/lib/api/projects'
 import { backlogApi } from '@/lib/api/backlog'
 
-// Hook to check if Clerk is available
+// Hook to safely get user data (works with or without Clerk)
 function useUserSafe() {
+  const hasClerkKeys = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+  
+  // Always call the hook, but conditionally use the result
+  let clerkUser = null
   try {
-    // Only import and use useUser if Clerk is configured
-    if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
-      const { useUser } = require('@clerk/nextjs')
-      return useUser()
-    }
-    return { user: { firstName: 'Demo User' } }
+    const { useUser } = require('@clerk/nextjs')
+    const userResult = useUser()
+    clerkUser = hasClerkKeys ? userResult : null
   } catch {
-    return { user: { firstName: 'Demo User' } }
+    // Clerk not available, use demo data
   }
+  
+  return clerkUser || { user: { firstName: 'Demo User' } }
 }
 
 export default function DashboardPage() {

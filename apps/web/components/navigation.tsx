@@ -18,15 +18,19 @@ import {
 } from 'lucide-react'
 
 function useUserSafe() {
+  const hasClerkKeys = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+  
+  // Always call the hook, but conditionally use the result
+  let clerkUser = null
   try {
-    if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
-      const { useUser } = require('@clerk/nextjs')
-      return useUser()
-    }
-    return { user: { firstName: 'Demo', lastName: 'User' } }
+    const { useUser } = require('@clerk/nextjs')
+    const userResult = useUser()
+    clerkUser = hasClerkKeys ? userResult : null
   } catch {
-    return { user: { firstName: 'Demo', lastName: 'User' } }
+    // Clerk not available, use demo data
   }
+  
+  return clerkUser || { user: { firstName: 'Demo', lastName: 'User' } }
 }
 
 export function Navigation() {
