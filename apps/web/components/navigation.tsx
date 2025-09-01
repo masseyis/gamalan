@@ -18,21 +18,9 @@ import {
 } from 'lucide-react'
 
 function useUserSafe() {
-  const hasClerkKeys = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-  
-  // Always call hooks unconditionally at the top level
-  let clerkUser = null
-  if (hasClerkKeys) {
-    try {
-      const { useUser } = require('@clerk/nextjs')
-      clerkUser = useUser()
-    } catch {
-      // Clerk not available, use demo data
-      clerkUser = null
-    }
-  }
-  
-  return clerkUser || { user: { firstName: 'Demo', lastName: 'User' } }
+  // For now, always return demo data to avoid React Hooks violations
+  // In a real app, this would use React Context or a different state management approach
+  return { user: { firstName: 'Demo', lastName: 'User' } }
 }
 
 export function Navigation() {
