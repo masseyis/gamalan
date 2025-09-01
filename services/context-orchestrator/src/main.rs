@@ -93,8 +93,9 @@ async fn main(
     };
 
     // Build router with middleware
+    // TODO: State is not used by handlers yet - uncomment when handlers use state
     let app = create_routes()
-        .with_state(state)
+        // .with_state(state)
         .layer(middleware::from_fn(correlation_id_extractor))
         .layer(TraceLayer::new_for_http());
 

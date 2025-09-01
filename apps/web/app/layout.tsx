@@ -1,15 +1,25 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Inter, Space_Grotesk } from 'next/font/google'
 import { ClerkProvider } from '@clerk/nextjs'
 import './globals.css'
 import { Providers } from './providers'
 import { Navigation } from '@/components/navigation'
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ 
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap'
+})
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ['latin'],
+  variable: '--font-space-grotesk',
+  display: 'swap'
+})
 
 export const metadata: Metadata = {
-  title: 'Salunga - AI-Enhanced Agile Project Management',
-  description: 'An opinionated, AI-enhanced agile project management tool that helps teams focus on delivering value',
+  title: 'SpecMint - Salunga AI-Enhanced Agile Project Management',
+  description: 'AI-enhanced agile project management tool that helps teams focus on delivering value',
 }
 
 export default function RootLayout({
@@ -23,7 +33,7 @@ export default function RootLayout({
     // Demo mode without authentication
     return (
       <html lang="en">
-        <body className={inter.className}>
+        <body className={`${inter.variable} ${spaceGrotesk.variable} font-sans`}>
           <Providers>
             <Navigation />
             <main className="min-h-screen">
@@ -38,7 +48,7 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en">
-        <body className={inter.className}>
+        <body className={`${inter.variable} ${spaceGrotesk.variable} font-sans`}>
           <Providers>
             <Navigation />
             <main className="min-h-screen">

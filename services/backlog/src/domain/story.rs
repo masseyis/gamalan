@@ -21,13 +21,13 @@ impl StoryStatus {
     }
 }
 
-impl ToString for StoryStatus {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for StoryStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Ready => "Ready".to_string(),
-            Self::InProgress => "InProgress".to_string(),
-            Self::InReview => "InReview".to_string(),
-            Self::Done => "Done".to_string(),
+            Self::Ready => write!(f, "Ready"),
+            Self::InProgress => write!(f, "InProgress"),
+            Self::InReview => write!(f, "InReview"),
+            Self::Done => write!(f, "Done"),
         }
     }
 }

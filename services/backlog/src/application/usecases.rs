@@ -270,7 +270,7 @@ mod tests {
             let invalid = ac_refs
                 .iter()
                 .filter(|r| !valid_refs.contains(&r.as_str()))
-                .map(|r| r.clone())
+                .cloned()
                 .collect();
             Ok(invalid)
         }

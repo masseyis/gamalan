@@ -77,7 +77,7 @@ impl From<IntentHistoryRow> for crate::domain::IntentRecord {
 impl From<&crate::domain::IntentRecord> for IntentHistoryRow {
     fn from(intent: &crate::domain::IntentRecord) -> Self {
         let parsed_intent =
-            serde_json::to_value(&intent.parsed_intent).unwrap_or_else(|_| serde_json::Value::Null);
+            serde_json::to_value(&intent.parsed_intent).unwrap_or(serde_json::Value::Null);
 
         Self {
             id: intent.id,

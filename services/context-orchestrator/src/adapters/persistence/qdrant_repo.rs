@@ -3,20 +3,17 @@ use crate::domain::{CandidateEntity, ContextEntity};
 use async_trait::async_trait;
 use common::AppError;
 use qdrant_client::prelude::*;
-use qdrant_client::qdrant::vectors_config::Config;
-use qdrant_client::qdrant::{
-    Condition, CreateCollection, Distance, Filter, PointStruct, SearchPoints, VectorParams,
-    VectorsConfig, WithPayloadSelector,
-};
-use serde_json::json;
+use qdrant_client::qdrant::{Filter};
 use std::collections::HashMap;
 use uuid::Uuid;
 
+#[allow(dead_code)]
 pub struct QdrantRepository {
     client: QdrantClient,
     collection_name: String,
 }
 
+#[allow(dead_code)]
 impl QdrantRepository {
     pub fn new(client: QdrantClient) -> Self {
         Self {
@@ -62,10 +59,10 @@ impl VectorSearchRepository for QdrantRepository {
     async fn search_similar(
         &self,
         embedding: Vec<f32>,
-        tenant_id: Uuid,
-        entity_types: Option<Vec<String>>,
-        limit: usize,
-        similarity_threshold: Option<f32>,
+        _tenant_id: Uuid,
+        _entity_types: Option<Vec<String>>,
+        _limit: usize,
+        _similarity_threshold: Option<f32>,
     ) -> Result<Vec<CandidateEntity>, AppError> {
         if embedding.len() != 1536 {
             return Err(AppError::BadRequest(format!(
@@ -81,19 +78,20 @@ impl VectorSearchRepository for QdrantRepository {
 
     async fn get_entity_count(
         &self,
-        tenant_id: Uuid,
-        entity_types: Option<Vec<String>>,
+        _tenant_id: Uuid,
+        _entity_types: Option<Vec<String>>,
     ) -> Result<u64, AppError> {
         // TODO: Fix Qdrant client API integration - using stub for now
         Ok(0)
     }
 
-    async fn delete_entity(&self, entity_id: Uuid, tenant_id: Uuid) -> Result<bool, AppError> {
+    async fn delete_entity(&self, _entity_id: Uuid, _tenant_id: Uuid) -> Result<bool, AppError> {
         // TODO: Fix Qdrant client API integration - using stub for now
         Ok(false)
     }
 }
 
+#[allow(dead_code)]
 impl QdrantRepository {
     fn payload_to_candidate_entity(
         &self,

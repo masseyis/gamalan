@@ -3,8 +3,7 @@ use crate::domain::CandidateEntity;
 use async_openai::{
     types::{
         ChatCompletionRequestMessage, ChatCompletionRequestSystemMessage,
-        ChatCompletionRequestUserMessage, CreateChatCompletionRequest, CreateEmbeddingRequest,
-        EmbeddingInput,
+        ChatCompletionRequestUserMessage, CreateChatCompletionRequest,
     },
     Client as OpenAIClient,
 };
@@ -14,12 +13,14 @@ use serde_json::Value;
 use std::collections::HashMap;
 use uuid::Uuid;
 
+#[allow(dead_code)]
 pub struct OpenAILlmClient {
     client: OpenAIClient<async_openai::config::OpenAIConfig>,
     embedding_model: String,
     chat_model: String,
 }
 
+#[allow(dead_code)]
 impl OpenAILlmClient {
     pub fn new(api_key: String) -> Self {
         let client = OpenAIClient::with_config(
@@ -185,7 +186,7 @@ impl LlmClient for OpenAILlmClient {
         }
 
         // Truncate if text is too long (OpenAI has token limits)
-        let truncated_text = if text.len() > 8000 {
+        let _truncated_text = if text.len() > 8000 {
             &text[..8000]
         } else {
             text
@@ -199,7 +200,7 @@ impl LlmClient for OpenAILlmClient {
     async fn parse_intent(
         &self,
         utterance: &str,
-        context: &[CandidateEntity],
+        _context: &[CandidateEntity],
         system_prompt: &str,
     ) -> Result<LlmResponse, AppError> {
         // Direct implementation - can add retry logic back later
@@ -214,7 +215,7 @@ impl LlmClient for OpenAILlmClient {
             }),
         ];
 
-        let request = CreateChatCompletionRequest {
+        let _request = CreateChatCompletionRequest {
             model: self.chat_model.clone(),
             messages,
             temperature: Some(0.1), // Low temperature for consistent parsing

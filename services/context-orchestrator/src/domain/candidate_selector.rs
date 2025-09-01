@@ -178,7 +178,7 @@ mod tests {
             priority: None,
             tags: vec![],
             metadata: std::collections::HashMap::new(),
-            similarity_score: similarity_score,
+            similarity_score,
             last_updated: chrono::Utc::now(),
             created_at: chrono::Utc::now(),
         }

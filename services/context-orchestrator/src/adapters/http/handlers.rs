@@ -1,11 +1,5 @@
-use crate::application::ports::VectorSearchRepository;
-use crate::application::use_cases::{ActUseCase, InterpretUseCase};
-use crate::domain::{ActionCommand, IntentRecord};
-use auth_clerk::Authenticated;
-use axum::extract::{Query, State};
-use axum::http::StatusCode;
 use axum::response::Json;
-use axum::{extract::Path, routing::post, Router};
+use axum::{routing::post, Router};
 use common::AppError;
 // use crate::AppState; // Comment out since AppState is in main.rs
 use serde::{Deserialize, Serialize};
@@ -217,18 +211,6 @@ impl crate::domain::ActionType {
         }
     }
 
-    pub fn to_string(&self) -> String {
-        match self {
-            Self::UpdateStatus => "update_status".to_string(),
-            Self::AssignUser => "assign_user".to_string(),
-            Self::UpdatePriority => "update_priority".to_string(),
-            Self::AddComment => "add_comment".to_string(),
-            Self::CreateTask => "create_task".to_string(),
-            Self::CreateStory => "create_story".to_string(),
-            Self::MoveToSprint => "move_to_sprint".to_string(),
-            Self::Archive => "archive".to_string(),
-        }
-    }
 }
 
 impl crate::domain::RiskLevel {
@@ -241,37 +223,12 @@ impl crate::domain::RiskLevel {
         }
     }
 
-    pub fn to_string(&self) -> String {
-        match self {
-            Self::Low => "low".to_string(),
-            Self::Medium => "medium".to_string(),
-            Self::High => "high".to_string(),
-        }
-    }
 }
 
-impl crate::domain::IntentType {
-    pub fn to_string(&self) -> String {
-        match self {
-            Self::UpdateStatus => "update_status".to_string(),
-            Self::AssignTask => "assign_task".to_string(),
-            Self::CreateItem => "create_item".to_string(),
-            Self::QueryStatus => "query_status".to_string(),
-            Self::SearchItems => "search_items".to_string(),
-            Self::UpdatePriority => "update_priority".to_string(),
-            Self::AddComment => "add_comment".to_string(),
-            Self::MoveToSprint => "move_to_sprint".to_string(),
-            Self::GenerateReport => "generate_report".to_string(),
-            Self::Archive => "archive".to_string(),
-            Self::Unknown => "unknown".to_string(),
-        }
-    }
-}
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::http::StatusCode;
     use std::collections::HashMap;
 
     #[test]

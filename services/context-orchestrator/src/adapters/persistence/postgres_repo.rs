@@ -1,4 +1,3 @@
-use crate::adapters::persistence::models::*;
 use crate::application::ports::{
     AuditLogRepository, ContextSnapshotRepository, IntentAnalytics, IntentHistoryRepository,
     RateLimitBucket, RateLimitRepository,
@@ -10,6 +9,7 @@ use common::AppError;
 use sqlx::PgPool;
 use uuid::Uuid;
 
+#[allow(dead_code)]
 pub struct PostgresRepository {
     pool: PgPool,
 }

@@ -1,14 +1,14 @@
 use crate::application::ports::{
     AuditLogRepository, BacklogServiceClient, PromptBuilderServiceClient, ReadinessServiceClient,
-    ServiceResult, VectorSearchRepository,
+    VectorSearchRepository,
 };
-use crate::domain::{action_validator, ActionCommand, ActionType, RiskLevel};
-use chrono::Utc;
+use crate::domain::{action_validator, ActionCommand, ActionType};
 use common::AppError;
 use std::sync::Arc;
 use std::time::Instant;
 use uuid::Uuid;
 
+#[allow(dead_code)]
 pub struct ActUseCase {
     audit_repo: Arc<dyn AuditLogRepository>,
     vector_repo: Arc<dyn VectorSearchRepository>,

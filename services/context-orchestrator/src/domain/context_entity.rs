@@ -119,11 +119,36 @@ pub enum ActionType {
     Archive,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+impl std::fmt::Display for ActionType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::UpdateStatus => write!(f, "update_status"),
+            Self::AssignUser => write!(f, "assign_user"),
+            Self::UpdatePriority => write!(f, "update_priority"),
+            Self::AddComment => write!(f, "add_comment"),
+            Self::CreateTask => write!(f, "create_task"),
+            Self::CreateStory => write!(f, "create_story"),
+            Self::MoveToSprint => write!(f, "move_to_sprint"),
+            Self::Archive => write!(f, "archive"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd, Ord, Eq)]
 pub enum RiskLevel {
     Low,
     Medium,
     High,
+}
+
+impl std::fmt::Display for RiskLevel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Low => write!(f, "low"),
+            Self::Medium => write!(f, "medium"),
+            Self::High => write!(f, "high"),
+        }
+    }
 }
 
 impl ContextSnapshot {

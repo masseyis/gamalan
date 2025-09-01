@@ -164,7 +164,7 @@ impl IntentParser {
         let required_fields = ["intent_type", "entities"];
 
         for field in &required_fields {
-            if !parsed.get(field).is_some() {
+            if parsed.get(field).is_none() {
                 return Err(AppError::BadRequest(format!(
                     "Missing required field: {}",
                     field

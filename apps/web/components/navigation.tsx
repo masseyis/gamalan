@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import Image from 'next/image'
+// import Image from 'next/image' - using regular img for SVG logos
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { 
@@ -29,11 +29,10 @@ export function Navigation() {
   
   const navigation = [
     {
-      name: 'Assistant',
-      href: '/assistant',
-      icon: Sparkles,
-      current: pathname === '/assistant',
-      isPrimary: true
+      name: 'Dashboard',
+      href: '/dashboard',
+      icon: LayoutDashboard,
+      current: pathname === '/dashboard'
     },
     {
       name: 'Projects',
@@ -42,10 +41,23 @@ export function Navigation() {
       current: pathname.startsWith('/projects')
     },
     {
-      name: 'Dashboard',
-      href: '/dashboard',
-      icon: LayoutDashboard,
-      current: pathname === '/dashboard'
+      name: 'Team',
+      href: '/team',
+      icon: Users,
+      current: pathname === '/team'
+    },
+    {
+      name: 'Reports',
+      href: '/reports',
+      icon: Settings,
+      current: pathname === '/reports'
+    },
+    {
+      name: 'Assistant',
+      href: '/assistant',
+      icon: Sparkles,
+      current: pathname === '/assistant',
+      isPrimary: true
     }
   ]
 
@@ -60,7 +72,7 @@ export function Navigation() {
           {/* Logo */}
           <Link href="/assistant" className="flex items-center gap-3 group">
             <div className="relative">
-              <Image 
+              <img 
                 src="/logo-icon.png" 
                 alt="Salunga" 
                 width={32} 

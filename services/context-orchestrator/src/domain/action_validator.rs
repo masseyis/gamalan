@@ -1,6 +1,5 @@
-use crate::domain::{ActionCommand, ActionType, CandidateEntity, EntityType, RiskLevel};
+use crate::domain::{ActionCommand, ActionType, CandidateEntity, RiskLevel};
 use common::AppError;
-use uuid::Uuid;
 
 pub struct ActionValidator;
 
@@ -297,6 +296,8 @@ impl Default for UserPermissions {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::EntityType;
+    use uuid::Uuid;
 
     fn create_test_candidate(
         id: Uuid,

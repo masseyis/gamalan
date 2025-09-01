@@ -4,7 +4,7 @@ use crate::application::ports::{
 use crate::domain::{
     candidate_selector, intent_parser, CandidateEntity, IntentRecord, IntentType, ParsedIntent,
 };
-use chrono::{Duration, Utc};
+use chrono::Utc;
 use common::AppError;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -318,7 +318,7 @@ impl InterpretUseCase {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::{CandidateEntity, ContextEntity};
+    use crate::domain::CandidateEntity;
     use async_trait::async_trait;
     use chrono::Utc;
     use std::collections::HashMap;

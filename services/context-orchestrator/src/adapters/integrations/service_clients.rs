@@ -89,7 +89,7 @@ impl HttpBacklogClient {
                 AppError::ExternalServiceError(format!("Failed to parse response: {}", e))
             }),
             StatusCode::BAD_REQUEST => Err(AppError::BadRequest("Invalid request".to_string())),
-            StatusCode::NOT_FOUND => Err(AppError::NotFound),
+            StatusCode::NOT_FOUND => Err(AppError::NotFound("Resource not found".to_string())),
             StatusCode::TOO_MANY_REQUESTS => Err(AppError::RateLimitExceeded),
             StatusCode::INTERNAL_SERVER_ERROR => Err(AppError::ExternalServiceError(
                 "Backlog service internal error".to_string(),
@@ -384,7 +384,7 @@ impl ReadinessServiceClient for HttpReadinessClient {
                     .unwrap_or_default(),
             })
         } else if response.status() == StatusCode::NOT_FOUND {
-            Err(AppError::NotFound)
+            Err(AppError::NotFound("Resource not found".to_string()))
         } else {
             Err(AppError::ExternalServiceError(format!(
                 "Readiness check failed: {}",
