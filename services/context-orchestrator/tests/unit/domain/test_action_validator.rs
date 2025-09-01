@@ -1,5 +1,5 @@
-use context_orchestrator::domain::*;
 use chrono::Utc;
+use context_orchestrator::domain::*;
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -7,7 +7,11 @@ use uuid::Uuid;
 mod action_validator_tests {
     use super::*;
 
-    fn create_test_candidate(entity_type: &str, status: Option<&str>, tenant_id: Uuid) -> CandidateEntity {
+    fn create_test_candidate(
+        entity_type: &str,
+        status: Option<&str>,
+        tenant_id: Uuid,
+    ) -> CandidateEntity {
         CandidateEntity {
             id: Uuid::new_v4(),
             tenant_id,
@@ -27,7 +31,7 @@ mod action_validator_tests {
     fn create_action_command(action_type: ActionType, entities: Vec<Uuid>) -> ActionCommand {
         let mut parameters = HashMap::new();
         parameters.insert("status".to_string(), serde_json::json!("in_progress"));
-        
+
         ActionCommand {
             action_type,
             target_entities: entities,
@@ -42,11 +46,11 @@ mod action_validator_tests {
         let tenant_id = Uuid::new_v4();
         let story_candidate = create_test_candidate("story", Some("ready"), tenant_id);
         let candidates = vec![story_candidate.clone()];
-        
+
         let action = create_action_command(ActionType::UpdateStatus, vec![story_candidate.id]);
 
         let result = action_validator::validate_action(&action, &candidates);
-        
+
         assert!(result.is_ok(), "Valid update status action should succeed");
     }
 
@@ -55,13 +59,16 @@ mod action_validator_tests {
         let tenant_id = Uuid::new_v4();
         let task_candidate = create_test_candidate("task", Some("todo"), tenant_id);
         let candidates = vec![task_candidate.clone()];
-        
+
         let action = create_action_command(ActionType::UpdateStatus, vec![task_candidate.id]);
 
         let result = action_validator::validate_action(&action, &candidates);
-        
+
         assert!(result.is_err(), "UpdateStatus on task should fail");
-        assert!(result.unwrap_err().to_string().contains("Can only update status of stories"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Can only update status of stories"));
     }
 
     #[test]
@@ -69,12 +76,14 @@ mod action_validator_tests {
         let tenant_id = Uuid::new_v4();
         let task_candidate = create_test_candidate("task", Some("todo"), tenant_id);
         let candidates = vec![task_candidate.clone()];
-        
+
         let mut action = create_action_command(ActionType::AssignUser, vec![task_candidate.id]);
-        action.parameters.insert("user_id".to_string(), serde_json::json!("user-123"));
+        action
+            .parameters
+            .insert("user_id".to_string(), serde_json::json!("user-123"));
 
         let result = action_validator::validate_action(&action, &candidates);
-        
+
         assert!(result.is_ok(), "Valid assign user action should succeed");
     }
 
@@ -83,14 +92,17 @@ mod action_validator_tests {
         let tenant_id = Uuid::new_v4();
         let task_candidate = create_test_candidate("task", Some("todo"), tenant_id);
         let candidates = vec![task_candidate.clone()];
-        
+
         let action = create_action_command(ActionType::AssignUser, vec![task_candidate.id]);
         // Missing user_id parameter
 
         let result = action_validator::validate_action(&action, &candidates);
-        
+
         assert!(result.is_err(), "Assign user without user_id should fail");
-        assert!(result.unwrap_err().to_string().contains("user_id parameter required"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("user_id parameter required"));
     }
 
     #[test]
@@ -98,14 +110,19 @@ mod action_validator_tests {
         let tenant_id = Uuid::new_v4();
         let story_candidate = create_test_candidate("story", Some("ready"), tenant_id);
         let candidates = vec![story_candidate.clone()];
-        
+
         let mut action = create_action_command(ActionType::AssignUser, vec![story_candidate.id]);
-        action.parameters.insert("user_id".to_string(), serde_json::json!("user-123"));
+        action
+            .parameters
+            .insert("user_id".to_string(), serde_json::json!("user-123"));
 
         let result = action_validator::validate_action(&action, &candidates);
-        
+
         assert!(result.is_err(), "AssignUser on story should fail");
-        assert!(result.unwrap_err().to_string().contains("Can only assign users to tasks"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Can only assign users to tasks"));
     }
 
     #[test]
@@ -113,13 +130,19 @@ mod action_validator_tests {
         let tenant_id = Uuid::new_v4();
         let story_candidate = create_test_candidate("story", Some("ready"), tenant_id);
         let candidates = vec![story_candidate.clone()];
-        
-        let mut action = create_action_command(ActionType::UpdatePriority, vec![story_candidate.id]);
-        action.parameters.insert("priority".to_string(), serde_json::json!(2));
+
+        let mut action =
+            create_action_command(ActionType::UpdatePriority, vec![story_candidate.id]);
+        action
+            .parameters
+            .insert("priority".to_string(), serde_json::json!(2));
 
         let result = action_validator::validate_action(&action, &candidates);
-        
-        assert!(result.is_ok(), "Valid update priority action should succeed");
+
+        assert!(
+            result.is_ok(),
+            "Valid update priority action should succeed"
+        );
     }
 
     #[test]
@@ -127,14 +150,20 @@ mod action_validator_tests {
         let tenant_id = Uuid::new_v4();
         let story_candidate = create_test_candidate("story", Some("ready"), tenant_id);
         let candidates = vec![story_candidate.clone()];
-        
+
         let action = create_action_command(ActionType::UpdatePriority, vec![story_candidate.id]);
         // Missing priority parameter
 
         let result = action_validator::validate_action(&action, &candidates);
-        
-        assert!(result.is_err(), "Update priority without priority should fail");
-        assert!(result.unwrap_err().to_string().contains("priority parameter required"));
+
+        assert!(
+            result.is_err(),
+            "Update priority without priority should fail"
+        );
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("priority parameter required"));
     }
 
     #[test]
@@ -142,14 +171,20 @@ mod action_validator_tests {
         let tenant_id = Uuid::new_v4();
         let story_candidate = create_test_candidate("story", Some("ready"), tenant_id);
         let candidates = vec![story_candidate.clone()];
-        
-        let mut action = create_action_command(ActionType::UpdatePriority, vec![story_candidate.id]);
-        action.parameters.insert("priority".to_string(), serde_json::json!(6)); // Invalid: > 5
+
+        let mut action =
+            create_action_command(ActionType::UpdatePriority, vec![story_candidate.id]);
+        action
+            .parameters
+            .insert("priority".to_string(), serde_json::json!(6)); // Invalid: > 5
 
         let result = action_validator::validate_action(&action, &candidates);
-        
+
         assert!(result.is_err(), "Priority > 5 should fail");
-        assert!(result.unwrap_err().to_string().contains("Priority must be between 1 and 5"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Priority must be between 1 and 5"));
     }
 
     #[test]
@@ -157,12 +192,15 @@ mod action_validator_tests {
         let tenant_id = Uuid::new_v4();
         let story_candidate = create_test_candidate("story", Some("ready"), tenant_id);
         let candidates = vec![story_candidate.clone()];
-        
+
         let mut action = create_action_command(ActionType::AddComment, vec![story_candidate.id]);
-        action.parameters.insert("comment".to_string(), serde_json::json!("This is a test comment"));
+        action.parameters.insert(
+            "comment".to_string(),
+            serde_json::json!("This is a test comment"),
+        );
 
         let result = action_validator::validate_action(&action, &candidates);
-        
+
         assert!(result.is_ok(), "Valid add comment action should succeed");
     }
 
@@ -171,14 +209,17 @@ mod action_validator_tests {
         let tenant_id = Uuid::new_v4();
         let story_candidate = create_test_candidate("story", Some("ready"), tenant_id);
         let candidates = vec![story_candidate.clone()];
-        
+
         let action = create_action_command(ActionType::AddComment, vec![story_candidate.id]);
         // Missing comment parameter
 
         let result = action_validator::validate_action(&action, &candidates);
-        
+
         assert!(result.is_err(), "Add comment without comment should fail");
-        assert!(result.unwrap_err().to_string().contains("comment parameter required"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("comment parameter required"));
     }
 
     #[test]
@@ -186,12 +227,12 @@ mod action_validator_tests {
         let tenant_id = Uuid::new_v4();
         let story_candidate = create_test_candidate("story", Some("ready"), tenant_id);
         let candidates = vec![story_candidate.clone()];
-        
+
         let unknown_entity_id = Uuid::new_v4(); // Not in candidates
         let action = create_action_command(ActionType::UpdateStatus, vec![unknown_entity_id]);
 
         let result = action_validator::validate_action(&action, &candidates);
-        
+
         assert!(result.is_err(), "Action on unknown entity should fail");
         assert!(result.unwrap_err().to_string().contains("Entity not found"));
     }
@@ -200,15 +241,18 @@ mod action_validator_tests {
     fn test_validate_tenant_mismatch() {
         let tenant_id = Uuid::new_v4();
         let other_tenant_id = Uuid::new_v4();
-        
+
         let story_candidate = create_test_candidate("story", Some("ready"), other_tenant_id);
         let candidates = vec![story_candidate.clone()];
-        
+
         let action = create_action_command(ActionType::UpdateStatus, vec![story_candidate.id]);
 
         let result = action_validator::validate_action(&action, &candidates);
-        
-        assert!(result.is_err(), "Action on other tenant's entity should fail");
+
+        assert!(
+            result.is_err(),
+            "Action on other tenant's entity should fail"
+        );
         assert!(result.unwrap_err().to_string().contains("Entity not found")); // Should not reveal tenant mismatch
     }
 
@@ -218,11 +262,11 @@ mod action_validator_tests {
         let story1 = create_test_candidate("story", Some("ready"), tenant_id);
         let story2 = create_test_candidate("story", Some("ready"), tenant_id);
         let candidates = vec![story1.clone(), story2.clone()];
-        
+
         let action = create_action_command(ActionType::UpdateStatus, vec![story1.id, story2.id]);
 
         let result = action_validator::validate_action(&action, &candidates);
-        
+
         assert!(result.is_ok(), "Valid bulk action should succeed");
     }
 
@@ -232,26 +276,38 @@ mod action_validator_tests {
         let story_candidate = create_test_candidate("story", Some("ready"), tenant_id);
         let task_candidate = create_test_candidate("task", Some("todo"), tenant_id);
         let candidates = vec![story_candidate.clone(), task_candidate.clone()];
-        
+
         // Try to update status on both story (valid) and task (invalid)
-        let action = create_action_command(ActionType::UpdateStatus, vec![story_candidate.id, task_candidate.id]);
+        let action = create_action_command(
+            ActionType::UpdateStatus,
+            vec![story_candidate.id, task_candidate.id],
+        );
 
         let result = action_validator::validate_action(&action, &candidates);
-        
-        assert!(result.is_err(), "Mixed entity types for UpdateStatus should fail");
+
+        assert!(
+            result.is_err(),
+            "Mixed entity types for UpdateStatus should fail"
+        );
     }
 
     #[test]
     fn test_validate_empty_target_entities() {
         let tenant_id = Uuid::new_v4();
         let candidates = vec![];
-        
+
         let action = create_action_command(ActionType::UpdateStatus, vec![]);
 
         let result = action_validator::validate_action(&action, &candidates);
-        
-        assert!(result.is_err(), "Action with no target entities should fail");
-        assert!(result.unwrap_err().to_string().contains("No target entities specified"));
+
+        assert!(
+            result.is_err(),
+            "Action with no target entities should fail"
+        );
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("No target entities specified"));
     }
 }
 
@@ -289,11 +345,11 @@ mod action_type_validation_tests {
 
             // Should not panic, even if validation fails
             let result = action_validator::validate_action(&action, &candidates);
-            
+
             // We don't care if it succeeds or fails, just that it doesn't panic
             match result {
-                Ok(_) => {},
-                Err(_) => {},
+                Ok(_) => {}
+                Err(_) => {}
             }
         }
     }
@@ -302,7 +358,7 @@ mod action_type_validation_tests {
     fn test_create_actions_ignore_target_entities() {
         let tenant_id = Uuid::new_v4();
         let candidates = vec![];
-        
+
         let action = ActionCommand {
             action_type: ActionType::CreateStory,
             target_entities: vec![], // Empty is OK for create actions
@@ -316,8 +372,11 @@ mod action_type_validation_tests {
         };
 
         let result = action_validator::validate_action(&action, &candidates);
-        
+
         // Create actions should work even with no target entities
-        assert!(result.is_ok(), "Create actions should work with empty target entities");
+        assert!(
+            result.is_ok(),
+            "Create actions should work with empty target entities"
+        );
     }
 }

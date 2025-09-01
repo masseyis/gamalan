@@ -1,5 +1,6 @@
 use crate::application::ports::{
-    AcceptanceCriteriaRepository, LlmService, ReadinessEvaluationRepository, StoryInfo, StoryService, TaskInfo,
+    AcceptanceCriteriaRepository, LlmService, ReadinessEvaluationRepository, StoryInfo,
+    StoryService, TaskInfo,
 };
 use crate::domain::{AcceptanceCriterion, ReadinessCheck, ReadinessEvaluation};
 use common::AppError;

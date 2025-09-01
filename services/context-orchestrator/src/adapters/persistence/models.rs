@@ -76,8 +76,8 @@ impl From<IntentHistoryRow> for crate::domain::IntentRecord {
 
 impl From<&crate::domain::IntentRecord> for IntentHistoryRow {
     fn from(intent: &crate::domain::IntentRecord) -> Self {
-        let parsed_intent = serde_json::to_value(&intent.parsed_intent)
-            .unwrap_or_else(|_| serde_json::Value::Null);
+        let parsed_intent =
+            serde_json::to_value(&intent.parsed_intent).unwrap_or_else(|_| serde_json::Value::Null);
 
         Self {
             id: intent.id,
@@ -95,13 +95,13 @@ impl From<&crate::domain::IntentRecord> for IntentHistoryRow {
 
 impl From<ContextSnapshotRow> for crate::domain::ContextSnapshot {
     fn from(row: ContextSnapshotRow) -> Self {
-        let entities: Vec<crate::domain::ContextEntity> = serde_json::from_value(row.entities)
-            .unwrap_or_default();
+        let entities: Vec<crate::domain::ContextEntity> =
+            serde_json::from_value(row.entities).unwrap_or_default();
 
-        let metadata: std::collections::HashMap<String, serde_json::Value> = 
-            row.metadata
-                .and_then(|v| serde_json::from_value(v).ok())
-                .unwrap_or_default();
+        let metadata: std::collections::HashMap<String, serde_json::Value> = row
+            .metadata
+            .and_then(|v| serde_json::from_value(v).ok())
+            .unwrap_or_default();
 
         Self {
             id: row.id,
@@ -122,8 +122,10 @@ impl From<&crate::domain::ContextSnapshot> for ContextSnapshotRow {
         let metadata = if snapshot.metadata.is_empty() {
             None
         } else {
-            Some(serde_json::to_value(&snapshot.metadata)
-                .unwrap_or_else(|_| serde_json::Value::Object(serde_json::Map::new())))
+            Some(
+                serde_json::to_value(&snapshot.metadata)
+                    .unwrap_or_else(|_| serde_json::Value::Object(serde_json::Map::new())),
+            )
         };
 
         Self {
@@ -136,7 +138,6 @@ impl From<&crate::domain::ContextSnapshot> for ContextSnapshotRow {
         }
     }
 }
-
 
 impl From<ActionAuditLogRow> for crate::application::ports::ActionLogEntry {
     fn from(row: ActionAuditLogRow) -> Self {

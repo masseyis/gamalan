@@ -1,12 +1,12 @@
-use crate::application::use_cases::{ActUseCase, InterpretUseCase};
 use crate::application::ports::VectorSearchRepository;
+use crate::application::use_cases::{ActUseCase, InterpretUseCase};
 use crate::domain::{ActionCommand, IntentRecord};
+use auth_clerk::Authenticated;
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::response::Json;
 use axum::{extract::Path, routing::post, Router};
 use common::AppError;
-use auth_clerk::Authenticated;
 // use crate::AppState; // Comment out since AppState is in main.rs
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -115,11 +115,15 @@ pub async fn interpret_handler(
 ) -> Result<Json<InterpretResponse>, AppError> {
     // Validate input
     if request.utterance.trim().is_empty() {
-        return Err(AppError::BadRequest("Utterance cannot be empty".to_string()));
+        return Err(AppError::BadRequest(
+            "Utterance cannot be empty".to_string(),
+        ));
     }
 
     if request.utterance.len() > 2000 {
-        return Err(AppError::BadRequest("Utterance too long (max 2000 characters)".to_string()));
+        return Err(AppError::BadRequest(
+            "Utterance too long (max 2000 characters)".to_string(),
+        ));
     }
 
     // Stub response for testing
@@ -277,7 +281,10 @@ mod tests {
         assert_eq!(string_rep, "update_status");
 
         let converted_back = crate::domain::ActionType::from_string(&string_rep).unwrap();
-        assert!(matches!(converted_back, crate::domain::ActionType::UpdateStatus));
+        assert!(matches!(
+            converted_back,
+            crate::domain::ActionType::UpdateStatus
+        ));
     }
 
     #[test]

@@ -1,5 +1,8 @@
 use crate::adapters::persistence::models::*;
-use crate::application::ports::{AuditLogRepository, ContextSnapshotRepository, IntentHistoryRepository, RateLimitRepository, IntentAnalytics, RateLimitBucket};
+use crate::application::ports::{
+    AuditLogRepository, ContextSnapshotRepository, IntentAnalytics, IntentHistoryRepository,
+    RateLimitBucket, RateLimitRepository,
+};
 use crate::domain::{ContextSnapshot, IntentRecord};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -66,7 +69,7 @@ impl RateLimitRepository for PostgresRepository {
         // TODO: Fix PostgreSQL SQLx integration - using stub for now
         Ok(None)
     }
-    
+
     async fn update_rate_limit_bucket(
         &self,
         _user_id: Uuid,
@@ -114,7 +117,7 @@ impl ContextSnapshotRepository for PostgresRepository {
         // TODO: Fix PostgreSQL SQLx integration - using stub for now
         Ok(())
     }
-    
+
     async fn get_recent_context_snapshots(
         &self,
         _tenant_id: Uuid,

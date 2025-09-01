@@ -45,7 +45,7 @@ pub struct IntentRecord {
     pub id: Uuid,
     pub tenant_id: Uuid,
     pub user_id: Uuid,
-    pub utterance_hash: String,  // SHA256 hash for privacy
+    pub utterance_hash: String, // SHA256 hash for privacy
     pub parsed_intent: ParsedIntent,
     pub llm_confidence: f32,
     pub service_confidence: f32,
@@ -177,14 +177,18 @@ impl ActionCommand {
     pub fn validate(&self) -> Result<(), AppError> {
         // Basic validation
         if self.target_entities.is_empty() {
-            return Err(AppError::BadRequest("No target entities specified".to_string()));
+            return Err(AppError::BadRequest(
+                "No target entities specified".to_string(),
+            ));
         }
 
         // Validate action type matches parameters
         match self.action_type {
             ActionType::UpdateStatus => {
                 if !self.parameters.contains_key("new_status") {
-                    return Err(AppError::BadRequest("Missing new_status parameter".to_string()));
+                    return Err(AppError::BadRequest(
+                        "Missing new_status parameter".to_string(),
+                    ));
                 }
             }
             ActionType::CreateTask => {

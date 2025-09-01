@@ -102,10 +102,10 @@ impl QdrantRepository {
     ) -> Result<CandidateEntity, AppError> {
         // TODO: Fix Qdrant client API integration - using stub for now
         use chrono::Utc;
-        
+
         Ok(CandidateEntity {
             id: uuid::Uuid::new_v4(),
-            tenant_id: uuid::Uuid::new_v4(), 
+            tenant_id: uuid::Uuid::new_v4(),
             entity_type: "story".to_string(),
             title: "Stub Entity".to_string(),
             description: Some("Stub description".to_string()),
@@ -129,7 +129,9 @@ mod tests {
 
     async fn setup_test_repo() -> QdrantRepository {
         // Note: In practice, use testcontainers for isolated testing
-        let client = QdrantClient::from_url("http://localhost:6334").build().unwrap();
+        let client = QdrantClient::from_url("http://localhost:6334")
+            .build()
+            .unwrap();
         QdrantRepository::new(client)
     }
 
@@ -173,7 +175,7 @@ mod tests {
             .search_similar(embedding, tenant_id, None, 10, Some(0.5))
             .await;
         assert!(search_result.is_ok());
-        
+
         let candidates = search_result.unwrap();
         assert!(!candidates.is_empty());
         assert_eq!(candidates[0].id, entity.id);
@@ -187,7 +189,7 @@ mod tests {
 
         let tenant1 = Uuid::new_v4();
         let tenant2 = Uuid::new_v4();
-        
+
         let entity1 = ContextEntity {
             id: Uuid::new_v4(),
             tenant_id: tenant1,
@@ -204,14 +206,16 @@ mod tests {
 
         let embedding: Vec<f32> = (0..1536).map(|i| (i as f32) / 1536.0).collect();
 
-        repo.upsert_entity(&entity1, embedding.clone()).await.unwrap();
+        repo.upsert_entity(&entity1, embedding.clone())
+            .await
+            .unwrap();
 
         // Search from tenant2 should not find tenant1's entities
         let search_result = repo
             .search_similar(embedding.clone(), tenant2, None, 10, Some(0.0))
             .await
             .unwrap();
-        
+
         assert!(search_result.is_empty());
 
         // Search from tenant1 should find the entity
@@ -219,7 +223,7 @@ mod tests {
             .search_similar(embedding, tenant1, None, 10, Some(0.0))
             .await
             .unwrap();
-        
+
         assert_eq!(search_result.len(), 1);
         assert_eq!(search_result[0].id, entity1.id);
     }
@@ -263,8 +267,12 @@ mod tests {
             created_at: Utc::now(),
         };
 
-        repo.upsert_entity(&story_entity, embedding.clone()).await.unwrap();
-        repo.upsert_entity(&task_entity, embedding.clone()).await.unwrap();
+        repo.upsert_entity(&story_entity, embedding.clone())
+            .await
+            .unwrap();
+        repo.upsert_entity(&task_entity, embedding.clone())
+            .await
+            .unwrap();
 
         // Search for only stories
         let story_results = repo

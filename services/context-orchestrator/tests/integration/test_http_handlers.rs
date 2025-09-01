@@ -27,7 +27,7 @@ mod dto_tests {
     fn test_act_request_deserialization() {
         let target_entity = Uuid::new_v4();
         let session_token = Uuid::new_v4();
-        
+
         let json = json!({
             "action": {
                 "action_type": "update_status",
@@ -45,7 +45,16 @@ mod dto_tests {
         let request: ActRequest = serde_json::from_value(json).unwrap();
         assert_eq!(request.action.action_type, "update_status");
         assert_eq!(request.action.target_entities[0], target_entity);
-        assert_eq!(request.action.parameters.get("status").unwrap().as_str().unwrap(), "in_progress");
+        assert_eq!(
+            request
+                .action
+                .parameters
+                .get("status")
+                .unwrap()
+                .as_str()
+                .unwrap(),
+            "in_progress"
+        );
         assert_eq!(request.action.require_confirmation, false);
         assert_eq!(request.action.risk_level, "low");
         assert_eq!(request.session_token, Some(session_token));
@@ -56,7 +65,7 @@ mod dto_tests {
     fn test_interpret_response_serialization() {
         let entity_id = Uuid::new_v4();
         let session_token = Uuid::new_v4();
-        
+
         let response = InterpretResponse {
             intent: ParsedIntentDto {
                 intent_type: "query_status".to_string(),
@@ -88,7 +97,10 @@ mod dto_tests {
         let json = serde_json::to_value(&response).unwrap();
         assert_eq!(json["intent"]["intent_type"], "query_status");
         assert_eq!(json["intent"]["entities"].as_array().unwrap().len(), 1);
-        assert_eq!(json["intent"]["entities"][0]["entity_id"], entity_id.to_string());
+        assert_eq!(
+            json["intent"]["entities"][0]["entity_id"],
+            entity_id.to_string()
+        );
         assert_eq!(json["confidence"]["overall_confidence"], 0.85);
         assert_eq!(json["candidates"].as_array().unwrap().len(), 1);
         assert_eq!(json["requires_confirmation"], false);
@@ -99,7 +111,7 @@ mod dto_tests {
     fn test_act_response_serialization() {
         let target_entity = Uuid::new_v4();
         let rollback_token = Uuid::new_v4();
-        
+
         let response = ActResponse {
             success: true,
             results: vec![ActionResultDto {
@@ -118,7 +130,10 @@ mod dto_tests {
         assert_eq!(json["results"][0]["service"], "backlog");
         assert_eq!(json["results"][0]["success"], true);
         assert_eq!(json["results"][0]["message"], "Status updated successfully");
-        assert_eq!(json["results"][0]["affected_entities"][0], target_entity.to_string());
+        assert_eq!(
+            json["results"][0]["affected_entities"][0],
+            target_entity.to_string()
+        );
         assert_eq!(json["rollback_token"], rollback_token.to_string());
         assert_eq!(json["partial_success"], false);
     }
@@ -132,10 +147,19 @@ mod enum_conversion_tests {
     #[test]
     fn test_action_type_string_conversion() {
         // Test from_string
-        assert!(matches!(ActionType::from_string("update_status").unwrap(), ActionType::UpdateStatus));
-        assert!(matches!(ActionType::from_string("assign_user").unwrap(), ActionType::AssignUser));
-        assert!(matches!(ActionType::from_string("archive").unwrap(), ActionType::Archive));
-        
+        assert!(matches!(
+            ActionType::from_string("update_status").unwrap(),
+            ActionType::UpdateStatus
+        ));
+        assert!(matches!(
+            ActionType::from_string("assign_user").unwrap(),
+            ActionType::AssignUser
+        ));
+        assert!(matches!(
+            ActionType::from_string("archive").unwrap(),
+            ActionType::Archive
+        ));
+
         // Test invalid string
         assert!(ActionType::from_string("invalid_action").is_err());
     }
@@ -143,10 +167,19 @@ mod enum_conversion_tests {
     #[test]
     fn test_risk_level_string_conversion() {
         // Test from_string
-        assert!(matches!(RiskLevel::from_string("low").unwrap(), RiskLevel::Low));
-        assert!(matches!(RiskLevel::from_string("medium").unwrap(), RiskLevel::Medium));
-        assert!(matches!(RiskLevel::from_string("high").unwrap(), RiskLevel::High));
-        
+        assert!(matches!(
+            RiskLevel::from_string("low").unwrap(),
+            RiskLevel::Low
+        ));
+        assert!(matches!(
+            RiskLevel::from_string("medium").unwrap(),
+            RiskLevel::Medium
+        ));
+        assert!(matches!(
+            RiskLevel::from_string("high").unwrap(),
+            RiskLevel::High
+        ));
+
         // Test invalid string
         assert!(RiskLevel::from_string("invalid_risk").is_err());
     }

@@ -15,7 +15,9 @@ mod domain;
 
 use crate::adapters::{
     http::create_routes,
-    integrations::{HttpBacklogClient, HttpPromptBuilderClient, HttpReadinessClient, OpenAILlmClient},
+    integrations::{
+        HttpBacklogClient, HttpPromptBuilderClient, HttpReadinessClient, OpenAILlmClient,
+    },
     persistence::{PostgresRepository, QdrantRepository},
 };
 use common::{correlation_id_extractor, init_tracing};
@@ -32,12 +34,9 @@ pub struct AppState {
 
 #[shuttle_runtime::main]
 async fn main(
-    #[Postgres(local_uri = "postgres://postgres:password@localhost:5432/gamalan")] 
-    db_uri: String,
-    #[Qdrant(local_url = "http://localhost:6334")] 
-    qdrant_client: QdrantClient,
-    #[shuttle_runtime::Secrets] 
-    secrets: SecretStore,
+    #[Postgres(local_uri = "postgres://postgres:password@localhost:5432/gamalan")] db_uri: String,
+    #[Qdrant(local_url = "http://localhost:6334")] qdrant_client: QdrantClient,
+    #[shuttle_runtime::Secrets] secrets: SecretStore,
 ) -> ShuttleAxum {
     init_tracing();
 
@@ -55,7 +54,7 @@ async fn main(
     // Initialize repositories
     let postgres_repo = Arc::new(PostgresRepository::new(pool));
     let qdrant_repo = Arc::new(QdrantRepository::new(qdrant_client));
-    
+
     // Bootstrap Qdrant collection
     qdrant_repo
         .bootstrap_collection()

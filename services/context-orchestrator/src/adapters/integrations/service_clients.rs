@@ -85,11 +85,9 @@ impl HttpBacklogClient {
             .map_err(|e| AppError::ExternalServiceError(format!("HTTP request failed: {}", e)))?;
 
         match response.status() {
-            StatusCode::OK | StatusCode::CREATED => {
-                response.json::<R>().await.map_err(|e| {
-                    AppError::ExternalServiceError(format!("Failed to parse response: {}", e))
-                })
-            }
+            StatusCode::OK | StatusCode::CREATED => response.json::<R>().await.map_err(|e| {
+                AppError::ExternalServiceError(format!("Failed to parse response: {}", e))
+            }),
             StatusCode::BAD_REQUEST => Err(AppError::BadRequest("Invalid request".to_string())),
             StatusCode::NOT_FOUND => Err(AppError::NotFound),
             StatusCode::TOO_MANY_REQUESTS => Err(AppError::RateLimitExceeded),
@@ -139,12 +137,7 @@ impl BacklogServiceClient for HttpBacklogClient {
         task_data: CreateTaskRequest,
     ) -> Result<ServiceResult, AppError> {
         let response: ServiceResponse = self
-            .make_request(
-                reqwest::Method::POST,
-                "/tasks",
-                Some(task_data),
-                tenant_id,
-            )
+            .make_request(reqwest::Method::POST, "/tasks", Some(task_data), tenant_id)
             .await?;
 
         Ok(ServiceResult {
@@ -204,19 +197,16 @@ impl BacklogServiceClient for HttpBacklogClient {
             data: response.data,
         })
     }
-
 }
 
 #[async_trait]
 impl ServiceClient for HttpBacklogClient {
     async fn health_check(&self) -> Result<(), AppError> {
         let url = format!("{}/health", self.base_url);
-        let response = self
-            .client
-            .get(&url)
-            .send()
-            .await
-            .map_err(|e| AppError::ExternalServiceError(format!("Health check failed: {}", e)))?;
+        let response =
+            self.client.get(&url).send().await.map_err(|e| {
+                AppError::ExternalServiceError(format!("Health check failed: {}", e))
+            })?;
 
         if response.status().is_success() {
             Ok(())
@@ -311,19 +301,16 @@ impl PromptBuilderServiceClient for HttpPromptBuilderClient {
             )))
         }
     }
-
 }
 
 #[async_trait]
 impl ServiceClient for HttpPromptBuilderClient {
     async fn health_check(&self) -> Result<(), AppError> {
         let url = format!("{}/health", self.base_url);
-        let response = self
-            .client
-            .get(&url)
-            .send()
-            .await
-            .map_err(|e| AppError::ExternalServiceError(format!("Health check failed: {}", e)))?;
+        let response =
+            self.client.get(&url).send().await.map_err(|e| {
+                AppError::ExternalServiceError(format!("Health check failed: {}", e))
+            })?;
 
         if response.status().is_success() {
             Ok(())
@@ -439,19 +426,16 @@ impl ReadinessServiceClient for HttpReadinessClient {
             )))
         }
     }
-
 }
 
 #[async_trait]
 impl ServiceClient for HttpReadinessClient {
     async fn health_check(&self) -> Result<(), AppError> {
         let url = format!("{}/health", self.base_url);
-        let response = self
-            .client
-            .get(&url)
-            .send()
-            .await
-            .map_err(|e| AppError::ExternalServiceError(format!("Health check failed: {}", e)))?;
+        let response =
+            self.client.get(&url).send().await.map_err(|e| {
+                AppError::ExternalServiceError(format!("Health check failed: {}", e))
+            })?;
 
         if response.status().is_success() {
             Ok(())

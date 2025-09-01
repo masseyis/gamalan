@@ -33,7 +33,7 @@ impl ActionValidator {
             ActionType::Archive => true,
             ActionType::UpdateStatus => true,
             ActionType::MoveToSprint => true,
-            ActionType::CreateTask => false,  // Creation is less risky
+            ActionType::CreateTask => false, // Creation is less risky
             ActionType::CreateStory => false,
             ActionType::AssignUser => false,
             ActionType::UpdatePriority => false,
@@ -61,25 +61,36 @@ impl ActionValidator {
         match action.action_type {
             ActionType::Archive => {
                 if !user_permissions.can_delete_stories {
-                    return Err(AppError::Unauthorized("Insufficient permissions to delete stories".to_string()));
+                    return Err(AppError::Unauthorized(
+                        "Insufficient permissions to delete stories".to_string(),
+                    ));
                 }
             }
             ActionType::UpdateStatus => {
                 if !user_permissions.can_update_stories {
-                    return Err(AppError::Unauthorized("Insufficient permissions to update stories".to_string()));
+                    return Err(AppError::Unauthorized(
+                        "Insufficient permissions to update stories".to_string(),
+                    ));
                 }
             }
             ActionType::CreateTask => {
                 if !user_permissions.can_create_tasks {
-                    return Err(AppError::Unauthorized("Insufficient permissions to create tasks".to_string()));
+                    return Err(AppError::Unauthorized(
+                        "Insufficient permissions to create tasks".to_string(),
+                    ));
                 }
             }
             ActionType::MoveToSprint => {
                 if !user_permissions.can_update_tasks {
-                    return Err(AppError::Unauthorized("Insufficient permissions to move tasks".to_string()));
+                    return Err(AppError::Unauthorized(
+                        "Insufficient permissions to move tasks".to_string(),
+                    ));
                 }
             }
-            ActionType::AssignUser | ActionType::UpdatePriority | ActionType::AddComment | ActionType::CreateStory => {
+            ActionType::AssignUser
+            | ActionType::UpdatePriority
+            | ActionType::AddComment
+            | ActionType::CreateStory => {
                 // These actions have basic permissions, no specific check needed
             }
         }
@@ -95,7 +106,9 @@ impl ActionValidator {
             let expected_tenant_id = first_candidate.tenant_id;
             for candidate in candidates {
                 if candidate.tenant_id != expected_tenant_id {
-                    return Err(AppError::BadRequest("Tenant isolation violation in candidates".to_string()));
+                    return Err(AppError::BadRequest(
+                        "Tenant isolation violation in candidates".to_string(),
+                    ));
                 }
             }
         }
@@ -105,7 +118,9 @@ impl ActionValidator {
             let _candidate = candidates
                 .iter()
                 .find(|c| c.id == *entity_id)
-                .ok_or_else(|| AppError::BadRequest("Entity not found in candidates".to_string()))?;
+                .ok_or_else(|| {
+                    AppError::BadRequest("Entity not found in candidates".to_string())
+                })?;
         }
         Ok(())
     }
@@ -117,7 +132,9 @@ impl ActionValidator {
         // Ensure all target entities exist in the candidate set
         for entity_id in &action.target_entities {
             if !candidates.iter().any(|c| c.id == *entity_id) {
-                return Err(AppError::BadRequest("Entity reference not in candidate set".to_string()));
+                return Err(AppError::BadRequest(
+                    "Entity reference not in candidate set".to_string(),
+                ));
             }
         }
         Ok(())
@@ -131,20 +148,21 @@ impl ActionValidator {
             ActionType::UpdateStatus => {
                 // Can only update status of stories
                 for entity_id in &action.target_entities {
-                    let candidate = candidates
-                        .iter()
-                        .find(|c| c.id == *entity_id)
-                        .unwrap(); // Safe because we validated existence above
+                    let candidate = candidates.iter().find(|c| c.id == *entity_id).unwrap(); // Safe because we validated existence above
 
                     if candidate.entity_type != "story" {
-                        return Err(AppError::BadRequest("Can only update status of stories".to_string()));
+                        return Err(AppError::BadRequest(
+                            "Can only update status of stories".to_string(),
+                        ));
                     }
                 }
             }
             ActionType::CreateTask => {
                 // When creating a task, target should be a story
                 if action.target_entities.len() != 1 {
-                    return Err(AppError::BadRequest("Creating task requires exactly one target story".to_string()));
+                    return Err(AppError::BadRequest(
+                        "Creating task requires exactly one target story".to_string(),
+                    ));
                 }
 
                 let candidate = candidates
@@ -153,16 +171,15 @@ impl ActionValidator {
                     .unwrap();
 
                 if candidate.entity_type != "story" {
-                    return Err(AppError::BadRequest("Can only create tasks for stories".to_string()));
+                    return Err(AppError::BadRequest(
+                        "Can only create tasks for stories".to_string(),
+                    ));
                 }
             }
             ActionType::Archive => {
                 // Can only archive stories
                 for entity_id in &action.target_entities {
-                    let candidate = candidates
-                        .iter()
-                        .find(|c| c.id == *entity_id)
-                        .unwrap();
+                    let candidate = candidates.iter().find(|c| c.id == *entity_id).unwrap();
 
                     if candidate.entity_type != "story" {
                         return Err(AppError::BadRequest("Can only archive stories".to_string()));
@@ -172,17 +189,19 @@ impl ActionValidator {
             ActionType::MoveToSprint => {
                 // Can move stories to sprint
                 for entity_id in &action.target_entities {
-                    let candidate = candidates
-                        .iter()
-                        .find(|c| c.id == *entity_id)
-                        .unwrap();
+                    let candidate = candidates.iter().find(|c| c.id == *entity_id).unwrap();
 
                     if candidate.entity_type != "story" && candidate.entity_type != "task" {
-                        return Err(AppError::BadRequest("Can only move stories or tasks to sprint".to_string()));
+                        return Err(AppError::BadRequest(
+                            "Can only move stories or tasks to sprint".to_string(),
+                        ));
                     }
                 }
             }
-            ActionType::AssignUser | ActionType::UpdatePriority | ActionType::AddComment | ActionType::CreateStory => {
+            ActionType::AssignUser
+            | ActionType::UpdatePriority
+            | ActionType::AddComment
+            | ActionType::CreateStory => {
                 // These actions don't have specific entity type requirements
             }
         }
@@ -197,7 +216,9 @@ impl ActionValidator {
                     .parameters
                     .get("new_status")
                     .and_then(|v| v.as_str())
-                    .ok_or_else(|| AppError::BadRequest("Missing new_status parameter".to_string()))?;
+                    .ok_or_else(|| {
+                        AppError::BadRequest("Missing new_status parameter".to_string())
+                    })?;
 
                 match new_status {
                     "Ready" | "InProgress" | "InReview" | "Done" => Ok(()),
@@ -212,11 +233,15 @@ impl ActionValidator {
                     .ok_or_else(|| AppError::BadRequest("Missing title parameter".to_string()))?;
 
                 if title.trim().is_empty() {
-                    return Err(AppError::BadRequest("Task title cannot be empty".to_string()));
+                    return Err(AppError::BadRequest(
+                        "Task title cannot be empty".to_string(),
+                    ));
                 }
 
                 if title.len() > 200 {
-                    return Err(AppError::BadRequest("Task title too long (max 200 characters)".to_string()));
+                    return Err(AppError::BadRequest(
+                        "Task title too long (max 200 characters)".to_string(),
+                    ));
                 }
 
                 Ok(())
@@ -229,7 +254,10 @@ impl ActionValidator {
                 // No additional parameters needed for moving to sprint
                 Ok(())
             }
-            ActionType::AssignUser | ActionType::UpdatePriority | ActionType::AddComment | ActionType::CreateStory => {
+            ActionType::AssignUser
+            | ActionType::UpdatePriority
+            | ActionType::AddComment
+            | ActionType::CreateStory => {
                 // These actions may have optional parameters, no strict validation needed
                 Ok(())
             }
@@ -257,7 +285,7 @@ pub struct UserPermissions {
 impl Default for UserPermissions {
     fn default() -> Self {
         Self {
-            can_delete_stories: false,  // Restrictive by default
+            can_delete_stories: false, // Restrictive by default
             can_update_stories: true,
             can_create_tasks: true,
             can_update_tasks: true,
@@ -270,7 +298,11 @@ impl Default for UserPermissions {
 mod tests {
     use super::*;
 
-    fn create_test_candidate(id: Uuid, entity_type: EntityType, tenant_id: Uuid) -> CandidateEntity {
+    fn create_test_candidate(
+        id: Uuid,
+        entity_type: EntityType,
+        tenant_id: Uuid,
+    ) -> CandidateEntity {
         CandidateEntity {
             id,
             tenant_id,
@@ -291,7 +323,7 @@ mod tests {
     fn test_validate_action_success() {
         let tenant_id = Uuid::new_v4();
         let entity_id = Uuid::new_v4();
-        
+
         let action = ActionCommand {
             action_type: ActionType::UpdateStatus,
             target_entities: vec![entity_id],
@@ -302,9 +334,11 @@ mod tests {
             risk_level: RiskLevel::Low,
         };
 
-        let candidates = vec![
-            create_test_candidate(entity_id, EntityType::Story, tenant_id),
-        ];
+        let candidates = vec![create_test_candidate(
+            entity_id,
+            EntityType::Story,
+            tenant_id,
+        )];
 
         assert!(ActionValidator::validate_action(&action, &candidates).is_ok());
     }
@@ -315,7 +349,7 @@ mod tests {
         let tenant2 = Uuid::new_v4();
         let entity1_id = Uuid::new_v4();
         let entity2_id = Uuid::new_v4();
-        
+
         let action = ActionCommand {
             action_type: ActionType::UpdateStatus,
             target_entities: vec![entity1_id],
@@ -327,13 +361,16 @@ mod tests {
         };
 
         let candidates = vec![
-            create_test_candidate(entity1_id, EntityType::Story, tenant1),  // Entity from tenant1
-            create_test_candidate(entity2_id, EntityType::Story, tenant2),  // Entity from tenant2 - isolation violation
+            create_test_candidate(entity1_id, EntityType::Story, tenant1), // Entity from tenant1
+            create_test_candidate(entity2_id, EntityType::Story, tenant2), // Entity from tenant2 - isolation violation
         ];
 
         let result = ActionValidator::validate_action(&action, &candidates);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Tenant isolation violation"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Tenant isolation violation"));
     }
 
     #[test]
@@ -341,7 +378,7 @@ mod tests {
         let tenant_id = Uuid::new_v4();
         let entity_id = Uuid::new_v4();
         let other_entity_id = Uuid::new_v4();
-        
+
         let action = ActionCommand {
             action_type: ActionType::UpdateStatus,
             target_entities: vec![entity_id],
@@ -353,19 +390,22 @@ mod tests {
         };
 
         let candidates = vec![
-            create_test_candidate(other_entity_id, EntityType::Story, tenant_id),  // Different entity
+            create_test_candidate(other_entity_id, EntityType::Story, tenant_id), // Different entity
         ];
 
         let result = ActionValidator::validate_action(&action, &candidates);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Entity not found in candidates"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Entity not found in candidates"));
     }
 
     #[test]
     fn test_validate_action_type_compatibility() {
         let tenant_id = Uuid::new_v4();
         let entity_id = Uuid::new_v4();
-        
+
         let action = ActionCommand {
             action_type: ActionType::UpdateStatus,
             target_entities: vec![entity_id],
@@ -377,12 +417,15 @@ mod tests {
         };
 
         let candidates = vec![
-            create_test_candidate(entity_id, EntityType::Task, tenant_id),  // Task, not Story
+            create_test_candidate(entity_id, EntityType::Task, tenant_id), // Task, not Story
         ];
 
         let result = ActionValidator::validate_action(&action, &candidates);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Can only update status of stories"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Can only update status of stories"));
     }
 
     #[test]
@@ -408,7 +451,10 @@ mod tests {
             risk_level: RiskLevel::High,
         };
 
-        assert_eq!(ActionValidator::estimate_risk_level(&delete_action), RiskLevel::High);
+        assert_eq!(
+            ActionValidator::estimate_risk_level(&delete_action),
+            RiskLevel::High
+        );
     }
 
     #[test]
@@ -428,14 +474,17 @@ mod tests {
 
         let result = ActionValidator::validate_permissions(&action, &permissions);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Insufficient permissions"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Insufficient permissions"));
     }
 
     #[test]
     fn test_validate_invalid_status_parameter() {
         let tenant_id = Uuid::new_v4();
         let entity_id = Uuid::new_v4();
-        
+
         let action = ActionCommand {
             action_type: ActionType::UpdateStatus,
             target_entities: vec![entity_id],
@@ -446,12 +495,17 @@ mod tests {
             risk_level: RiskLevel::Low,
         };
 
-        let candidates = vec![
-            create_test_candidate(entity_id, EntityType::Story, tenant_id),
-        ];
+        let candidates = vec![create_test_candidate(
+            entity_id,
+            EntityType::Story,
+            tenant_id,
+        )];
 
         let result = ActionValidator::validate_action(&action, &candidates);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Invalid story status"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid story status"));
     }
 }

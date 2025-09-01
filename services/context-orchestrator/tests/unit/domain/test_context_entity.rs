@@ -1,5 +1,5 @@
-use context_orchestrator::domain::*;
 use chrono::Utc;
+use context_orchestrator::domain::*;
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -93,7 +93,10 @@ mod context_entity_tests {
         assert_eq!(intent_record.user_id, user_id);
         assert_eq!(intent_record.llm_confidence, 0.9);
         assert_eq!(intent_record.service_confidence, 0.8);
-        assert_eq!(intent_record.parsed_intent.intent_type, IntentType::UpdateStatus);
+        assert_eq!(
+            intent_record.parsed_intent.intent_type,
+            IntentType::UpdateStatus
+        );
         assert_eq!(intent_record.parsed_intent.entities.len(), 1);
         assert!(intent_record.utterance_hash.len() > 0);
     }
@@ -120,7 +123,10 @@ mod action_command_tests {
         assert!(matches!(action.action_type, ActionType::UpdateStatus));
         assert_eq!(action.target_entities.len(), 1);
         assert_eq!(action.target_entities[0], target_entity);
-        assert_eq!(action.parameters.get("status").unwrap().as_str().unwrap(), "completed");
+        assert_eq!(
+            action.parameters.get("status").unwrap().as_str().unwrap(),
+            "completed"
+        );
         assert!(action.require_confirmation);
         assert!(matches!(action.risk_level, RiskLevel::Medium));
     }
@@ -154,7 +160,7 @@ mod enum_tests {
         ];
 
         assert_eq!(variants.len(), 11);
-        
+
         // Test Display trait
         assert_eq!(IntentType::UpdateStatus.to_string(), "UpdateStatus");
         assert_eq!(IntentType::Unknown.to_string(), "Unknown");
@@ -174,7 +180,7 @@ mod enum_tests {
         ];
 
         assert_eq!(variants.len(), 8);
-        
+
         // Test Display trait
         assert_eq!(ActionType::UpdateStatus.to_string(), "UpdateStatus");
         assert_eq!(ActionType::Archive.to_string(), "Archive");
@@ -182,14 +188,10 @@ mod enum_tests {
 
     #[test]
     fn test_risk_level_variants() {
-        let variants = vec![
-            RiskLevel::Low,
-            RiskLevel::Medium,
-            RiskLevel::High,
-        ];
+        let variants = vec![RiskLevel::Low, RiskLevel::Medium, RiskLevel::High];
 
         assert_eq!(variants.len(), 3);
-        
+
         // Test Display trait
         assert_eq!(RiskLevel::Low.to_string(), "Low");
         assert_eq!(RiskLevel::High.to_string(), "High");

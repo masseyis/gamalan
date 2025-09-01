@@ -30,7 +30,7 @@ pub trait RateLimitRepository: Send + Sync {
         user_id: Uuid,
         resource_type: &str,
     ) -> Result<Option<RateLimitBucket>, AppError>;
-    
+
     async fn update_rate_limit_bucket(
         &self,
         user_id: Uuid,
@@ -68,7 +68,7 @@ pub trait VectorSearchRepository: Send + Sync {
 #[async_trait]
 pub trait ContextSnapshotRepository: Send + Sync {
     async fn save_context_snapshot(&self, snapshot: &ContextSnapshot) -> Result<(), AppError>;
-    
+
     async fn get_recent_context_snapshots(
         &self,
         tenant_id: Uuid,
@@ -103,14 +103,14 @@ pub trait AuditLogRepository: Send + Sync {
 #[async_trait]
 pub trait LlmClient: Send + Sync {
     async fn generate_embedding(&self, text: &str) -> Result<Vec<f32>, AppError>;
-    
+
     async fn parse_intent(
         &self,
         utterance: &str,
         context: &[CandidateEntity],
         system_prompt: &str,
     ) -> Result<LlmResponse, AppError>;
-    
+
     async fn health_check(&self) -> Result<(), AppError>;
 }
 
@@ -127,20 +127,20 @@ pub trait BacklogServiceClient: ServiceClient + Send + Sync {
         story_id: Uuid,
         status: &str,
     ) -> Result<ServiceResult, AppError>;
-    
+
     async fn create_task(
         &self,
         tenant_id: Uuid,
         task_data: CreateTaskRequest,
     ) -> Result<ServiceResult, AppError>;
-    
+
     async fn assign_task(
         &self,
         tenant_id: Uuid,
         task_id: Uuid,
         user_id: Uuid,
     ) -> Result<ServiceResult, AppError>;
-    
+
     async fn update_priority(
         &self,
         tenant_id: Uuid,
@@ -156,7 +156,7 @@ pub trait PromptBuilderServiceClient: ServiceClient + Send + Sync {
         tenant_id: Uuid,
         entity_ids: &[Uuid],
     ) -> Result<String, AppError>;
-    
+
     async fn generate_task_pack(
         &self,
         tenant_id: Uuid,
@@ -171,7 +171,7 @@ pub trait ReadinessServiceClient: ServiceClient + Send + Sync {
         tenant_id: Uuid,
         story_id: Uuid,
     ) -> Result<ReadinessResult, AppError>;
-    
+
     async fn mark_story_ready(
         &self,
         tenant_id: Uuid,
@@ -250,9 +250,7 @@ pub struct ReadinessResult {
 }
 
 // Health check helpers
-pub async fn check_repository_health<T: IntentHistoryRepository>(
-    repo: &T,
-) -> Result<(), AppError> {
+pub async fn check_repository_health<T: IntentHistoryRepository>(repo: &T) -> Result<(), AppError> {
     // Try a simple query to test connectivity
     repo.get_recent_intents(Uuid::new_v4(), 1).await.map(|_| ())
 }
@@ -263,7 +261,7 @@ pub async fn check_all_service_health(
     readiness_client: &dyn ReadinessServiceClient,
 ) -> Result<HashMap<String, bool>, AppError> {
     let mut results = HashMap::new();
-    
+
     results.insert(
         "backlog".to_string(),
         backlog_client.health_check().await.is_ok(),
@@ -276,6 +274,6 @@ pub async fn check_all_service_health(
         "readiness".to_string(),
         readiness_client.health_check().await.is_ok(),
     );
-    
+
     Ok(results)
 }

@@ -98,7 +98,9 @@ impl ActUseCase {
                 results.push(result);
             }
             ActionType::CreateStory => {
-                let result = self.execute_create_story(tenant_id, &action_command).await?;
+                let result = self
+                    .execute_create_story(tenant_id, &action_command)
+                    .await?;
                 overall_success = result.success;
                 results.push(result);
             }
@@ -139,7 +141,10 @@ impl ActUseCase {
                 user_id,
                 &action_command.action_type.to_string(),
                 &action_command.target_entities,
-                Some(&serde_json::to_value(&action_command.parameters).map_err(|_| AppError::InternalServerError)?),
+                Some(
+                    &serde_json::to_value(&action_command.parameters)
+                        .map_err(|_| AppError::InternalServerError)?,
+                ),
                 overall_success,
                 if overall_success {
                     None
@@ -228,7 +233,9 @@ impl ActUseCase {
             .get("user_id")
             .and_then(|v| v.as_str())
             .and_then(|s| Uuid::parse_str(s).ok())
-            .ok_or_else(|| AppError::BadRequest("Missing or invalid user_id parameter".to_string()))?;
+            .ok_or_else(|| {
+                AppError::BadRequest("Missing or invalid user_id parameter".to_string())
+            })?;
 
         let mut affected_entities = Vec::new();
         let mut success = true;
@@ -297,7 +304,11 @@ impl ActUseCase {
             estimated_hours: None,
         };
 
-        match self.backlog_client.create_task(tenant_id, task_request).await {
+        match self
+            .backlog_client
+            .create_task(tenant_id, task_request)
+            .await
+        {
             Ok(result) => Ok(ActionResult {
                 service: "backlog".to_string(),
                 success: result.success,
@@ -356,7 +367,10 @@ impl ActUseCase {
                 }
                 Err(e) => {
                     success = false;
-                    messages.push(format!("Failed to update priority for {}: {}", entity_id, e));
+                    messages.push(format!(
+                        "Failed to update priority for {}: {}",
+                        entity_id, e
+                    ));
                 }
             }
         }
@@ -400,7 +414,10 @@ impl ActUseCase {
                 }
                 Err(e) => {
                     success = false;
-                    results.push(format!("Failed to check readiness for {}: {}", entity_id, e));
+                    results.push(format!(
+                        "Failed to check readiness for {}: {}",
+                        entity_id, e
+                    ));
                 }
             }
         }
@@ -483,7 +500,7 @@ mod tests {
         // This would test the action validation logic
         let tenant_id = Uuid::new_v4();
         let entity_id = Uuid::new_v4();
-        
+
         let action = ActionCommand {
             action_type: ActionType::UpdateStatus,
             target_entities: vec![entity_id],
@@ -511,7 +528,7 @@ mod tests {
             last_updated: chrono::Utc::now(),
             created_at: chrono::Utc::now(),
         };
-        
+
         let candidates = vec![candidate];
         let result = action_validator::validate_action(&action, &candidates);
         assert!(result.is_ok());

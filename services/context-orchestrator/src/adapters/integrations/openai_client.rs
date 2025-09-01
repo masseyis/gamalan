@@ -262,7 +262,7 @@ mod tests {
     #[test]
     fn test_parse_llm_json_response() {
         let client = OpenAILlmClient::new("test_key".to_string());
-        
+
         let json_response = r#"
         {
             "intent_type": "update_status",
@@ -281,18 +281,21 @@ mod tests {
 
         let result = client.parse_llm_json_response(json_response);
         assert!(result.is_ok());
-        
+
         let response = result.unwrap();
         assert_eq!(response.intent_type, "update_status");
         assert_eq!(response.entities.len(), 1);
         assert_eq!(response.entities[0].entity_type, "story");
-        assert_eq!(response.parameters.get("status").unwrap().as_str().unwrap(), "in_progress");
+        assert_eq!(
+            response.parameters.get("status").unwrap().as_str().unwrap(),
+            "in_progress"
+        );
     }
 
     #[test]
     fn test_parse_malformed_json() {
         let client = OpenAILlmClient::new("test_key".to_string());
-        
+
         let malformed_json = "This is not JSON at all";
         let result = client.parse_llm_json_response(malformed_json);
         assert!(result.is_err());
@@ -301,16 +304,16 @@ mod tests {
     #[test]
     fn test_calculate_response_confidence() {
         let client = OpenAILlmClient::new("test_key".to_string());
-        
+
         let parsed = serde_json::json!({
             "intent_type": "update_status",
             "entities": [],
             "parameters": {"status": "done"}
         });
-        
+
         let entities = vec![];
         let confidence = client.calculate_response_confidence(&parsed, &entities);
-        
+
         assert!(confidence > 0.7); // Should be higher than base confidence
         assert!(confidence <= 1.0);
     }
@@ -318,21 +321,21 @@ mod tests {
     #[test]
     fn test_confidence_with_entities() {
         let client = OpenAILlmClient::new("test_key".to_string());
-        
+
         let parsed = serde_json::json!({
             "intent_type": "update_status",
             "entities": [{"entity_id": "123", "entity_type": "story", "role": "target"}],
             "parameters": {"status": "done"}
         });
-        
+
         let entities = vec![crate::application::ports::EntityReference {
             entity_id: Uuid::new_v4(),
             entity_type: "story".to_string(),
             role: "target".to_string(),
         }];
-        
+
         let confidence = client.calculate_response_confidence(&parsed, &entities);
-        
+
         // Should have higher confidence with entities and parameters
         assert!(confidence > 0.8);
     }
@@ -340,16 +343,16 @@ mod tests {
     #[test]
     fn test_unknown_intent_lowers_confidence() {
         let client = OpenAILlmClient::new("test_key".to_string());
-        
+
         let parsed = serde_json::json!({
             "intent_type": "unknown",
             "entities": [],
             "parameters": {}
         });
-        
+
         let entities = vec![];
         let confidence = client.calculate_response_confidence(&parsed, &entities);
-        
+
         // Unknown intent should lower confidence
         assert!(confidence < 0.7);
     }

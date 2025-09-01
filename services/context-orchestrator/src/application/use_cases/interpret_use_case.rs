@@ -67,13 +67,10 @@ impl InterpretUseCase {
             .await?;
 
         // 4. Rank and filter candidates
-        let filtered_candidates =
-            candidate_selector::filter_by_tenant(candidates, tenant_id);
-            
-        let _ranked_candidates = candidate_selector::rank_candidates(
-            filtered_candidates.clone(),
-            utterance,
-        );
+        let filtered_candidates = candidate_selector::filter_by_tenant(candidates, tenant_id);
+
+        let _ranked_candidates =
+            candidate_selector::rank_candidates(filtered_candidates.clone(), utterance);
 
         // 5. Parse intent using LLM or fallback heuristics
         let parsed_intent = if disable_llm {
@@ -137,11 +134,9 @@ impl InterpretUseCase {
                 // Calculate tokens to add based on time elapsed
                 let elapsed = now.signed_duration_since(bucket.last_refill);
                 let tokens_to_add = (elapsed.num_seconds() * RATE_LIMIT as i64) / REFILL_DURATION;
-                
-                bucket.token_count = std::cmp::min(
-                    RATE_LIMIT,
-                    bucket.token_count + tokens_to_add as i32,
-                );
+
+                bucket.token_count =
+                    std::cmp::min(RATE_LIMIT, bucket.token_count + tokens_to_add as i32);
 
                 if bucket.token_count <= 0 {
                     return Err(AppError::RateLimitExceeded);
@@ -255,7 +250,9 @@ impl InterpretUseCase {
         );
 
         if !candidates.is_empty() {
-            prompt.push_str("Available entities (you MUST only reference entity_ids from this list):\n");
+            prompt.push_str(
+                "Available entities (you MUST only reference entity_ids from this list):\n",
+            );
             for candidate in candidates.iter().take(20) {
                 // Limit to top 20 for prompt length
                 prompt.push_str(&format!(
@@ -308,9 +305,7 @@ impl InterpretUseCase {
 
     fn requires_confirmation(&self, parsed_intent: &ParsedIntent) -> bool {
         match parsed_intent.intent_type {
-            IntentType::Archive
-            | IntentType::CreateItem
-            | IntentType::MoveToSprint => true, // High-impact actions
+            IntentType::Archive | IntentType::CreateItem | IntentType::MoveToSprint => true, // High-impact actions
             IntentType::UpdateStatus | IntentType::AssignTask => {
                 // Require confirmation for bulk operations
                 parsed_intent.entities.len() > 3
@@ -338,7 +333,7 @@ mod tests {
         async fn generate_embedding(&self, _text: &str) -> Result<Vec<f32>, AppError> {
             Ok(vec![0.1; 1536])
         }
-        
+
         async fn parse_intent(
             &self,
             _utterance: &str,
@@ -352,7 +347,7 @@ mod tests {
                 confidence: 0.8,
             })
         }
-        
+
         async fn health_check(&self) -> Result<(), AppError> {
             Ok(())
         }
@@ -379,7 +374,11 @@ mod tests {
             Ok(0)
         }
 
-        async fn delete_entity(&self, _entity_id: uuid::Uuid, _tenant_id: uuid::Uuid) -> Result<bool, AppError> {
+        async fn delete_entity(
+            &self,
+            _entity_id: uuid::Uuid,
+            _tenant_id: uuid::Uuid,
+        ) -> Result<bool, AppError> {
             Ok(false)
         }
     }
@@ -404,10 +403,19 @@ mod tests {
         async fn record_intent(&self, _intent: &IntentRecord) -> Result<(), AppError> {
             Ok(())
         }
-        async fn get_recent_intents(&self, _user_id: Uuid, _limit: usize) -> Result<Vec<IntentRecord>, AppError> {
+        async fn get_recent_intents(
+            &self,
+            _user_id: Uuid,
+            _limit: usize,
+        ) -> Result<Vec<IntentRecord>, AppError> {
             Ok(vec![])
         }
-        async fn get_intent_analytics(&self, _tenant_id: Uuid, _start_date: chrono::DateTime<Utc>, _end_date: chrono::DateTime<Utc>) -> Result<crate::application::ports::IntentAnalytics, AppError> {
+        async fn get_intent_analytics(
+            &self,
+            _tenant_id: Uuid,
+            _start_date: chrono::DateTime<Utc>,
+            _end_date: chrono::DateTime<Utc>,
+        ) -> Result<crate::application::ports::IntentAnalytics, AppError> {
             Ok(crate::application::ports::IntentAnalytics {
                 total_intents: 0,
                 avg_llm_confidence: 0.8,
@@ -420,10 +428,20 @@ mod tests {
 
     #[async_trait]
     impl crate::application::ports::RateLimitRepository for MockRateLimitRepository {
-        async fn get_rate_limit_bucket(&self, _user_id: Uuid, _resource_type: &str) -> Result<Option<crate::application::ports::RateLimitBucket>, AppError> {
+        async fn get_rate_limit_bucket(
+            &self,
+            _user_id: Uuid,
+            _resource_type: &str,
+        ) -> Result<Option<crate::application::ports::RateLimitBucket>, AppError> {
             Ok(None)
         }
-        async fn update_rate_limit_bucket(&self, _user_id: Uuid, _resource_type: &str, _token_count: i32, _last_refill: chrono::DateTime<Utc>) -> Result<(), AppError> {
+        async fn update_rate_limit_bucket(
+            &self,
+            _user_id: Uuid,
+            _resource_type: &str,
+            _token_count: i32,
+            _last_refill: chrono::DateTime<Utc>,
+        ) -> Result<(), AppError> {
             Ok(())
         }
     }
@@ -431,7 +449,7 @@ mod tests {
     #[test]
     fn test_calculate_service_confidence() {
         let use_case = InterpretUseCase::new_for_testing();
-        
+
         let parsed_intent = ParsedIntent {
             intent_type: IntentType::UpdateStatus,
             entities: vec![crate::domain::EntityReference {
@@ -498,7 +516,7 @@ mod tests {
     #[test]
     fn test_build_system_prompt() {
         let use_case = InterpretUseCase::new_for_testing();
-        
+
         let candidates = vec![CandidateEntity {
             id: Uuid::new_v4(),
             tenant_id: Uuid::new_v4(),

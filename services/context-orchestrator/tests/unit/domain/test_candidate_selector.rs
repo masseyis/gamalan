@@ -1,5 +1,5 @@
-use context_orchestrator::domain::*;
 use chrono::Utc;
+use context_orchestrator::domain::*;
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -7,7 +7,11 @@ use uuid::Uuid;
 mod candidate_selector_tests {
     use super::*;
 
-    fn create_test_candidate(title: &str, similarity_score: f32, tenant_id: Uuid) -> CandidateEntity {
+    fn create_test_candidate(
+        title: &str,
+        similarity_score: f32,
+        tenant_id: Uuid,
+    ) -> CandidateEntity {
         CandidateEntity {
             id: Uuid::new_v4(),
             tenant_id,
@@ -40,7 +44,7 @@ mod candidate_selector_tests {
         assert_eq!(filtered.len(), 2);
         assert_eq!(filtered[0].title, "Story 1");
         assert_eq!(filtered[1].title, "Story 3");
-        
+
         // Verify all returned candidates belong to the correct tenant
         for candidate in &filtered {
             assert_eq!(candidate.tenant_id, tenant_id);
@@ -96,7 +100,7 @@ mod candidate_selector_tests {
     #[test]
     fn test_rank_candidates_with_title_boost() {
         let tenant_id = Uuid::new_v4();
-        
+
         // Create candidates where exact title match has lower similarity
         let mut exact_match = create_test_candidate("Update Story", 0.5, tenant_id);
         let partial_match = create_test_candidate("Story Update Process", 0.7, tenant_id);
@@ -132,7 +136,7 @@ mod candidate_selector_tests {
     fn test_rank_candidates_preserves_original_data() {
         let tenant_id = Uuid::new_v4();
         let original_id = Uuid::new_v4();
-        
+
         let mut candidate = create_test_candidate("Test Story", 0.7, tenant_id);
         candidate.id = original_id;
         candidate.priority = Some(3);
@@ -156,7 +160,7 @@ mod boost_logic_tests {
     #[test]
     fn test_title_matching_boost() {
         let tenant_id = Uuid::new_v4();
-        
+
         // Test various levels of title matching
         let exact_match = create_test_candidate("Update Story Status", 0.5, tenant_id);
         let partial_match = create_test_candidate("Story Status Update", 0.5, tenant_id);
@@ -165,7 +169,7 @@ mod boost_logic_tests {
 
         let candidates = vec![
             exact_match.clone(),
-            partial_match.clone(), 
+            partial_match.clone(),
             word_match.clone(),
             no_match.clone(),
         ];
@@ -174,7 +178,7 @@ mod boost_logic_tests {
 
         // Verify ranking order based on title relevance
         assert_eq!(ranked[0].title, "Update Story Status"); // Exact match should be first
-        
+
         // All boosted scores should still be <= 1.0
         for candidate in &ranked {
             assert!(candidate.similarity_score <= 1.0);
@@ -185,7 +189,7 @@ mod boost_logic_tests {
     #[test]
     fn test_boost_doesnt_exceed_maximum() {
         let tenant_id = Uuid::new_v4();
-        
+
         // Start with very high similarity score
         let high_similarity = create_test_candidate("Perfect Match", 0.95, tenant_id);
         let candidates = vec![high_similarity];
@@ -200,14 +204,17 @@ mod boost_logic_tests {
     #[test]
     fn test_case_insensitive_matching() {
         let tenant_id = Uuid::new_v4();
-        
+
         let candidate = create_test_candidate("Update Story Status", 0.5, tenant_id);
         let candidates = vec![candidate];
 
         // Test with different cases
-        let ranked_lower = candidate_selector::rank_candidates(candidates.clone(), "update story status");
-        let ranked_upper = candidate_selector::rank_candidates(candidates.clone(), "UPDATE STORY STATUS");
-        let ranked_mixed = candidate_selector::rank_candidates(candidates.clone(), "Update STORY status");
+        let ranked_lower =
+            candidate_selector::rank_candidates(candidates.clone(), "update story status");
+        let ranked_upper =
+            candidate_selector::rank_candidates(candidates.clone(), "UPDATE STORY STATUS");
+        let ranked_mixed =
+            candidate_selector::rank_candidates(candidates.clone(), "Update STORY status");
 
         // All should receive similar boosts regardless of case
         assert!(ranked_lower[0].similarity_score > 0.5);
@@ -223,14 +230,14 @@ mod performance_tests {
     #[test]
     fn test_large_candidate_list_performance() {
         let tenant_id = Uuid::new_v4();
-        
+
         // Create a large list of candidates
         let mut candidates = Vec::new();
         for i in 0..1000 {
             candidates.push(create_test_candidate(
-                &format!("Story {}", i), 
-                (i as f32) / 1000.0, 
-                tenant_id
+                &format!("Story {}", i),
+                (i as f32) / 1000.0,
+                tenant_id,
             ));
         }
 
@@ -243,14 +250,22 @@ mod performance_tests {
         let rank_duration = start.elapsed();
 
         // Performance should be reasonable (under 100ms for 1000 items)
-        assert!(filter_duration.as_millis() < 100, "Filtering took too long: {:?}", filter_duration);
-        assert!(rank_duration.as_millis() < 100, "Ranking took too long: {:?}", rank_duration);
+        assert!(
+            filter_duration.as_millis() < 100,
+            "Filtering took too long: {:?}",
+            filter_duration
+        );
+        assert!(
+            rank_duration.as_millis() < 100,
+            "Ranking took too long: {:?}",
+            rank_duration
+        );
     }
 
     #[test]
     fn test_rank_candidates_stability() {
         let tenant_id = Uuid::new_v4();
-        
+
         // Create candidates with identical similarity scores
         let candidates = vec![
             create_test_candidate("Story A", 0.5, tenant_id),

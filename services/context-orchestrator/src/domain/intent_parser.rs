@@ -6,7 +6,10 @@ use std::collections::HashMap;
 pub struct IntentParser;
 
 impl IntentParser {
-    pub fn parse_llm_response(llm_output: &str, candidate_ids: &[uuid::Uuid]) -> Result<ParsedIntent, AppError> {
+    pub fn parse_llm_response(
+        llm_output: &str,
+        candidate_ids: &[uuid::Uuid],
+    ) -> Result<ParsedIntent, AppError> {
         // Parse JSON from LLM
         let parsed: Value = serde_json::from_str(llm_output)
             .map_err(|_| AppError::BadRequest("Invalid JSON from LLM".to_string()))?;
@@ -24,11 +27,7 @@ impl IntentParser {
         let parameters = parsed
             .get("parameters")
             .and_then(|p| p.as_object())
-            .map(|obj| {
-                obj.iter()
-                    .map(|(k, v)| (k.clone(), v.clone()))
-                    .collect()
-            })
+            .map(|obj| obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect())
             .unwrap_or_default();
 
         Ok(ParsedIntent {
@@ -38,11 +37,15 @@ impl IntentParser {
         })
     }
 
-    pub fn fallback_heuristic_parse(utterance: &str, candidates: &[crate::domain::CandidateEntity]) -> ParsedIntent {
+    pub fn fallback_heuristic_parse(
+        utterance: &str,
+        candidates: &[crate::domain::CandidateEntity],
+    ) -> ParsedIntent {
         let utterance_lower = utterance.to_lowercase();
-        
+
         // Simple keyword-based intent detection
-        let intent_type = if utterance_lower.contains("move") || utterance_lower.contains("change") {
+        let intent_type = if utterance_lower.contains("move") || utterance_lower.contains("change")
+        {
             if utterance_lower.contains("ready") || utterance_lower.contains("status") {
                 IntentType::UpdateStatus
             } else if utterance_lower.contains("sprint") {
@@ -52,11 +55,21 @@ impl IntentParser {
             }
         } else if utterance_lower.contains("create") || utterance_lower.contains("add") {
             IntentType::CreateItem
-        } else if utterance_lower.contains("delete") || utterance_lower.contains("remove") || utterance_lower.contains("archive") {
+        } else if utterance_lower.contains("delete")
+            || utterance_lower.contains("remove")
+            || utterance_lower.contains("archive")
+        {
             IntentType::Archive
-        } else if utterance_lower.contains("generate") || utterance_lower.contains("plan") || utterance_lower.contains("report") {
+        } else if utterance_lower.contains("generate")
+            || utterance_lower.contains("plan")
+            || utterance_lower.contains("report")
+        {
             IntentType::GenerateReport
-        } else if utterance_lower.contains("what") || utterance_lower.contains("show") || utterance_lower.contains("get") || utterance_lower.contains("find") {
+        } else if utterance_lower.contains("what")
+            || utterance_lower.contains("show")
+            || utterance_lower.contains("get")
+            || utterance_lower.contains("find")
+        {
             IntentType::QueryStatus
         } else if utterance_lower.contains("search") {
             IntentType::SearchItems
@@ -76,12 +89,13 @@ impl IntentParser {
             .filter_map(|candidate| {
                 let title_lower = candidate.title.to_lowercase();
                 let words: Vec<&str> = utterance_lower.split_whitespace().collect();
-                
+
                 let mut matches = 0;
                 let mut total_words = 0;
-                
+
                 for word in &words {
-                    if word.len() > 2 {  // Skip short words
+                    if word.len() > 2 {
+                        // Skip short words
                         total_words += 1;
                         if title_lower.contains(word) {
                             matches += 1;
@@ -91,7 +105,8 @@ impl IntentParser {
 
                 if matches > 0 && total_words > 0 {
                     let match_score = matches as f32 / total_words as f32;
-                    if match_score > 0.2 {  // Threshold for relevance
+                    if match_score > 0.2 {
+                        // Threshold for relevance
                         Some(EntityReference {
                             entity_id: candidate.id,
                             entity_type: candidate.entity_type.clone(),
@@ -147,27 +162,34 @@ impl IntentParser {
     fn validate_json_schema(parsed: &Value) -> Result<(), AppError> {
         // Define expected schema
         let required_fields = ["intent_type", "entities"];
-        
+
         for field in &required_fields {
             if !parsed.get(field).is_some() {
-                return Err(AppError::BadRequest(format!("Missing required field: {}", field)));
+                return Err(AppError::BadRequest(format!(
+                    "Missing required field: {}",
+                    field
+                )));
             }
         }
 
         // Validate intent_type is a valid string
         if let Some(intent) = parsed.get("intent_type").and_then(|v| v.as_str()) {
             match intent {
-                "update_status" | "create_entity" | "delete_entity" | 
-                "move_entity" | "get_information" | "generate_pack" | "unknown" => {}
+                "update_status" | "create_entity" | "delete_entity" | "move_entity"
+                | "get_information" | "generate_pack" | "unknown" => {}
                 _ => return Err(AppError::BadRequest("Invalid intent_type".to_string())),
             }
         } else {
-            return Err(AppError::BadRequest("intent_type must be a string".to_string()));
+            return Err(AppError::BadRequest(
+                "intent_type must be a string".to_string(),
+            ));
         }
 
         // Validate entities is an array
         if !parsed.get("entities").unwrap().is_array() {
-            return Err(AppError::BadRequest("entities must be an array".to_string()));
+            return Err(AppError::BadRequest(
+                "entities must be an array".to_string(),
+            ));
         }
 
         Ok(())
@@ -195,7 +217,10 @@ impl IntentParser {
         }
     }
 
-    fn extract_entity_references(parsed: &Value, candidate_ids: &[uuid::Uuid]) -> Result<Vec<EntityReference>, AppError> {
+    fn extract_entity_references(
+        parsed: &Value,
+        candidate_ids: &[uuid::Uuid],
+    ) -> Result<Vec<EntityReference>, AppError> {
         let entities_array = parsed
             .get("entities")
             .and_then(|v| v.as_array())
@@ -207,20 +232,26 @@ impl IntentParser {
             let entity_id_str = entity_val
                 .get("entity_id")
                 .and_then(|v| v.as_str())
-                .ok_or_else(|| AppError::BadRequest("Missing entity_id in entity reference".to_string()))?;
+                .ok_or_else(|| {
+                    AppError::BadRequest("Missing entity_id in entity reference".to_string())
+                })?;
 
             let entity_id = uuid::Uuid::parse_str(entity_id_str)
                 .map_err(|_| AppError::BadRequest("Invalid entity_id format".to_string()))?;
 
             // Security: Ensure entity_id is in the candidate set
             if !candidate_ids.contains(&entity_id) {
-                return Err(AppError::BadRequest("Entity ID not in candidate set".to_string()));
+                return Err(AppError::BadRequest(
+                    "Entity ID not in candidate set".to_string(),
+                ));
             }
 
             let entity_type_str = entity_val
                 .get("entity_type")
                 .and_then(|v| v.as_str())
-                .ok_or_else(|| AppError::BadRequest("Missing entity_type in entity reference".to_string()))?;
+                .ok_or_else(|| {
+                    AppError::BadRequest("Missing entity_type in entity reference".to_string())
+                })?;
 
             let entity_type = match entity_type_str {
                 "story" => crate::domain::EntityType::Story,
@@ -251,10 +282,12 @@ impl IntentParser {
 
 // Module-level convenience function with Result return
 pub fn fallback_heuristic_parse(
-    utterance: &str, 
-    candidates: &[crate::domain::CandidateEntity]
+    utterance: &str,
+    candidates: &[crate::domain::CandidateEntity],
 ) -> Result<ParsedIntent, AppError> {
-    Ok(IntentParser::fallback_heuristic_parse(utterance, candidates))
+    Ok(IntentParser::fallback_heuristic_parse(
+        utterance, candidates,
+    ))
 }
 
 #[cfg(test)]
@@ -266,7 +299,7 @@ mod tests {
     fn test_fallback_heuristic_parse_update_status() {
         let candidates = vec![];
         let result = IntentParser::fallback_heuristic_parse("move story to ready", &candidates);
-        
+
         assert_eq!(result.intent_type, IntentType::UpdateStatus);
         assert_eq!(
             result.parameters.get("new_status").unwrap(),
@@ -278,7 +311,7 @@ mod tests {
     fn test_fallback_heuristic_parse_create_entity() {
         let candidates = vec![];
         let result = IntentParser::fallback_heuristic_parse("create user login task", &candidates);
-        
+
         assert_eq!(result.intent_type, IntentType::CreateItem);
         assert_eq!(
             result.parameters.get("title").unwrap(),
@@ -336,7 +369,7 @@ mod tests {
 
         let result = IntentParser::parse_llm_response(llm_output, &candidate_ids);
         assert!(result.is_ok());
-        
+
         let parsed_intent = result.unwrap();
         assert_eq!(parsed_intent.intent_type, IntentType::UpdateStatus);
         assert_eq!(parsed_intent.entities.len(), 1);
