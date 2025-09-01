@@ -126,7 +126,7 @@ describe('AIAssistant', () => {
     
     const { container } = render(
       <Wrapper>
-        <AIAssistant projectId="test-project" context="general" />
+        <AIAssistant projectId="test-project" context="task" />
       </Wrapper>
     )
 
