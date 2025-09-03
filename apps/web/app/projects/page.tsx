@@ -6,12 +6,40 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Plus, FolderOpen, Settings, Users, Sparkles, TrendingUp, Activity, Calendar } from 'lucide-react'
 import Link from 'next/link'
 import { projectsApi } from '@/lib/api/projects'
+import { useApiClient } from '@/lib/api/client'
+import { useEffect, useState } from 'react'
+import { useUser } from '@clerk/nextjs'
+
 export default function ProjectsPage() {
+  const { isLoaded } = useUser()
+  const { setupClients } = useApiClient()
+
+  // Setup authentication for API clients
+  useEffect(() => {
+    if (isLoaded) {
+      setupClients()
+    }
+  }, [setupClients, isLoaded])
 
   const { data: projects = [], isLoading, error } = useQuery({
     queryKey: ['projects'],
     queryFn: projectsApi.getProjects,
+    enabled: isLoaded, // Only run query after Clerk is loaded
   })
+
+  // Show loading until Clerk is ready
+  if (!isLoaded) {
+    return (
+      <div className="bg-gradient-soft">
+        <div className="container mx-auto py-8">
+          <div className="mb-8 animate-fade-in">
+            <h1 className="text-4xl font-bold text-gradient-primary">Projects</h1>
+            <p className="text-muted-foreground mt-2 text-lg">Loading...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (isLoading) {
     return (
@@ -174,3 +202,6 @@ export default function ProjectsPage() {
     </div>
   )
 }
+
+// Disable SSR for this page to avoid Clerk context issues
+export const dynamic = 'force-dynamic'

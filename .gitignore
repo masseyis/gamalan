@@ -49,3 +49,6 @@ ehthumbs.db
 Thumbs.db
 
 # CI test
+/target
+.shuttle*
+Secrets*.toml

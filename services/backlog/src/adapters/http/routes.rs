@@ -11,7 +11,7 @@ use sqlx::PgPool;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-pub async fn app_router(pool: PgPool, verifier: Arc<Mutex<JwtVerifier>>) -> axum::routing::Router {
+pub async fn create_backlog_router(pool: PgPool, verifier: Arc<Mutex<JwtVerifier>>) -> axum::routing::Router {
     // Initialize repositories
     let story_repo = Arc::new(SqlStoryRepository::new(pool.clone()));
     let task_repo = Arc::new(SqlTaskRepository::new(pool.clone()));

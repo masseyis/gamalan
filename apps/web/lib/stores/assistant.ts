@@ -10,7 +10,6 @@ import {
   SuggestionAction
 } from '@/lib/types/assistant'
 import { orchestratorApi } from '@/lib/api/orchestrator'
-import { useAuth } from '@clerk/nextjs'
 
 const UTTERANCE_HISTORY_LIMIT = 10
 const RECENT_ACTIONS_LIMIT = 20

@@ -4,41 +4,83 @@ This document tracks the evolution of the Salunga AI-Agile platform architecture
 
 ## Current Architecture Overview
 
-**Last Updated:** 2025-01-09  
-**Services:** 6 microservices + 2 shared libraries  
-**Architecture Pattern:** Hexagonal/Clean Architecture  
-**Communication:** HTTP REST APIs  
+**Last Updated:** 2025-09-02  
+**Services:** Single API Gateway + Service Libraries  
+**Architecture Pattern:** Hexagonal/Clean Architecture with Shared Gateway  
+**Communication:** Internal library calls via unified HTTP API  
 **Persistence:** PostgreSQL + Qdrant Vector Database  
 **Authentication:** Clerk JWT  
-**Deployment:** Shuttle Cloud Platform  
+**Deployment:** Single Shuttle Cloud Deployment  
 
 ## Service Topology
 
 ```mermaid
 graph TB
-    Client[Web Client] --> AuthGW[auth-gateway:8000]
-    AuthGW --> Projects[projects:8001]
-    AuthGW --> Backlog[backlog:8002]
-    AuthGW --> Context[context-orchestrator:8003]
+    Client[Web Client] --> Gateway[API Gateway - salunga-ai-vv2t.shuttle.app]
     
-    Context --> Backlog
-    Context --> Readiness[readiness:8004]
-    Context --> PromptBuilder[prompt-builder:8005]
-    Context --> Qdrant[(Qdrant Vector DB)]
-    Context --> OpenAI[OpenAI API]
+    subgraph "Single Deployment"
+        Gateway --> Auth[Auth Routes /auth]
+        Gateway --> Projects[Projects Routes /api/v1/projects]
+        Gateway --> Backlog[Backlog Routes /api/v1/stories]
+        Gateway --> Readiness[Readiness Routes /api/v1/readiness]
+        Gateway --> PromptBuilder[Prompt Builder Routes /api/v1/prompts]
+        
+        Auth -.-> AuthLib[auth-gateway lib]
+        Projects -.-> ProjectsLib[projects lib]
+        Backlog -.-> BacklogLib[backlog lib] 
+        Readiness -.-> ReadinessLib[readiness lib]
+        PromptBuilder -.-> PromptBuilderLib[prompt-builder lib]
+    end
     
-    Backlog --> Projects
-    Readiness --> Backlog
-    PromptBuilder --> Projects
-    
-    Projects --> DB[(PostgreSQL)]
-    Backlog --> DB
-    Context --> DB
-    Readiness --> DB
-    PromptBuilder --> DB
+    Gateway --> DB[(PostgreSQL)]
+    Gateway --> Qdrant[(Qdrant Vector DB)]
+    Gateway --> OpenAI[OpenAI API]
 ```
 
 ## Architecture Changelog
+
+### 2025-09-02: Microservices Consolidated to API Gateway Pattern
+**Scope:** Major architectural refactoring  
+**Decision Reference:** Converted microservices to library modules with unified gateway  
+
+#### Changes Made
+- **Architecture Pattern:** Microservices → Monolithic deployment with library modules
+- **Deployment Model:** Multiple Shuttle projects → Single `api-gateway` deployment  
+- **Service Libraries:** Converted standalone services to reusable library crates
+- **Unified Routing:** Single entry point with path-based routing (`/api/v1/*`, `/auth/*`)
+- **Shared Resources:** Consolidated database pool and JWT verifier across services
+
+#### Service Route Mapping
+- **Auth Service:** `/auth/*` - User authentication and management
+- **Projects Service:** `/api/v1/projects/*` - Project CRUD operations  
+- **Backlog Service:** `/api/v1/stories/*` - Story and task management
+- **Readiness Service:** `/api/v1/readiness/*` - Story readiness assessment
+- **Prompt Builder Service:** `/api/v1/prompts/*` - AI prompt generation
+
+#### Technical Implementation
+- **Main Gateway:** `services/api-gateway/src/main.rs` - Unified router with service nesting
+- **Service Libraries:** Each service converted to lib crate with `create_*_router()` function
+- **Shared Dependencies:** Database pool and JWT verifier passed to all service routers
+- **CORS & Middleware:** Centralized middleware stack with tracing and CORS
+
+#### Deployment Details
+- **Shuttle Project:** `salunga-ai` deployed to `https://salunga-ai-vv2t.shuttle.app`
+- **Health Endpoints:** `/health` and `/ready` at root level
+- **Database:** Single PostgreSQL connection shared across all services
+- **Authentication:** Centralized Clerk JWT verification
+
+#### Architectural Benefits
+- **Simplified Deployment:** Single deployment unit reduces operational complexity
+- **Shared Resources:** Efficient resource utilization with connection pooling
+- **Unified API:** Single base URL for all client requests
+- **Faster Local Development:** No need to run multiple services locally
+- **Cost Optimization:** Single Shuttle instance instead of multiple deployments
+
+#### Migration Impact
+- **Frontend Changes Required:** API base URLs must point to single gateway
+- **Service Independence:** Services still maintain hexagonal architecture internally
+- **Library Isolation:** Each service maintains its own domain/application/adapter structure
+- **Database Isolation:** Each service still owns its database tables/schema
 
 ### 2025-01-09: Context Orchestrator Service Added
 **Scope:** New microservice implementation  

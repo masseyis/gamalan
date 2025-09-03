@@ -17,16 +17,39 @@ import {
   Command
 } from 'lucide-react'
 
-function useUserSafe() {
-  // For now, always return demo data to avoid React Hooks violations
-  // In a real app, this would use React Context or a different state management approach
-  return { user: { firstName: 'Demo', lastName: 'User' } }
+import { useUser, useClerk } from '@clerk/nextjs'
+
+function ClerkAuthWrapper({ children }: { children: (authData: any) => React.ReactNode }) {
+  const { user, isSignedIn, isLoaded } = useUser()
+  const { signOut } = useClerk()
+  
+  // Wait for Clerk to load
+  if (!isLoaded) {
+    return children({ isSignedIn: false, user: null, signOut: () => {}, loading: true })
+  }
+  
+  return children({ isSignedIn, user, signOut, loading: false })
 }
 
 export function Navigation() {
   const pathname = usePathname()
-  const { user } = useUserSafe()
-  
+
+  return (
+    <ClerkAuthWrapper>
+      {({ isSignedIn, user, signOut, loading }) => (
+        <NavigationContent 
+          pathname={pathname}
+          isSignedIn={isSignedIn}
+          user={user}
+          signOut={signOut}
+          loading={loading}
+        />
+      )}
+    </ClerkAuthWrapper>
+  )
+}
+
+function NavigationContent({ pathname, isSignedIn, user, signOut, loading }: any) {
   const navigation = [
     {
       name: 'Dashboard',
@@ -63,14 +86,14 @@ export function Navigation() {
 
   const userInitials = user?.firstName && user?.lastName 
     ? `${user.firstName[0]}${user.lastName[0]}`
-    : 'DU'
+    : user?.emailAddresses?.[0]?.emailAddress?.[0]?.toUpperCase() || 'U'
 
   return (
     <nav className="glass border-b border-border/50 sticky top-0 z-50 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link href="/assistant" className="flex items-center gap-3 group">
+          <Link href="/assistant" className="flex items-center gap-3 group" prefetch={false}>
             <div className="relative">
               <img 
                 src="/logo-icon.png" 
@@ -91,7 +114,7 @@ export function Navigation() {
             {navigation.map((item) => {
               const Icon = item.icon
               return (
-                <Link key={item.name} href={item.href}>
+                <Link key={item.name} href={item.href} prefetch={false}>
                   <Button
                     variant={item.current ? "default" : "ghost"}
                     className={`
@@ -150,21 +173,33 @@ export function Navigation() {
             </Button>
 
             {/* User Avatar */}
-            <div className="flex items-center gap-3 pl-3 border-l border-border/50">
-              <div className="hidden sm:block text-right">
-                <div className="text-sm font-medium text-foreground">
-                  {user?.firstName} {user?.lastName}
+            {isSignedIn ? (
+              <div className="flex items-center gap-3 pl-3 border-l border-border/50">
+                <div className="hidden sm:block text-right">
+                  <div className="text-sm font-medium text-foreground">
+                    {user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : 'User'}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {user?.emailAddresses?.[0]?.emailAddress || 'user@example.com'}
+                  </div>
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  Demo Mode
-                </div>
+                <Avatar 
+                  className="h-8 w-8 ring-2 ring-primary/20 hover:ring-primary/40 transition-all cursor-pointer"
+                  onClick={() => signOut()}
+                  title="Click to sign out"
+                >
+                  <AvatarFallback className="bg-gradient-primary text-white text-sm font-semibold">
+                    {userInitials}
+                  </AvatarFallback>
+                </Avatar>
               </div>
-              <Avatar className="h-8 w-8 ring-2 ring-primary/20 hover:ring-primary/40 transition-all cursor-pointer">
-                <AvatarFallback className="bg-gradient-primary text-white text-sm font-semibold">
-                  {userInitials}
-                </AvatarFallback>
-              </Avatar>
-            </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link href="/sign-in" prefetch={false}>
+                  <Button size="sm">Sign In</Button>
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -358,9 +358,5 @@ const mockOrchestrator = {
   }
 }
 
-// Export the appropriate client based on environment
-const useMockOrchestrator = process.env.NEXT_PUBLIC_ORCHESTRATOR_MOCK === 'true'
-
-export const orchestratorApi = useMockOrchestrator 
-  ? mockOrchestrator 
-  : new OrchestratorClient()
+// Always use real orchestrator client in production
+export const orchestratorApi = new OrchestratorClient()

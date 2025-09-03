@@ -9,6 +9,7 @@ members = [
     "services/readiness",
     "services/prompt-builder",
     "services/context-orchestrator",
+    "services/api-gateway",
     "services/sprint",
     "services/demo",
     "services/gh-integrator",
@@ -23,12 +24,13 @@ serde_json = "1.0.117"
 tokio = { version = "1.38.0", features = ["full"] }
 thiserror = "1.0.61"
 anyhow = "1.0.86"
-shuttle-runtime = "0.45.0"
-shuttle-axum = "0.45.0"
-shuttle-shared-db = { version = "0.45.0", features = ["postgres"] }
-sqlx = { version = "0.7.4", features = ["postgres", "uuid", "chrono", "runtime-tokio-rustls"] }
+shuttle-runtime = "0.50.0"
+shuttle-axum = "0.50.0"
+shuttle-shared-db = { version = "0.50.0", features = ["postgres"] }
+shuttle-qdrant = "0.50.0"
+sqlx = { version = "0.8.2", features = ["postgres", "uuid", "chrono", "runtime-tokio-rustls"] }
 utoipa = { version = "4.2.3", features = ["axum_extras"] }
 utoipa-swagger-ui = { version = "7.1.0", features = ["axum"] }
-tower-http = { version = "0.5.2", features = ["trace"] }
+tower-http = { version = "0.5.2", features = ["trace", "cors"] }
 axum-extra = { version = "0.9.3", features = ["typed-header"] }
 async-trait = "0.1.80"

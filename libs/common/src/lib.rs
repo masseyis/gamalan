@@ -13,13 +13,15 @@ use uuid::Uuid;
 const X_REQUEST_ID: &str = "x-request-id";
 
 /// Initializes the tracing subscriber.
+/// This is safe to call multiple times - if a subscriber is already set, it will be ignored.
 pub fn init_tracing() {
     let subscriber = FmtSubscriber::builder()
         .with_max_level(Level::INFO)
         .json()
         .finish();
 
-    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
+    // Ignore the error if a global default is already set (e.g., in Shuttle runtime)
+    let _ = tracing::subscriber::set_global_default(subscriber);
 }
 
 /// Axum middleware to extract the correlation ID from the request headers.

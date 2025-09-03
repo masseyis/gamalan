@@ -1,0 +1,29 @@
+Based on the codebase analysis, here are the Shuttle secrets you need to set for Clerk JWT authentication:
+
+  Required Shuttle Secrets
+
+  # Set these via `shuttle secrets set` or in the Shuttle dashboard:
+
+  CLERK_JWKS_URL="https://your-clerk-domain.clerk.accounts.dev/.well-known/jwks.json"
+  CLERK_JWT_ISSUER="https://your-clerk-domain.clerk.accounts.dev"
+  CLERK_JWT_AUDIENCE="your-application-id"
+  CLERK_WEBHOOK_SECRET="whsec_xxx"  # Only needed for auth-gateway service
+
+  Where to Find These Values
+
+  1. CLERK_JWKS_URL: Replace your-clerk-domain with your Clerk domain from your dashboard
+  2. CLERK_JWT_ISSUER: Same domain as JWKS URL
+  3. CLERK_JWT_AUDIENCE: Your Clerk application ID
+  4. CLERK_WEBHOOK_SECRET: Generated when you create the webhook endpoint in Clerk dashboard
+
+  Setting the Secrets
+
+  # For each service that needs them:
+  shuttle secrets set CLERK_JWKS_URL="https://your-domain.clerk.accounts.dev/.well-known/jwks.json"
+  shuttle secrets set CLERK_JWT_ISSUER="https://your-domain.clerk.accounts.dev"
+  shuttle secrets set CLERK_JWT_AUDIENCE="your-app-id"
+
+  # Only for auth-gateway service:
+  shuttle secrets set CLERK_WEBHOOK_SECRET="whsec_xxx"
+
+

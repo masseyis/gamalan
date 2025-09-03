@@ -7,7 +7,7 @@ use sqlx::PgPool;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-pub async fn app_router(pool: PgPool, verifier: Arc<Mutex<JwtVerifier>>) -> axum::routing::Router {
+pub async fn create_auth_router(pool: PgPool, verifier: Arc<Mutex<JwtVerifier>>) -> axum::routing::Router {
     let user_repo = Arc::new(UserRepositoryImpl::new(pool));
     let user_usecases = Arc::new(UserUsecases::new(user_repo));
 

@@ -11,7 +11,7 @@ mod application;
 mod config;
 mod domain;
 
-use crate::{adapters::http::routes::app_router, config::AppConfig};
+use crate::{adapters::http::routes::create_auth_router, config::AppConfig};
 use common::init_tracing;
 
 #[shuttle_runtime::main]
@@ -32,7 +32,7 @@ async fn main(
         config.clerk_audience,
     )));
 
-    let app = app_router(pool, verifier).await;
+    let app = create_auth_router(pool, verifier).await;
 
     Ok(app.into())
 }

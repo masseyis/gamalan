@@ -7,13 +7,37 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { RecentActions } from '@/components/assistant/recent-actions'
 import { QuickActions } from '@/components/assistant/quick-actions'
+import { useApiClient } from '@/lib/api/client'
+import { useEffect } from 'react'
+import { useUser } from '@clerk/nextjs'
 
 export default function AssistantPage() {
+  const { isLoaded } = useUser()
+  const { setupClients } = useApiClient()
   const suggestions = useAssistantStore(state => state.suggestions)
   const recentActions = useAssistantStore(state => state.recentActions)
   
   // Auto-fetch suggestions when component mounts
   useAutoFetchSuggestions()
+
+  // Setup authentication for API clients
+  useEffect(() => {
+    if (isLoaded) {
+      setupClients()
+    }
+  }, [setupClients, isLoaded])
+
+  // Show loading until Clerk is ready
+  if (!isLoaded) {
+    return (
+      <div className="container py-6">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold">AI Assistant</h1>
+          <p className="text-muted-foreground mt-2">Loading...</p>
+        </div>
+      </div>
+    )
+  }
 
   const hasSuggestions = suggestions.length > 0
   const hasRecentActions = recentActions.length > 0
@@ -75,3 +99,6 @@ export default function AssistantPage() {
     </div>
   )
 }
+
+// Disable SSR for this page to avoid Clerk context issues
+export const dynamic = 'force-dynamic'

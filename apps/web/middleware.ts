@@ -1,29 +1,37 @@
 import { authMiddleware } from '@clerk/nextjs'
 import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
 
-// Check if Clerk is configured
-const hasClerkKeys = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && process.env.CLERK_SECRET_KEY
-
-export default function middleware(request: NextRequest) {
-  if (!hasClerkKeys) {
-    // Demo mode - allow all routes without authentication
-    return NextResponse.next()
+export default authMiddleware({
+  publicRoutes: ['/'],
+  ignoredRoutes: ['/((?!api|trpc))(_next.*|.+\\.[\\w]+$)'],
+  
+  beforeAuth: (req) => {
+    // Handle CORS preflight requests
+    if (req.method === 'OPTIONS') {
+      const response = new NextResponse(null, { status: 200 })
+      
+      // Add CORS headers
+      response.headers.set('Access-Control-Allow-Origin', req.headers.get('origin') || '*')
+      response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+      response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin')
+      response.headers.set('Access-Control-Allow-Credentials', 'true')
+      response.headers.set('Access-Control-Max-Age', '86400')
+      
+      return response
+    }
+  },
+  
+  afterAuth: (auth, req) => {
+    const response = NextResponse.next()
+    
+    // Add CORS headers to all responses
+    response.headers.set('Access-Control-Allow-Origin', req.headers.get('origin') || '*')
+    response.headers.set('Access-Control-Allow-Credentials', 'true')
+    
+    return response
   }
-
-  // Use Clerk authentication
-  return authMiddleware({
-    // Routes that can be accessed while signed out
-    publicRoutes: ['/'],
-    // Routes that can always be accessed, and have
-    // no authentication information
-    ignoredRoutes: ['/api/webhooks(.*)'],
-  })(request, {} as any)
-}
+})
 
 export const config = {
-  // Protects all routes, including api/trpc.
-  // See https://clerk.com/docs/references/nextjs/auth-middleware
-  // for more information about configuring your Middleware
   matcher: ['/((?!.+\\.[\\w]+$|_next).*)', '/', '/(api|trpc)(.*)'],
 }

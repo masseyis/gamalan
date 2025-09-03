@@ -7,6 +7,9 @@ import { Plus, FolderOpen, CheckCircle, Clock, TrendingUp, Target, Zap, Activity
 import { useQuery } from '@tanstack/react-query'
 import { projectsApi } from '@/lib/api/projects'
 import { backlogApi } from '@/lib/api/backlog'
+import { useApiClient } from '@/lib/api/client'
+import { useEffect } from 'react'
+import { useUser } from '@clerk/nextjs'
 
 // Safe wrapper for user data - avoids conditional hook calls
 const getUserData = () => {
@@ -31,19 +34,17 @@ function useUserSafe() {
 
 export default function DashboardPage() {
   const { user } = useUserSafe()
+  const { isLoaded } = useUser()
+  const { setupClients } = useApiClient()
 
   // Load projects
   const { data: projects, isLoading: projectsLoading } = useQuery({
     queryKey: ['projects'],
     queryFn: () => projectsApi.getProjects(),
+    enabled: isLoaded, // Only run query after Clerk is loaded
   })
 
-  // Calculate stats
-  const activeProjects = projects?.length || 0
-  let storiesInProgress = 0
-  let storiesCompleted = 0
-
-  // Load stories for each project to calculate stats
+  // Load stories for each project to calculate stats  
   const { data: allStories } = useQuery({
     queryKey: ['dashboard-stories', projects?.map(p => p.id)],
     queryFn: async () => {
@@ -52,8 +53,32 @@ export default function DashboardPage() {
       const storiesArrays = await Promise.all(storyPromises)
       return storiesArrays.flat()
     },
-    enabled: !!projects && projects.length > 0,
+    enabled: !!projects && isLoaded, // Only run when we have projects and Clerk is loaded
   })
+
+  // Setup authentication for API clients
+  useEffect(() => {
+    if (isLoaded) {
+      setupClients()
+    }
+  }, [setupClients, isLoaded])
+
+  // Show loading until Clerk is ready
+  if (!isLoaded) {
+    return (
+      <div className="container py-6">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground mt-2">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Calculate stats
+  const activeProjects = projects?.length || 0
+  let storiesInProgress = 0
+  let storiesCompleted = 0
 
   if (allStories) {
     storiesInProgress = allStories.filter(s => s.status === 'in-progress').length
@@ -293,3 +318,6 @@ export default function DashboardPage() {
     </div>
   )
 }
+
+// Disable SSR for this page to avoid Clerk context issues
+export const dynamic = 'force-dynamic'

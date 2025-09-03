@@ -13,10 +13,10 @@ path = "src/main.rs"
 
 [dependencies]
 # Shuttle resources
-shuttle-runtime = "0.45.0"
-shuttle-axum = "0.45.0"
-shuttle-shared-db = { version = "0.45.0", features = ["postgres"] }
-shuttle-qdrant = "0.45.0"
+shuttle-runtime = { workspace = true }
+shuttle-axum = { workspace = true }
+shuttle-shared-db = { workspace = true }
+shuttle-qdrant = { workspace = true }
 
 # Core
 axum = { workspace = true }

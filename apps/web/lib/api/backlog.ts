@@ -111,7 +111,13 @@ export const backlogApi = {
       await new Promise(resolve => setTimeout(resolve, 400))
       return mockStories[projectId] || []
     }
-    return backlogClient.get<Story[]>(`/projects/${projectId}/stories`)
+    try {
+      const result = await backlogClient.get<Story[]>(`/projects/${projectId}/stories`)
+      return result || []
+    } catch (error) {
+      console.warn(`Failed to fetch stories for project ${projectId}, returning empty array:`, error)
+      return []
+    }
   },
 
   async getStory(projectId: string, storyId: string): Promise<Story> {

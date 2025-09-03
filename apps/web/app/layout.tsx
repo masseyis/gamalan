@@ -27,26 +27,11 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  // Fixed middleware configuration
   const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 
-  if (!publishableKey) {
-    // Demo mode without authentication
-    return (
-      <html lang="en">
-        <body className={`${inter.variable} ${spaceGrotesk.variable} font-sans`}>
-          <Providers>
-            <Navigation />
-            <main className="min-h-screen">
-              {children}
-            </main>
-          </Providers>
-        </body>
-      </html>
-    )
-  }
-
   return (
-    <ClerkProvider>
+    <ClerkProvider publishableKey={publishableKey}>
       <html lang="en">
         <body className={`${inter.variable} ${spaceGrotesk.variable} font-sans`}>
           <Providers>
@@ -60,3 +45,9 @@ export default function RootLayout({
     </ClerkProvider>
   )
 }
+
+// Force dynamic rendering for the entire app to avoid Clerk context issues during SSR
+export const dynamic = 'force-dynamic'
+
+// Temporarily disable all client-side JS to isolate EOF issue
+// export const runtime = 'edge' // This would help isolate but might break things

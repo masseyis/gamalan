@@ -1,6 +1,6 @@
 use anyhow::Context;
 use axum::middleware;
-use qdrant_client::client::QdrantClient;
+use qdrant_client::Qdrant as QdrantClient;
 use shuttle_axum::ShuttleAxum;
 use shuttle_qdrant::Qdrant;
 use shuttle_runtime::SecretStore;

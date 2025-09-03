@@ -1,0 +1,34 @@
+[package]
+name = "api-gateway"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "api-gateway"
+path = "src/main.rs"
+
+[dependencies]
+# Workspace dependencies for core functionality
+common = { path = "../../libs/common" }
+auth_clerk = { path = "../../libs/auth_clerk" }
+
+# Service dependencies (as libraries)
+auth-gateway = { path = "../auth-gateway" }
+projects = { path = "../projects" }
+backlog = { path = "../backlog" }
+readiness = { path = "../readiness" }
+prompt-builder = { path = "../prompt-builder" }
+
+# Shuttle and HTTP dependencies
+shuttle-runtime = { workspace = true }
+shuttle-axum = { workspace = true }
+shuttle-shared-db = { workspace = true }
+axum = { workspace = true }
+tower-http = { workspace = true }
+
+# Core dependencies
+tokio = { workspace = true }
+sqlx = { workspace = true }
+anyhow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
