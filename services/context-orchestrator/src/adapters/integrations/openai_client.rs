@@ -2,7 +2,7 @@ use crate::application::ports::{LlmClient, LlmResponse};
 use crate::domain::CandidateEntity;
 use async_openai::{
     types::{
-        ChatCompletionRequestMessage, ChatCompletionRequestSystemMessage,
+        ChatCompletionRequestMessage, ChatCompletionRequestSystemMessage, ChatCompletionRequestSystemMessageContent,
         ChatCompletionRequestUserMessage, CreateChatCompletionRequest,
     },
     Client as OpenAIClient,
@@ -206,7 +206,7 @@ impl LlmClient for OpenAILlmClient {
         // Direct implementation - can add retry logic back later
         let messages = vec![
             ChatCompletionRequestMessage::System(ChatCompletionRequestSystemMessage {
-                content: system_prompt.to_string(),
+                content: ChatCompletionRequestSystemMessageContent::Text(system_prompt.to_string()),
                 name: None,
             }),
             ChatCompletionRequestMessage::User(ChatCompletionRequestUserMessage {
@@ -220,6 +220,7 @@ impl LlmClient for OpenAILlmClient {
             messages,
             temperature: Some(0.1), // Low temperature for consistent parsing
             max_tokens: Some(500),
+            max_completion_tokens: None,
             top_p: None,
             n: None,
             stop: None,
@@ -235,9 +236,17 @@ impl LlmClient for OpenAILlmClient {
             top_logprobs: None,
             stream: None,
             parallel_tool_calls: None,
+            audio: None,
+            metadata: None,
+            modalities: None,
+            prediction: None,
+            service_tier: None,
             stream_options: None,
             function_call: None,
             functions: None,
+            reasoning_effort: None,
+            store: None,
+            web_search_options: None,
         };
 
         // TODO: Fix OpenAI API integration - using fallback for now
