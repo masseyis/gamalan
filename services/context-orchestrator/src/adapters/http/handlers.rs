@@ -101,7 +101,6 @@ pub fn create_routes() -> Router {
     Router::new()
         .route("/interpret", post(interpret_handler))
         .route("/act", post(act_handler))
-        .route("/health", shuttle_axum::axum::routing::get(health_handler))
         .route("/ready", shuttle_axum::axum::routing::get(ready_handler))
 }
 
@@ -187,14 +186,6 @@ pub async fn act_handler(
     };
 
     Ok(Json(response))
-}
-
-pub async fn health_handler() -> Result<Json<serde_json::Value>, AppError> {
-    Ok(Json(serde_json::json!({
-        "status": "healthy",
-        "service": "context-orchestrator",
-        "timestamp": chrono::Utc::now().to_rfc3339()
-    })))
 }
 
 pub async fn ready_handler() -> Result<Json<serde_json::Value>, AppError> {

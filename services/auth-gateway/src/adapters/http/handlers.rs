@@ -54,10 +54,6 @@ pub async fn clerk_webhooks(
     Ok(StatusCode::OK.into_response())
 }
 
-pub async fn health() -> impl IntoResponse {
-    (StatusCode::OK, "OK")
-}
-
 pub async fn ready() -> impl IntoResponse {
     (StatusCode::OK, "Ready")
 }
