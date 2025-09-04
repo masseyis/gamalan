@@ -2,20 +2,19 @@ use crate::application::ports::VectorSearchRepository;
 use crate::domain::{CandidateEntity, ContextEntity};
 use async_trait::async_trait;
 use common::AppError;
-use qdrant_client::prelude::*;
-use qdrant_client::qdrant::Filter;
+use qdrant_client::{Qdrant, qdrant::Filter};
 use std::collections::HashMap;
 use uuid::Uuid;
 
 #[allow(dead_code)]
 pub struct QdrantRepository {
-    client: QdrantClient,
+    client: Qdrant,
     collection_name: String,
 }
 
 #[allow(dead_code)]
 impl QdrantRepository {
-    pub fn new(client: QdrantClient) -> Self {
+    pub fn new(client: Qdrant) -> Self {
         Self {
             client,
             collection_name: "context_entities".to_string(),
@@ -127,7 +126,7 @@ mod tests {
 
     async fn setup_test_repo() -> QdrantRepository {
         // Note: In practice, use testcontainers for isolated testing
-        let client = QdrantClient::from_url("http://localhost:6334")
+        let client = Qdrant::from_url("http://localhost:6334")
             .build()
             .unwrap();
         QdrantRepository::new(client)

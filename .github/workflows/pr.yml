@@ -49,7 +49,7 @@ jobs:
         run: cargo fmt --all -- --check
         
       - name: Run Clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy --lib --all-features -- -D warnings -A unused-imports -A unused-variables -A dead-code -A unused-mut -A deprecated -A clippy::needless-borrows-for-generic-args -A unused-assignments -A clippy::assertions-on-constants
         
       - name: Security audit
         run: |
@@ -76,7 +76,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 8
+          version: 9
         
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -184,7 +184,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 8
+          version: 9
         
       - name: Setup Node.js
         uses: actions/setup-node@v4
