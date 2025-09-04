@@ -2,7 +2,7 @@ use crate::application::ports::VectorSearchRepository;
 use crate::domain::{CandidateEntity, ContextEntity};
 use async_trait::async_trait;
 use common::AppError;
-use qdrant_client::{Qdrant, qdrant::Filter};
+use qdrant_client::{qdrant::Filter, Qdrant};
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -126,9 +126,7 @@ mod tests {
 
     async fn setup_test_repo() -> QdrantRepository {
         // Note: In practice, use testcontainers for isolated testing
-        let client = Qdrant::from_url("http://localhost:6334")
-            .build()
-            .unwrap();
+        let client = Qdrant::from_url("http://localhost:6334").build().unwrap();
         QdrantRepository::new(client)
     }
 
