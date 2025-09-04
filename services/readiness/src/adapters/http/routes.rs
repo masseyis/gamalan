@@ -45,10 +45,10 @@ pub async fn create_readiness_router(
     ));
 
     shuttle_axum::axum::Router::new()
-        .route("/readiness/:story_id/evaluate", post(evaluate_readiness))
-        .route("/criteria/:story_id/generate", post(generate_criteria))
-        .route("/criteria/:story_id", get(get_criteria))
-        .route("/criteria/:story_id", post(add_criteria))
+        .route("/readiness/{story_id}/evaluate", post(evaluate_readiness))
+        .route("/criteria/{story_id}/generate", post(generate_criteria))
+        .route("/criteria/{story_id}", get(get_criteria))
+        .route("/criteria/{story_id}", post(add_criteria))
         .with_state(usecases)
         .layer(shuttle_axum::axum::Extension(verifier))
 }

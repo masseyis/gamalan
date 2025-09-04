@@ -15,8 +15,8 @@ pub async fn app_router(
     shuttle_axum::axum::Router::new()
         .route("/ready", get(ready))
         .route("/projects", get(get_projects).post(create_project))
-        .route("/projects/:id/settings", put(update_project_settings))
-        .route("/projects/:id", get(get_project))
+        .route("/projects/{id}/settings", put(update_project_settings))
+        .route("/projects/{id}", get(get_project))
         .layer(shuttle_axum::axum::Extension(verifier))
 }
 

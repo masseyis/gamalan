@@ -33,12 +33,12 @@ pub async fn create_backlog_router(
 
     shuttle_axum::axum::Router::new()
         .route("/stories", post(create_story))
-        .route("/stories/:id", get(get_story))
-        .route("/stories/:id", patch(update_story))
-        .route("/stories/:id", delete(delete_story))
-        .route("/stories/:id/tasks", post(create_task))
-        .route("/stories/:id/tasks", get(get_tasks_by_story))
-        .route("/stories/:id/status", patch(update_story_status))
+        .route("/stories/{id}", get(get_story))
+        .route("/stories/{id}", patch(update_story))
+        .route("/stories/{id}", delete(delete_story))
+        .route("/stories/{id}/tasks", post(create_task))
+        .route("/stories/{id}/tasks", get(get_tasks_by_story))
+        .route("/stories/{id}/status", patch(update_story_status))
         .with_state(usecases)
         .layer(shuttle_axum::axum::Extension(verifier))
 }

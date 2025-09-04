@@ -54,27 +54,27 @@ pub async fn create_prompt_builder_router(
     shuttle_axum::axum::Router::new()
         // Plan Pack endpoints
         .route(
-            "/plans/from-story/:story_id",
+            "/plans/from-story/{story_id}",
             post(generate_plan_pack_from_story),
         )
-        .route("/plans/story/:story_id", get(get_plan_pack_by_story))
+        .route("/plans/story/{story_id}", get(get_plan_pack_by_story))
         .route(
-            "/plans/story/:story_id/regenerate",
+            "/plans/story/{story_id}/regenerate",
             put(regenerate_plan_pack),
         )
         // Task Pack endpoints
         .route(
-            "/work-packets/from-task/:task_id",
+            "/work-packets/from-task/{task_id}",
             post(generate_task_pack_from_task),
         )
-        .route("/work-packets/task/:task_id", get(get_task_pack_by_task))
+        .route("/work-packets/task/{task_id}", get(get_task_pack_by_task))
         .route(
-            "/work-packets/task/:task_id/markdown",
+            "/work-packets/task/{task_id}/markdown",
             get(get_task_pack_markdown),
         )
-        .route("/work-packets/task/:task_id/json", get(get_task_pack_json))
+        .route("/work-packets/task/{task_id}/json", get(get_task_pack_json))
         .route(
-            "/work-packets/task/:task_id/regenerate",
+            "/work-packets/task/{task_id}/regenerate",
             put(regenerate_task_pack),
         )
         .with_state(usecases)
