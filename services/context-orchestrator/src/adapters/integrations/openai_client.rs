@@ -2,8 +2,9 @@ use crate::application::ports::{LlmClient, LlmResponse};
 use crate::domain::CandidateEntity;
 use async_openai::{
     types::{
-        ChatCompletionRequestMessage, ChatCompletionRequestSystemMessage, ChatCompletionRequestSystemMessageContent,
-        ChatCompletionRequestUserMessage, CreateChatCompletionRequest,
+        ChatCompletionRequestMessage, ChatCompletionRequestSystemMessage,
+        ChatCompletionRequestSystemMessageContent, ChatCompletionRequestUserMessage,
+        CreateChatCompletionRequest,
     },
     Client as OpenAIClient,
 };
