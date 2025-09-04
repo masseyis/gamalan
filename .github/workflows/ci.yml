@@ -274,7 +274,7 @@ jobs:
             service=$(basename $(dirname $migration_dir))
             echo "Running migrations for $service"
             DATABASE_URL="postgres://postgres:password@localhost:5432/gamalan_test" \
-              sqlx migrate run --source "$migration_dir"
+              sqlx migrate run --source "$migration_dir" --ignore-missing
           done
         env:
           DATABASE_URL: postgres://postgres:password@localhost:5432/gamalan_test
