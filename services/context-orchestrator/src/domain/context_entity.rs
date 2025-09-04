@@ -179,13 +179,14 @@ impl IntentRecord {
         service_confidence: f32,
         candidates_considered: Vec<Uuid>,
     ) -> Self {
-        let utterance_hash = sha2::Sha256::digest(utterance.as_bytes())
-            .iter()
-            .fold(String::new(), |mut output, b| {
+        let utterance_hash = sha2::Sha256::digest(utterance.as_bytes()).iter().fold(
+            String::new(),
+            |mut output, b| {
                 use std::fmt::Write;
                 let _ = write!(output, "{:02x}", b);
                 output
-            });
+            },
+        );
 
         Self {
             id: Uuid::new_v4(),
