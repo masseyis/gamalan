@@ -1,7 +1,7 @@
 .PHONY: fmt lint build test test-unit test-int test-contract test-e2e coverage \
 		dev-up dev-down migrate deploy-all deploy-staging deploy-prod \
 		check-pr pre-push quality-gate canary-deploy rollback \
-		deploy-prompt-builder deploy-context-orchestrator
+		deploy-prompt-builder deploy-context-orchestrator install-hook
 
 fmt:
 	@echo "Running rustfmt..."
@@ -289,3 +289,16 @@ feature-flags:
 	@echo ""
 	@echo "Set via environment variables for local development"
 	@echo "Production flags managed via LaunchDarkly dashboard"
+
+# ==============================================================================
+# DEVELOPMENT TOOLS
+# ==============================================================================
+
+install-hook:
+	@echo "Installing pre-commit hook for Rust workspace..."
+	@./install-pre-commit-hook.sh
+	@echo "✅ Pre-commit hook installed successfully!"
+	@echo "The hook will:"
+	@echo "  - Run 'cargo fmt --all' and auto-stage formatting changes"
+	@echo "  - Run 'cargo clippy' with -D warnings and fail on issues"
+	@echo "  - Provide clear feedback during the commit process"
