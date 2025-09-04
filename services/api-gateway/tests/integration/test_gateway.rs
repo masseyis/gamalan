@@ -120,17 +120,19 @@ async fn test_auth_service_routing() {
 async fn test_api_v1_routing() {
     let app = create_test_app().await;
 
+    // Test projects service routing
     let response = app
         .oneshot(
             Request::builder()
-                .uri("/api/v1/projects/health")
+                .uri("/api/v1/projects")
                 .body(Body::empty())
                 .unwrap(),
         )
         .await
         .unwrap();
 
-    assert_eq!(response.status(), StatusCode::OK);
+    // Should require authentication
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
 #[tokio::test]
@@ -435,21 +437,16 @@ async fn test_cross_service_context_orchestrator_integration() {
 }
 
 #[tokio::test]
-async fn test_all_service_health_endpoints() {
+async fn test_gateway_health_endpoints() {
     let app = create_test_app().await;
 
-    // Test that all services are accessible through gateway
-    let service_endpoints = vec![
+    // Test main gateway health endpoints only (services no longer have individual health endpoints)
+    let gateway_endpoints = vec![
         ("/health", "Gateway health"),
         ("/ready", "Gateway readiness"),
-        ("/api/v1/projects/health", "Projects service"),
-        ("/api/v1/backlog/health", "Backlog service"),
-        ("/api/v1/readiness/health", "Readiness service"),
-        ("/api/v1/prompt-builder/health", "Prompt Builder service"),
-        ("/api/v1/context/health", "Context Orchestrator service"),
     ];
 
-    for (endpoint, service_name) in service_endpoints {
+    for (endpoint, service_name) in gateway_endpoints {
         let response = app
             .clone()
             .oneshot(

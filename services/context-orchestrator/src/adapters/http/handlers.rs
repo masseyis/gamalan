@@ -115,7 +115,6 @@ pub async fn create_context_orchestrator_router(
     Router::new()
         .route("/interpret", post(interpret_handler))
         .route("/act", post(act_handler))
-        .route("/health", shuttle_axum::axum::routing::get(health_handler))
         .route("/ready", shuttle_axum::axum::routing::get(ready_handler))
         .layer(shuttle_axum::axum::Extension(verifier))
     // TODO: Add state with use cases when implemented

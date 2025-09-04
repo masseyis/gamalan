@@ -13,8 +13,6 @@ pub async fn app_router(
     verifier: Arc<Mutex<JwtVerifier>>,
 ) -> shuttle_axum::axum::Router {
     shuttle_axum::axum::Router::new()
-        .route("/health", get(common::health_check))
-        .route("/health/detailed", get(common::detailed_health_check))
         .route("/ready", get(ready))
         .route("/projects", get(get_projects).post(create_project))
         .route("/projects/:id/settings", put(update_project_settings))
