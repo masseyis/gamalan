@@ -39,6 +39,47 @@ graph TB
 
 ## Architecture Changelog
 
+### 2025-09-04: JWT Authentication and Service Compilation Fixes
+**Scope:** Authentication system and service compilation improvements  
+**Commit:** 908cb7f  
+**PR:** N/A (Direct commit)  
+
+#### Changes Made
+- **JWT Authentication:** Fixed Clerk JWT compatibility by making `aud` field optional in Claims struct
+- **Service Dependencies:** Resolved missing dependencies in context-orchestrator service 
+- **Service Integration:** Fixed router function imports and init_tracing calls across all services
+- **Compilation:** Ensured all services compile both as binaries and libraries for api-gateway
+- **Code Quality:** Applied formatting and maintained hexagonal architecture boundaries
+
+#### JWT Verification Updates
+- **Claims Structure:** `libs/auth_clerk/src/claims.rs` - Made `aud` field `Option<String>`
+- **Verifier Logic:** `libs/auth_clerk/src/lib.rs` - Added optional audience validation with bypass
+- **Service Integration:** Updated all service instantiations to use new JwtVerifier signature
+- **Test Coverage:** Updated JWT verifier tests to match new optional audience parameter
+
+#### Context-Orchestrator Dependencies
+- **Added Dependencies:** uuid, chrono, serde, qdrant-client, async-openai, async-trait, reqwest
+- **Package Fixes:** Corrected qdrant_client → qdrant-client package name
+- **Compilation:** Service now compiles successfully with all required dependencies
+
+#### Service Integration Improvements  
+- **Router Functions:** Fixed imports from `app_router` to `create_*_router` pattern
+- **Tracing Calls:** Added service name parameters to all `init_tracing()` calls
+- **Library Exports:** Ensured all services properly export router creation functions
+- **API Gateway:** Confirmed unified gateway can import and use all service libraries
+
+#### Architectural Impact
+- **Authentication:** Clerk JWT tokens now work without custom templates
+- **Service Compilation:** All services compile without errors or warnings
+- **Deployment Flexibility:** Services work as both standalone binaries and gateway libraries
+- **Development Experience:** No compilation blockers for local development
+
+#### Technical Details
+- **Files Modified:** 41 files across libs and services directories
+- **Lines Changed:** 1397 insertions, 707 deletions
+- **New Files:** Added error_context.rs and observability.rs to common lib
+- **Architecture Compliance:** Maintained hexagonal architecture boundaries throughout
+
 ### 2025-09-02: Microservices Consolidated to API Gateway Pattern
 **Scope:** Major architectural refactoring  
 **Decision Reference:** Converted microservices to library modules with unified gateway  
