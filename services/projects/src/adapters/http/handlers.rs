@@ -15,7 +15,7 @@ pub async fn get_projects(_auth: Authenticated) -> impl IntoResponse {
     let projects = json!([
         {
             "id": "proj-1",
-            "name": "Salunga Web Platform", 
+            "name": "Salunga Web Platform",
             "description": "Next.js frontend for the AI-enhanced agile project management platform",
             "createdAt": "2025-08-25T00:00:00Z",
             "updatedAt": "2025-09-01T00:00:00Z"
@@ -23,7 +23,7 @@ pub async fn get_projects(_auth: Authenticated) -> impl IntoResponse {
         {
             "id": "proj-2",
             "name": "Mobile App Development",
-            "description": "React Native mobile application for project management on the go", 
+            "description": "React Native mobile application for project management on the go",
             "createdAt": "2025-08-18T00:00:00Z",
             "updatedAt": "2025-08-29T00:00:00Z"
         },
@@ -31,11 +31,11 @@ pub async fn get_projects(_auth: Authenticated) -> impl IntoResponse {
             "id": "proj-3",
             "name": "API Gateway Microservice",
             "description": "Rust-based authentication and routing service for backend APIs",
-            "createdAt": "2025-08-11T00:00:00Z", 
+            "createdAt": "2025-08-11T00:00:00Z",
             "updatedAt": "2025-08-30T00:00:00Z"
         }
     ]);
-    
+
     (StatusCode::OK, Json(projects))
 }
 

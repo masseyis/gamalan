@@ -54,6 +54,7 @@ impl SqlStoryRepository {
         Ok(new_id)
     }
 
+    #[allow(dead_code)]
     async fn get_or_create_label_id_pool(&self, label: &str) -> Result<Uuid, AppError> {
         // First try to get existing label
         if let Ok(id) = sqlx::query_scalar::<_, Uuid>("SELECT id FROM labels WHERE name = $1")
@@ -76,6 +77,7 @@ impl SqlStoryRepository {
         Ok(new_id)
     }
 
+    #[allow(dead_code)]
     async fn save_labels(&self, story_id: Uuid, labels: &[String]) -> Result<(), AppError> {
         // First, clear existing labels
         sqlx::query("DELETE FROM story_labels WHERE story_id = $1")

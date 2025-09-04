@@ -12,7 +12,10 @@ use sqlx::PgPool;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-pub async fn create_readiness_router(pool: PgPool, verifier: Arc<Mutex<JwtVerifier>>) -> axum::routing::Router {
+pub async fn create_readiness_router(
+    pool: PgPool,
+    verifier: Arc<Mutex<JwtVerifier>>,
+) -> axum::routing::Router {
     // Initialize repositories
     let criteria_repo = Arc::new(SqlAcceptanceCriteriaRepository::new(pool.clone()));
     let readiness_repo = Arc::new(SqlReadinessEvaluationRepository::new(pool.clone()));

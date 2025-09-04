@@ -14,7 +14,10 @@ use sqlx::PgPool;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-pub async fn create_prompt_builder_router(pool: PgPool, verifier: Arc<Mutex<JwtVerifier>>) -> axum::routing::Router {
+pub async fn create_prompt_builder_router(
+    pool: PgPool,
+    verifier: Arc<Mutex<JwtVerifier>>,
+) -> axum::routing::Router {
     // Initialize repositories
     let plan_pack_repo = Arc::new(SqlPlanPackRepository::new(pool.clone()));
     let task_pack_repo = Arc::new(SqlTaskPackRepository::new(pool.clone()));

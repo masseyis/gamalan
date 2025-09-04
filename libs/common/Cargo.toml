@@ -4,11 +4,18 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-tracing = "0.1.40"
-tracing-subscriber = { version = "0.3.18", features = ["json"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-error = { workspace = true }
+color-eyre = { workspace = true }
 axum = { workspace = true }
 serde = { workspace = true }
+serde_json = { workspace = true }
+serde_with = { workspace = true }
 thiserror = { workspace = true }
 anyhow = { workspace = true }
 utoipa = { workspace = true }
 uuid = { version = "1.9.1", features = ["v4", "serde"] }
+http-body-util = { workspace = true }
+chrono = { version = "0.4.38", features = ["serde"] }
+tower-http = { workspace = true }

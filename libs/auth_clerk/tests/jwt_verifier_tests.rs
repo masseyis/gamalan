@@ -7,7 +7,7 @@ async fn test_jwt_verifier_creation() {
     let audience = "test-audience".to_string();
     let jwks_url = "https://example.com/.well-known/jwks.json".to_string();
 
-    let _verifier = JwtVerifier::new(jwks_url, issuer, audience);
+    let _verifier = JwtVerifier::new(jwks_url, issuer, Some(audience));
 
     // This test just verifies that we can create a verifier without panicking
     // The JwtVerifier struct should be created successfully
@@ -19,7 +19,7 @@ async fn test_jwt_verifier_with_invalid_token() {
     let audience = "test-audience".to_string();
     let jwks_url = "https://example.com/.well-known/jwks.json".to_string();
 
-    let verifier = JwtVerifier::new(jwks_url, issuer, audience);
+    let verifier = JwtVerifier::new(jwks_url, issuer, Some(audience));
 
     // Test with an obviously invalid token
     let result = verifier.verify("invalid.token.here").await;
@@ -32,7 +32,7 @@ async fn test_jwt_verifier_with_malformed_token() {
     let audience = "test-audience".to_string();
     let jwks_url = "https://example.com/.well-known/jwks.json".to_string();
 
-    let verifier = JwtVerifier::new(jwks_url, issuer, audience);
+    let verifier = JwtVerifier::new(jwks_url, issuer, Some(audience));
 
     // Test with a malformed JWT (not enough parts)
     let result = verifier.verify("malformed").await;
@@ -45,7 +45,7 @@ async fn test_jwt_verifier_with_empty_token() {
     let audience = "test-audience".to_string();
     let jwks_url = "https://example.com/.well-known/jwks.json".to_string();
 
-    let verifier = JwtVerifier::new(jwks_url, issuer, audience);
+    let verifier = JwtVerifier::new(jwks_url, issuer, Some(audience));
 
     // Test with an empty token
     let result = verifier.verify("").await;

@@ -3,7 +3,7 @@ use crate::domain::{CandidateEntity, ContextEntity};
 use async_trait::async_trait;
 use common::AppError;
 use qdrant_client::prelude::*;
-use qdrant_client::qdrant::{Filter};
+use qdrant_client::qdrant::Filter;
 use std::collections::HashMap;
 use uuid::Uuid;
 

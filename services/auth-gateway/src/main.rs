@@ -18,7 +18,7 @@ use common::init_tracing;
 async fn main(
     #[Postgres(local_uri = "postgres://postgres:password@localhost:5432/gamalan")] db_uri: String,
 ) -> ShuttleAxum {
-    init_tracing();
+    init_tracing("auth-gateway");
 
     let config = AppConfig::new().context("Failed to load config")?;
 
@@ -29,7 +29,7 @@ async fn main(
     let verifier = Arc::new(Mutex::new(auth_clerk::JwtVerifier::new(
         config.clerk_jwks_url,
         config.clerk_issuer,
-        config.clerk_audience,
+        Some(config.clerk_audience),
     )));
 
     let app = create_auth_router(pool, verifier).await;

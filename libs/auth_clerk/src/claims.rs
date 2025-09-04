@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 pub struct Claims {
     pub iss: String,
     pub sub: String,
-    pub aud: String,
+    pub aud: Option<String>,
     pub exp: usize,
     pub iat: usize,
     pub email: Option<String>,

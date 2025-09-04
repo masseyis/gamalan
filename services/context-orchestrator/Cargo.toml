@@ -3,58 +3,49 @@ name = "context-orchestrator"
 version = "0.1.0"
 edition = "2021"
 
-[lib]
-name = "context_orchestrator"
-path = "src/lib.rs"
-
 [[bin]]
 name = "context-orchestrator"
 path = "src/main.rs"
 
 [dependencies]
+# Workspace dependencies for core functionality
+common = { path = "../../libs/common" }
+auth_clerk = { path = "../../libs/auth_clerk" }
+
 # Shuttle resources
 shuttle-runtime = { workspace = true }
 shuttle-axum = { workspace = true }
 shuttle-shared-db = { workspace = true }
-shuttle-qdrant = { workspace = true }
 
 # Core
 axum = { workspace = true }
 tokio = { workspace = true }
+uuid = { version = "1.8.0", features = ["v4", "serde"] }
+chrono = { version = "0.4.38", features = ["serde"] }
+
+# HTTP
+tower-http = { workspace = true }
+reqwest = { version = "0.12.4", features = ["json"] }
+
+# Serialization
 serde = { workspace = true }
 serde_json = { workspace = true }
-anyhow = { workspace = true }
-thiserror = { workspace = true }
-async-trait = { workspace = true }
 
 # Database
 sqlx = { workspace = true }
-qdrant-client = "1.10"
 
-# HTTP & API
-reqwest = { version = "0.12", features = ["json"] }
-utoipa = { workspace = true }
-utoipa-swagger-ui = { workspace = true }
-tower-http = { workspace = true }
-axum-extra = { workspace = true }
+# Async trait support
+async-trait = { workspace = true }
 
-# LLM & Embeddings
-async-openai = "0.23"
-tiktoken-rs = "0.5"
+# Vector database
+qdrant-client = { version = "1.11.0", default-features = false, features = ["serde"] }
 
-# Utilities
-uuid = { version = "1.4", features = ["serde", "v4"] }
-chrono = { version = "0.4", features = ["serde"] }
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["json"] }
-jsonschema = "0.17"
-sha2 = "0.10"
+# LLM integration
+async-openai = { version = "0.23.0" }
 
-# Local workspace dependencies
-common = { path = "../../libs/common" }
-auth_clerk = { path = "../../libs/auth_clerk" }
+# Cryptography
+sha2 = { version = "0.10.8" }
 
-[dev-dependencies]
-mockall = "0.12"
-wiremock = "0.6"
-tokio-test = "0.4"
+# Error handling
+anyhow = { workspace = true }
+thiserror = { workspace = true }

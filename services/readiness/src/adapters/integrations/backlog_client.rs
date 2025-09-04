@@ -4,6 +4,7 @@ use common::AppError;
 use serde::Deserialize;
 use uuid::Uuid;
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 struct StoryResponse {
     id: Uuid,
@@ -15,6 +16,7 @@ struct StoryResponse {
     labels: Vec<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 struct TaskResponse {
     id: Uuid,

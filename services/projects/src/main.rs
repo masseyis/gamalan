@@ -12,14 +12,14 @@ mod application;
 mod config;
 mod domain;
 
-use crate::{adapters::http::routes::app_router, config::AppConfig};
-use common::{correlation_id_extractor, init_tracing};
+use crate::{adapters::http::routes::create_projects_router, config::AppConfig};
+use common::{enhanced_request_middleware, init_tracing};
 
 #[shuttle_runtime::main]
 async fn main(
     #[Postgres(local_uri = "postgres://postgres:password@localhost:5432/gamalan")] db_uri: String,
 ) -> ShuttleAxum {
-    init_tracing();
+    init_tracing("projects");
 
     let config = AppConfig::new().context("Failed to load config")?;
 
@@ -30,12 +30,12 @@ async fn main(
     let verifier = Arc::new(Mutex::new(auth_clerk::JwtVerifier::new(
         config.clerk_jwks_url,
         config.clerk_issuer,
-        config.clerk_audience,
+        Some(config.clerk_audience),
     )));
 
-    let app = app_router(pool, verifier)
+    let app = create_projects_router(pool, verifier)
         .await
-        .layer(axum::middleware::from_fn(correlation_id_extractor))
+        .layer(axum::middleware::from_fn(enhanced_request_middleware))
         .layer(TraceLayer::new_for_http());
 
     Ok(app.into())

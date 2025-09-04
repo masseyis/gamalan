@@ -210,7 +210,6 @@ impl crate::domain::ActionType {
             _ => Err(AppError::BadRequest(format!("Unknown action type: {}", s))),
         }
     }
-
 }
 
 impl crate::domain::RiskLevel {
@@ -222,9 +221,7 @@ impl crate::domain::RiskLevel {
             _ => Err(AppError::BadRequest(format!("Unknown risk level: {}", s))),
         }
     }
-
 }
-
 
 #[cfg(test)]
 mod tests {

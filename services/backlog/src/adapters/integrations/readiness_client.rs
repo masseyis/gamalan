@@ -4,16 +4,19 @@ use common::AppError;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+#[allow(dead_code)]
 #[derive(Debug, Serialize)]
 struct ValidateAcRefsRequest {
     acceptance_criteria_refs: Vec<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 struct ValidateAcRefsResponse {
     invalid_refs: Vec<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 struct AcceptanceCriterion {
     ac_id: String,
