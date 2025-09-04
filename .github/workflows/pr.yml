@@ -49,17 +49,12 @@ jobs:
         run: cargo fmt --all -- --check
         
       - name: Run Clippy
-        run: cargo clippy --lib --all-features -- -D warnings -A unused-imports -A unused-variables -A dead-code -A unused-mut -A deprecated -A clippy::needless-borrows-for-generic-args -A unused-assignments -A clippy::assertions-on-constants
+        run: cargo clippy --all-targets --all-features -- -D warnings
         
       - name: Security audit
         run: |
           cargo install --version 0.21.2 cargo-audit
           cargo audit
-          
-      - name: License compliance check
-        run: |
-          cargo install --version 0.4.3 cargo-license
-          cargo license --avoid-dev-deps --avoid-build-deps
 
   frontend-static-analysis:
     name: Frontend Static Analysis

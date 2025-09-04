@@ -79,7 +79,7 @@ jobs:
     - name: Quality Gate - Linting (Clippy)
       run: |
         echo "::group::Clippy Linting"
-        cargo clippy --lib --all-features -- -D warnings -A unused-imports -A unused-variables -A dead-code -A unused-mut -A deprecated -A clippy::needless-borrows-for-generic-args -A unused-assignments -A clippy::assertions-on-constants
+        cargo clippy --all-targets --all-features -- -D warnings
         echo "::endgroup::"
 
     - name: Build workspace
