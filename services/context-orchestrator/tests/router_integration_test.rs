@@ -2,9 +2,8 @@
 // This validates that api-gateway can successfully import and use the context-orchestrator router
 
 use auth_clerk::JwtVerifier;
-use axum::Router;
 use context_orchestrator::create_context_orchestrator_router;
-use sqlx::PgPool;
+use shuttle_axum::axum::Router;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -36,7 +35,7 @@ async fn test_router_signature_compiles() {
     }
 
     // The fact that this compiles means the integration is successful
-    assert!(true);
+    // Basic router creation test
 }
 
 #[test]
@@ -48,5 +47,5 @@ fn test_function_exists_and_compiles() {
     let _func = create_context_orchestrator_router;
 
     // This is a compile-time test - if it compiles, the integration is successful
-    assert!(true);
+    // Basic router creation test
 }

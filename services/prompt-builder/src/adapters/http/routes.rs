@@ -9,7 +9,7 @@ use crate::adapters::integrations::{
 use crate::adapters::persistence::{SqlPlanPackRepository, SqlTaskPackRepository};
 use crate::application::PromptBuilderUsecases;
 use auth_clerk::JwtVerifier;
-use axum::routing::{get, post, put};
+use shuttle_axum::axum::routing::{get, post, put};
 use sqlx::PgPool;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -17,7 +17,7 @@ use tokio::sync::Mutex;
 pub async fn create_prompt_builder_router(
     pool: PgPool,
     verifier: Arc<Mutex<JwtVerifier>>,
-) -> axum::routing::Router {
+) -> shuttle_axum::axum::Router {
     // Initialize repositories
     let plan_pack_repo = Arc::new(SqlPlanPackRepository::new(pool.clone()));
     let task_pack_repo = Arc::new(SqlTaskPackRepository::new(pool.clone()));
@@ -51,7 +51,7 @@ pub async fn create_prompt_builder_router(
         llm_service,
     ));
 
-    axum::routing::Router::new()
+    shuttle_axum::axum::Router::new()
         // Plan Pack endpoints
         .route(
             "/plans/from-story/:story_id",
@@ -78,5 +78,5 @@ pub async fn create_prompt_builder_router(
             put(regenerate_task_pack),
         )
         .with_state(usecases)
-        .layer(axum::Extension(verifier))
+        .layer(shuttle_axum::axum::Extension(verifier))
 }

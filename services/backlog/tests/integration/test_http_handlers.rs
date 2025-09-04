@@ -140,7 +140,7 @@ async fn test_get_story_not_found() {
         .oneshot(
             Request::builder()
                 .method("GET")
-                .uri(&format!("/stories/{}", non_existent_id))
+                .uri(format!("/stories/{}", non_existent_id))
                 .header("authorization", "Bearer valid-test-token")
                 .body(Body::empty())
                 .unwrap(),
@@ -164,7 +164,7 @@ async fn test_update_story_not_found() {
         .oneshot(
             Request::builder()
                 .method("PATCH")
-                .uri(&format!("/stories/{}", non_existent_id))
+                .uri(format!("/stories/{}", non_existent_id))
                 .header("content-type", "application/json")
                 .header("authorization", "Bearer valid-test-token")
                 .body(Body::from(update_data.to_string()))
@@ -186,7 +186,7 @@ async fn test_delete_story_not_found() {
         .oneshot(
             Request::builder()
                 .method("DELETE")
-                .uri(&format!("/stories/{}", non_existent_id))
+                .uri(format!("/stories/{}", non_existent_id))
                 .header("authorization", "Bearer valid-test-token")
                 .body(Body::empty())
                 .unwrap(),
@@ -212,7 +212,7 @@ async fn test_create_task_unauthorized() {
         .oneshot(
             Request::builder()
                 .method("POST")
-                .uri(&format!("/stories/{}/tasks", story_id))
+                .uri(format!("/stories/{}/tasks", story_id))
                 .header("content-type", "application/json")
                 .body(Body::from(new_task.to_string()))
                 .unwrap(),

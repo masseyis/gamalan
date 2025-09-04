@@ -124,6 +124,7 @@ impl ReadinessUsecases {
         Ok(new_criteria)
     }
 
+    #[allow(dead_code)]
     pub async fn validate_acceptance_criteria_refs(
         &self,
         story_id: Uuid,

@@ -36,6 +36,7 @@ impl Task {
         })
     }
 
+    #[allow(dead_code)]
     pub fn update_acceptance_criteria_refs(&mut self, refs: Vec<String>) -> Result<(), AppError> {
         // Validate AC refs are not empty strings
         for ac_ref in &refs {
@@ -50,6 +51,7 @@ impl Task {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn has_acceptance_criteria_coverage(&self) -> bool {
         !self.acceptance_criteria_refs.is_empty()
     }

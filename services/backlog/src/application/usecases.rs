@@ -125,10 +125,12 @@ impl BacklogUsecases {
         self.task_repo.get_tasks_by_story(story_id).await
     }
 
+    #[allow(dead_code)]
     pub async fn get_task(&self, id: Uuid) -> Result<Option<Task>, AppError> {
         self.task_repo.get_task(id).await
     }
 
+    #[allow(dead_code)]
     pub async fn update_task(
         &self,
         id: Uuid,

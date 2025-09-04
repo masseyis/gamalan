@@ -216,11 +216,12 @@ impl LlmClient for OpenAILlmClient {
             }),
         ];
 
+        #[allow(deprecated)]
         let _request = CreateChatCompletionRequest {
             model: self.chat_model.clone(),
             messages,
             temperature: Some(0.1), // Low temperature for consistent parsing
-            max_tokens: Some(500),
+            max_tokens: Some(500),  // Keep deprecated field until OpenAI client updates
             max_completion_tokens: None,
             top_p: None,
             n: None,
@@ -243,8 +244,8 @@ impl LlmClient for OpenAILlmClient {
             prediction: None,
             service_tier: None,
             stream_options: None,
-            function_call: None,
-            functions: None,
+            function_call: None, // Keep deprecated field for now
+            functions: None,     // Keep deprecated field for now
             reasoning_effort: None,
             store: None,
             web_search_options: None,

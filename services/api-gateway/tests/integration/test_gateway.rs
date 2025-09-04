@@ -13,7 +13,7 @@ use uuid::Uuid;
 use auth_clerk::JwtVerifier;
 
 async fn create_test_app() -> Router {
-    use axum::routing::{get, post};
+    use axum::routing::get;
     use sqlx::PgPool;
 
     // Use test database
@@ -213,7 +213,7 @@ async fn test_request_tracing_headers() {
     assert_eq!(response.status(), StatusCode::OK);
 
     // Should preserve or add correlation ID
-    let headers = response.headers();
+    let _headers = response.headers();
     // This would depend on the actual tracing implementation
 }
 
@@ -223,7 +223,7 @@ async fn test_concurrent_requests() {
     let app = create_test_app().await;
 
     let handles: Vec<_> = (0..10)
-        .map(|i| {
+        .map(|_| {
             let app_clone = app.clone();
             tokio::spawn(async move {
                 app_clone
@@ -352,7 +352,7 @@ async fn test_cross_service_story_to_readiness_workflow() {
         .oneshot(
             Request::builder()
                 .method("POST")
-                .uri(&format!("/api/v1/projects/{}/stories", project_id))
+                .uri(format!("/api/v1/projects/{}/stories", project_id))
                 .header("content-type", "application/json")
                 .body(Body::from(story_data.to_string()))
                 .unwrap(),
@@ -383,7 +383,7 @@ async fn test_cross_service_story_to_readiness_workflow() {
 async fn test_cross_service_backlog_to_prompt_builder_workflow() {
     let app = create_test_app().await;
     let project_id = Uuid::new_v4();
-    let story_id = Uuid::new_v4();
+    let _story_id = Uuid::new_v4();
 
     // Test accessing prompt-builder service through gateway
     let response = app
@@ -391,7 +391,7 @@ async fn test_cross_service_backlog_to_prompt_builder_workflow() {
         .oneshot(
             Request::builder()
                 .method("GET")
-                .uri(&format!(
+                .uri(format!(
                     "/api/v1/prompt-builder/projects/{}/plan-pack",
                     project_id
                 ))
@@ -509,7 +509,7 @@ async fn test_service_path_routing_isolation() {
 async fn test_concurrent_cross_service_requests() {
     let app = create_test_app().await;
 
-    let endpoints = vec![
+    let endpoints = [
         "/health",
         "/ready",
         "/api/v1/projects/health",

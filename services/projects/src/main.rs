@@ -35,7 +35,9 @@ async fn main(
 
     let app = create_projects_router(pool, verifier)
         .await
-        .layer(axum::middleware::from_fn(enhanced_request_middleware))
+        .layer(shuttle_axum::axum::middleware::from_fn(
+            enhanced_request_middleware,
+        ))
         .layer(TraceLayer::new_for_http());
 
     Ok(app.into())

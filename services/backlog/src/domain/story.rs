@@ -65,6 +65,7 @@ impl Story {
         }
     }
 
+    #[allow(dead_code)]
     pub fn remove_label(&mut self, label: &str) {
         self.labels.retain(|l| l != label);
     }

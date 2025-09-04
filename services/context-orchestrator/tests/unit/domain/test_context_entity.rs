@@ -98,7 +98,7 @@ mod context_entity_tests {
             IntentType::UpdateStatus
         );
         assert_eq!(intent_record.parsed_intent.entities.len(), 1);
-        assert!(intent_record.utterance_hash.len() > 0);
+        assert!(!intent_record.utterance_hash.is_empty());
     }
 }
 
@@ -145,7 +145,7 @@ mod enum_tests {
 
     #[test]
     fn test_intent_type_variants() {
-        let variants = vec![
+        let variants = [
             IntentType::UpdateStatus,
             IntentType::AssignTask,
             IntentType::CreateItem,
@@ -168,7 +168,7 @@ mod enum_tests {
 
     #[test]
     fn test_action_type_variants() {
-        let variants = vec![
+        let variants = [
             ActionType::UpdateStatus,
             ActionType::AssignUser,
             ActionType::UpdatePriority,
@@ -188,7 +188,7 @@ mod enum_tests {
 
     #[test]
     fn test_risk_level_variants() {
-        let variants = vec![RiskLevel::Low, RiskLevel::Medium, RiskLevel::High];
+        let variants = [RiskLevel::Low, RiskLevel::Medium, RiskLevel::High];
 
         assert_eq!(variants.len(), 3);
 

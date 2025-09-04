@@ -6,7 +6,7 @@ use crate::adapters::integrations::HttpReadinessService;
 use crate::adapters::persistence::{SqlStoryRepository, SqlTaskRepository};
 use crate::application::BacklogUsecases;
 use auth_clerk::JwtVerifier;
-use axum::routing::{delete, get, patch, post};
+use shuttle_axum::axum::routing::{delete, get, patch, post};
 use sqlx::PgPool;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -14,7 +14,7 @@ use tokio::sync::Mutex;
 pub async fn create_backlog_router(
     pool: PgPool,
     verifier: Arc<Mutex<JwtVerifier>>,
-) -> axum::routing::Router {
+) -> shuttle_axum::axum::Router {
     // Initialize repositories
     let story_repo = Arc::new(SqlStoryRepository::new(pool.clone()));
     let task_repo = Arc::new(SqlTaskRepository::new(pool.clone()));
@@ -31,7 +31,7 @@ pub async fn create_backlog_router(
         readiness_service,
     ));
 
-    axum::routing::Router::new()
+    shuttle_axum::axum::Router::new()
         .route("/stories", post(create_story))
         .route("/stories/:id", get(get_story))
         .route("/stories/:id", patch(update_story))
@@ -40,5 +40,5 @@ pub async fn create_backlog_router(
         .route("/stories/:id/tasks", get(get_tasks_by_story))
         .route("/stories/:id/status", patch(update_story_status))
         .with_state(usecases)
-        .layer(axum::Extension(verifier))
+        .layer(shuttle_axum::axum::Extension(verifier))
 }

@@ -28,7 +28,7 @@ impl QdrantRepository {
 
     pub async fn upsert_entity(
         &self,
-        entity: &ContextEntity,
+        _entity: &ContextEntity,
         embedding: Vec<f32>,
     ) -> Result<(), AppError> {
         if embedding.len() != 1536 {

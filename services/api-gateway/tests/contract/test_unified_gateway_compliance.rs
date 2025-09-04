@@ -8,7 +8,6 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tower::ServiceExt;
-use uuid::Uuid;
 
 use auth_clerk::JwtVerifier;
 
@@ -194,7 +193,7 @@ async fn test_gateway_error_response_schema_compliance() {
     ];
 
     for (method, endpoint, payload) in test_cases {
-        let mut request_builder = Request::builder()
+        let request_builder = Request::builder()
             .method(method)
             .uri(endpoint)
             .header("content-type", "application/json");
@@ -226,10 +225,9 @@ async fn test_gateway_error_response_schema_compliance() {
 
         // Error responses should be JSON (might be empty or have error structure)
         if !body_str.is_empty() {
-            let _: Value = serde_json::from_str(&body_str).expect(&format!(
-                "Invalid JSON error response for {} {}",
-                method, endpoint
-            ));
+            let _: Value = serde_json::from_str(&body_str).unwrap_or_else(|_| {
+                panic!("Invalid JSON error response for {} {}", method, endpoint)
+            });
         }
     }
 }
@@ -490,16 +488,19 @@ async fn test_gateway_openapi_status_code_compliance() {
     ];
 
     for (method, endpoint, payload, expected_status) in status_code_tests {
+        let has_payload = payload.is_some();
         let body = match payload {
             Some(data) => Body::from(data.to_string()),
             None => Body::empty(),
         };
 
-        let mut request_builder = Request::builder().method(method).uri(endpoint);
+        let request_builder = Request::builder().method(method).uri(endpoint);
 
-        if payload.is_some() {
-            request_builder = request_builder.header("content-type", "application/json");
-        }
+        let request_builder = if has_payload {
+            request_builder.header("content-type", "application/json")
+        } else {
+            request_builder
+        };
 
         let response = app
             .clone()
@@ -570,6 +571,7 @@ fn validate_security_headers(headers: &HeaderMap, endpoint: &str) {
 }
 
 // Helper function to validate response time performance
+#[allow(dead_code)]
 async fn validate_response_time<F, Fut>(test_fn: F, max_duration_ms: u64, description: &str)
 where
     F: FnOnce() -> Fut,

@@ -7,7 +7,7 @@ pub mod test_helpers {
     use serde_json::{json, Value};
     use uuid::Uuid;
 
-    pub fn create_test_story_json(project_id: Uuid, title: &str) -> Value {
+    pub fn create_test_story_json(_project_id: Uuid, title: &str) -> Value {
         json!({
             "title": title,
             "description": format!("Test description for {}", title),

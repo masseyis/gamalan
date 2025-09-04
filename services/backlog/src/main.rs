@@ -35,7 +35,9 @@ async fn main(
 
     let app = create_backlog_router(pool, verifier)
         .await
-        .layer(axum::middleware::from_fn(correlation_id_extractor))
+        .layer(shuttle_axum::axum::middleware::from_fn(
+            correlation_id_extractor,
+        ))
         .layer(TraceLayer::new_for_http());
 
     Ok(app.into())

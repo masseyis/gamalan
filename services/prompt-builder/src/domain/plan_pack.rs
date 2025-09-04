@@ -90,6 +90,7 @@ impl PlanPack {
         })
     }
 
+    #[allow(dead_code)]
     pub fn get_coverage_map(&self) -> HashMap<String, Vec<String>> {
         let mut coverage = HashMap::new();
 
@@ -105,6 +106,7 @@ impl PlanPack {
         coverage
     }
 
+    #[allow(dead_code)]
     pub fn validate_completeness(&self) -> Result<(), AppError> {
         let ac_ids: std::collections::HashSet<String> = self
             .acceptance_criteria_map

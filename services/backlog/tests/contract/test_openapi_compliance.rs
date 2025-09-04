@@ -270,6 +270,7 @@ async fn test_http_status_codes_compliance() {
 }
 
 // Helper function to validate response headers match OpenAPI spec
+#[allow(dead_code)]
 fn validate_response_headers(headers: &axum::http::HeaderMap) {
     // Should include Content-Type for JSON responses
     if let Some(content_type) = headers.get("content-type") {
@@ -285,6 +286,7 @@ fn validate_response_headers(headers: &axum::http::HeaderMap) {
 }
 
 // Helper function to validate common pagination schema
+#[allow(dead_code)]
 fn validate_pagination_schema(data: &Value) {
     if let Some(page) = data.get("page") {
         assert!(page.is_number());

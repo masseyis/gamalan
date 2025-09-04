@@ -36,7 +36,7 @@ checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 name = "analytics"
 version = "0.1.0"
 dependencies = [
- "axum 0.7.9",
+ "axum 0.8.4",
 ]
 
 [[package]]
@@ -67,7 +67,7 @@ dependencies = [
  "anyhow",
  "auth-gateway",
  "auth_clerk",
- "axum 0.7.9",
+ "axum 0.8.4",
  "backlog",
  "common",
  "context-orchestrator",
@@ -85,6 +85,7 @@ dependencies = [
  "tokio-test",
  "tower 0.4.13",
  "tower-http 0.5.2",
+ "uuid",
 ]
 
 [[package]]
@@ -198,7 +199,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "auth_clerk",
- "axum 0.7.9",
+ "axum 0.8.4",
  "chrono",
  "common",
  "reqwest",
@@ -221,8 +222,7 @@ name = "auth_clerk"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "async-trait",
- "axum 0.7.9",
+ "axum 0.8.4",
  "axum-extra",
  "chrono",
  "common",
@@ -255,8 +255,6 @@ dependencies = [
  "http",
  "http-body",
  "http-body-util",
- "hyper",
- "hyper-util",
  "itoa",
  "matchit 0.7.3",
  "memchr",
@@ -267,13 +265,10 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_path_to_error",
- "serde_urlencoded",
  "sync_wrapper",
- "tokio",
  "tower 0.5.2",
  "tower-layer",
  "tower-service",
- "tracing",
 ]
 
 [[package]]
@@ -328,7 +323,6 @@ dependencies = [
  "sync_wrapper",
  "tower-layer",
  "tower-service",
- "tracing",
 ]
 
 [[package]]
@@ -353,22 +347,21 @@ dependencies = [
 
 [[package]]
 name = "axum-extra"
-version = "0.9.6"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c794b30c904f0a1c2fb7740f7df7f7972dfaa14ef6f57cb6178dc63e5dca2f04"
+checksum = "45bf463831f5131b7d3c756525b305d40f1185b688565648a92e1392ca35713d"
 dependencies = [
- "axum 0.7.9",
- "axum-core 0.4.5",
+ "axum 0.8.4",
+ "axum-core 0.5.2",
  "bytes",
- "fastrand",
  "futures-util",
  "headers",
  "http",
  "http-body",
  "http-body-util",
  "mime",
- "multer",
  "pin-project-lite",
+ "rustversion",
  "serde",
  "tower 0.5.2",
  "tower-layer",
@@ -382,7 +375,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "auth_clerk",
- "axum 0.7.9",
+ "axum 0.8.4",
  "common",
  "http-body-util",
  "proptest",
@@ -547,7 +540,7 @@ dependencies = [
 name = "coach"
 version = "0.1.0"
 dependencies = [
- "axum 0.7.9",
+ "axum 0.8.4",
 ]
 
 [[package]]
@@ -591,7 +584,7 @@ name = "common"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "axum 0.7.9",
+ "axum 0.8.4",
  "chrono",
  "color-eyre",
  "http-body-util",
@@ -631,7 +624,7 @@ dependencies = [
  "async-openai",
  "async-trait",
  "auth_clerk",
- "axum 0.7.9",
+ "axum 0.8.4",
  "chrono",
  "common",
  "http-body-util",
@@ -816,7 +809,7 @@ checksum = "2a2330da5de22e8a3cb63252ce2abb30116bf5265e89c0e01bc17015ce30a476"
 name = "demo"
 version = "0.1.0"
 dependencies = [
- "axum 0.7.9",
+ "axum 0.8.4",
 ]
 
 [[package]]
@@ -1278,7 +1271,7 @@ dependencies = [
 name = "gh-integrator"
 version = "0.1.0"
 dependencies = [
- "axum 0.7.9",
+ "axum 0.8.4",
 ]
 
 [[package]]
@@ -1958,23 +1951,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "multer"
-version = "3.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83e87776546dc87511aa5ee218730c92b666d7264ab6ed41f9d215af9cd5224b"
-dependencies = [
- "bytes",
- "encoding_rs",
- "futures-util",
- "http",
- "httparse",
- "memchr",
- "mime",
- "spin",
- "version_check",
-]
-
-[[package]]
 name = "native-tls"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2414,7 +2390,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "auth_clerk",
- "axum 0.7.9",
+ "axum 0.8.4",
  "common",
  "http-body-util",
  "proptest",
@@ -2440,7 +2416,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "auth_clerk",
- "axum 0.7.9",
+ "axum 0.8.4",
  "chrono",
  "common",
  "reqwest",
@@ -2680,7 +2656,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "auth_clerk",
- "axum 0.7.9",
+ "axum 0.8.4",
  "common",
  "reqwest",
  "serde",
@@ -3492,7 +3468,7 @@ dependencies = [
 name = "sprint"
 version = "0.1.0"
 dependencies = [
- "axum 0.7.9",
+ "axum 0.8.4",
 ]
 
 [[package]]

@@ -3,7 +3,6 @@ pub mod jwks;
 
 use crate::claims::Claims;
 use crate::jwks::{Jwk, JwksCache};
-use async_trait::async_trait;
 use axum::{extract::FromRequestParts, http::request::Parts, RequestPartsExt};
 
 use axum_extra::headers::{authorization::Bearer, Authorization};
@@ -141,14 +140,22 @@ pub struct Authenticated {
     pub orgs: Option<Vec<String>>,
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for Authenticated
 where
     S: Send + Sync,
 {
     type Rejection = AppError;
 
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+    fn from_request_parts(
+        parts: &mut Parts,
+        _state: &S,
+    ) -> impl std::future::Future<Output = Result<Self, Self::Rejection>> + Send {
+        Self::extract_authenticated(parts)
+    }
+}
+
+impl Authenticated {
+    async fn extract_authenticated(parts: &mut Parts) -> Result<Self, AppError> {
         let method = parts.method.clone();
         let uri = parts.uri.clone();
         let _request_id = parts

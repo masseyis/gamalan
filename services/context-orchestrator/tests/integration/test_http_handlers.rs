@@ -55,7 +55,7 @@ mod dto_tests {
                 .unwrap(),
             "in_progress"
         );
-        assert_eq!(request.action.require_confirmation, false);
+        assert!(!request.action.require_confirmation);
         assert_eq!(request.action.risk_level, "low");
         assert_eq!(request.session_token, Some(session_token));
         assert_eq!(request.confirmed, Some(true));
@@ -141,7 +141,6 @@ mod dto_tests {
 
 #[cfg(test)]
 mod enum_conversion_tests {
-    use super::*;
     use context_orchestrator::domain::*;
 
     #[test]

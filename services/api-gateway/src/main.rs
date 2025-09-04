@@ -1,5 +1,5 @@
 use anyhow::Context;
-use axum::{routing::get, Router};
+use shuttle_axum::axum::{routing::get, Router};
 use shuttle_axum::ShuttleAxum;
 use shuttle_shared_db::Postgres;
 use sqlx::PgPool;
