@@ -30,7 +30,7 @@ jobs:
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.79
+          toolchain: 1.82
           components: rustfmt, clippy
           override: true
           
@@ -92,7 +92,7 @@ jobs:
         run: pnpm type-check
         
       - name: Security audit
-        run: pnpm audit --audit-level moderate
+        run: pnpm audit --audit-level high
 
   # =============================================================================
   # UNIT TESTS (Fast, comprehensive coverage)
