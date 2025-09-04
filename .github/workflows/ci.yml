@@ -268,7 +268,7 @@ jobs:
             
       - name: Run database migrations
         run: |
-          cargo install sqlx-cli --no-default-features --features "postgres,uuid,tls-rustls"
+          cargo install sqlx-cli --no-default-features --features "postgres,rustls"
           # Run migrations for all services
           find services -name "migrations" -type d | while read -r migration_dir; do
             service=$(basename $(dirname $migration_dir))
