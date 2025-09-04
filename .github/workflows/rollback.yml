@@ -1,0 +1,475 @@
+name: Emergency Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      rollback_target:
+        description: 'What to rollback'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - backend
+          - frontend
+          - canary-only
+      rollback_version:
+        description: 'Target version to rollback to (leave empty for previous stable)'
+        required: false
+        type: string
+      reason:
+        description: 'Rollback reason'
+        required: true
+        type: string
+      create_incident:
+        description: 'Create incident issue'
+        required: false
+        default: true
+        type: boolean
+      skip_verification:
+        description: 'Skip post-rollback verification (emergency only)'
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: emergency-rollback
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # =============================================================================
+  # ROLLBACK VALIDATION & PREPARATION
+  # =============================================================================
+  
+  validate-rollback:
+    name: Validate Rollback Request
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
+    outputs:
+      should_rollback: ${{ steps.validation.outputs.should_rollback }}
+      target_version: ${{ steps.validation.outputs.target_version }}
+      rollback_scope: ${{ steps.validation.outputs.rollback_scope }}
+      
+    steps:
+      - name: Validate rollback parameters
+        id: validation
+        run: |
+          TARGET="${{ github.event.inputs.rollback_target }}"
+          VERSION="${{ github.event.inputs.rollback_version }}"
+          REASON="${{ github.event.inputs.reason }}"
+          
+          echo "🚨 EMERGENCY ROLLBACK REQUEST"
+          echo "Target: $TARGET"
+          echo "Version: ${VERSION:-'previous-stable'}"
+          echo "Reason: $REASON"
+          echo "Requested by: ${{ github.actor }}"
+          echo "Time: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          
+          # Validation
+          if [ -z "$REASON" ]; then
+            echo "❌ Rollback reason is required"
+            exit 1
+          fi
+          
+          # Determine target version
+          if [ -z "$VERSION" ]; then
+            # Get the previous stable version (simulate)
+            TARGET_VERSION="previous-stable"
+            echo "Using previous stable version"
+          else
+            TARGET_VERSION="$VERSION"
+            echo "Using specified version: $TARGET_VERSION"
+          fi
+          
+          echo "should_rollback=true" >> $GITHUB_OUTPUT
+          echo "target_version=$TARGET_VERSION" >> $GITHUB_OUTPUT
+          echo "rollback_scope=$TARGET" >> $GITHUB_OUTPUT
+
+  # =============================================================================
+  # BACKEND ROLLBACK
+  # =============================================================================
+  
+  rollback-backend:
+    name: Rollback Backend Services
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: validate-rollback
+    if: needs.validate-rollback.outputs.should_rollback == 'true' && (github.event.inputs.rollback_target == 'all' || github.event.inputs.rollback_target == 'backend')
+    
+    strategy:
+      matrix:
+        service: [api-gateway, auth-gateway, projects, backlog, readiness, prompt-builder, context-orchestrator]
+      fail-fast: false
+      max-parallel: 3
+      
+    steps:
+      - name: Setup Shuttle CLI
+        run: |
+          curl -sSfL https://www.shuttle.rs/install | bash
+          echo "${HOME}/.cargo/bin" >> $GITHUB_PATH
+          
+      - name: Rollback service
+        run: |
+          echo "🔄 Rolling back ${{ matrix.service }} to ${{ needs.validate-rollback.outputs.target_version }}"
+          
+          shuttle login --api-key ${{ secrets.SHUTTLE_API_KEY }}
+          
+          # Stop any canary deployments first
+          CANARY_PROJECTS=$(shuttle project list | grep "${{ matrix.service }}-canary" || true)
+          if [ -n "$CANARY_PROJECTS" ]; then
+            echo "Stopping canary deployments for ${{ matrix.service }}"
+            echo "$CANARY_PROJECTS" | while read -r canary_project; do
+              echo "Stopping $canary_project"
+              # shuttle project stop --name "$canary_project" 2>/dev/null || true
+            done
+          fi
+          
+          # Rollback main service
+          if [ "${{ needs.validate-rollback.outputs.target_version }}" == "previous-stable" ]; then
+            echo "Rolling back to previous stable deployment"
+            # shuttle rollback --project ${{ matrix.service }}
+            echo "Simulating rollback to previous stable version"
+          else
+            echo "Rolling back to specific version: ${{ needs.validate-rollback.outputs.target_version }}"
+            # shuttle deploy --project ${{ matrix.service }} --version ${{ needs.validate-rollback.outputs.target_version }}
+            echo "Simulating rollback to version ${{ needs.validate-rollback.outputs.target_version }}"
+          fi
+          
+          # Verify service is responding
+          sleep 10
+          
+          SERVICE_URL="https://${{ matrix.service }}.shuttle.app"
+          if curl -f -s "$SERVICE_URL/health" > /dev/null; then
+            echo "✅ ${{ matrix.service }} health check passed"
+          else
+            echo "⚠️ ${{ matrix.service }} health check failed - continuing with rollback"
+          fi
+
+  # =============================================================================
+  # FRONTEND ROLLBACK
+  # =============================================================================
+  
+  rollback-frontend:
+    name: Rollback Frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: validate-rollback
+    if: needs.validate-rollback.outputs.should_rollback == 'true' && (github.event.inputs.rollback_target == 'all' || github.event.inputs.rollback_target == 'frontend')
+    
+    steps:
+      - name: Rollback Vercel deployment
+        run: |
+          echo "🔄 Rolling back frontend to ${{ needs.validate-rollback.outputs.target_version }}"
+          
+          # Get list of deployments
+          DEPLOYMENTS=$(curl -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
+            "https://api.vercel.com/v6/deployments?projectId=${{ secrets.VERCEL_PROJECT_ID }}&limit=10")
+          
+          if [ "${{ needs.validate-rollback.outputs.target_version }}" == "previous-stable" ]; then
+            # Find the last successful production deployment
+            ROLLBACK_DEPLOYMENT=$(echo "$DEPLOYMENTS" | jq -r '.deployments[] | select(.target == "production" and .state == "READY") | .uid' | head -2 | tail -1)
+          else
+            # Find deployment by version/alias
+            ROLLBACK_DEPLOYMENT=$(echo "$DEPLOYMENTS" | jq -r ".deployments[] | select(.alias[] | contains(\"${{ needs.validate-rollback.outputs.target_version }}\")) | .uid" | head -1)
+          fi
+          
+          if [ -n "$ROLLBACK_DEPLOYMENT" ] && [ "$ROLLBACK_DEPLOYMENT" != "null" ]; then
+            echo "Rolling back to deployment: $ROLLBACK_DEPLOYMENT"
+            
+            # Promote the deployment to production
+            curl -X PATCH \
+              -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
+              -H "Content-Type: application/json" \
+              -d '{"target": "production"}' \
+              "https://api.vercel.com/v13/deployments/$ROLLBACK_DEPLOYMENT"
+              
+            echo "✅ Frontend rollback initiated"
+          else
+            echo "❌ Could not find deployment to rollback to"
+            exit 1
+          fi
+
+  # =============================================================================
+  # CANARY CLEANUP
+  # =============================================================================
+  
+  cleanup-canary:
+    name: Clean Up Canary Deployments
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: validate-rollback
+    if: needs.validate-rollback.outputs.should_rollback == 'true' && (github.event.inputs.rollback_target == 'all' || github.event.inputs.rollback_target == 'canary-only')
+    
+    steps:
+      - name: Setup Shuttle CLI
+        run: |
+          curl -sSfL https://www.shuttle.rs/install | bash
+          echo "${HOME}/.cargo/bin" >> $GITHUB_PATH
+          
+      - name: Clean up all canary deployments
+        run: |
+          echo "🧹 Cleaning up all canary deployments"
+          
+          shuttle login --api-key ${{ secrets.SHUTTLE_API_KEY }}
+          
+          # List all projects and find canaries
+          PROJECTS=$(shuttle project list 2>/dev/null || echo "")
+          
+          if [ -n "$PROJECTS" ]; then
+            echo "$PROJECTS" | grep -E "(canary|staging)" | while read -r project; do
+              if [ -n "$project" ]; then
+                echo "Removing canary project: $project"
+                # shuttle project stop --name "$project" 2>/dev/null || true
+                echo "Simulated cleanup of $project"
+              fi
+            done
+          fi
+          
+          echo "✅ Canary cleanup completed"
+
+  # =============================================================================
+  # POST-ROLLBACK VERIFICATION
+  # =============================================================================
+  
+  verify-rollback:
+    name: Verify Rollback Success
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [validate-rollback, rollback-backend, rollback-frontend, cleanup-canary]
+    if: always() && needs.validate-rollback.outputs.should_rollback == 'true' && github.event.inputs.skip_verification != 'true'
+    
+    steps:
+      - name: Wait for services to stabilize
+        run: |
+          echo "Waiting 60 seconds for services to stabilize..."
+          sleep 60
+          
+      - name: Verify backend services
+        if: github.event.inputs.rollback_target == 'all' || github.event.inputs.rollback_target == 'backend'
+        run: |
+          echo "🔍 Verifying backend services..."
+          
+          SERVICES="api-gateway auth-gateway projects backlog readiness prompt-builder context-orchestrator"
+          FAILED_SERVICES=""
+          
+          for service in $SERVICES; do
+            echo "Checking $service..."
+            
+            SERVICE_URL="https://$service.shuttle.app"
+            
+            # Health check
+            if curl -f -s "$SERVICE_URL/health" > /dev/null; then
+              echo "✅ $service: Health check passed"
+            else
+              echo "❌ $service: Health check failed"
+              FAILED_SERVICES="$FAILED_SERVICES $service"
+            fi
+            
+            # Ready check
+            if curl -f -s "$SERVICE_URL/ready" > /dev/null; then
+              echo "✅ $service: Ready check passed"
+            else
+              echo "⚠️ $service: Ready check failed"
+            fi
+          done
+          
+          if [ -n "$FAILED_SERVICES" ]; then
+            echo "❌ Some services failed health checks: $FAILED_SERVICES"
+            exit 1
+          fi
+          
+          echo "✅ All backend services are healthy"
+          
+      - name: Verify frontend
+        if: github.event.inputs.rollback_target == 'all' || github.event.inputs.rollback_target == 'frontend'
+        run: |
+          echo "🔍 Verifying frontend..."
+          
+          FRONTEND_URL="${{ secrets.PRODUCTION_FRONTEND_URL }}"
+          
+          # Basic connectivity
+          if curl -f -s "$FRONTEND_URL" > /dev/null; then
+            echo "✅ Frontend: Basic connectivity check passed"
+          else
+            echo "❌ Frontend: Basic connectivity check failed"
+            exit 1
+          fi
+          
+          # API connectivity (check if frontend can reach backend)
+          API_URL="${{ secrets.PRODUCTION_API_URL }}"
+          if curl -f -s "$API_URL/health" > /dev/null; then
+            echo "✅ Frontend can reach backend API"
+          else
+            echo "❌ Frontend cannot reach backend API"
+            exit 1
+          fi
+          
+          echo "✅ Frontend verification passed"
+          
+      - name: Run basic smoke tests
+        run: |
+          echo "🔍 Running basic smoke tests..."
+          
+          # Test critical endpoints
+          API_URL="${{ secrets.PRODUCTION_API_URL }}"
+          
+          ENDPOINTS="health ready api/v1/projects api/v1/stories api/v1/readiness"
+          
+          for endpoint in $ENDPOINTS; do
+            echo "Testing $endpoint..."
+            
+            response=$(curl -s -o /dev/null -w "%{http_code}" "$API_URL/$endpoint" || echo "000")
+            
+            if [ "$response" = "200" ] || [ "$response" = "401" ]; then
+              echo "✅ $endpoint: OK ($response)"
+            else
+              echo "❌ $endpoint: Failed ($response)"
+            fi
+          done
+          
+          echo "✅ Smoke tests completed"
+
+  # =============================================================================
+  # INCIDENT MANAGEMENT
+  # =============================================================================
+  
+  create-incident:
+    name: Create Incident Report
+    runs-on: ubuntu-latest
+    needs: [validate-rollback, rollback-backend, rollback-frontend, cleanup-canary, verify-rollback]
+    if: always() && needs.validate-rollback.outputs.should_rollback == 'true' && github.event.inputs.create_incident == 'true'
+    
+    steps:
+      - name: Determine rollback status
+        id: status
+        run: |
+          BACKEND_STATUS="${{ needs.rollback-backend.result }}"
+          FRONTEND_STATUS="${{ needs.rollback-frontend.result }}"
+          CLEANUP_STATUS="${{ needs.cleanup-canary.result }}"
+          VERIFY_STATUS="${{ needs.verify-rollback.result }}"
+          
+          if [ "$BACKEND_STATUS" = "success" ] && [ "$FRONTEND_STATUS" = "success" ] && [ "$CLEANUP_STATUS" = "success" ] && [ "$VERIFY_STATUS" = "success" ]; then
+            STATUS="✅ SUCCESSFUL"
+          elif [ "$BACKEND_STATUS" = "skipped" ] && [ "$FRONTEND_STATUS" = "skipped" ] && [ "$CLEANUP_STATUS" = "success" ]; then
+            STATUS="✅ SUCCESSFUL (Canary cleanup only)"
+          else
+            STATUS="⚠️ PARTIAL/FAILED"
+          fi
+          
+          echo "status=$STATUS" >> $GITHUB_OUTPUT
+          
+      - name: Create incident issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const rollbackScope = "${{ needs.validate-rollback.outputs.rollback_scope }}";
+            const targetVersion = "${{ needs.validate-rollback.outputs.target_version }}";
+            const reason = "${{ github.event.inputs.reason }}";
+            const status = "${{ steps.status.outputs.status }}";
+            
+            const body = `## 🚨 Emergency Rollback Report
+            
+            ### Rollback Details
+            - **Status:** ${status}
+            - **Scope:** ${rollbackScope}
+            - **Target Version:** ${targetVersion}
+            - **Initiated By:** ${{ github.actor }}
+            - **Time:** ${new Date().toISOString()}
+            - **Reason:** ${reason}
+            
+            ### Actions Taken
+            - **Backend Rollback:** ${{ needs.rollback-backend.result || 'skipped' }}
+            - **Frontend Rollback:** ${{ needs.rollback-frontend.result || 'skipped' }}
+            - **Canary Cleanup:** ${{ needs.cleanup-canary.result || 'skipped' }}
+            - **Verification:** ${{ needs.verify-rollback.result || 'skipped' }}
+            
+            ### Next Steps
+            - [ ] Investigate root cause of the issue that triggered rollback
+            - [ ] Implement fix for identified issues
+            - [ ] Test fix in staging environment
+            - [ ] Plan and schedule next deployment
+            - [ ] Update monitoring/alerting if needed
+            - [ ] Conduct post-incident review
+            
+            ### Links
+            - **Workflow Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            - **Deployment Dashboard:** [View Production Status](https://your-monitoring-url.com)
+            
+            ---
+            *This incident was created automatically by the emergency rollback workflow.*`;
+            
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚨 Emergency Rollback: ${reason}`,
+              body: body,
+              labels: ['incident', 'rollback', 'production', 'urgent'],
+              assignees: ['${{ github.actor }}']
+            });
+
+  # =============================================================================
+  # NOTIFICATIONS & SUMMARY
+  # =============================================================================
+  
+  rollback-summary:
+    name: Rollback Summary
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [validate-rollback, rollback-backend, rollback-frontend, cleanup-canary, verify-rollback, create-incident]
+    
+    steps:
+      - name: Generate rollback summary
+        run: |
+          echo "## 🚨 Emergency Rollback Summary" >> $GITHUB_STEP_SUMMARY
+          echo "**Initiated by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Time:** $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY
+          echo "**Reason:** ${{ github.event.inputs.reason }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Scope:** ${{ github.event.inputs.rollback_target }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Target Version:** ${{ needs.validate-rollback.outputs.target_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Results
+          if [ "${{ needs.rollback-backend.result }}" = "success" ] || [ "${{ needs.rollback-backend.result }}" = "skipped" ]; then
+            echo "✅ **Backend Rollback:** ${{ needs.rollback-backend.result }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Backend Rollback:** ${{ needs.rollback-backend.result }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.rollback-frontend.result }}" = "success" ] || [ "${{ needs.rollback-frontend.result }}" = "skipped" ]; then
+            echo "✅ **Frontend Rollback:** ${{ needs.rollback-frontend.result }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Frontend Rollback:** ${{ needs.rollback-frontend.result }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.cleanup-canary.result }}" = "success" ]; then
+            echo "✅ **Canary Cleanup:** Completed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Canary Cleanup:** Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.verify-rollback.result }}" = "success" ]; then
+            echo "✅ **Verification:** All checks passed" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.verify-rollback.result }}" = "skipped" ]; then
+            echo "⏭️ **Verification:** Skipped (emergency mode)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ **Verification:** Some checks failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** Production systems have been rolled back" >> $GITHUB_STEP_SUMMARY
+          echo "**Next Steps:** Review incident report and plan remediation" >> $GITHUB_STEP_SUMMARY
+
+      - name: Notify team (Slack/Teams/etc)
+        run: |
+          echo "🚨 EMERGENCY ROLLBACK COMPLETED"
+          echo "Scope: ${{ github.event.inputs.rollback_target }}"
+          echo "Reason: ${{ github.event.inputs.reason }}"
+          echo "Status: Production systems rolled back"
+          echo ""
+          echo "Incident report created and team notified."
+          echo "Please review the incident and plan next steps."

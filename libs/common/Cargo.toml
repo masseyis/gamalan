@@ -19,3 +19,6 @@ uuid = { version = "1.9.1", features = ["v4", "serde"] }
 http-body-util = { workspace = true }
 chrono = { version = "0.4.38", features = ["serde"] }
 tower-http = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }

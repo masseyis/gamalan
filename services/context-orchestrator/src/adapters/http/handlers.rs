@@ -2,8 +2,12 @@ use axum::response::Json;
 use axum::{routing::post, Router};
 use common::AppError;
 // use crate::AppState; // Comment out since AppState is in main.rs
+use auth_clerk::JwtVerifier;
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
 use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 use uuid::Uuid;
 
 #[derive(Debug, Deserialize)]
@@ -99,6 +103,23 @@ pub fn create_routes() -> Router {
         .route("/act", post(act_handler))
         .route("/health", axum::routing::get(health_handler))
         .route("/ready", axum::routing::get(ready_handler))
+}
+
+pub async fn create_context_orchestrator_router(
+    pool: PgPool,
+    verifier: Arc<Mutex<JwtVerifier>>,
+) -> axum::routing::Router {
+    // TODO: Initialize repositories and use cases when they're implemented
+    // For now, use the basic route structure
+
+    Router::new()
+        .route("/interpret", post(interpret_handler))
+        .route("/act", post(act_handler))
+        .route("/health", axum::routing::get(health_handler))
+        .route("/ready", axum::routing::get(ready_handler))
+        .layer(axum::Extension(verifier))
+    // TODO: Add state with use cases when implemented
+    // .with_state(usecases)
 }
 
 pub async fn interpret_handler(

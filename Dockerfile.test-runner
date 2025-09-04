@@ -1,0 +1,24 @@
+# Test Runner Dockerfile
+# Container for running integration and contract tests against the unified gateway
+
+FROM rust:1.79-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    libpq-dev \
+    curl \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install cargo-tarpaulin for coverage
+RUN cargo install --version 0.13.3 cargo-tarpaulin
+
+# Install sqlx-cli for database setup
+RUN cargo install sqlx-cli --no-default-features --features "postgres,uuid,tls-rustls"
+
+WORKDIR /workspace
+
+# Default command runs all tests
+CMD ["cargo", "test", "--workspace", "--", "--test-threads=1"]

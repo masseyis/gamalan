@@ -15,6 +15,7 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 pub mod error_context;
+pub mod feature_flags;
 pub mod observability;
 
 use error_context::ErrorContext;

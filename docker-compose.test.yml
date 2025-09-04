@@ -1,0 +1,97 @@
+# Docker Compose for Test Environment
+# Provides isolated database and services for testing the consolidated API Gateway
+# Updated for unified deployment architecture
+
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: ${POSTGRES_TEST_DB:-gamalan_test}
+      POSTGRES_USER: ${POSTGRES_TEST_USER:-testuser}
+      POSTGRES_PASSWORD: ${POSTGRES_TEST_PASSWORD:-testpass123}
+    ports:
+      - "5433:5432"  # Different port to avoid conflicts with dev DB
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+      - ./scripts/db/test-init.sql:/docker-entrypoint-initdb.d/test-init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for caching in tests (optional)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"  # Different port to avoid conflicts
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # Mock external services for testing
+  mock-clerk:
+    image: wiremock/wiremock:latest
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./tests/fixtures/wiremock:/home/wiremock
+    command: ["--global-response-templating", "--verbose"]
+
+  # Unified API Gateway for integration testing
+  # This replaces individual service containers
+  api-gateway-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    environment:
+      - DATABASE_URL=postgres://testuser:testpass123@postgres:5432/gamalan_test
+      - CLERK_JWKS_URL=http://mock-clerk:8080/.well-known/jwks.json
+      - CLERK_DOMAIN=test-domain
+      - CLERK_AUDIENCE=test-audience
+      - RUST_LOG=debug
+      - FEATURE_FLAG_ENABLE_AI_FEATURES=true
+      - FEATURE_FLAG_ENABLE_CONTEXT_ORCHESTRATOR=true
+    ports:
+      - "8000:8000"  # Unified gateway port
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mock-clerk:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Test runner container for running integration tests
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.test-runner
+    environment:
+      - TEST_DATABASE_URL=postgres://testuser:testpass123@postgres:5432/gamalan_test
+      - GATEWAY_BASE_URL=http://api-gateway-test:8000
+      - MOCK_CLERK_URL=http://mock-clerk:8080
+      - RUST_LOG=debug
+    volumes:
+      - .:/workspace
+      - target_test_cache:/workspace/target
+    working_dir: /workspace
+    depends_on:
+      api-gateway-test:
+        condition: service_healthy
+    profiles:
+      - test  # Only start when explicitly requested
+
+volumes:
+  postgres_test_data:
+    driver: local
+  target_test_cache:
+    driver: local

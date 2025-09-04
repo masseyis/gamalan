@@ -1,0 +1,52 @@
+# Test Dockerfile for Unified API Gateway
+# Builds the consolidated gateway for testing
+
+FROM rust:1.79-slim as builder
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    libpq-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy Cargo files for dependency caching
+COPY Cargo.toml Cargo.lock ./
+COPY libs/ ./libs/
+COPY services/ ./services/
+
+# Build the API Gateway (consolidated deployment)
+RUN cargo build --release --bin api-gateway
+
+# Runtime stage
+FROM debian:bookworm-slim
+
+RUN apt-get update && apt-get install -y \
+    libssl3 \
+    libpq5 \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy the built binary
+COPY --from=builder /app/target/release/api-gateway ./api-gateway
+
+# Copy migration files for all services
+COPY services/projects/migrations/ ./migrations/projects/
+COPY services/backlog/migrations/ ./migrations/backlog/
+COPY services/readiness/migrations/ ./migrations/readiness/
+COPY services/prompt-builder/migrations/ ./migrations/prompt-builder/
+
+# Health check script
+RUN echo '#!/bin/bash\ncurl -f http://localhost:8000/health || exit 1' > /app/healthcheck.sh && \
+    chmod +x /app/healthcheck.sh
+
+EXPOSE 8000
+
+# Run migrations and start the gateway
+CMD ["./api-gateway"]
