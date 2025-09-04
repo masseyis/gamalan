@@ -1,6 +1,6 @@
 use crate::application::ports::{
-    AcceptanceCriterion, BacklogService, LlmService, PlanPackRepository, ReadinessService,
-    TaskPackRepository, StoryInfo, TaskInfo, PlanPackGeneration, TaskPackGeneration,
+    AcceptanceCriterion, BacklogService, LlmService, PlanPackGeneration, PlanPackRepository,
+    ReadinessService, StoryInfo, TaskInfo, TaskPackGeneration, TaskPackRepository,
 };
 use crate::domain::{
     AcceptanceCriteriaMap, AcceptanceCriterionCoverage, AcceptanceCriterionInfo, CommitPlan,
@@ -370,7 +370,10 @@ mod tests {
 
     #[async_trait]
     impl BacklogService for MockBacklogService {
-        async fn get_story_info(&self, story_id: Uuid) -> Result<Option<crate::application::ports::StoryInfo>, AppError> {
+        async fn get_story_info(
+            &self,
+            story_id: Uuid,
+        ) -> Result<Option<crate::application::ports::StoryInfo>, AppError> {
             Ok(Some(crate::application::ports::StoryInfo {
                 id: story_id,
                 title: "Test Story".to_string(),
@@ -379,7 +382,10 @@ mod tests {
             }))
         }
 
-        async fn get_task_info(&self, task_id: Uuid) -> Result<Option<crate::application::ports::TaskInfo>, AppError> {
+        async fn get_task_info(
+            &self,
+            task_id: Uuid,
+        ) -> Result<Option<crate::application::ports::TaskInfo>, AppError> {
             Ok(Some(crate::application::ports::TaskInfo {
                 id: task_id,
                 story_id: Uuid::new_v4(),

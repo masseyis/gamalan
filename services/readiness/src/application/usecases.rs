@@ -1,6 +1,6 @@
 use crate::application::ports::{
-    AcceptanceCriteriaRepository, LlmService, ReadinessEvaluationRepository,
-    StoryService, StoryInfo, TaskInfo,
+    AcceptanceCriteriaRepository, LlmService, ReadinessEvaluationRepository, StoryInfo,
+    StoryService, TaskInfo,
 };
 use crate::domain::{AcceptanceCriterion, ReadinessCheck, ReadinessEvaluation};
 use common::AppError;
@@ -227,7 +227,10 @@ mod tests {
 
     #[async_trait]
     impl StoryService for MockStoryService {
-        async fn get_story_info(&self, story_id: Uuid) -> Result<Option<crate::application::ports::StoryInfo>, AppError> {
+        async fn get_story_info(
+            &self,
+            story_id: Uuid,
+        ) -> Result<Option<crate::application::ports::StoryInfo>, AppError> {
             Ok(Some(crate::application::ports::StoryInfo {
                 id: story_id,
                 title: "Test Story".to_string(),
@@ -235,7 +238,10 @@ mod tests {
             }))
         }
 
-        async fn get_tasks_for_story(&self, _story_id: Uuid) -> Result<Vec<crate::application::ports::TaskInfo>, AppError> {
+        async fn get_tasks_for_story(
+            &self,
+            _story_id: Uuid,
+        ) -> Result<Vec<crate::application::ports::TaskInfo>, AppError> {
             Ok(vec![crate::application::ports::TaskInfo {
                 id: Uuid::new_v4(),
                 story_id: _story_id,
