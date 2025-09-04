@@ -53,7 +53,7 @@ jobs:
         
       - name: Security audit
         run: |
-          cargo install --version 0.20.0 cargo-audit
+          cargo install --version 0.21.2 cargo-audit
           cargo audit
           
       - name: License compliance check
