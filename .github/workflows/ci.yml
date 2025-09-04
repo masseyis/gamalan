@@ -61,7 +61,14 @@ jobs:
         sudo apt-get install -y postgresql-client bc jq
 
     - name: Install cargo-tarpaulin
-      run: cargo install --version 0.27.0 cargo-tarpaulin
+      run: |
+        curl -s https://api.github.com/repos/xd009642/tarpaulin/releases/latest \
+          | grep "browser_download_url.*x86_64-unknown-linux-musl.tar.gz" \
+          | cut -d : -f 2,3 \
+          | tr -d \" \
+          | wget -qi - -O tarpaulin.tar.gz
+        tar -xzf tarpaulin.tar.gz
+        sudo mv cargo-tarpaulin /usr/local/bin/
 
     - name: Quality Gate - Code Formatting
       run: |
