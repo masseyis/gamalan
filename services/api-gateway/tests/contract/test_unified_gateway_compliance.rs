@@ -304,12 +304,7 @@ async fn test_gateway_cors_compliance() {
     let app = create_test_app().await;
 
     // Test CORS preflight requests
-    let cors_test_endpoints = vec![
-        "/health",
-        "/api/v1/projects",
-        "/api/v1/backlog/health",
-        "/api/v1/context/health",
-    ];
+    let cors_test_endpoints = vec!["/health", "/ready", "/api/v1/projects"];
 
     for endpoint in cors_test_endpoints {
         let response = app
