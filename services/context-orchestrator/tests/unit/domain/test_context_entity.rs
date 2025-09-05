@@ -162,8 +162,8 @@ mod enum_tests {
         assert_eq!(variants.len(), 11);
 
         // Test Display trait
-        assert_eq!(IntentType::UpdateStatus.to_string(), "UpdateStatus");
-        assert_eq!(IntentType::Unknown.to_string(), "Unknown");
+        assert_eq!(IntentType::UpdateStatus.to_string(), "update_status");
+        assert_eq!(IntentType::Unknown.to_string(), "unknown");
     }
 
     #[test]
@@ -182,8 +182,8 @@ mod enum_tests {
         assert_eq!(variants.len(), 8);
 
         // Test Display trait
-        assert_eq!(ActionType::UpdateStatus.to_string(), "UpdateStatus");
-        assert_eq!(ActionType::Archive.to_string(), "Archive");
+        assert_eq!(ActionType::UpdateStatus.to_string(), "update_status");
+        assert_eq!(ActionType::Archive.to_string(), "archive");
     }
 
     #[test]
@@ -193,7 +193,7 @@ mod enum_tests {
         assert_eq!(variants.len(), 3);
 
         // Test Display trait
-        assert_eq!(RiskLevel::Low.to_string(), "Low");
-        assert_eq!(RiskLevel::High.to_string(), "High");
+        assert_eq!(RiskLevel::Low.to_string(), "low");
+        assert_eq!(RiskLevel::High.to_string(), "high");
     }
 }

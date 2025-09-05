@@ -186,8 +186,8 @@ mod enum_conversion_tests {
     #[test]
     fn test_intent_type_string_conversion() {
         // Test to_string (Display trait)
-        assert_eq!(IntentType::UpdateStatus.to_string(), "UpdateStatus");
-        assert_eq!(IntentType::AssignTask.to_string(), "AssignTask");
-        assert_eq!(IntentType::Unknown.to_string(), "Unknown");
+        assert_eq!(IntentType::UpdateStatus.to_string(), "update_status");
+        assert_eq!(IntentType::AssignTask.to_string(), "assign_task");
+        assert_eq!(IntentType::Unknown.to_string(), "unknown");
     }
 }
