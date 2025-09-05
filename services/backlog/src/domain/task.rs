@@ -18,6 +18,20 @@ impl Task {
         description: Option<String>,
         acceptance_criteria_refs: Vec<String>,
     ) -> Result<Self, AppError> {
+        // Validate title is not empty or whitespace-only
+        if title.trim().is_empty() {
+            return Err(AppError::BadRequest(
+                "Task title cannot be empty".to_string(),
+            ));
+        }
+
+        // Validate acceptance criteria refs vector is not empty
+        if acceptance_criteria_refs.is_empty() {
+            return Err(AppError::BadRequest(
+                "Task must have at least one acceptance criteria reference".to_string(),
+            ));
+        }
+
         // Validate AC refs are not empty strings
         for ac_ref in &acceptance_criteria_refs {
             if ac_ref.trim().is_empty() {
@@ -38,6 +52,13 @@ impl Task {
 
     #[allow(dead_code)]
     pub fn update_acceptance_criteria_refs(&mut self, refs: Vec<String>) -> Result<(), AppError> {
+        // Validate acceptance criteria refs vector is not empty
+        if refs.is_empty() {
+            return Err(AppError::BadRequest(
+                "Task must have at least one acceptance criteria reference".to_string(),
+            ));
+        }
+
         // Validate AC refs are not empty strings
         for ac_ref in &refs {
             if ac_ref.trim().is_empty() {

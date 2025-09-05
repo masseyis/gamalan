@@ -43,6 +43,10 @@ impl BacklogUsecases {
         self.story_repo.get_story(id).await
     }
 
+    pub async fn get_stories_by_project(&self, project_id: Uuid) -> Result<Vec<Story>, AppError> {
+        self.story_repo.get_stories_by_project(project_id).await
+    }
+
     pub async fn update_story(
         &self,
         id: Uuid,

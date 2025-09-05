@@ -14,7 +14,6 @@ use uuid::Uuid;
 
 #[derive(Debug, Deserialize)]
 pub struct CreateStoryRequest {
-    pub project_id: Uuid,
     pub title: String,
     pub description: Option<String>,
     pub labels: Option<Vec<String>>,
@@ -96,12 +95,13 @@ impl From<Task> for TaskResponse {
 
 pub async fn create_story(
     _auth: Authenticated,
+    Path(project_id): Path<Uuid>,
     State(usecases): State<Arc<BacklogUsecases>>,
     Json(payload): Json<CreateStoryRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let story_id = usecases
         .create_story(
-            payload.project_id,
+            project_id,
             payload.title,
             payload.description,
             payload.labels.unwrap_or_default(),
@@ -183,4 +183,19 @@ pub async fn delete_story(
 ) -> Result<impl IntoResponse, AppError> {
     usecases.delete_story(id).await?;
     Ok(StatusCode::OK)
+}
+
+pub async fn get_stories_by_project(
+    _auth: Authenticated,
+    Path(project_id): Path<Uuid>,
+    State(usecases): State<Arc<BacklogUsecases>>,
+) -> Result<impl IntoResponse, AppError> {
+    let stories = usecases.get_stories_by_project(project_id).await?;
+    let story_responses: Vec<StoryResponse> =
+        stories.into_iter().map(StoryResponse::from).collect();
+    Ok(Json(story_responses))
+}
+
+pub async fn health() -> impl IntoResponse {
+    "OK"
 }
