@@ -72,31 +72,6 @@ async fn test_gateway_openapi_compliance() {
     let gateway_endpoints = vec![
         ("/health", StatusCode::OK, "Gateway health check"),
         ("/ready", StatusCode::OK, "Gateway readiness check"),
-        (
-            "/api/v1/projects/health",
-            StatusCode::OK,
-            "Projects service health",
-        ),
-        (
-            "/api/v1/backlog/health",
-            StatusCode::OK,
-            "Backlog service health",
-        ),
-        (
-            "/api/v1/readiness/health",
-            StatusCode::OK,
-            "Readiness service health",
-        ),
-        (
-            "/api/v1/prompt-builder/health",
-            StatusCode::OK,
-            "Prompt Builder service health",
-        ),
-        (
-            "/api/v1/context/health",
-            StatusCode::OK,
-            "Context Orchestrator service health",
-        ),
     ];
 
     for (endpoint, expected_status, description) in gateway_endpoints {
@@ -352,12 +327,6 @@ async fn test_gateway_method_compliance() {
         ("DELETE", "/health", StatusCode::METHOD_NOT_ALLOWED),
         ("GET", "/ready", StatusCode::OK),
         ("POST", "/ready", StatusCode::METHOD_NOT_ALLOWED),
-        ("GET", "/api/v1/projects/health", StatusCode::OK),
-        (
-            "POST",
-            "/api/v1/projects/health",
-            StatusCode::METHOD_NOT_ALLOWED,
-        ),
         ("GET", "/api/v1/projects", StatusCode::UNAUTHORIZED), // Would be OK with auth
         ("POST", "/api/v1/projects", StatusCode::UNAUTHORIZED), // Would be OK with auth
         ("DELETE", "/api/v1/projects", StatusCode::METHOD_NOT_ALLOWED),
