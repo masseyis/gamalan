@@ -7,7 +7,7 @@ use http_body_util::BodyExt;
 use serde_json::json;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tower::ServiceExt;
+use tower::util::ServiceExt;
 use tower_http::{
     cors::{Any, CorsLayer},
     trace::TraceLayer,

@@ -1,7 +1,7 @@
 use axum::{http::StatusCode, response::IntoResponse};
 use http_body_util::BodyExt;
 use serde_json::{json, Value};
-use tower::ServiceExt;
+use tower::util::ServiceExt;
 
 use auth_clerk::Authenticated;
 

@@ -8,7 +8,7 @@ use serde_json::json;
 use sqlx::PgPool;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tower::ServiceExt;
+use tower::util::ServiceExt;
 use uuid::Uuid;
 
 use auth_clerk::JwtVerifier;
