@@ -16,6 +16,7 @@ pub async fn create_auth_router(
 
     shuttle_axum::axum::Router::new()
         .route("/clerk/webhooks", post(clerk_webhooks))
+        .route("/health", get(|| async { "OK" }))
         .route("/ready", get(ready))
         .layer(shuttle_axum::axum::Extension(user_usecases))
         .layer(shuttle_axum::axum::Extension(verifier))

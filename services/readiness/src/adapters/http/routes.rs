@@ -45,6 +45,7 @@ pub async fn create_readiness_router(
     ));
 
     shuttle_axum::axum::Router::new()
+        // Business endpoints
         .route("/readiness/{story_id}/evaluate", post(evaluate_readiness))
         .route("/criteria/{story_id}/generate", post(generate_criteria))
         .route("/criteria/{story_id}", get(get_criteria))

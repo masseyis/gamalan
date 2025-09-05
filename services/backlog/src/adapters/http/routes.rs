@@ -32,6 +32,7 @@ pub async fn create_backlog_router(
     ));
 
     shuttle_axum::axum::Router::new()
+        // Business endpoints
         .route("/stories", post(create_story))
         .route("/stories/{id}", get(get_story))
         .route("/stories/{id}", patch(update_story))
