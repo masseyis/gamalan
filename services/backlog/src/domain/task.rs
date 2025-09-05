@@ -71,11 +71,6 @@ impl Task {
         self.acceptance_criteria_refs = refs;
         Ok(())
     }
-
-    #[allow(dead_code)]
-    pub fn has_acceptance_criteria_coverage(&self) -> bool {
-        !self.acceptance_criteria_refs.is_empty()
-    }
 }
 
 #[cfg(test)]
@@ -96,7 +91,6 @@ mod tests {
         assert!(task.is_ok());
         let task = task.unwrap();
         assert_eq!(task.acceptance_criteria_refs, ac_refs);
-        assert!(task.has_acceptance_criteria_coverage());
     }
 
     #[test]
@@ -124,23 +118,5 @@ mod tests {
 
         assert!(result.is_ok());
         assert_eq!(task.acceptance_criteria_refs, new_refs);
-    }
-
-    #[test]
-    fn test_has_acceptance_criteria_coverage() {
-        let story_id = Uuid::new_v4();
-
-        let task_with_coverage = Task::new(
-            story_id,
-            "Test task".to_string(),
-            None,
-            vec!["AC1".to_string()],
-        )
-        .unwrap();
-        assert!(task_with_coverage.has_acceptance_criteria_coverage());
-
-        let task_without_coverage =
-            Task::new(story_id, "Test task".to_string(), None, vec![]).unwrap();
-        assert!(!task_without_coverage.has_acceptance_criteria_coverage());
     }
 }

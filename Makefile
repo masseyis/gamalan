@@ -1,7 +1,8 @@
 .PHONY: fmt lint build test test-unit test-int test-contract test-e2e coverage \
 		dev-up dev-down migrate deploy-all deploy-staging deploy-prod \
 		check-pr pre-push quality-gate canary-deploy rollback \
-		deploy-prompt-builder deploy-context-orchestrator install-hook
+		deploy-prompt-builder deploy-context-orchestrator install-hook \
+		install-hooks smart-test test-smart test-changed setup-dev
 
 fmt:
 	@echo "Running rustfmt..."
@@ -302,3 +303,58 @@ install-hook:
 	@echo "  - Run 'cargo fmt --all' and auto-stage formatting changes"
 	@echo "  - Run 'cargo clippy' with -D warnings and fail on issues"
 	@echo "  - Provide clear feedback during the commit process"
+
+# ==============================================================================
+# ENHANCED DEVELOPER WORKFLOW COMMANDS
+# ==============================================================================
+
+install-hooks:
+	@echo "Installing all git hooks for optimized workflow..."
+	@echo "1. Installing pre-commit hook (format + clippy)..."
+	@./install-pre-commit-hook.sh
+	@echo "2. Installing pre-push hook (tests + quality gates)..."
+	@chmod +x .git/hooks/pre-push
+	@echo "3. Making smart test runner executable..."
+	@chmod +x scripts/smart-test-runner.sh
+	@echo "✅ All git hooks installed successfully!"
+	@echo ""
+	@echo "Git hooks installed:"
+	@echo "  pre-commit: Format + clippy checks"
+	@echo "  pre-push: Unit tests + build verification"
+	@echo ""
+	@echo "Available commands:"
+	@echo "  make smart-test    - Run tests for changed components only"
+	@echo "  make test-smart    - Alias for smart-test"
+	@echo "  make test-changed  - Run tests with change detection"
+	@echo "  make setup-dev     - Complete development environment setup"
+
+smart-test:
+	@echo "Running smart test execution (tests only changed components)..."
+	@./scripts/smart-test-runner.sh
+
+test-smart: smart-test
+	# Alias for smart-test
+
+test-changed:
+	@echo "Running tests for components changed since last commit..."
+	@./scripts/smart-test-runner.sh --base-ref HEAD~1
+
+setup-dev:
+	@echo "Setting up complete development environment..."
+	@echo "1. Installing git hooks..."
+	@$(MAKE) install-hooks
+	@echo "2. Installing required tools..."
+	@cargo install sqlx-cli --no-default-features --features "postgres,uuid,tls-rustls" || echo "sqlx-cli already installed"
+	@cargo install cargo-tarpaulin --version 0.13.3 || echo "tarpaulin already installed"
+	@echo "3. Checking Rust toolchain..."
+	@rustup component add rustfmt clippy || echo "Components already installed"
+	@echo "4. Verifying git hooks..."
+	@ls -la .git/hooks/ | grep -E "(pre-commit|pre-push)"
+	@echo "✅ Development environment setup complete!"
+	@echo ""
+	@echo "Quick start:"
+	@echo "  make fmt          - Format code"
+	@echo "  make lint         - Run clippy"
+	@echo "  make smart-test   - Run smart tests"
+	@echo "  make test-unit    - Run all unit tests"
+	@echo "  make dev-up       - Start local services"

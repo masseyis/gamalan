@@ -104,6 +104,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history for smart test detection
         
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
@@ -123,9 +125,22 @@ jobs:
             ${{ runner.os }}-cargo-test-
             ${{ runner.os }}-cargo-
             
-      - name: Run unit tests
+      - name: Install jq for smart test runner
+        run: sudo apt-get update && sudo apt-get install -y jq
+        
+      - name: Run smart unit tests (optimized)
         run: |
-          cargo test --lib --workspace --verbose
+          # Make smart test runner executable
+          chmod +x scripts/smart-test-runner.sh
+          
+          # Try smart test execution first
+          if ./scripts/smart-test-runner.sh --base-ref origin/main; then
+            echo "✅ Smart test execution completed successfully"
+          else
+            echo "❌ Smart test execution failed, falling back to all tests"
+            echo "Running all unit tests as fallback..."
+            cargo test --lib --workspace --verbose
+          fi
           
       - name: Generate coverage report
         run: |

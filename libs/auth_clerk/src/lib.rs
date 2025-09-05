@@ -16,6 +16,7 @@ use tokio::sync::Mutex;
 pub struct JwtVerifier {
     jwks_cache: JwksCache,
     validation: Validation,
+    test_mode: bool,
 }
 
 impl JwtVerifier {
@@ -35,6 +36,22 @@ impl JwtVerifier {
         Self {
             jwks_cache: JwksCache::new(jwks_url),
             validation,
+            test_mode: false,
+        }
+    }
+
+    /// Creates a test verifier that accepts the token "valid-test-token"
+    /// for integration testing purposes. DO NOT use in production.
+    pub fn new_test_verifier() -> Self {
+        let mut validation = Validation::new(Algorithm::RS256);
+        validation.validate_exp = false;
+        validation.validate_aud = false;
+        validation.validate_nbf = false;
+
+        Self {
+            jwks_cache: JwksCache::new("test://invalid".to_string()),
+            validation,
+            test_mode: true,
         }
     }
 
@@ -48,6 +65,17 @@ impl JwtVerifier {
         token: &str,
         context: ErrorContext,
     ) -> Result<Claims, AppError> {
+        if self.test_mode && token == "valid-test-token" {
+            return Ok(Claims {
+                sub: "test-user".to_string(),
+                iss: "test-issuer".to_string(),
+                aud: None,
+                exp: 9999999999,
+                iat: 1000000000,
+                email: Some("test@example.com".to_string()),
+                orgs: Some(vec!["test-org".to_string()]),
+            });
+        }
         let header = decode_header(token).map_err(|e| {
             tracing::error!("Failed to decode JWT header: {}", e);
             AppError::UnauthorizedWithContext {

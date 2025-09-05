@@ -34,12 +34,8 @@ async fn setup_test_db() -> PgPool {
 async fn setup_app() -> Router {
     let pool = setup_test_db().await;
 
-    // Create a mock JWT verifier
-    let verifier = Arc::new(Mutex::new(JwtVerifier::new(
-        "https://test.jwks.url".to_string(),
-        "https://test-issuer".to_string(),
-        Some("test-audience".to_string()),
-    )));
+    // Create a test JWT verifier that accepts "valid-test-token"
+    let verifier = Arc::new(Mutex::new(JwtVerifier::new_test_verifier()));
 
     create_backlog_router(pool, verifier).await
 }
