@@ -30,7 +30,7 @@ impl BacklogUsecases {
         description: Option<String>,
         labels: Vec<String>,
     ) -> Result<Uuid, AppError> {
-        let mut story = Story::new(project_id, title, description);
+        let mut story = Story::new(project_id, title, description)?;
         for label in labels {
             story.add_label(label);
         }

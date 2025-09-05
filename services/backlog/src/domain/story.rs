@@ -44,15 +44,25 @@ pub struct Story {
 }
 
 impl Story {
-    pub fn new(project_id: Uuid, title: String, description: Option<String>) -> Self {
-        Self {
+    pub fn new(
+        project_id: Uuid,
+        title: String,
+        description: Option<String>,
+    ) -> Result<Self, common::AppError> {
+        if title.trim().is_empty() {
+            return Err(common::AppError::BadRequest(
+                "Story title cannot be empty".to_string(),
+            ));
+        }
+
+        Ok(Self {
             id: Uuid::new_v4(),
             project_id,
             title,
             description,
             status: StoryStatus::Ready,
             labels: Vec::new(),
-        }
+        })
     }
 
     pub fn update_status(&mut self, status: StoryStatus) {
