@@ -49,12 +49,48 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
+          
+      - name: Check previous run status
+        id: check_previous
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runs = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'main.yml',
+              branch: 'main',
+              per_page: 3
+            });
+            // Look for the previous run (not the current one)
+            const previousRun = runs.data.workflow_runs.find(run => run.id !== context.runId);
+            const failed = previousRun && previousRun.conclusion === 'failure';
+            console.log(`Previous run: ${previousRun?.id}, conclusion: ${previousRun?.conclusion}`);
+            core.setOutput('previous_failed', failed ? 'true' : 'false');
+            return failed;
+            
+      - name: Get last successful deployment
+        id: last_success
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Get the SHA of the last successful main workflow run
+          LAST_SUCCESS=$(gh run list --workflow=main.yml --status=success --limit=1 --json headSha -q '.[0].headSha' 2>/dev/null || echo "")
+          if [ -z "$LAST_SUCCESS" ]; then
+            # Fallback to HEAD~1 if no successful runs found
+            LAST_SUCCESS="HEAD~1"
+            echo "No previous successful deployment found, using HEAD~1"
+          else
+            echo "Last successful deployment: $LAST_SUCCESS"
+          fi
+          echo "last_success_sha=${LAST_SUCCESS}" >> $GITHUB_OUTPUT
           
       - name: Detect changes
         uses: dorny/paths-filter@v3
         id: changes
         with:
+          base: ${{ steps.last_success.outputs.last_success_sha }}
           filters: |
             backend:
               - 'services/**'
@@ -88,12 +124,30 @@ jobs:
       - name: Deployment decision
         id: decision
         run: |
-          if [ "${{ steps.changes.outputs.backend }}" == "true" ] || [ "${{ steps.changes.outputs.frontend }}" == "true" ]; then
+          backend_changed="${{ steps.changes.outputs.backend }}"
+          frontend_changed="${{ steps.changes.outputs.frontend }}"
+          previous_failed="${{ steps.check_previous.outputs.previous_failed }}"
+          is_manual="${{ github.event_name == 'workflow_dispatch' }}"
+          
+          echo "=== Deployment Decision Analysis ==="
+          echo "Backend changed: $backend_changed"
+          echo "Frontend changed: $frontend_changed"
+          echo "Previous run failed: $previous_failed"
+          echo "Manual trigger: $is_manual"
+          echo "=================================="
+          
+          if [ "$backend_changed" == "true" ] || [ "$frontend_changed" == "true" ] || [ "$previous_failed" == "true" ] || [ "$is_manual" == "true" ]; then
             echo "should_deploy=true" >> $GITHUB_OUTPUT
-            echo "✅ Changes detected - proceeding with deployment"
+            if [ "$previous_failed" == "true" ]; then
+              echo "✅ Deployment triggered - Recovering from previous failed run"
+            elif [ "$is_manual" == "true" ]; then
+              echo "✅ Deployment triggered - Manual workflow dispatch"
+            else
+              echo "✅ Deployment triggered - Changes detected (Backend: $backend_changed, Frontend: $frontend_changed)"
+            fi
           else
             echo "should_deploy=false" >> $GITHUB_OUTPUT
-            echo "ℹ️ No changes detected - skipping deployment"
+            echo "ℹ️ No deployment needed - No changes, no previous failure, not manual"
           fi
 
   # =============================================================================
@@ -114,20 +168,22 @@ jobs:
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.79
+          toolchain: 1.81
           override: true
           
-      - name: Cache dependencies
-        uses: actions/cache@v3
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-release-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-release-
-            ${{ runner.os }}-cargo-
+          shared-key: "rust-main-deploy"
+          cache-all-crates: "true"
+          
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.6
+        
+      - name: Configure sccache environment
+        run: |
+          echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
+          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
             
       - name: Build API Gateway
         run: |
