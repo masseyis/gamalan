@@ -360,21 +360,134 @@ jobs:
           toolchain: 1.85
           override: true
           
+      - name: Setup Node.js for OpenAPI tools
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
       - name: Install OpenAPI tools
         run: |
-          npm install -g @apidevtools/swagger-cli
-          curl -L https://github.com/stoplightio/spectral/releases/latest/download/spectral-linux -o spectral
-          chmod +x spectral
-          sudo mv spectral /usr/local/bin/
+          set -e  # Exit on any error
+          
+          echo "Installing OpenAPI validation tools..."
+          
+          # Clean npm cache to avoid potential corruption
+          npm cache clean --force
+          
+          # Install swagger-cli for basic OpenAPI validation
+          echo "Installing @apidevtools/swagger-cli..."
+          if ! npm install -g @apidevtools/swagger-cli; then
+            echo "❌ Failed to install swagger-cli via npm"
+            exit 1
+          fi
+          
+          # Install spectral via npm with explicit version for reliability
+          echo "Installing @stoplight/spectral-cli..."
+          if ! npm install -g @stoplight/spectral-cli@6.11.0; then
+            echo "❌ Failed to install spectral-cli via npm"
+            echo "Attempting alternative installation method..."
+            
+            # Fallback: try installing without specific version
+            if ! npm install -g @stoplight/spectral-cli; then
+              echo "❌ All spectral installation methods failed"
+              exit 1
+            fi
+          fi
+          
+          # Wait a moment for npm to finalize installations
+          sleep 2
+          
+          # Verify installations with detailed diagnostics
+          echo "Verifying tool installations..."
+          
+          echo "swagger-cli location and version:"
+          which swagger-cli || (echo "❌ swagger-cli not in PATH" && exit 1)
+          swagger-cli --version || (echo "❌ swagger-cli not working" && exit 1)
+          
+          echo "spectral location and version:"
+          which spectral || (echo "❌ spectral not in PATH" && exit 1)
+          
+          # Additional spectral verification - check if it's a proper binary
+          if [ ! -x "$(which spectral)" ]; then
+            echo "❌ spectral binary is not executable"
+            ls -la $(which spectral)
+            head -5 $(which spectral)
+            exit 1
+          fi
+          
+          # Test spectral command
+          if ! spectral --version; then
+            echo "❌ spectral command failed"
+            echo "spectral file contents:"
+            head -10 $(which spectral)
+            exit 1
+          fi
+          
+          echo "✅ All OpenAPI tools installed and verified successfully"
+          echo "Installed tools:"
+          echo "  - swagger-cli: $(swagger-cli --version)"
+          echo "  - spectral: $(spectral --version)"
           
       - name: Validate OpenAPI specifications
         run: |
-          find services -name "openapi.yaml" | while read -r spec; do
-            service=$(basename $(dirname $(dirname $spec)))
-            echo "Validating OpenAPI spec for $service"
-            swagger-cli validate "$spec"
-            spectral lint "$spec" --ruleset .spectral.yml
+          set -e  # Exit on any error
+          
+          # Re-verify tools are working before using them
+          echo "Pre-validation tool check..."
+          swagger-cli --version || (echo "❌ swagger-cli not available" && exit 1)
+          spectral --version || (echo "❌ spectral not available" && exit 1)
+          
+          # Check if we have any OpenAPI specs to validate
+          OPENAPI_SPECS=$(find services -name "openapi.yaml" -o -name "openapi.yml")
+          
+          if [ -z "$OPENAPI_SPECS" ]; then
+            echo "No OpenAPI specifications found to validate"
+            echo "Expected location: services/*/docs/openapi.yaml"
+            echo "This is acceptable for current project state"
+            exit 0
+          fi
+          
+          echo "Found OpenAPI specifications:"
+          echo "$OPENAPI_SPECS"
+          echo ""
+          
+          # Validate each found OpenAPI specification
+          echo "$OPENAPI_SPECS" | while read -r spec; do
+            if [ -f "$spec" ]; then
+              service=$(basename $(dirname $(dirname "$spec")))
+              echo "========================================"
+              echo "Validating OpenAPI spec for $service: $spec"
+              echo "========================================"
+              
+              # Basic structural validation with swagger-cli
+              echo "Running swagger-cli validation..."
+              if ! swagger-cli validate "$spec"; then
+                echo "❌ Swagger CLI validation failed for $spec"
+                exit 1
+              fi
+              echo "✅ Swagger CLI validation passed"
+              
+              # Lint with spectral (using built-in ruleset if custom .spectral.yml doesn't exist)
+              echo "Running spectral linting..."
+              if [ -f ".spectral.yml" ]; then
+                echo "Using custom spectral ruleset: .spectral.yml"
+                if ! spectral lint "$spec" --ruleset .spectral.yml --format stylish; then
+                  echo "❌ Spectral linting failed for $spec"
+                  exit 1
+                fi
+              else
+                echo "Using default spectral OpenAPI ruleset"
+                if ! spectral lint "$spec" --format stylish; then
+                  echo "❌ Spectral linting failed for $spec"
+                  exit 1
+                fi
+              fi
+              echo "✅ Spectral linting passed"
+              echo ""
+            fi
           done
+          
+          echo "✅ All OpenAPI specifications validated successfully"
           
       - name: Run contract tests
         run: |
