@@ -197,11 +197,21 @@ jobs:
           
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.6
+        continue-on-error: true
+        id: sccache-setup
         
       - name: Configure sccache environment
+        if: steps.sccache-setup.outcome == 'success'
         run: |
           echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
           echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
+          echo "✅ sccache enabled for build acceleration"
+          
+      - name: Fallback to standard compilation
+        if: steps.sccache-setup.outcome == 'failure'
+        run: |
+          echo "⚠️ sccache setup failed, continuing with standard compilation"
+          echo "Build will proceed without sccache acceleration"
             
       - name: Build API Gateway
         run: |
@@ -237,8 +247,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: apps/web/package-lock.json
           
       - name: Install pnpm
         uses: pnpm/action-setup@v4
