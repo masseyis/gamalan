@@ -152,7 +152,9 @@ impl ActionValidator {
         // Ensure all target entities exist in the candidate set
         for entity_id in &action.target_entities {
             if !candidates.iter().any(|c| c.id == *entity_id) {
-                return Err(AppError::NotFound("Entity not found".to_string()));
+                return Err(AppError::NotFound(
+                    "Entity not found in candidates".to_string(),
+                ));
             }
         }
         Ok(())
@@ -460,10 +462,8 @@ mod tests {
 
         let result = ActionValidator::validate_action(&action, &candidates);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Entity not found in candidates"));
+        let error_msg = result.unwrap_err().to_string();
+        assert!(error_msg.contains("Entity not found"));
     }
 
     #[test]

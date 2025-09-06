@@ -128,7 +128,9 @@ impl CandidateSelector {
         let context_lower = intent_context.to_lowercase();
 
         // Define type priorities based on context - only apply if context specifically mentions actions
-        let type_boosts = if context_lower.contains("ready") && context_lower.contains("story") {
+        let type_boosts = if (context_lower.contains("ready") && context_lower.contains("story"))
+            || (context_lower.contains("create") && context_lower.contains("story"))
+        {
             vec![(EntityType::Story, 0.15)]
         } else if context_lower.contains("assign") && context_lower.contains("task") {
             vec![(EntityType::Task, 0.15)]
