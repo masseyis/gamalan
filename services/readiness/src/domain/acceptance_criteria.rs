@@ -39,6 +39,7 @@ impl AcceptanceCriterion {
         })
     }
 
+    #[allow(dead_code)]
     pub fn update_content(
         &mut self,
         given: Option<String>,

@@ -1,6 +1,6 @@
 use crate::application::ports::{
-    AcceptanceCriterion, BacklogService, LlmService, PlanPackGeneration, PlanPackRepository,
-    ReadinessService, StoryInfo, TaskInfo, TaskPackGeneration, TaskPackRepository,
+    AcceptanceCriterion, BacklogService, LlmService, PlanPackRepository, ReadinessService,
+    TaskPackRepository,
 };
 use crate::domain::{
     AcceptanceCriteriaMap, AcceptanceCriterionCoverage, AcceptanceCriterionInfo, CommitPlan,
@@ -370,8 +370,11 @@ mod tests {
 
     #[async_trait]
     impl BacklogService for MockBacklogService {
-        async fn get_story_info(&self, story_id: Uuid) -> Result<Option<StoryInfo>, AppError> {
-            Ok(Some(StoryInfo {
+        async fn get_story_info(
+            &self,
+            story_id: Uuid,
+        ) -> Result<Option<crate::application::ports::StoryInfo>, AppError> {
+            Ok(Some(crate::application::ports::StoryInfo {
                 id: story_id,
                 title: "Test Story".to_string(),
                 description: Some("Test description".to_string()),
@@ -379,8 +382,11 @@ mod tests {
             }))
         }
 
-        async fn get_task_info(&self, task_id: Uuid) -> Result<Option<TaskInfo>, AppError> {
-            Ok(Some(TaskInfo {
+        async fn get_task_info(
+            &self,
+            task_id: Uuid,
+        ) -> Result<Option<crate::application::ports::TaskInfo>, AppError> {
+            Ok(Some(crate::application::ports::TaskInfo {
                 id: task_id,
                 story_id: Uuid::new_v4(),
                 title: "Test Task".to_string(),
@@ -423,10 +429,10 @@ mod tests {
     impl LlmService for MockLlmService {
         async fn generate_plan_pack(
             &self,
-            _story: &StoryInfo,
+            _story: &crate::application::ports::StoryInfo,
             _criteria: &[AcceptanceCriterion],
-        ) -> Result<PlanPackGeneration, AppError> {
-            Ok(PlanPackGeneration {
+        ) -> Result<crate::application::ports::PlanPackGeneration, AppError> {
+            Ok(crate::application::ports::PlanPackGeneration {
                 proposed_tasks: vec![crate::application::ports::ProposedTaskGeneration {
                     title: "Implement feature".to_string(),
                     description: "Add the main functionality".to_string(),
@@ -442,11 +448,11 @@ mod tests {
 
         async fn generate_task_pack(
             &self,
-            _task: &TaskInfo,
-            _story: &StoryInfo,
+            _task: &crate::application::ports::TaskInfo,
+            _story: &crate::application::ports::StoryInfo,
             _criteria: &[AcceptanceCriterion],
-        ) -> Result<TaskPackGeneration, AppError> {
-            Ok(TaskPackGeneration {
+        ) -> Result<crate::application::ports::TaskPackGeneration, AppError> {
+            Ok(crate::application::ports::TaskPackGeneration {
                 objectives: "Complete the task".to_string(),
                 non_goals: vec!["Don't break existing functionality".to_string()],
                 file_paths: vec!["src/handlers.rs".to_string()],

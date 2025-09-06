@@ -4,29 +4,26 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 #[cfg(test)]
+fn create_test_candidate(title: &str, similarity_score: f32, tenant_id: Uuid) -> CandidateEntity {
+    CandidateEntity {
+        id: Uuid::new_v4(),
+        tenant_id,
+        entity_type: "story".to_string(),
+        title: title.to_string(),
+        description: Some(format!("Description for {}", title)),
+        status: Some("ready".to_string()),
+        priority: Some(1),
+        tags: vec![],
+        metadata: HashMap::new(),
+        similarity_score,
+        last_updated: Utc::now(),
+        created_at: Utc::now(),
+    }
+}
+
+#[cfg(test)]
 mod candidate_selector_tests {
     use super::*;
-
-    fn create_test_candidate(
-        title: &str,
-        similarity_score: f32,
-        tenant_id: Uuid,
-    ) -> CandidateEntity {
-        CandidateEntity {
-            id: Uuid::new_v4(),
-            tenant_id,
-            entity_type: "story".to_string(),
-            title: title.to_string(),
-            description: Some(format!("Description for {}", title)),
-            status: Some("ready".to_string()),
-            priority: Some(1),
-            tags: vec![],
-            metadata: HashMap::new(),
-            similarity_score,
-            last_updated: Utc::now(),
-            created_at: Utc::now(),
-        }
-    }
 
     #[test]
     fn test_filter_by_tenant_single_tenant() {
@@ -102,7 +99,7 @@ mod candidate_selector_tests {
         let tenant_id = Uuid::new_v4();
 
         // Create candidates where exact title match has lower similarity
-        let mut exact_match = create_test_candidate("Update Story", 0.5, tenant_id);
+        let exact_match = create_test_candidate("Update Story", 0.5, tenant_id);
         let partial_match = create_test_candidate("Story Update Process", 0.7, tenant_id);
         let no_match = create_test_candidate("Different Title", 0.9, tenant_id);
 

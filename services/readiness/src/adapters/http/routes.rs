@@ -7,7 +7,7 @@ use crate::adapters::persistence::{
 };
 use crate::application::ReadinessUsecases;
 use auth_clerk::JwtVerifier;
-use axum::routing::{get, post};
+use shuttle_axum::axum::routing::{get, post};
 use sqlx::PgPool;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -15,7 +15,7 @@ use tokio::sync::Mutex;
 pub async fn create_readiness_router(
     pool: PgPool,
     verifier: Arc<Mutex<JwtVerifier>>,
-) -> axum::routing::Router {
+) -> shuttle_axum::axum::Router {
     // Initialize repositories
     let criteria_repo = Arc::new(SqlAcceptanceCriteriaRepository::new(pool.clone()));
     let readiness_repo = Arc::new(SqlReadinessEvaluationRepository::new(pool.clone()));
@@ -44,11 +44,12 @@ pub async fn create_readiness_router(
         llm_service,
     ));
 
-    axum::routing::Router::new()
-        .route("/readiness/:story_id/evaluate", post(evaluate_readiness))
-        .route("/criteria/:story_id/generate", post(generate_criteria))
-        .route("/criteria/:story_id", get(get_criteria))
-        .route("/criteria/:story_id", post(add_criteria))
+    shuttle_axum::axum::Router::new()
+        // Business endpoints
+        .route("/readiness/{story_id}/evaluate", post(evaluate_readiness))
+        .route("/criteria/{story_id}/generate", post(generate_criteria))
+        .route("/criteria/{story_id}", get(get_criteria))
+        .route("/criteria/{story_id}", post(add_criteria))
         .with_state(usecases)
-        .layer(axum::Extension(verifier))
+        .layer(shuttle_axum::axum::Extension(verifier))
 }

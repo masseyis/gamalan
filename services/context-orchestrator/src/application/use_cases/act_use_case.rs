@@ -55,7 +55,7 @@ impl ActUseCase {
         user_id: Uuid,
         tenant_id: Uuid,
         action_command: ActionCommand,
-        session_token: Option<Uuid>,
+        _session_token: Option<Uuid>,
         confirmed: bool,
     ) -> Result<ActResult, AppError> {
         let start_time = Instant::now();
@@ -77,7 +77,7 @@ impl ActUseCase {
 
         // 3. Execute the action based on type
         let mut results = Vec::new();
-        let mut overall_success = true;
+        let overall_success;
 
         match action_command.action_type {
             ActionType::UpdateStatus => {
@@ -174,8 +174,8 @@ impl ActUseCase {
 
     async fn get_candidates_for_entities(
         &self,
-        tenant_id: Uuid,
-        entity_ids: &[Uuid],
+        _tenant_id: Uuid,
+        _entity_ids: &[Uuid],
     ) -> Result<Vec<crate::domain::CandidateEntity>, AppError> {
         // For validation purposes, we need to fetch the entities
         // In a real implementation, this might use a different query
@@ -326,8 +326,8 @@ impl ActUseCase {
 
     async fn execute_create_story(
         &self,
-        tenant_id: Uuid,
-        action: &ActionCommand,
+        _tenant_id: Uuid,
+        _action: &ActionCommand,
     ) -> Result<ActionResult, AppError> {
         // Similar to create_task but for stories
         // This would involve more complex story creation logic
@@ -436,12 +436,12 @@ impl ActUseCase {
 
     async fn execute_archive(
         &self,
-        tenant_id: Uuid,
+        _tenant_id: Uuid,
         action: &ActionCommand,
     ) -> Result<ActionResult, AppError> {
         // Archive entities (high-risk operation)
         let mut affected_entities = Vec::new();
-        let mut success = true;
+        let success = true;
         let mut messages = Vec::new();
 
         for &entity_id in &action.target_entities {
@@ -461,7 +461,7 @@ impl ActUseCase {
 
     async fn execute_add_comment(
         &self,
-        tenant_id: Uuid,
+        _tenant_id: Uuid,
         action: &ActionCommand,
     ) -> Result<ActionResult, AppError> {
         let comment = action
@@ -471,7 +471,7 @@ impl ActUseCase {
             .ok_or_else(|| AppError::BadRequest("Missing comment parameter".to_string()))?;
 
         let mut affected_entities = Vec::new();
-        let mut success = true;
+        let success = true;
         let mut messages = Vec::new();
 
         for &entity_id in &action.target_entities {

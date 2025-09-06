@@ -1,0 +1,4 @@
+[advisories]
+# Allow RSA vulnerability since we don't use MySQL in production (PostgreSQL only)
+# The rsa crate vulnerability affects mysql connections which we don't use
+ignore = ["RUSTSEC-2023-0071"]

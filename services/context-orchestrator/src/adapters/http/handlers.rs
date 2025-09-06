@@ -1,9 +1,13 @@
-use axum::response::Json;
-use axum::{routing::post, Router};
 use common::AppError;
+use shuttle_axum::axum::response::Json;
+use shuttle_axum::axum::{routing::post, Router};
 // use crate::AppState; // Comment out since AppState is in main.rs
+use auth_clerk::JwtVerifier;
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
 use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 use uuid::Uuid;
 
 #[derive(Debug, Deserialize)]
@@ -97,8 +101,22 @@ pub fn create_routes() -> Router {
     Router::new()
         .route("/interpret", post(interpret_handler))
         .route("/act", post(act_handler))
-        .route("/health", axum::routing::get(health_handler))
-        .route("/ready", axum::routing::get(ready_handler))
+        .route("/ready", shuttle_axum::axum::routing::get(ready_handler))
+}
+
+pub async fn create_context_orchestrator_router(
+    _pool: PgPool,
+    verifier: Arc<Mutex<JwtVerifier>>,
+) -> shuttle_axum::axum::Router {
+    // TODO: Initialize repositories and use cases when they're implemented
+    // For now, use the basic route structure
+
+    Router::new()
+        .route("/interpret", post(interpret_handler))
+        .route("/act", post(act_handler))
+        .layer(shuttle_axum::axum::Extension(verifier))
+    // TODO: Add state with use cases when implemented
+    // .with_state(usecases)
 }
 
 pub async fn interpret_handler(
@@ -169,14 +187,6 @@ pub async fn act_handler(
     Ok(Json(response))
 }
 
-pub async fn health_handler() -> Result<Json<serde_json::Value>, AppError> {
-    Ok(Json(serde_json::json!({
-        "status": "healthy",
-        "service": "context-orchestrator",
-        "timestamp": chrono::Utc::now().to_rfc3339()
-    })))
-}
-
 pub async fn ready_handler() -> Result<Json<serde_json::Value>, AppError> {
     // Stub implementation for testing - would normally check actual dependencies
     let db_healthy = true;
@@ -193,34 +203,6 @@ pub async fn ready_handler() -> Result<Json<serde_json::Value>, AppError> {
         },
         "timestamp": chrono::Utc::now().to_rfc3339()
     })))
-}
-
-// Extension trait for converting domain enums to/from strings
-impl crate::domain::ActionType {
-    pub fn from_string(s: &str) -> Result<Self, AppError> {
-        match s {
-            "update_status" => Ok(Self::UpdateStatus),
-            "assign_user" => Ok(Self::AssignUser),
-            "update_priority" => Ok(Self::UpdatePriority),
-            "add_comment" => Ok(Self::AddComment),
-            "create_task" => Ok(Self::CreateTask),
-            "create_story" => Ok(Self::CreateStory),
-            "move_to_sprint" => Ok(Self::MoveToSprint),
-            "archive" => Ok(Self::Archive),
-            _ => Err(AppError::BadRequest(format!("Unknown action type: {}", s))),
-        }
-    }
-}
-
-impl crate::domain::RiskLevel {
-    pub fn from_string(s: &str) -> Result<Self, AppError> {
-        match s {
-            "low" => Ok(Self::Low),
-            "medium" => Ok(Self::Medium),
-            "high" => Ok(Self::High),
-            _ => Err(AppError::BadRequest(format!("Unknown risk level: {}", s))),
-        }
-    }
 }
 
 #[cfg(test)]

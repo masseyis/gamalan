@@ -3,7 +3,8 @@ use crate::domain::CandidateEntity;
 use async_openai::{
     types::{
         ChatCompletionRequestMessage, ChatCompletionRequestSystemMessage,
-        ChatCompletionRequestUserMessage, CreateChatCompletionRequest,
+        ChatCompletionRequestSystemMessageContent, ChatCompletionRequestUserMessage,
+        CreateChatCompletionRequest,
     },
     Client as OpenAIClient,
 };
@@ -206,7 +207,7 @@ impl LlmClient for OpenAILlmClient {
         // Direct implementation - can add retry logic back later
         let messages = vec![
             ChatCompletionRequestMessage::System(ChatCompletionRequestSystemMessage {
-                content: system_prompt.to_string(),
+                content: ChatCompletionRequestSystemMessageContent::Text(system_prompt.to_string()),
                 name: None,
             }),
             ChatCompletionRequestMessage::User(ChatCompletionRequestUserMessage {
@@ -215,11 +216,13 @@ impl LlmClient for OpenAILlmClient {
             }),
         ];
 
+        #[allow(deprecated)]
         let _request = CreateChatCompletionRequest {
             model: self.chat_model.clone(),
             messages,
             temperature: Some(0.1), // Low temperature for consistent parsing
-            max_tokens: Some(500),
+            max_tokens: Some(500),  // Keep deprecated field until OpenAI client updates
+            max_completion_tokens: None,
             top_p: None,
             n: None,
             stop: None,
@@ -235,9 +238,17 @@ impl LlmClient for OpenAILlmClient {
             top_logprobs: None,
             stream: None,
             parallel_tool_calls: None,
+            audio: None,
+            metadata: None,
+            modalities: None,
+            prediction: None,
+            service_tier: None,
             stream_options: None,
-            function_call: None,
-            functions: None,
+            function_call: None, // Keep deprecated field for now
+            functions: None,     // Keep deprecated field for now
+            reasoning_effort: None,
+            store: None,
+            web_search_options: None,
         };
 
         // TODO: Fix OpenAI API integration - using fallback for now

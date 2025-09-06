@@ -58,7 +58,39 @@ impl CandidateSelector {
     }
 
     fn apply_context_boost(candidates: &mut [CandidateEntity], intent_context: &str) {
-        let context_lower = intent_context.to_lowercase();
+        let context_lower = intent_context.to_lowercase().trim().to_string();
+
+        // Skip boost if context is just a single generic term like "story" or empty
+        if context_lower.is_empty()
+            || context_lower == "story"
+            || context_lower == "task"
+            || context_lower == "project"
+        {
+            return;
+        }
+
+        // First check for exact title matches and apply strong boost
+        let context_words: Vec<&str> = context_lower.split_whitespace().collect();
+        if context_words.len() > 1 {
+            for candidate in candidates.iter_mut() {
+                let title_lower = candidate.title.to_lowercase();
+
+                // Check for exact title match (title contains all context words in order)
+                if title_lower == context_lower {
+                    candidate.similarity_score += 0.5; // Strong boost for exact matches
+                    candidate.similarity_score = candidate.similarity_score.min(1.0);
+                    continue;
+                }
+
+                // Check if all context words are in title
+                if context_words.iter().all(|word| title_lower.contains(word)) {
+                    candidate.similarity_score += 0.2; // Moderate boost for contains all words
+                    candidate.similarity_score = candidate.similarity_score.min(1.0);
+                    continue;
+                }
+            }
+        }
+
         let boost_keywords = vec![
             ("ready", 0.1),
             ("progress", 0.1),
@@ -68,8 +100,6 @@ impl CandidateSelector {
             ("delete", 0.15),
             ("move", 0.1),
             ("plan", 0.2),
-            ("task", 0.1),
-            ("story", 0.1),
         ];
 
         for candidate in candidates.iter_mut() {
@@ -97,17 +127,19 @@ impl CandidateSelector {
     fn apply_type_priority(candidates: &mut [CandidateEntity], intent_context: &str) {
         let context_lower = intent_context.to_lowercase();
 
-        // Define type priorities based on context
-        let type_boosts = if context_lower.contains("story") || context_lower.contains("ready") {
+        // Define type priorities based on context - only apply if context specifically mentions actions
+        let type_boosts = if (context_lower.contains("ready") && context_lower.contains("story"))
+            || (context_lower.contains("create") && context_lower.contains("story"))
+        {
             vec![(EntityType::Story, 0.15)]
-        } else if context_lower.contains("task") {
+        } else if context_lower.contains("assign") && context_lower.contains("task") {
             vec![(EntityType::Task, 0.15)]
-        } else if context_lower.contains("project") {
+        } else if context_lower.contains("create") && context_lower.contains("project") {
             vec![(EntityType::Project, 0.15)]
         } else if context_lower.contains("plan") {
             vec![(EntityType::PlanPack, 0.2), (EntityType::TaskPack, 0.15)]
         } else {
-            vec![] // No type priority
+            vec![] // No type priority for simple entity type mentions
         };
 
         for candidate in candidates.iter_mut() {

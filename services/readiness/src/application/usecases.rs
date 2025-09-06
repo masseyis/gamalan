@@ -1,6 +1,5 @@
 use crate::application::ports::{
-    AcceptanceCriteriaRepository, LlmService, ReadinessEvaluationRepository, StoryInfo,
-    StoryService, TaskInfo,
+    AcceptanceCriteriaRepository, LlmService, ReadinessEvaluationRepository, StoryService,
 };
 use crate::domain::{AcceptanceCriterion, ReadinessCheck, ReadinessEvaluation};
 use common::AppError;
@@ -125,6 +124,7 @@ impl ReadinessUsecases {
         Ok(new_criteria)
     }
 
+    #[allow(dead_code)]
     pub async fn validate_acceptance_criteria_refs(
         &self,
         story_id: Uuid,
@@ -227,16 +227,22 @@ mod tests {
 
     #[async_trait]
     impl StoryService for MockStoryService {
-        async fn get_story_info(&self, story_id: Uuid) -> Result<Option<StoryInfo>, AppError> {
-            Ok(Some(StoryInfo {
+        async fn get_story_info(
+            &self,
+            story_id: Uuid,
+        ) -> Result<Option<crate::application::ports::StoryInfo>, AppError> {
+            Ok(Some(crate::application::ports::StoryInfo {
                 id: story_id,
                 title: "Test Story".to_string(),
                 description: Some("Test description".to_string()),
             }))
         }
 
-        async fn get_tasks_for_story(&self, _story_id: Uuid) -> Result<Vec<TaskInfo>, AppError> {
-            Ok(vec![TaskInfo {
+        async fn get_tasks_for_story(
+            &self,
+            _story_id: Uuid,
+        ) -> Result<Vec<crate::application::ports::TaskInfo>, AppError> {
+            Ok(vec![crate::application::ports::TaskInfo {
                 id: Uuid::new_v4(),
                 story_id: _story_id,
                 title: "Test Task".to_string(),
@@ -251,7 +257,7 @@ mod tests {
     impl LlmService for MockLlmService {
         async fn generate_acceptance_criteria(
             &self,
-            story_info: &StoryInfo,
+            story_info: &crate::application::ports::StoryInfo,
         ) -> Result<Vec<AcceptanceCriterion>, AppError> {
             Ok(vec![AcceptanceCriterion::new(
                 story_info.id,
@@ -265,7 +271,7 @@ mod tests {
 
     fn setup_usecases() -> ReadinessUsecases {
         let criteria_repo = Arc::new(MockAcceptanceCriteriaRepository::default());
-        let readiness_repo = Arc::new(MockReadinessEvaluationRepository::default());
+        let readiness_repo = Arc::new(MockReadinessEvaluationRepository);
         let story_service = Arc::new(MockStoryService);
         let llm_service = Arc::new(MockLlmService);
 

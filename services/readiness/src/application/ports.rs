@@ -10,8 +10,11 @@ pub trait AcceptanceCriteriaRepository: Send + Sync {
         &self,
         story_id: Uuid,
     ) -> Result<Vec<AcceptanceCriterion>, AppError>;
+    #[allow(dead_code)]
     async fn update_criterion(&self, criterion: &AcceptanceCriterion) -> Result<(), AppError>;
+    #[allow(dead_code)]
     async fn delete_criteria_by_story(&self, story_id: Uuid) -> Result<(), AppError>;
+    #[allow(dead_code)]
     async fn get_criterion_by_story_and_ac_id(
         &self,
         story_id: Uuid,
@@ -22,6 +25,7 @@ pub trait AcceptanceCriteriaRepository: Send + Sync {
 #[async_trait]
 pub trait ReadinessEvaluationRepository: Send + Sync {
     async fn save_evaluation(&self, eval: &ReadinessEvaluation) -> Result<(), AppError>;
+    #[allow(dead_code)]
     async fn get_latest_evaluation(
         &self,
         story_id: Uuid,
@@ -43,8 +47,11 @@ pub struct StoryInfo {
 
 #[derive(Debug, Clone)]
 pub struct TaskInfo {
+    #[allow(dead_code)]
     pub id: Uuid,
+    #[allow(dead_code)]
     pub story_id: Uuid,
+    #[allow(dead_code)]
     pub title: String,
     pub acceptance_criteria_refs: Vec<String>,
 }

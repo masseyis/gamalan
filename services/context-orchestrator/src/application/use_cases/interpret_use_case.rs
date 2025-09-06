@@ -157,7 +157,7 @@ impl InterpretUseCase {
     }
 
     async fn update_rate_limit(&self, user_id: Uuid) -> Result<(), AppError> {
-        let now = Utc::now();
+        let _now = Utc::now();
         let bucket = self
             .rate_limit_repo
             .get_rate_limit_bucket(user_id, "interpret")

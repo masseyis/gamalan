@@ -1,5 +1,5 @@
 use anyhow::Context;
-use axum::{routing::get, Router};
+use shuttle_axum::axum::{routing::get, Router};
 use shuttle_axum::ShuttleAxum;
 use shuttle_shared_db::Postgres;
 use sqlx::PgPool;
@@ -51,6 +51,9 @@ async fn main(
     let readiness_router = readiness::create_readiness_router(pool.clone(), verifier.clone()).await;
     let prompt_builder_router =
         prompt_builder::create_prompt_builder_router(pool.clone(), verifier.clone()).await;
+    let context_orchestrator_router =
+        context_orchestrator::create_context_orchestrator_router(pool.clone(), verifier.clone())
+            .await;
 
     // Create unified router with path-based routing
     let app = Router::new()
@@ -63,6 +66,7 @@ async fn main(
         .nest("/api/v1", backlog_router)
         .nest("/api/v1", readiness_router)
         .nest("/api/v1", prompt_builder_router)
+        .nest("/api/v1/context", context_orchestrator_router)
         // Add CORS and tracing
         .layer(
             CorsLayer::new()

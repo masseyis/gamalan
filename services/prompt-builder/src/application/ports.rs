@@ -7,6 +7,7 @@ use uuid::Uuid;
 #[async_trait]
 pub trait PlanPackRepository: Send + Sync {
     async fn save_plan_pack(&self, plan_pack: &PlanPack) -> Result<(), AppError>;
+    #[allow(dead_code)]
     async fn get_plan_pack(&self, id: Uuid) -> Result<Option<PlanPack>, AppError>;
     async fn get_plan_pack_by_story(&self, story_id: Uuid) -> Result<Option<PlanPack>, AppError>;
     async fn delete_plan_pack(&self, id: Uuid) -> Result<(), AppError>;
@@ -15,6 +16,7 @@ pub trait PlanPackRepository: Send + Sync {
 #[async_trait]
 pub trait TaskPackRepository: Send + Sync {
     async fn save_task_pack(&self, task_pack: &TaskPack) -> Result<(), AppError>;
+    #[allow(dead_code)]
     async fn get_task_pack(&self, id: Uuid) -> Result<Option<TaskPack>, AppError>;
     async fn get_task_pack_by_task(&self, task_id: Uuid) -> Result<Option<TaskPack>, AppError>;
     async fn delete_task_pack(&self, id: Uuid) -> Result<(), AppError>;

@@ -134,6 +134,22 @@ impl std::fmt::Display for ActionType {
     }
 }
 
+impl ActionType {
+    pub fn from_string(s: &str) -> Result<Self, AppError> {
+        match s {
+            "update_status" => Ok(Self::UpdateStatus),
+            "assign_user" => Ok(Self::AssignUser),
+            "update_priority" => Ok(Self::UpdatePriority),
+            "add_comment" => Ok(Self::AddComment),
+            "create_task" => Ok(Self::CreateTask),
+            "create_story" => Ok(Self::CreateStory),
+            "move_to_sprint" => Ok(Self::MoveToSprint),
+            "archive" => Ok(Self::Archive),
+            _ => Err(AppError::BadRequest(format!("Invalid action type: {}", s))),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd, Ord, Eq)]
 pub enum RiskLevel {
     Low,
@@ -147,6 +163,17 @@ impl std::fmt::Display for RiskLevel {
             Self::Low => write!(f, "low"),
             Self::Medium => write!(f, "medium"),
             Self::High => write!(f, "high"),
+        }
+    }
+}
+
+impl RiskLevel {
+    pub fn from_string(s: &str) -> Result<Self, AppError> {
+        match s {
+            "low" => Ok(Self::Low),
+            "medium" => Ok(Self::Medium),
+            "high" => Ok(Self::High),
+            _ => Err(AppError::BadRequest(format!("Invalid risk level: {}", s))),
         }
     }
 }
@@ -179,10 +206,14 @@ impl IntentRecord {
         service_confidence: f32,
         candidates_considered: Vec<Uuid>,
     ) -> Self {
-        let utterance_hash = sha2::Sha256::digest(utterance.as_bytes())
-            .iter()
-            .map(|b| format!("{:02x}", b))
-            .collect();
+        let utterance_hash = sha2::Sha256::digest(utterance.as_bytes()).iter().fold(
+            String::new(),
+            |mut output, b| {
+                use std::fmt::Write;
+                let _ = write!(output, "{:02x}", b);
+                output
+            },
+        );
 
         Self {
             id: Uuid::new_v4(),
@@ -200,8 +231,12 @@ impl IntentRecord {
 
 impl ActionCommand {
     pub fn validate(&self) -> Result<(), AppError> {
-        // Basic validation
-        if self.target_entities.is_empty() {
+        // Create actions don't require target entities
+        if !matches!(
+            self.action_type,
+            ActionType::CreateTask | ActionType::CreateStory
+        ) && self.target_entities.is_empty()
+        {
             return Err(AppError::BadRequest(
                 "No target entities specified".to_string(),
             ));

@@ -4,3 +4,6 @@
 pub mod adapters;
 pub mod application;
 pub mod domain;
+
+// Re-export the router creation function for api-gateway integration
+pub use adapters::http::handlers::create_context_orchestrator_router;

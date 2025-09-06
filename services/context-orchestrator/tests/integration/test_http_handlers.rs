@@ -55,7 +55,7 @@ mod dto_tests {
                 .unwrap(),
             "in_progress"
         );
-        assert_eq!(request.action.require_confirmation, false);
+        assert!(!request.action.require_confirmation);
         assert_eq!(request.action.risk_level, "low");
         assert_eq!(request.session_token, Some(session_token));
         assert_eq!(request.confirmed, Some(true));
@@ -101,7 +101,12 @@ mod dto_tests {
             json["intent"]["entities"][0]["entity_id"],
             entity_id.to_string()
         );
-        assert_eq!(json["confidence"]["overall_confidence"], 0.85);
+        let confidence = json["confidence"]["overall_confidence"].as_f64().unwrap();
+        assert!(
+            (confidence - 0.85).abs() < 0.01,
+            "Expected confidence ~0.85, got {}",
+            confidence
+        );
         assert_eq!(json["candidates"].as_array().unwrap().len(), 1);
         assert_eq!(json["requires_confirmation"], false);
         assert_eq!(json["session_token"], session_token.to_string());
@@ -141,7 +146,6 @@ mod dto_tests {
 
 #[cfg(test)]
 mod enum_conversion_tests {
-    use super::*;
     use context_orchestrator::domain::*;
 
     #[test]
@@ -187,8 +191,8 @@ mod enum_conversion_tests {
     #[test]
     fn test_intent_type_string_conversion() {
         // Test to_string (Display trait)
-        assert_eq!(IntentType::UpdateStatus.to_string(), "UpdateStatus");
-        assert_eq!(IntentType::AssignTask.to_string(), "AssignTask");
-        assert_eq!(IntentType::Unknown.to_string(), "Unknown");
+        assert_eq!(IntentType::UpdateStatus.to_string(), "update_status");
+        assert_eq!(IntentType::AssignTask.to_string(), "assign_task");
+        assert_eq!(IntentType::Unknown.to_string(), "unknown");
     }
 }

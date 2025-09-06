@@ -48,6 +48,7 @@ impl From<TaskRow> for Task {
 
 #[derive(Debug, FromRow)]
 pub struct LabelRow {
+    #[allow(dead_code)]
     pub id: Uuid,
     pub name: String,
 }

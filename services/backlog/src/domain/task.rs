@@ -18,6 +18,20 @@ impl Task {
         description: Option<String>,
         acceptance_criteria_refs: Vec<String>,
     ) -> Result<Self, AppError> {
+        // Validate title is not empty or whitespace-only
+        if title.trim().is_empty() {
+            return Err(AppError::BadRequest(
+                "Task title cannot be empty".to_string(),
+            ));
+        }
+
+        // Validate acceptance criteria refs vector is not empty
+        if acceptance_criteria_refs.is_empty() {
+            return Err(AppError::BadRequest(
+                "Task must have at least one acceptance criteria reference".to_string(),
+            ));
+        }
+
         // Validate AC refs are not empty strings
         for ac_ref in &acceptance_criteria_refs {
             if ac_ref.trim().is_empty() {
@@ -36,7 +50,15 @@ impl Task {
         })
     }
 
+    #[allow(dead_code)]
     pub fn update_acceptance_criteria_refs(&mut self, refs: Vec<String>) -> Result<(), AppError> {
+        // Validate acceptance criteria refs vector is not empty
+        if refs.is_empty() {
+            return Err(AppError::BadRequest(
+                "Task must have at least one acceptance criteria reference".to_string(),
+            ));
+        }
+
         // Validate AC refs are not empty strings
         for ac_ref in &refs {
             if ac_ref.trim().is_empty() {
@@ -48,10 +70,6 @@ impl Task {
 
         self.acceptance_criteria_refs = refs;
         Ok(())
-    }
-
-    pub fn has_acceptance_criteria_coverage(&self) -> bool {
-        !self.acceptance_criteria_refs.is_empty()
     }
 }
 
@@ -73,7 +91,6 @@ mod tests {
         assert!(task.is_ok());
         let task = task.unwrap();
         assert_eq!(task.acceptance_criteria_refs, ac_refs);
-        assert!(task.has_acceptance_criteria_coverage());
     }
 
     #[test]
@@ -101,23 +118,5 @@ mod tests {
 
         assert!(result.is_ok());
         assert_eq!(task.acceptance_criteria_refs, new_refs);
-    }
-
-    #[test]
-    fn test_has_acceptance_criteria_coverage() {
-        let story_id = Uuid::new_v4();
-
-        let task_with_coverage = Task::new(
-            story_id,
-            "Test task".to_string(),
-            None,
-            vec!["AC1".to_string()],
-        )
-        .unwrap();
-        assert!(task_with_coverage.has_acceptance_criteria_coverage());
-
-        let task_without_coverage =
-            Task::new(story_id, "Test task".to_string(), None, vec![]).unwrap();
-        assert!(!task_without_coverage.has_acceptance_criteria_coverage());
     }
 }

@@ -30,7 +30,7 @@ impl BacklogUsecases {
         description: Option<String>,
         labels: Vec<String>,
     ) -> Result<Uuid, AppError> {
-        let mut story = Story::new(project_id, title, description);
+        let mut story = Story::new(project_id, title, description)?;
         for label in labels {
             story.add_label(label);
         }
@@ -41,6 +41,10 @@ impl BacklogUsecases {
 
     pub async fn get_story(&self, id: Uuid) -> Result<Option<Story>, AppError> {
         self.story_repo.get_story(id).await
+    }
+
+    pub async fn get_stories_by_project(&self, project_id: Uuid) -> Result<Vec<Story>, AppError> {
+        self.story_repo.get_stories_by_project(project_id).await
     }
 
     pub async fn update_story(
@@ -125,10 +129,12 @@ impl BacklogUsecases {
         self.task_repo.get_tasks_by_story(story_id).await
     }
 
+    #[allow(dead_code)]
     pub async fn get_task(&self, id: Uuid) -> Result<Option<Task>, AppError> {
         self.task_repo.get_task(id).await
     }
 
+    #[allow(dead_code)]
     pub async fn update_task(
         &self,
         id: Uuid,

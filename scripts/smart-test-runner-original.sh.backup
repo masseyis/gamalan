@@ -1,0 +1,322 @@
+#!/bin/bash
+
+# Smart Test Runner for Rust Monorepo
+# Detects changed components and runs only relevant tests
+# Optimizes test execution time while maintaining safety
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+print_status() {
+    echo -e "${BLUE}[SMART-TEST]${NC} $1"
+}
+
+print_success() {
+    echo -e "${GREEN}[SMART-TEST]${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}[SMART-TEST]${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}[SMART-TEST]${NC} $1"
+}
+
+# Configuration
+DEFAULT_BASE_REF="origin/main"
+FORCE_ALL_TESTS=false
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --base-ref)
+            BASE_REF="$2"
+            shift 2
+            ;;
+        --all)
+            FORCE_ALL_TESTS=true
+            shift
+            ;;
+        --help)
+            echo "Smart Test Runner for Rust Monorepo"
+            echo ""
+            echo "Usage: $0 [options]"
+            echo ""
+            echo "Options:"
+            echo "  --base-ref REF    Compare against specific ref (default: origin/main)"
+            echo "  --all            Force run all tests regardless of changes"
+            echo "  --help           Show this help message"
+            echo ""
+            echo "Examples:"
+            echo "  $0                    # Run tests for changed components"
+            echo "  $0 --all             # Run all tests"
+            echo "  $0 --base-ref HEAD~1  # Compare against previous commit"
+            exit 0
+            ;;
+        *)
+            print_error "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
+
+BASE_REF=${BASE_REF:-$DEFAULT_BASE_REF}
+
+print_status "Starting smart test execution..."
+print_status "Base reference: $BASE_REF"
+
+# ==============================================================================
+# HELPER FUNCTIONS
+# ==============================================================================
+
+# Function to get all workspace members (package name -> directory mapping)
+get_workspace_members() {
+    cargo metadata --format-version 1 --no-deps | \
+        jq -r '.packages[] | select(.source == null) | "\(.name):\(.manifest_path | sub("/Cargo.toml$"; ""))"' | \
+        sort | uniq
+}
+
+# Function to get package name from directory
+get_package_name_from_dir() {
+    local dir_path="$1"
+    cargo metadata --format-version 1 --no-deps | \
+        jq -r ".packages[] | select(.source == null and (.manifest_path | sub(\"/Cargo.toml$\"; \"\")) == \"$dir_path\") | .name"
+}
+
+# Function to get changed files since base ref
+get_changed_files() {
+    local base_ref="$1"
+    
+    # Check if base ref exists
+    if ! git rev-parse --verify "$base_ref" >/dev/null 2>&1; then
+        print_warning "Base ref '$base_ref' not found, falling back to staged files"
+        git diff --cached --name-only
+        return
+    fi
+    
+    # Get changed files
+    git diff --name-only "$base_ref"...HEAD
+}
+
+# Function to map changed files to affected crates
+get_affected_crates() {
+    local changed_files="$1"
+    local affected_crates=""
+    
+    # Get all workspace members
+    local workspace_members
+    workspace_members=$(get_workspace_members)
+    
+    print_status "Analyzing changed files to determine affected crates..."
+    
+    # Check each changed file
+    while IFS= read -r file; do
+        if [[ -z "$file" ]]; then
+            continue
+        fi
+        
+        print_status "  Analyzing: $file"
+        
+        # Check if it's a Rust file in a workspace member
+        if [[ "$file" =~ \.rs$ ]]; then
+            # Find which crate this file belongs to
+            local crate_path=""
+            while IFS= read -r member; do
+                local member_dir="${member%/*}"  # Remove package name, keep directory
+                if [[ "$file" == "$member_dir"/* ]]; then
+                    crate_path="$member_dir"
+                    break
+                fi
+            done <<< "$workspace_members"
+            
+            if [[ -n "$crate_path" ]]; then
+                print_status "    -> Affects crate: $crate_path"
+                if [[ "$affected_crates" != *"$crate_path"* ]]; then
+                    affected_crates="$affected_crates $crate_path"
+                fi
+            fi
+        fi
+        
+        # Check for workspace-level changes that affect everything
+        if [[ "$file" == "Cargo.toml" ]] || [[ "$file" == "Cargo.lock" ]]; then
+            print_warning "  -> Workspace-level change detected, will run all tests"
+            return 1  # Signal to run all tests
+        fi
+        
+        # Check for shared library changes
+        if [[ "$file" == libs/* ]]; then
+            print_warning "  -> Shared library change detected, will run all tests"
+            return 1  # Signal to run all tests
+        fi
+        
+    done <<< "$changed_files"
+    
+    echo "$affected_crates"
+    return 0
+}
+
+# Function to get dependent crates
+get_dependent_crates() {
+    local target_crate="$1"
+    local dependents=""
+    
+    # Get dependency graph
+    local metadata
+    metadata=$(cargo metadata --format-version 1)
+    
+    # Find crates that depend on the target crate
+    local target_id
+    target_id=$(echo "$metadata" | jq -r ".packages[] | select(.manifest_path | contains(\"$target_crate\")) | .id")
+    
+    if [[ -n "$target_id" ]]; then
+        dependents=$(echo "$metadata" | jq -r ".packages[] | select(.dependencies[]?.name == \"$(echo "$target_id" | cut -d' ' -f1)\") | .manifest_path" | \
+                    sed 's|/Cargo.toml||' | sort | uniq)
+    fi
+    
+    echo "$dependents"
+}
+
+# Function to run tests for specific crates
+run_tests_for_crates() {
+    local crates="$1"
+    local test_count=0
+    local failed_crates=""
+    
+    print_status "Running tests for affected crates..."
+    
+    while read -r crate_path; do
+        if [[ -z "$crate_path" ]]; then
+            continue
+        fi
+        
+        print_status "Testing crate: $crate_path"
+        ((test_count++))
+        
+        # Run unit tests for the specific crate
+        if ! cargo test --lib --package "$(basename "$crate_path")" --quiet; then
+            print_error "Tests failed for crate: $crate_path"
+            failed_crates="$failed_crates $crate_path"
+        else
+            print_success "Tests passed for crate: $crate_path"
+        fi
+        
+        # Also run tests for dependent crates
+        local dependents
+        dependents=$(get_dependent_crates "$crate_path")
+        
+        if [[ -n "$dependents" ]]; then
+            print_status "Running tests for dependent crates of $crate_path..."
+            while read -r dependent; do
+                if [[ -n "$dependent" ]]; then
+                    print_status "Testing dependent: $dependent"
+                    ((test_count++))
+                    
+                    if ! cargo test --lib --package "$(basename "$dependent")" --quiet; then
+                        print_error "Tests failed for dependent crate: $dependent"
+                        failed_crates="$failed_crates $dependent"
+                    else
+                        print_success "Tests passed for dependent crate: $dependent"
+                    fi
+                fi
+            done <<< "$dependents"
+        fi
+        
+    done <<< "$crates"
+    
+    if [[ -n "$failed_crates" ]]; then
+        print_error "Tests failed for the following crates:"
+        echo "$failed_crates" | tr ' ' '\n' | sort | uniq | sed 's/^/  - /'
+        return 1
+    fi
+    
+    print_success "All tests passed! ($test_count test suites executed)"
+    return 0
+}
+
+# Function to run all tests
+run_all_tests() {
+    print_status "Running all unit tests..."
+    
+    if ! cargo test --lib --workspace --quiet; then
+        print_error "Some tests failed!"
+        return 1
+    fi
+    
+    print_success "All unit tests passed!"
+    return 0
+}
+
+# ==============================================================================
+# MAIN EXECUTION
+# ==============================================================================
+
+# Force all tests if requested
+if [[ "$FORCE_ALL_TESTS" == "true" ]]; then
+    print_status "Running all tests (forced by --all flag)"
+    run_all_tests
+    exit $?
+fi
+
+# Get changed files
+print_status "Detecting changed files since $BASE_REF..."
+changed_files=$(get_changed_files "$BASE_REF")
+
+if [[ -z "$changed_files" ]]; then
+    print_warning "No changed files detected."
+    print_status "Running a quick smoke test of critical components..."
+    
+    # Run tests for core libs that everything depends on
+    critical_crates="libs/common libs/auth_clerk"
+    run_tests_for_crates "$critical_crates"
+    exit $?
+fi
+
+print_status "Changed files:"
+echo "$changed_files" | sed 's/^/  - /'
+
+# Get affected crates
+affected_crates=$(get_affected_crates "$changed_files")
+affected_exit_code=$?
+
+if [[ $affected_exit_code -ne 0 ]]; then
+    print_warning "Workspace-level changes detected, running all tests for safety"
+    run_all_tests
+    exit $?
+fi
+
+if [[ -z "$affected_crates" ]]; then
+    print_warning "No Rust crates appear to be affected by changes."
+    print_status "Running a quick smoke test..."
+    
+    # Still run a minimal test to catch any issues
+    if ! cargo check --workspace --quiet; then
+        print_error "Compilation check failed!"
+        exit 1
+    fi
+    
+    print_success "No tests needed, but compilation check passed!"
+    exit 0
+fi
+
+print_status "Affected crates:"
+echo "$affected_crates" | tr ' ' '\n' | sed 's/^/  - /'
+
+# Run tests for affected crates
+run_tests_for_crates "$affected_crates"
+exit_code=$?
+
+if [[ $exit_code -eq 0 ]]; then
+    print_success "Smart test execution completed successfully!"
+    print_status "Tested only affected components, saving time while maintaining safety."
+else
+    print_error "Smart test execution failed!"
+fi
+
+exit $exit_code

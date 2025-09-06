@@ -22,3 +22,6 @@ tower-http = { workspace = true }
 
 [dev-dependencies]
 reqwest = { version = "0.12.4", features = ["json"] }
+tower = "0.4"
+http-body-util = { workspace = true }
+proptest = "1.4"

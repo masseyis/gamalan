@@ -1,4 +1,4 @@
-use axum::{routing::get, Router};
+use shuttle_axum::axum::{routing::get, Router};
 use shuttle_axum::ShuttleAxum;
 use tower_http::{
     cors::{Any, CorsLayer},

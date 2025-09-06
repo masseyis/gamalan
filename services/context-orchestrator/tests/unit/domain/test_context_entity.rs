@@ -98,7 +98,7 @@ mod context_entity_tests {
             IntentType::UpdateStatus
         );
         assert_eq!(intent_record.parsed_intent.entities.len(), 1);
-        assert!(intent_record.utterance_hash.len() > 0);
+        assert!(!intent_record.utterance_hash.is_empty());
     }
 }
 
@@ -145,7 +145,7 @@ mod enum_tests {
 
     #[test]
     fn test_intent_type_variants() {
-        let variants = vec![
+        let variants = [
             IntentType::UpdateStatus,
             IntentType::AssignTask,
             IntentType::CreateItem,
@@ -162,13 +162,13 @@ mod enum_tests {
         assert_eq!(variants.len(), 11);
 
         // Test Display trait
-        assert_eq!(IntentType::UpdateStatus.to_string(), "UpdateStatus");
-        assert_eq!(IntentType::Unknown.to_string(), "Unknown");
+        assert_eq!(IntentType::UpdateStatus.to_string(), "update_status");
+        assert_eq!(IntentType::Unknown.to_string(), "unknown");
     }
 
     #[test]
     fn test_action_type_variants() {
-        let variants = vec![
+        let variants = [
             ActionType::UpdateStatus,
             ActionType::AssignUser,
             ActionType::UpdatePriority,
@@ -182,18 +182,18 @@ mod enum_tests {
         assert_eq!(variants.len(), 8);
 
         // Test Display trait
-        assert_eq!(ActionType::UpdateStatus.to_string(), "UpdateStatus");
-        assert_eq!(ActionType::Archive.to_string(), "Archive");
+        assert_eq!(ActionType::UpdateStatus.to_string(), "update_status");
+        assert_eq!(ActionType::Archive.to_string(), "archive");
     }
 
     #[test]
     fn test_risk_level_variants() {
-        let variants = vec![RiskLevel::Low, RiskLevel::Medium, RiskLevel::High];
+        let variants = [RiskLevel::Low, RiskLevel::Medium, RiskLevel::High];
 
         assert_eq!(variants.len(), 3);
 
         // Test Display trait
-        assert_eq!(RiskLevel::Low.to_string(), "Low");
-        assert_eq!(RiskLevel::High.to_string(), "High");
+        assert_eq!(RiskLevel::Low.to_string(), "low");
+        assert_eq!(RiskLevel::High.to_string(), "high");
     }
 }

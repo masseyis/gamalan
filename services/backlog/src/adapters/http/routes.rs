@@ -1,12 +1,12 @@
 use crate::adapters::http::handlers::{
-    create_story, create_task, delete_story, get_story, get_tasks_by_story, update_story,
-    update_story_status,
+    create_story, create_task, delete_story, get_stories_by_project, get_story, get_tasks_by_story,
+    health, update_story, update_story_status,
 };
 use crate::adapters::integrations::HttpReadinessService;
 use crate::adapters::persistence::{SqlStoryRepository, SqlTaskRepository};
 use crate::application::BacklogUsecases;
 use auth_clerk::JwtVerifier;
-use axum::routing::{delete, get, patch, post};
+use shuttle_axum::axum::routing::{delete, get, patch, post};
 use sqlx::PgPool;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -14,7 +14,7 @@ use tokio::sync::Mutex;
 pub async fn create_backlog_router(
     pool: PgPool,
     verifier: Arc<Mutex<JwtVerifier>>,
-) -> axum::routing::Router {
+) -> shuttle_axum::axum::Router {
     // Initialize repositories
     let story_repo = Arc::new(SqlStoryRepository::new(pool.clone()));
     let task_repo = Arc::new(SqlTaskRepository::new(pool.clone()));
@@ -31,14 +31,21 @@ pub async fn create_backlog_router(
         readiness_service,
     ));
 
-    axum::routing::Router::new()
-        .route("/stories", post(create_story))
-        .route("/stories/:id", get(get_story))
-        .route("/stories/:id", patch(update_story))
-        .route("/stories/:id", delete(delete_story))
-        .route("/stories/:id/tasks", post(create_task))
-        .route("/stories/:id/tasks", get(get_tasks_by_story))
-        .route("/stories/:id/status", patch(update_story_status))
+    shuttle_axum::axum::Router::new()
+        // Health endpoint (no auth required)
+        .route("/health", get(health))
+        // Authenticated project-scoped endpoints
+        .route("/projects/{project_id}/stories", post(create_story))
+        .route(
+            "/projects/{project_id}/stories",
+            get(get_stories_by_project),
+        )
+        .route("/stories/{id}", get(get_story))
+        .route("/stories/{id}", patch(update_story))
+        .route("/stories/{id}", delete(delete_story))
+        .route("/stories/{id}/tasks", post(create_task))
+        .route("/stories/{id}/tasks", get(get_tasks_by_story))
+        .route("/stories/{id}/status", patch(update_story_status))
         .with_state(usecases)
-        .layer(axum::Extension(verifier))
+        .layer(shuttle_axum::axum::Extension(verifier))
 }

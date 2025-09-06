@@ -19,12 +19,14 @@ impl ReadinessEvaluation {
         }
     }
 
+    #[allow(dead_code)]
     pub fn is_ready(&self) -> bool {
         self.score >= 80 && self.missing_items.is_empty()
     }
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub enum ReadinessCheck {
     AcceptanceCriteria,
     TaskCoverage,

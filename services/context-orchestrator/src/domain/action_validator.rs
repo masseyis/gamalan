@@ -100,6 +100,14 @@ impl ActionValidator {
         action: &ActionCommand,
         candidates: &[CandidateEntity],
     ) -> Result<(), AppError> {
+        // Skip tenant isolation for create actions that don't require target entities
+        if matches!(
+            action.action_type,
+            ActionType::CreateTask | ActionType::CreateStory
+        ) {
+            return Ok(());
+        }
+
         // Validate that all candidates belong to the same tenant
         if let Some(first_candidate) = candidates.first() {
             let expected_tenant_id = first_candidate.tenant_id;
@@ -112,14 +120,12 @@ impl ActionValidator {
             }
         }
 
-        // Validate that target entities exist and belong to the same tenant
+        // For tenant isolation, we return "Entity not found" to avoid revealing tenant information
         for entity_id in &action.target_entities {
             let _candidate = candidates
                 .iter()
                 .find(|c| c.id == *entity_id)
-                .ok_or_else(|| {
-                    AppError::BadRequest("Entity not found in candidates".to_string())
-                })?;
+                .ok_or_else(|| AppError::NotFound("Entity not found".to_string()))?;
         }
         Ok(())
     }
@@ -128,11 +134,26 @@ impl ActionValidator {
         action: &ActionCommand,
         candidates: &[CandidateEntity],
     ) -> Result<(), AppError> {
+        // Create actions don't require target entities
+        if matches!(
+            action.action_type,
+            ActionType::CreateTask | ActionType::CreateStory
+        ) {
+            return Ok(());
+        }
+
+        // Check for empty target entities for non-create actions
+        if action.target_entities.is_empty() {
+            return Err(AppError::BadRequest(
+                "No target entities specified".to_string(),
+            ));
+        }
+
         // Ensure all target entities exist in the candidate set
         for entity_id in &action.target_entities {
             if !candidates.iter().any(|c| c.id == *entity_id) {
-                return Err(AppError::BadRequest(
-                    "Entity reference not in candidate set".to_string(),
+                return Err(AppError::NotFound(
+                    "Entity not found in candidates".to_string(),
                 ));
             }
         }
@@ -157,22 +178,25 @@ impl ActionValidator {
                 }
             }
             ActionType::CreateTask => {
-                // When creating a task, target should be a story
-                if action.target_entities.len() != 1 {
-                    return Err(AppError::BadRequest(
-                        "Creating task requires exactly one target story".to_string(),
-                    ));
-                }
+                // Create actions can work with empty target entities
+                if !action.target_entities.is_empty() {
+                    // When creating a task with a target, target should be a story
+                    if action.target_entities.len() != 1 {
+                        return Err(AppError::BadRequest(
+                            "Creating task requires exactly one target story".to_string(),
+                        ));
+                    }
 
-                let candidate = candidates
-                    .iter()
-                    .find(|c| c.id == action.target_entities[0])
-                    .unwrap();
+                    let candidate = candidates
+                        .iter()
+                        .find(|c| c.id == action.target_entities[0])
+                        .unwrap();
 
-                if candidate.entity_type != "story" {
-                    return Err(AppError::BadRequest(
-                        "Can only create tasks for stories".to_string(),
-                    ));
+                    if candidate.entity_type != "story" {
+                        return Err(AppError::BadRequest(
+                            "Can only create tasks for stories".to_string(),
+                        ));
+                    }
                 }
             }
             ActionType::Archive => {
@@ -197,10 +221,19 @@ impl ActionValidator {
                     }
                 }
             }
-            ActionType::AssignUser
-            | ActionType::UpdatePriority
-            | ActionType::AddComment
-            | ActionType::CreateStory => {
+            ActionType::AssignUser => {
+                // Can only assign users to tasks
+                for entity_id in &action.target_entities {
+                    let candidate = candidates.iter().find(|c| c.id == *entity_id).unwrap(); // Safe because we validated existence above
+
+                    if candidate.entity_type != "task" {
+                        return Err(AppError::BadRequest(
+                            "Can only assign users to tasks".to_string(),
+                        ));
+                    }
+                }
+            }
+            ActionType::UpdatePriority | ActionType::AddComment | ActionType::CreateStory => {
                 // These actions don't have specific entity type requirements
             }
         }
@@ -216,13 +249,49 @@ impl ActionValidator {
                     .get("new_status")
                     .and_then(|v| v.as_str())
                     .ok_or_else(|| {
-                        AppError::BadRequest("Missing new_status parameter".to_string())
+                        AppError::BadRequest("new_status parameter required".to_string())
                     })?;
 
                 match new_status {
                     "Ready" | "InProgress" | "InReview" | "Done" => Ok(()),
                     _ => Err(AppError::BadRequest("Invalid story status".to_string())),
                 }
+            }
+            ActionType::AssignUser => {
+                action
+                    .parameters
+                    .get("user_id")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| {
+                        AppError::BadRequest("user_id parameter required".to_string())
+                    })?;
+                Ok(())
+            }
+            ActionType::UpdatePriority => {
+                let priority = action
+                    .parameters
+                    .get("priority")
+                    .and_then(|v| v.as_i64())
+                    .ok_or_else(|| {
+                        AppError::BadRequest("priority parameter required".to_string())
+                    })?;
+
+                if !(1..=5).contains(&priority) {
+                    return Err(AppError::BadRequest(
+                        "Priority must be between 1 and 5".to_string(),
+                    ));
+                }
+                Ok(())
+            }
+            ActionType::AddComment => {
+                action
+                    .parameters
+                    .get("comment")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| {
+                        AppError::BadRequest("comment parameter required".to_string())
+                    })?;
+                Ok(())
             }
             ActionType::CreateTask => {
                 let title = action
@@ -253,10 +322,7 @@ impl ActionValidator {
                 // No additional parameters needed for moving to sprint
                 Ok(())
             }
-            ActionType::AssignUser
-            | ActionType::UpdatePriority
-            | ActionType::AddComment
-            | ActionType::CreateStory => {
+            ActionType::CreateStory => {
                 // These actions may have optional parameters, no strict validation needed
                 Ok(())
             }
@@ -396,10 +462,8 @@ mod tests {
 
         let result = ActionValidator::validate_action(&action, &candidates);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Entity not found in candidates"));
+        let error_msg = result.unwrap_err().to_string();
+        assert!(error_msg.contains("Entity not found"));
     }
 
     #[test]
