@@ -128,19 +128,42 @@ jobs:
       - name: Install jq for smart test runner
         run: sudo apt-get update && sudo apt-get install -y jq
         
-      - name: Run smart unit tests (optimized)
+      - name: Run smart unit tests (robust with fallback)
         run: |
           # Make smart test runner executable
           chmod +x scripts/smart-test-runner.sh
           
-          # Try smart test execution first
-          if ./scripts/smart-test-runner.sh --base-ref origin/main; then
-            echo "✅ Smart test execution completed successfully"
+          # Try smart test execution first with comprehensive error handling
+          SMART_TEST_FAILED=false
+          if ! ./scripts/smart-test-runner.sh --base-ref origin/main 2>&1 | tee smart_test_output.log; then
+            SMART_TEST_FAILED=true
+            SMART_EXIT_CODE=${PIPESTATUS[0]}
+            
+            echo "❌ Smart test execution failed (exit code: $SMART_EXIT_CODE)"
+            echo "Smart test runner output (last 50 lines):"
+            tail -50 smart_test_output.log
+            echo ""
+            
+            echo "🔄 Attempting fallback to full test suite..."
+            if cargo test --lib --workspace --verbose 2>&1 | tee fallback_test_output.log; then
+              echo "✅ Fallback test execution passed!"
+              echo "⚠️  Note: Smart test runner failed, but all tests pass."
+              echo "⚠️  Smart test runner should be investigated and fixed."
+            else
+              FALLBACK_EXIT_CODE=${PIPESTATUS[0]}
+              echo "❌ Fallback test execution also failed! (exit code: $FALLBACK_EXIT_CODE)"
+              echo "Fallback test output (last 30 lines):"
+              tail -30 fallback_test_output.log
+              echo ""
+              echo "💥 Both smart testing and fallback failed!"
+              exit 1
+            fi
           else
-            echo "❌ Smart test execution failed, falling back to all tests"
-            echo "Running all unit tests as fallback..."
-            cargo test --lib --workspace --verbose
+            echo "✅ Smart test execution completed successfully"
           fi
+          
+          # Cleanup
+          rm -f smart_test_output.log fallback_test_output.log
           
       - name: Generate coverage report
         run: |
