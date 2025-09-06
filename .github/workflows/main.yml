@@ -68,7 +68,7 @@ jobs:
         if: steps.changes.outputs.backend == 'true'
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.79
+          toolchain: 1.81
           override: true
           
       - name: Quick smoke tests
