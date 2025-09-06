@@ -205,34 +205,6 @@ pub async fn ready_handler() -> Result<Json<serde_json::Value>, AppError> {
     })))
 }
 
-// Extension trait for converting domain enums to/from strings
-impl crate::domain::ActionType {
-    pub fn from_string(s: &str) -> Result<Self, AppError> {
-        match s {
-            "update_status" => Ok(Self::UpdateStatus),
-            "assign_user" => Ok(Self::AssignUser),
-            "update_priority" => Ok(Self::UpdatePriority),
-            "add_comment" => Ok(Self::AddComment),
-            "create_task" => Ok(Self::CreateTask),
-            "create_story" => Ok(Self::CreateStory),
-            "move_to_sprint" => Ok(Self::MoveToSprint),
-            "archive" => Ok(Self::Archive),
-            _ => Err(AppError::BadRequest(format!("Unknown action type: {}", s))),
-        }
-    }
-}
-
-impl crate::domain::RiskLevel {
-    pub fn from_string(s: &str) -> Result<Self, AppError> {
-        match s {
-            "low" => Ok(Self::Low),
-            "medium" => Ok(Self::Medium),
-            "high" => Ok(Self::High),
-            _ => Err(AppError::BadRequest(format!("Unknown risk level: {}", s))),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

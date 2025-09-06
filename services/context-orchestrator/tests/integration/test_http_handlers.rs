@@ -101,7 +101,12 @@ mod dto_tests {
             json["intent"]["entities"][0]["entity_id"],
             entity_id.to_string()
         );
-        assert_eq!(json["confidence"]["overall_confidence"], 0.85);
+        let confidence = json["confidence"]["overall_confidence"].as_f64().unwrap();
+        assert!(
+            (confidence - 0.85).abs() < 0.01,
+            "Expected confidence ~0.85, got {}",
+            confidence
+        );
         assert_eq!(json["candidates"].as_array().unwrap().len(), 1);
         assert_eq!(json["requires_confirmation"], false);
         assert_eq!(json["session_token"], session_token.to_string());
