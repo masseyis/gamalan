@@ -44,6 +44,8 @@ jobs:
       should_deploy: ${{ steps.decision.outputs.should_deploy }}
       backend_changed: ${{ steps.changes.outputs.backend }}
       frontend_changed: ${{ steps.changes.outputs.frontend }}
+      deploy_backend: ${{ steps.decision.outputs.deploy_backend }}
+      deploy_frontend: ${{ steps.decision.outputs.deploy_frontend }}
       
     steps:
       - name: Checkout code
@@ -138,15 +140,31 @@ jobs:
           
           if [ "$backend_changed" == "true" ] || [ "$frontend_changed" == "true" ] || [ "$previous_failed" == "true" ] || [ "$is_manual" == "true" ]; then
             echo "should_deploy=true" >> $GITHUB_OUTPUT
+            
+            # Set deploy flags for individual components
+            if [ "$backend_changed" == "true" ] || [ "$previous_failed" == "true" ] || [ "$is_manual" == "true" ]; then
+              echo "deploy_backend=true" >> $GITHUB_OUTPUT
+            else
+              echo "deploy_backend=false" >> $GITHUB_OUTPUT
+            fi
+            
+            if [ "$frontend_changed" == "true" ] || [ "$previous_failed" == "true" ] || [ "$is_manual" == "true" ]; then
+              echo "deploy_frontend=true" >> $GITHUB_OUTPUT
+            else
+              echo "deploy_frontend=false" >> $GITHUB_OUTPUT
+            fi
+            
             if [ "$previous_failed" == "true" ]; then
-              echo "✅ Deployment triggered - Recovering from previous failed run"
+              echo "✅ Deployment triggered - Recovering from previous failed run (Backend: ${deploy_backend:-false}, Frontend: ${deploy_frontend:-false})"
             elif [ "$is_manual" == "true" ]; then
-              echo "✅ Deployment triggered - Manual workflow dispatch"
+              echo "✅ Deployment triggered - Manual workflow dispatch (Backend: ${deploy_backend:-false}, Frontend: ${deploy_frontend:-false})"
             else
               echo "✅ Deployment triggered - Changes detected (Backend: $backend_changed, Frontend: $frontend_changed)"
             fi
           else
             echo "should_deploy=false" >> $GITHUB_OUTPUT
+            echo "deploy_backend=false" >> $GITHUB_OUTPUT
+            echo "deploy_frontend=false" >> $GITHUB_OUTPUT
             echo "ℹ️ No deployment needed - No changes, no previous failure, not manual"
           fi
 
@@ -159,7 +177,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: pre-deployment-checks
-    if: needs.pre-deployment-checks.outputs.should_deploy == 'true' && needs.pre-deployment-checks.outputs.backend_changed == 'true'
+    if: needs.pre-deployment-checks.outputs.should_deploy == 'true' && needs.pre-deployment-checks.outputs.deploy_backend == 'true'
         
     steps:
       - name: Checkout code
@@ -209,7 +227,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: pre-deployment-checks
-    if: needs.pre-deployment-checks.outputs.should_deploy == 'true' && needs.pre-deployment-checks.outputs.frontend_changed == 'true'
+    if: needs.pre-deployment-checks.outputs.should_deploy == 'true' && needs.pre-deployment-checks.outputs.deploy_frontend == 'true'
     
     steps:
       - name: Checkout code
@@ -255,7 +273,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: [pre-deployment-checks, build-backend]
-    if: needs.pre-deployment-checks.outputs.should_deploy == 'true' && needs.pre-deployment-checks.outputs.backend_changed == 'true'
+    if: needs.pre-deployment-checks.outputs.should_deploy == 'true' && needs.pre-deployment-checks.outputs.deploy_backend == 'true'
     environment: staging
       
     steps:
@@ -301,7 +319,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: [pre-deployment-checks, build-frontend]
-    if: needs.pre-deployment-checks.outputs.should_deploy == 'true' && needs.pre-deployment-checks.outputs.frontend_changed == 'true'
+    if: needs.pre-deployment-checks.outputs.should_deploy == 'true' && needs.pre-deployment-checks.outputs.deploy_frontend == 'true'
     environment: staging
     
     steps:
