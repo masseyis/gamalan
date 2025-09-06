@@ -538,6 +538,15 @@ jobs:
           echo "   - Includes: projects, backlog, readiness, prompt-builder, context-orchestrator services"
           echo "   - Single binary deployment: target/release/api-gateway"
         
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+        
       - name: Build frontend
         working-directory: apps/web
         run: |
