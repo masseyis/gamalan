@@ -82,7 +82,7 @@ jobs:
           
       - name: Install Shuttle CLI
         run: |
-          cargo install cargo-shuttle --locked
+          cargo install cargo-shuttle --version 0.47.0
           
       - name: Deploy to Shuttle
         id: deploy
