@@ -82,8 +82,7 @@ jobs:
           
       - name: Install Shuttle CLI
         run: |
-          curl -sSfL https://www.shuttle.rs/install | bash
-          echo "${HOME}/.cargo/bin" >> $GITHUB_PATH
+          cargo install cargo-shuttle --locked
           
       - name: Deploy to Shuttle
         id: deploy
