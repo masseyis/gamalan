@@ -1,0 +1,255 @@
+name: Initial Deployment Bootstrap
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      skip_frontend:
+        description: 'Skip frontend deployment'
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: initial-deploy-${{ github.event.inputs.environment }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # =============================================================================
+  # INITIAL BACKEND DEPLOYMENT (NO HEALTH CHECKS)
+  # =============================================================================
+  
+  deploy-backend:
+    name: Deploy Backend to ${{ github.event.inputs.environment }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: ${{ github.event.inputs.environment }}
+    
+    outputs:
+      deployment_url: ${{ steps.deploy.outputs.deployment_url }}
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: 1.81
+          override: true
+          
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "rust-deploy"
+          cache-all-crates: "true"
+          
+      - name: Setup sccache (controlled)
+        run: |
+          echo "🔧 Setting up sccache with controlled fallback..."
+          
+          # Install sccache if not present
+          if ! command -v sccache &> /dev/null; then
+            echo "Installing sccache..."
+            curl -L https://github.com/mozilla/sccache/releases/download/v0.10.0/sccache-v0.10.0-x86_64-unknown-linux-musl.tar.gz | tar xz
+            sudo mv sccache-v0.10.0-x86_64-unknown-linux-musl/sccache /usr/local/bin/
+          fi
+          
+          # Test if sccache can start successfully
+          echo "Testing sccache server startup..."
+          export SCCACHE_GHA_ENABLED=true
+          if sccache --start-server 2>/dev/null && sccache --show-stats >/dev/null 2>&1; then
+            echo "✅ sccache server started successfully"
+            echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
+            echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
+            echo "sccache_enabled=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ sccache server failed to start, using standard compilation"
+            echo "This is normal when GitHub Actions cache service is unavailable"
+            echo "sccache_enabled=false" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Install Shuttle CLI
+        run: |
+          curl -sSfL https://www.shuttle.rs/install | bash
+          echo "${HOME}/.cargo/bin" >> $GITHUB_PATH
+          
+      - name: Deploy to Shuttle
+        id: deploy
+        run: |
+          cd services/api-gateway
+          shuttle login --api-key ${{ secrets.SHUTTLE_API_KEY }}
+          
+          # Determine project name based on environment
+          if [ "${{ github.event.inputs.environment }}" == "staging" ]; then
+            PROJECT_NAME="salunga-ai-staging"
+            DEPLOY_URL="https://salunga-ai-staging-wokp.shuttle.app"
+          else
+            PROJECT_NAME="salunga-ai-production"  
+            DEPLOY_URL="https://salunga-ai-production-wokp.shuttle.app"
+          fi
+          
+          echo "Deploying to project: $PROJECT_NAME"
+          echo "Expected URL: $DEPLOY_URL"
+          
+          # Deploy (this will create resources as needed)
+          shuttle deploy --name $PROJECT_NAME
+          
+          echo "deployment_url=$DEPLOY_URL" >> $GITHUB_OUTPUT
+        env:
+          # Use appropriate environment variables based on target
+          DATABASE_URL: ${{ github.event.inputs.environment == 'staging' && secrets.STAGING_DATABASE_URL || secrets.PRODUCTION_DATABASE_URL }}
+          CLERK_WEBHOOK_SECRET: ${{ github.event.inputs.environment == 'staging' && secrets.STAGING_CLERK_WEBHOOK_SECRET || secrets.PRODUCTION_CLERK_WEBHOOK_SECRET }}
+          CLERK_JWKS_URL: ${{ github.event.inputs.environment == 'staging' && secrets.STAGING_CLERK_JWKS_URL || secrets.PRODUCTION_CLERK_JWKS_URL }}
+          CLERK_JWT_ISSUER: ${{ github.event.inputs.environment == 'staging' && secrets.STAGING_CLERK_JWT_ISSUER || secrets.PRODUCTION_CLERK_JWT_ISSUER }}
+          CLERK_JWT_AUDIENCE: ${{ github.event.inputs.environment == 'staging' && secrets.STAGING_CLERK_JWT_AUDIENCE || secrets.PRODUCTION_CLERK_JWT_AUDIENCE }}
+
+  # =============================================================================
+  # BASIC DEPLOYMENT VERIFICATION (NO STRICT HEALTH CHECKS)
+  # =============================================================================
+  
+  verify-deployment:
+    name: Verify Deployment
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: deploy-backend
+    if: success()
+    
+    steps:
+      - name: Wait for deployment to settle
+        run: |
+          echo "Waiting 60 seconds for deployment to fully start..."
+          sleep 60
+          
+      - name: Basic connectivity test
+        run: |
+          echo "Testing basic connectivity to: ${{ needs.deploy-backend.outputs.deployment_url }}"
+          
+          # Try to connect (any HTTP response is acceptable for initial deployment)
+          RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${{ needs.deploy-backend.outputs.deployment_url }}" || echo "000")
+          
+          echo "Response code: $RESPONSE_CODE"
+          
+          if [ "$RESPONSE_CODE" = "000" ]; then
+            echo "❌ No response from deployment (connection failed)"
+            exit 1
+          elif [ "$RESPONSE_CODE" = "502" ] || [ "$RESPONSE_CODE" = "503" ]; then
+            echo "⚠️  Service not ready yet (${RESPONSE_CODE}), but deployment exists"
+            echo "This is normal for initial deployments that need configuration"
+          else
+            echo "✅ Deployment responding with HTTP $RESPONSE_CODE"
+          fi
+          
+          echo "Deployment verification completed"
+
+  # =============================================================================
+  # FRONTEND DEPLOYMENT (OPTIONAL)  
+  # =============================================================================
+  
+  deploy-frontend:
+    name: Deploy Frontend to ${{ github.event.inputs.environment }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: deploy-backend
+    if: github.event.inputs.skip_frontend != 'true'
+    environment: ${{ github.event.inputs.environment }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        
+      - name: Install dependencies
+        working-directory: apps/web
+        run: pnpm install --frozen-lockfile
+        
+      - name: Build application
+        working-directory: apps/web
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ github.event.inputs.environment == 'staging' && secrets.STAGING_CLERK_PUBLISHABLE_KEY || secrets.PRODUCTION_CLERK_PUBLISHABLE_KEY }}
+          CLERK_SECRET_KEY: ${{ github.event.inputs.environment == 'staging' && secrets.STAGING_CLERK_SECRET_KEY || secrets.PRODUCTION_CLERK_SECRET_KEY }}
+          NEXT_PUBLIC_API_BASE_URL: ${{ needs.deploy-backend.outputs.deployment_url }}
+          NEXT_PUBLIC_ENABLE_AI_FEATURES: true
+          NEXT_PUBLIC_ENABLE_MOCK_DATA: ${{ github.event.inputs.environment == 'staging' }}
+          
+      - name: Deploy to Vercel
+        uses: vercel/action@v1
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--env ${{ github.event.inputs.environment }}'
+          working-directory: apps/web
+        env:
+          VERCEL_ENV: ${{ github.event.inputs.environment }}
+
+  # =============================================================================
+  # DEPLOYMENT SUMMARY
+  # =============================================================================
+  
+  deployment-summary:
+    name: Deployment Summary
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [deploy-backend, verify-deployment, deploy-frontend]
+    
+    steps:
+      - name: Generate summary
+        run: |
+          echo "## 🚀 Initial Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ github.event.inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Backend status
+          if [ "${{ needs.deploy-backend.result }}" == "success" ]; then
+            echo "✅ **Backend Deployment:** Success" >> $GITHUB_STEP_SUMMARY
+            echo "**URL:** ${{ needs.deploy-backend.outputs.deployment_url }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Backend Deployment:** Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Verification status  
+          if [ "${{ needs.verify-deployment.result }}" == "success" ]; then
+            echo "✅ **Deployment Verification:** Passed" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.verify-deployment.result }}" == "failure" ]; then
+            echo "❌ **Deployment Verification:** Failed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⏭️ **Deployment Verification:** Skipped" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Frontend status
+          if [ "${{ github.event.inputs.skip_frontend }}" == "true" ]; then
+            echo "⏭️ **Frontend Deployment:** Skipped (as requested)" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.deploy-frontend.result }}" == "success" ]; then
+            echo "✅ **Frontend Deployment:** Success" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.deploy-frontend.result }}" == "failure" ]; then
+            echo "❌ **Frontend Deployment:** Failed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⏭️ **Frontend Deployment:** Not attempted" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. Configure environment variables if services return 502/503 errors" >> $GITHUB_STEP_SUMMARY
+          echo "2. Set up database credentials for full functionality" >> $GITHUB_STEP_SUMMARY
+          echo "3. Test endpoints manually to verify configuration" >> $GITHUB_STEP_SUMMARY
