@@ -32,20 +32,23 @@ jobs:
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.85
+          toolchain: 1.81
           components: rustfmt, clippy
           override: true
           
-      - name: Cache dependencies
-        uses: actions/cache@v3
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
+          shared-key: "rust-static-analysis"
+          cache-all-crates: "true"
+          
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.6
+        
+      - name: Configure sccache environment
+        run: |
+          echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
+          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
             
       - name: Check Rust formatting
         run: cargo fmt --all -- --check
@@ -110,20 +113,22 @@ jobs:
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.85
+          toolchain: 1.81
           override: true
           
-      - name: Cache dependencies
-        uses: actions/cache@v3
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-test-
-            ${{ runner.os }}-cargo-
+          shared-key: "rust-unit-tests"
+          cache-all-crates: "true"
+          
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.6
+        
+      - name: Configure sccache environment
+        run: |
+          echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
+          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
             
       - name: Install jq for smart test runner
         run: sudo apt-get update && sudo apt-get install -y jq
@@ -289,20 +294,22 @@ jobs:
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.85
+          toolchain: 1.81
           override: true
           
-      - name: Cache dependencies
-        uses: actions/cache@v3
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-integration-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-integration-
-            ${{ runner.os }}-cargo-
+          shared-key: "rust-integration-tests"
+          cache-all-crates: "true"
+          
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.6
+        
+      - name: Configure sccache environment
+        run: |
+          echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
+          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
             
       - name: Run database migrations
         run: |
@@ -357,8 +364,22 @@ jobs:
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.85
+          toolchain: 1.81
           override: true
+          
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "rust-contract-tests"
+          cache-all-crates: "true"
+          
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.6
+        
+      - name: Configure sccache environment
+        run: |
+          echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
+          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
           
       - name: Setup Node.js for OpenAPI tools
         uses: actions/setup-node@v4

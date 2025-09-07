@@ -110,8 +110,7 @@ jobs:
     steps:
       - name: Setup Shuttle CLI
         run: |
-          curl -sSfL https://www.shuttle.rs/install | bash
-          echo "${HOME}/.cargo/bin" >> $GITHUB_PATH
+          cargo install cargo-shuttle --version 0.47.0
           
       - name: Rollback service
         run: |
@@ -208,8 +207,7 @@ jobs:
     steps:
       - name: Setup Shuttle CLI
         run: |
-          curl -sSfL https://www.shuttle.rs/install | bash
-          echo "${HOME}/.cargo/bin" >> $GITHUB_PATH
+          cargo install cargo-shuttle --version 0.47.0
           
       - name: Clean up all canary deployments
         run: |

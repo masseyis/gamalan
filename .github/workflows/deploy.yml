@@ -213,8 +213,7 @@ jobs:
           echo "All services (projects, backlog, readiness, prompt-builder, context-orchestrator) included in single deployment"
           
           # For Shuttle, we'll deploy with a canary suffix
-          curl -sSfL https://www.shuttle.rs/install | bash
-          echo "${HOME}/.cargo/bin" >> $GITHUB_PATH
+          cargo install cargo-shuttle --version 0.47.0
           
           # Deploy consolidated api-gateway service with canary routing
           cd services/api-gateway
@@ -233,7 +232,7 @@ jobs:
           
           echo "canary_project=$CANARY_PROJECT" >> $GITHUB_OUTPUT
         env:
-          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+          # Shuttle-managed database is automatically provided via #[Postgres] annotation
           CLERK_WEBHOOK_SECRET: ${{ secrets.PRODUCTION_CLERK_WEBHOOK_SECRET }}
           CLERK_JWKS_URL: ${{ secrets.PRODUCTION_CLERK_JWKS_URL }}
           CLERK_JWT_ISSUER: ${{ secrets.PRODUCTION_CLERK_JWT_ISSUER }}
@@ -423,8 +422,7 @@ jobs:
           echo "Removing canary traffic routing..."
           
           # Stop canary deployment
-          curl -sSfL https://www.shuttle.rs/install | bash
-          echo "${HOME}/.cargo/bin" >> $GITHUB_PATH
+          cargo install cargo-shuttle --version 0.47.0
           
           # Delete canary project
           cd services/api-gateway

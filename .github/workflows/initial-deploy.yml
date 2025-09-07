@@ -107,8 +107,8 @@ jobs:
           
           echo "deployment_url=$DEPLOY_URL" >> $GITHUB_OUTPUT
         env:
-          # Use appropriate environment variables based on target
-          DATABASE_URL: ${{ github.event.inputs.environment == 'staging' && secrets.STAGING_DATABASE_URL || secrets.PRODUCTION_DATABASE_URL }}
+          # Shuttle-managed database is automatically provided via #[Postgres] annotation
+          # Only Clerk secrets are needed for authentication
           CLERK_WEBHOOK_SECRET: ${{ github.event.inputs.environment == 'staging' && secrets.STAGING_CLERK_WEBHOOK_SECRET || secrets.PRODUCTION_CLERK_WEBHOOK_SECRET }}
           CLERK_JWKS_URL: ${{ github.event.inputs.environment == 'staging' && secrets.STAGING_CLERK_JWKS_URL || secrets.PRODUCTION_CLERK_JWKS_URL }}
           CLERK_JWT_ISSUER: ${{ github.event.inputs.environment == 'staging' && secrets.STAGING_CLERK_JWT_ISSUER || secrets.PRODUCTION_CLERK_JWT_ISSUER }}

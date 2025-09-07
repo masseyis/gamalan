@@ -14,7 +14,7 @@
 - **Services (microservices):** `auth-gateway`, `projects`, `backlog`, `readiness`, `prompt-builder`, (later) `gh-integrator`, `sprint`, `demo`, `analytics`, `coach`
 - **Shared libs:** `libs/common` (tracing, error, http utils), `libs/auth_clerk` (Clerk JWT verification)
 - **APIs:** **OpenAPI-first** — each service maintains `docs/openapi.yaml`
-- **Persistence:** Postgres via `sqlx` (migrations per service)
+- **Persistence:** Shuttle-managed Postgres via `sqlx` with `#[Postgres]` annotation (migrations per service)
 - **AuthN:** **Clerk** (JWT via JWKS); **AuthZ** is internal (roles/memberships)
 - **Hosting:** Shuttle (per-service `Shuttle.toml`)
 - **Observability:** structured logs + correlation id; `/health` & `/ready` endpoints in every service
@@ -179,7 +179,9 @@ LIVING_ARCHITECTURE.md
 - ❌ Don’t bypass ports (e.g., HTTP adapter talking straight to DB).  
 - ❌ Don’t add endpoints without OpenAPI updates & contract tests.  
 - ❌ Don’t commit secrets or disable auth checks.  
-- ❌ Don’t introduce new crates without ADR justification.
+- ❌ Don't introduce new crates without ADR justification.
+- ❌ Don't use external database providers (AWS RDS, Neon, etc.) — **ONLY** use Shuttle-managed Postgres.
+- ❌ Don't add DATABASE_URL to GitHub Actions workflows — databases are provided by Shuttle automatically.
 
 ---
 

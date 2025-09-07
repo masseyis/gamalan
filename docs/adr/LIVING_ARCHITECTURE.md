@@ -39,6 +39,41 @@ graph TB
 
 ## Architecture Changelog
 
+### 2025-09-07: Shuttle-Managed Database Architecture Enforcement
+**Scope:** Database architecture compliance and documentation  
+**Decision Reference:** [ADR-0005: Shuttle-Managed Database Architecture](ADR-0005-shuttle-managed-databases.md)  
+
+#### Changes Made
+- **Database Dependencies:** Removed all external DATABASE_URL references from deployment workflows
+- **CI/CD Compliance:** Updated GitHub Actions to rely solely on Shuttle's managed Postgres
+- **Documentation:** Created ADR-0005 to prevent future regressions to external database dependencies
+- **Workflow Updates:** Modified deploy.yml, main.yml, and initial-deploy.yml to use Shuttle-provided databases
+
+#### Database Architecture Pattern
+- **Database Provisioning:** All services use `#[Postgres]` annotation for automatic database management
+- **Local Development:** Uses `local_uri = "postgres://postgres:password@localhost:5432/gamalan"`
+- **Production/Staging:** Shuttle automatically provisions and manages PostgreSQL databases
+- **Zero External Dependencies:** No AWS RDS, Neon, or other external database providers
+
+#### Compliance Rules Established
+- ✅ **DO:** Use `#[Postgres]` annotation for all database needs
+- ✅ **DO:** Rely on Shuttle's automatic database provisioning
+- ❌ **DON'T:** Add DATABASE_URL to GitHub Actions workflows
+- ❌ **DON'T:** Use external database providers
+
+#### Files Modified
+- `.github/workflows/deploy.yml` - Removed DATABASE_URL from production deployment
+- `.github/workflows/main.yml` - Removed DATABASE_URL from staging deployment  
+- `.github/workflows/initial-deploy.yml` - Removed DATABASE_URL from bootstrap deployment
+- `docs/adr/ADR-0005-shuttle-managed-databases.md` - Created architectural decision record
+
+#### Architectural Impact
+- **Simplified Infrastructure:** Complete elimination of external database dependencies
+- **Cost Reduction:** No separate database hosting costs
+- **Operational Simplicity:** Shuttle handles all database scaling, backups, and maintenance
+- **Deployment Reliability:** Automatic database provisioning during service deployment
+- **Security Enhancement:** No need to manage database credentials or connection strings
+
 ### 2025-09-04: JWT Authentication and Service Compilation Fixes
 **Scope:** Authentication system and service compilation improvements  
 **Commit:** 908cb7f  
