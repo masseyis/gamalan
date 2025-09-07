@@ -195,23 +195,30 @@ jobs:
           shared-key: "rust-main-deploy"
           cache-all-crates: "true"
           
-      - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.6
-        continue-on-error: true
-        id: sccache-setup
-        
-      - name: Configure sccache environment
-        if: steps.sccache-setup.outcome == 'success'
+      - name: Setup sccache (controlled)
         run: |
-          echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
-          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
-          echo "✅ sccache enabled for build acceleration"
+          echo "🔧 Setting up sccache with controlled fallback..."
           
-      - name: Fallback to standard compilation
-        if: steps.sccache-setup.outcome == 'failure'
-        run: |
-          echo "⚠️ sccache setup failed, continuing with standard compilation"
-          echo "Build will proceed without sccache acceleration"
+          # Install sccache if not present
+          if ! command -v sccache &> /dev/null; then
+            echo "Installing sccache..."
+            curl -L https://github.com/mozilla/sccache/releases/download/v0.10.0/sccache-v0.10.0-x86_64-unknown-linux-musl.tar.gz | tar xz
+            sudo mv sccache-v0.10.0-x86_64-unknown-linux-musl/sccache /usr/local/bin/
+          fi
+          
+          # Test if sccache can start successfully
+          echo "Testing sccache server startup..."
+          export SCCACHE_GHA_ENABLED=true
+          if sccache --start-server 2>/dev/null && sccache --show-stats >/dev/null 2>&1; then
+            echo "✅ sccache server started successfully"
+            echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
+            echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
+            echo "sccache_enabled=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ sccache server failed to start, using standard compilation"
+            echo "This is normal when GitHub Actions cache service is unavailable"
+            echo "sccache_enabled=false" >> $GITHUB_OUTPUT
+          fi
             
       - name: Build API Gateway
         run: |
