@@ -155,15 +155,14 @@ jobs:
           NEXT_PUBLIC_ENABLE_MOCK_DATA: ${{ github.event.inputs.environment == 'staging' }}
           
       - name: Deploy to Vercel
-        uses: vercel/action@v1
+        uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--env ${{ github.event.inputs.environment }}'
+          vercel-args: '${{ github.event.inputs.environment == 'production' && '--prod' || '' }}'
           working-directory: apps/web
-        env:
-          VERCEL_ENV: ${{ github.event.inputs.environment }}
 
   # =============================================================================
   # DEPLOYMENT SUMMARY
