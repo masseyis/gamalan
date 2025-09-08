@@ -86,11 +86,50 @@ pnpm test:coverage  # Coverage reports
 
 ## Deployment
 
-### Backend Services (Shuttle)
+### Initial Setup (One-time Bootstrap)
+
+Before deploying for the first time, you need to create Shuttle projects and configure GitHub secrets:
+
+1. **Install prerequisites:**
+   ```sh
+   # Install Shuttle CLI
+   cargo install cargo-shuttle
+   
+   # Install jq for JSON processing
+   brew install jq  # macOS
+   # or apt-get install jq  # Ubuntu
+   ```
+
+2. **Log in to Shuttle:**
+   ```sh
+   shuttle login
+   ```
+
+3. **Run the bootstrap script:**
+   ```sh
+   ./scripts/bootstrap-shuttle-projects.sh
+   ```
+   
+   This script will:
+   - Create `salunga-ai-staging` and `salunga-ai-production` projects on Shuttle
+   - Output the GitHub CLI commands to set the required secrets
+
+4. **Set GitHub secrets:**
+   Copy and run the `gh secret set` commands output by the bootstrap script.
+
+### Automatic Deployment via GitHub Actions
+
+After bootstrap, deployments are handled automatically:
+
+- **Manual deployment:** Use the "Initial Deployment Bootstrap" workflow in GitHub Actions
+- **Environment options:** staging or production
+- **Optional frontend deployment:** Can be skipped if desired
+
+### Manual Backend Services (Shuttle)
 ```sh
-# Deploy a specific service
+# Deploy a specific service manually
 cd services/<service-name>
-shuttle deploy
+shuttle deploy --name salunga-ai-staging  # or salunga-ai-production
 ```
 
 ### Frontend (Vercel)

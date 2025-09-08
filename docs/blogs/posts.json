@@ -1,0 +1,266 @@
+[
+  {
+    "title": "The Anti-Patterns Jira Accidentally Encourages",
+    "subtitle": "How flexible tooling hardens bad habits into process",
+    "tags": [
+      "Agile",
+      "DeveloperExperience",
+      "ProductManagement",
+      "DevTools",
+      "AgileAntiPatterns"
+    ],
+    "contentMarkdown": "# The Anti-Patterns Jira Accidentally Encourages\n\n## TL;DR\nJira’s infinite configurability lets reasonable ideas calcify into harmful process. This post spotlights common anti-patterns and how an opinionated, prompt-first assistant prevents them by design.\n\n## The Promise vs. Reality\n- Agile promised fewer gates and faster feedback.\n- Reality: mega-stories, 14-state workflows, checkbox farms, velocity theatre.\n\n## Story 1 — The Mega-Story That Hid Risk\n- PO creates “Rebuild Checkout Flow” as one story; 15 ACs, 4 teams touched.\n- Sprint stalls on hidden dependencies; leadership thinks progress is fine.\n\n## Story 2 — Workflow Theatre\n- Team with 14 states; transition blocked unless arcane fields are set.\n- Devs memorize sequences just to move work—an “escape room” workflow.\n\n## Story 3 — Definition-of-Done as Checkbox Farm\n- 20 mandatory checkboxes even for trivial copy change.\n- People click without thinking; compliance becomes cargo cult.\n\n## Why It Happens\n- Config > Constraint; plugins pile on; dashboards reward point inflation.\n\n## Opinionated, Prompt-First Fix\n- Enforce small, demoable stories; block mega-stories at creation.\n- Backbone states: Ready → In Progress → In Review → Done.\n- Adaptive DoD: inferred from work type + repo signals.\n- Outcome-first dashboards (lead time, shipped value) instead of velocity.\n- Prompts: “Split this into 3 customer-visible slices.”\n\n## Takeaways\nTools should remove bad paths entirely, not tutor you while you fall into them."
+  },
+  {
+    "title": "Why New Teams Hate Jira",
+    "subtitle": "Onboarding tax, configuration traps, and the first-30-days reality",
+    "tags": [
+      "Agile",
+      "TeamOnboarding",
+      "DeveloperExperience",
+      "EngineeringManagement",
+      "DevTools"
+    ],
+    "contentMarkdown": "# Why New Teams Hate Jira\n\n## TL;DR\nNew hires lose momentum learning tool lore instead of product context. Here’s the first-30-days reality and how an opinionated, prompt-first assistant flips it.\n\n## Day 1–3: Field Lore Overload\n- New dev gets a 12-tab “Jira Field Guide.”\n- Real story: picking “Regulatory Track” for a minor UI tweak.\n\n## Week 1: Permission and State Tripwires\n- Transition blocked: Compliance Reviewer not assigned; new dev lacks permission.\n\n## Week 2: Backlog Monster\n- 1,200 items; shadow priorities in Notion/Sheets appear.\n\n## Week 3: Reporting Mirage\n- Velocity and burndowns shown; no visibility of shipped outcomes.\n\n## Opinionated, Prompt-First Fix\n- Smart defaults + explainable choices.\n- 4-state spine; reviewers auto-attached by ownership.\n- Auto-snooze and de-dupe; Now/Next/Later views.\n- Outcome dashboards tied to PRs/releases.\n- Prompt: “Find me a good starter ticket in payments, <2h, with tests.”\n\n## Takeaways\nMake the right way the easy way; day one starts to feel like day ten."
+  },
+  {
+    "title": "Stories, Tasks, and the Confusion in Between",
+    "subtitle": "Why blurred work types slow teams—and how to fix them at the source",
+    "tags": [
+      "Agile",
+      "BacklogManagement",
+      "ProductManagement",
+      "DeveloperExperience",
+      "DevTools"
+    ],
+    "contentMarkdown": "# Stories, Tasks, and the Confusion in Between\n\n## TL;DR\nWhen tools make stories and tasks indistinguishable, planning drifts and demos disappoint. Fix the contract at creation.\n\n## Classic Mix-Up\n- Retail team “gift receipts” story devolves into technical task tracking; customer sees nothing shipped.\n\n## Costs\n- Planning drift, review pain, stakeholder distrust.\n\n## Contract\n- **Story** = user-visible outcome, demoable, behavior-focused ACs.\n- **Task** = enabling, technical, time-boxed.\n\n## Tool Smells\n- Identical forms; link spaghetti; no size guardrails.\n\n## Opinionated, Prompt-First Fix\n- Type-aware templates (persona/outcome vs. component/risk).\n- Smell checks convert Story↔Task.\n- Enforced demoability and slice size.\n- Prompt: “Order blocking tasks so value lands by Friday.”\n\n## Takeaways\nPreserve meaning at the source; speed follows."
+  },
+  {
+    "title": "The Manual Chore of Managing Work in Jira",
+    "subtitle": "Why moving cards, chasing updates, and logging time burns capacity",
+    "tags": [
+      "Agile",
+      "DevTools",
+      "TeamProductivity",
+      "DeveloperExperience",
+      "ProductManagement"
+    ],
+    "contentMarkdown": "# The Manual Chore of Managing Work in Jira\n\n## TL;DR\nAdmin work masquerades as progress. Automate hygiene so boards mirror reality—not effort.\n\n## Stories from the Floor\n- Dev blocked from PR because ticket state wasn’t “In Review.”\n- Team spends Friday afternoons logging hours to unlock dashboards.\n\n## Root Causes\n- State as a gate; integrations that punish sequence; reporting KPIs.\n\n## Opinionated, Prompt-First Fix\n- Auto-progress with repo signals (PR opened/merged, tests failed).\n- Lightweight, expiring ChatOps tasks for housekeeping.\n- Time metrics derived from events, not manual logs.\n\n## Takeaways\nFree humans for high-leverage work; let the system move the cards."
+  },
+  {
+    "title": "Acceptance Criteria: Jira Leaves You on Your Own",
+    "subtitle": "From blank pages to behavior-focused, testable criteria",
+    "tags": [
+      "Agile",
+      "BDD",
+      "Testing",
+      "ProductManagement",
+      "DeveloperExperience"
+    ],
+    "contentMarkdown": "# Acceptance Criteria: Jira Leaves You on Your Own\n\n## Problem\nBlank fields lead to inconsistent, implementation-heavy ACs.\n\n## Two Real Cases\n- Copy change blocked by security checklist; ACs irrelevant to behavior.\n- API story with ACs like “update table X”; testers can’t verify value.\n\n## What Good Looks Like\n- Behavior-driven, user-oriented, independently verifiable.\n\n## Opinionated, Prompt-First Fix\n- Templates by story type (UI, API, bug).\n- Pattern library: error states, accessibility, performance.\n- Prompt: “Draft ACs for returning shopper card save.”\n\n## Takeaways\nGood ACs compound quality; make them the default, not the exception."
+  },
+  {
+    "title": "Story Splitting Shouldn’t Be This Hard",
+    "subtitle": "Prevent mega-stories; ship value in slices",
+    "tags": [
+      "Agile",
+      "BacklogManagement",
+      "Delivery",
+      "DevTools",
+      "ProductManagement"
+    ],
+    "contentMarkdown": "# Story Splitting Shouldn’t Be This Hard\n\n## Pain Story\n“Export data” mega-story triggers CAB; sprint dies.\n\n## Why Splitting Fails\n- Tools accept any size; teams fear partial value.\n\n## Opinionated, Prompt-First Fix\n- Block creation over size threshold; propose split patterns (workflow, happy path, report slice, feature flag toggle).\n- Simulate constraints (CAB cadence) and suggest sequencing.\n\n## Takeaways\nForce slices; velocity becomes reliability."
+  },
+  {
+    "title": "From PRs to Tests: Where Jira Drops the Ball",
+    "subtitle": "Evidence of done should be automatic, not administrative",
+    "tags": [
+      "Agile",
+      "DevOps",
+      "Testing",
+      "CICD",
+      "DeveloperExperience"
+    ],
+    "contentMarkdown": "# From PRs to Tests: Where Jira Drops the Ball\n\n## Pain Stories\n- PR blocked because ticket not in exact sub-state.\n- Test failures invisible in ticket until someone pastes screenshots.\n\n## Gap\n- Linking PRs/tests/releases to work is manual.\n\n## Opinionated, Prompt-First Fix\n- Auto link PRs, CI status, coverage, and release notes.\n- Rollback/“bounce back” state on test failure.\n- Prompt: “Show work items shipped with Release 1.14 and gaps.”\n\n## Takeaways\nWhen status is derived from evidence, trust goes up and admin goes down."
+  },
+  {
+    "title": "When Plugins Become Bloatware: Why More Isn’t Always Better",
+    "subtitle": "Curate, expire, and say no",
+    "tags": [
+      "Agile",
+      "DevTools",
+      "PlatformEngineering",
+      "Governance",
+      "ProductManagement"
+    ],
+    "contentMarkdown": "# When Plugins Become Bloatware: Why More Isn’t Always Better\n\n## Story\n- Year of plugin additions; no one remembers why; every ticket heavier.\n\n## Risks\n- Performance, UX inconsistency, policy ossification.\n\n## Opinionated, Prompt-First Fix\n- Curated built-ins; plugin review cadence with auto-expiry.\n- Usage telemetry: warn on rules that add friction without benefit.\n\n## Takeaways\nMinimize surface area; keep the tool coherent."
+  },
+  {
+    "title": "Linear: Prettier, Faster… but Fundamentally the Same Problems as Jira",
+    "subtitle": "Cosmetic fixes don’t solve structural issues",
+    "tags": [
+      "Agile",
+      "DevTools",
+      "ProductManagement",
+      "EngineeringManagement"
+    ],
+    "contentMarkdown": "# Linear: Prettier, Faster… but Fundamentally the Same Problems as Jira\n\n## Context\nLinear improves UX speed, but still centers boards, tickets, and human admin.\n\n## Parallels\n- Accepts mega-stories; plugin/automation creep; points-driven optics.\n\n## Stories\n- Team migrated to Linear; 3 months later shadow spreadsheets reappear.\n\n## Opinionated, Prompt-First Contrast\n- Guardrails > configurability; outcomes > points; prompts > hunts.\n\n## Takeaways\nSpeed without constraints is just faster confusion."
+  },
+  {
+    "title": "Lost in the Hierarchy: Why Hunting the Right Ticket Wastes Time (and How a Prompt-First Approach Fixes It)",
+    "subtitle": "Stop spelunking; start asking",
+    "tags": [
+      "Agile",
+      "Search",
+      "DeveloperExperience",
+      "AI",
+      "DevTools"
+    ],
+    "contentMarkdown": "# Lost in the Hierarchy\n\n## Pain\nDev burns 30 minutes locating the “real” ticket among epics/subtasks.\n\n## Why It Happens\n- Hierarchical UI forces browsing; naming drift over time.\n\n## Prompt-First Fix\n- Natural language find: “Show the story blocking checkout for iOS, owned by Payments, <2d effort.”\n- Results ranked by code ownership, recency, signals from PRs/tests.\n\n## Takeaways\nSearch beats browse when context is rich and ranked."
+  },
+  {
+    "title": "“Who Assigned This to Me?” — Why Developers Should Own What They Pick Up",
+    "subtitle": "Autonomy, flow, and team trust",
+    "tags": [
+      "Agile",
+      "TeamCulture",
+      "DeveloperExperience",
+      "EngineeringManagement"
+    ],
+    "contentMarkdown": "# “Who Assigned This to Me?”\n\n## Pain Story\nDev returns from lunch to find a high-risk task assigned without context.\n\n## Cost\nOwnership confusion, broken flow, hidden prioritization.\n\n## Opinionated Guardrails\n- Pull > push; WIP limits enforced; visible queue with capability/skill hints.\n- Prompt: “Recommend next two items I’m best-placed to finish by Friday.”\n\n## Takeaways\nLet devs pull; the system supplies context and guardrails."
+  },
+  {
+    "title": "“What’s Needed Next?” — How Product Owners Get Lost in a Backlog Snowstorm",
+    "subtitle": "From mountains of tickets to a Now/Next/Later horizon",
+    "tags": [
+      "Agile",
+      "ProductManagement",
+      "Prioritization",
+      "BacklogManagement"
+    ],
+    "contentMarkdown": "# “What’s Needed Next?”\n\n## Reality\nPOs triage 1,000+ items; priorities shift weekly; duplicates abound.\n\n## Stories\n- Quarterly planning derailed by stale/duplicate items.\n\n## Opinionated, Prompt-First Fix\n- Auto-snooze old items; merge duplicates; impact/effort scoring.\n- Prompt: “Surface top 7 items for the payments OKR this sprint.”\n\n## Takeaways\nShrink the horizon; clarity beats completeness."
+  },
+  {
+    "title": "“Where’s the Predictability?” — Why Burndowns and Story Points Don’t Give Sponsors Real Visibility",
+    "subtitle": "Lead time, reliability, and shipped value > charts",
+    "tags": [
+      "Agile",
+      "Metrics",
+      "Leadership",
+      "ProductManagement",
+      "Delivery"
+    ],
+    "contentMarkdown": "# “Where’s the Predictability?”\n\n## Sponsor’s View\nBurndowns look good; nothing launched. Velocity rises; outcomes flat.\n\n## Why Points Fail for Visibility\n- Incentivize inflation; hide risk; don’t map to value.\n\n## Opinionated, Prompt-First Metrics\n- Lead time, cycle time, flow efficiency, change failure rate, release frequency.\n- Prompt: “Forecast when shoppers will see Save Card based on current flow.”\n\n## Takeaways\nPredictability is reliability of outcomes, not slope of a line."
+  },
+  {
+    "title": "Introducing Salunga: The Prompt-First Agile Assistant",
+    "subtitle": "Opinionated guardrails + AI prompts = less admin, more delivery",
+    "tags": [
+      "Agile",
+      "AI",
+      "DevTools",
+      "ProductManagement",
+      "EngineeringManagement"
+    ],
+    "contentMarkdown": "# Introducing Salunga\n\n## Why We Built It\nYears of bureaucracy theatre across tools. Same pains, new skins.\n\n## Principles\n- Opinionated defaults; fewer paths to get lost.\n- Prompt-first actions; boards as mirrors of reality.\n- Outcome-centric metrics; evidence-based status.\n\n## What It Does\n- Blocks mega-stories; proposes slices; drafts ACs.\n- Auto-links PRs/tests/releases; progresses states from signals.\n- Backlog hygiene + Now/Next/Later; developer pull with recommendations.\n\n## Getting Started\n- Invite Salunga to your repo + workspace; pick the curated template.\n\n## Call to Action\nTry it on a real sprint; measure lead time reduction and shipped outcomes."
+  },
+  {
+    "title": "Context Switching: The Hidden Cost of Tool-Driven Workflows",
+    "subtitle": "Jira ↔ GitHub ↔ Slack ↔ Time logs = death by a thousand cuts",
+    "tags": [
+      "DeveloperExperience",
+      "Productivity",
+      "Flow",
+      "DevTools"
+    ],
+    "contentMarkdown": "# Context Switching: The Hidden Cost\n\n## Real Day\n15 micro-switches/hour; 20–30% throughput loss.\n\n## Why Tools Amplify It\n- Status lives in the tool, not in signals; humans shuttle info.\n\n## Opinionated, Prompt-First Fix\n- Status derives from repo/CI; notifications are actionable prompts.\n- Focus mode: show only items you can make progress on now.\n\n## Takeaways\nProtect flow; let systems synchronize, not humans."
+  },
+  {
+    "title": "Why “Agile Reports” Don’t Help You Ship Faster",
+    "subtitle": "Dashboards that soothe feelings vs. dashboards that change outcomes",
+    "tags": [
+      "Agile",
+      "Metrics",
+      "Delivery",
+      "ProductManagement"
+    ],
+    "contentMarkdown": "# Why “Agile Reports” Don’t Help You Ship Faster\n\n## Stories\n- Weekly deck export from Jira; nobody changes behavior.\n\n## Problem\n- Vanity metrics; lagging indicators; no decision hooks.\n\n## Opinionated, Prompt-First Fix\n- Operational metrics with thresholds + suggested actions.\n- Prompt: “What’s the one constraint to cut lead time this week?”\n\n## Takeaways\nReports must provoke action, not applause."
+  },
+  {
+    "title": "Backlog Grooming or Backlog Gardening? Why Curation Shouldn’t Feel Endless",
+    "subtitle": "Tend a living system, don’t alphabetize a warehouse",
+    "tags": [
+      "Agile",
+      "BacklogManagement",
+      "ProductManagement"
+    ],
+    "contentMarkdown": "# Backlog Gardening\n\n## Pain\nGrooming meetings as busywork; stale items accumulate.\n\n## Gardening Practices\n- Prune (archive), propagate (split), stake (add support info).\n\n## Opinionated, Prompt-First Fix\n- Auto-prune stale; propose merges; seasonal reviews.\n\n## Takeaways\nBacklog should breathe with the product—not grow forever."
+  },
+  {
+    "title": "From User Stories to User Value: Why Tools Drift from the Customer",
+    "subtitle": "Keep the ‘why’ attached to the work",
+    "tags": [
+      "Agile",
+      "ProductManagement",
+      "UX",
+      "OutcomeDriven"
+    ],
+    "contentMarkdown": "# From User Stories to User Value\n\n## Drift\nTickets reference internal systems; user disappears.\n\n## Stories\n- “Refactor to v3” dominates sprint; customers see nothing.\n\n## Opinionated, Prompt-First Fix\n- Force persona/outcome; require demo step; link to usage metrics.\n\n## Takeaways\nIf value isn’t visible, it probably isn’t delivered."
+  },
+  {
+    "title": "Agile Theater: When Tools Look Busy but Deliver Nothing",
+    "subtitle": "How to spot it and stop it",
+    "tags": [
+      "Agile",
+      "Leadership",
+      "ProductManagement",
+      "Delivery"
+    ],
+    "contentMarkdown": "# Agile Theater\n\n## Signs\nPerfect burndowns; unchanged NPS/revenue; frequent status changes, rare releases.\n\n## Root Causes\n- Tool compliance over customer outcomes.\n\n## Opinionated, Prompt-First Fix\n- Evidence-based status; release cadence goals; outcome reviews.\n\n## Takeaways\nBusy isn’t value; measure delivery, not ceremony."
+  },
+  {
+    "title": "Metrics That Matter: Moving Beyond Story Points and Burndowns",
+    "subtitle": "A practical set leaders can trust",
+    "tags": [
+      "Agile",
+      "Metrics",
+      "Leadership",
+      "SRE",
+      "Delivery"
+    ],
+    "contentMarkdown": "# Metrics That Matter\n\n## Problems with Points\nGaming, inconsistency, false precision.\n\n## Better Set\nLead time, cycle time, flow efficiency, CFR, MTTR, release frequency, adoption/usage.\n\n## Opinionated, Prompt-First Fix\n- Auto-compute from repo/ops.\n- Prompts suggest single constraint to attack each week.\n\n## Takeaways\nSimple, objective, evidence-based metrics win."
+  },
+  {
+    "title": "Opinionated Software > Configurable Chaos",
+    "subtitle": "Why saying ‘no’ in the product creates ‘yes’ in delivery",
+    "tags": [
+      "ProductPhilosophy",
+      "Agile",
+      "DevTools",
+      "UX"
+    ],
+    "contentMarkdown": "# Opinionated Software > Configurable Chaos\n\n## Thesis\nDefaults are design. Too much choice creates failure modes.\n\n## Stories\n- Team with 20 custom fields vs. team with 6 curated fields.\n\n## Opinionated, Prompt-First Principles\n- Remove foot-guns; constrain to best practices; explain choices.\n\n## Takeaways\nConstraint is kindness; it protects momentum."
+  },
+  {
+    "title": "Agile Without the Admin: What Work Feels Like When Tools Get Out of the Way",
+    "subtitle": "A day-in-the-life vision",
+    "tags": [
+      "Agile",
+      "DeveloperExperience",
+      "ProductManagement",
+      "DevTools"
+    ],
+    "contentMarkdown": "# Agile Without the Admin\n\n## Vision Day\n- Dev pulls next best item; ACs drafted; PR auto-links; tests report back; story moves itself.\n\n## PO Experience\n- Now/Next/Later; duplicates merged; outcomes dashboard.\n\n## Sponsor View\n- Forecasts based on lead time; release notes tie to value.\n\n## Takeaways\nThis isn’t fantasy—it’s opinionated + prompt-first."
+  },
+  {
+    "title": "Why Every Team Ends Up Building a Spreadsheet Next to Jira",
+    "subtitle": "A symptom of trust falling out of the tool",
+    "tags": [
+      "Agile",
+      "BacklogManagement",
+      "Productivity",
+      "DevTools"
+    ],
+    "contentMarkdown": "# Why Every Team Builds a Spreadsheet Next to Jira\n\n## Symptom\nTeams make side sheets for priorities, OKRs, or real status.\n\n## Causes\n- Slow UI for quick questions; data too noisy; no single truth.\n\n## Opinionated, Prompt-First Fix\n- Fast prompt answers; curated views; audit trails of decisions.\n\n## Takeaways\nWhen truth lives in the tool, spreadsheets disappear."
+  }
+]
