@@ -55,18 +55,41 @@ jobs:
           shared-key: 'rust-deploy'
           cache-all-crates: 'true'
 
+      - name: Install cargo-binstall
+        run: |
+          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          
+      - name: Install Shuttle CLI
+        run: |
+          cargo binstall -y --locked cargo-shuttle
+          # Create shuttle symlink for shuttle.dev platform
+          ln -sf ~/.cargo/bin/cargo-shuttle ~/.cargo/bin/shuttle
+          
+      - name: Create Secrets file
+        working-directory: services/api-gateway
+        run: |
+          cat > Secrets.toml << EOF
+          CLERK_WEBHOOK_SECRET = "${{ github.event.inputs.environment == 'staging' && secrets.STAGING_CLERK_WEBHOOK_SECRET || secrets.PRODUCTION_CLERK_WEBHOOK_SECRET }}"
+          CLERK_JWKS_URL = "${{ github.event.inputs.environment == 'staging' && secrets.STAGING_CLERK_JWKS_URL || secrets.PRODUCTION_CLERK_JWKS_URL }}"
+          CLERK_JWT_ISSUER = "${{ github.event.inputs.environment == 'staging' && secrets.STAGING_CLERK_JWT_ISSUER || secrets.PRODUCTION_CLERK_JWT_ISSUER }}"
+          CLERK_JWT_AUDIENCE = "${{ github.event.inputs.environment == 'staging' && secrets.STAGING_CLERK_JWT_AUDIENCE || secrets.PRODUCTION_CLERK_JWT_AUDIENCE }}"
+          EOF
+          
       - name: Deploy to Shuttle
         id: deploy
-        uses: shuttle-hq/deploy-action@v2
-        with:
-          shuttle-api-key: ${{ secrets.SHUTTLE_API_KEY }}
-          project-id: ${{ github.event.inputs.environment == 'staging' && secrets.SHUTTLE_PROJECT_ID_STAGING || secrets.SHUTTLE_PROJECT_ID_PRODUCTION }}
-          working-directory: services/api-gateway
-          secrets: |
-            CLERK_WEBHOOK_SECRET = '${{ github.event.inputs.environment == 'staging' && secrets.STAGING_CLERK_WEBHOOK_SECRET || secrets.PRODUCTION_CLERK_WEBHOOK_SECRET }}'
-            CLERK_JWKS_URL = '${{ github.event.inputs.environment == 'staging' && secrets.STAGING_CLERK_JWKS_URL || secrets.PRODUCTION_CLERK_JWKS_URL }}'
-            CLERK_JWT_ISSUER = '${{ github.event.inputs.environment == 'staging' && secrets.STAGING_CLERK_JWT_ISSUER || secrets.PRODUCTION_CLERK_JWT_ISSUER }}'
-            CLERK_JWT_AUDIENCE = '${{ github.event.inputs.environment == 'staging' && secrets.STAGING_CLERK_JWT_AUDIENCE || secrets.PRODUCTION_CLERK_JWT_AUDIENCE }}'
+        working-directory: services/api-gateway
+        run: |
+          # Login to Shuttle
+          shuttle login --api-key ${{ secrets.SHUTTLE_API_KEY }}
+          
+          # Get project ID based on environment
+          PROJECT_ID="${{ github.event.inputs.environment == 'staging' && secrets.SHUTTLE_PROJECT_ID_STAGING || secrets.SHUTTLE_PROJECT_ID_PRODUCTION }}"
+          
+          echo "Deploying to project: $PROJECT_ID"
+          
+          # Deploy using project ID
+          shuttle deploy --id "$PROJECT_ID"
 
       - name: Set deployment URL
         id: set-url
