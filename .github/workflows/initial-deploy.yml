@@ -37,7 +37,7 @@ jobs:
     environment: ${{ github.event.inputs.environment }}
     
     outputs:
-      deployment_url: ${{ steps.deploy.outputs.deployment_url }}
+      deployment_url: ${{ steps.set-url.outputs.deployment_url }}
       
     steps:
       - name: Checkout code
@@ -55,33 +55,13 @@ jobs:
           shared-key: "rust-deploy"
           cache-all-crates: "true"
           
-      - name: Install Shuttle CLI
-        run: |
-          cargo install cargo-shuttle --version 0.47.0
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          
       - name: Deploy to Shuttle
         id: deploy
-        run: |
-          cd services/api-gateway
-          shuttle login --api-key ${{ secrets.SHUTTLE_API_KEY }}
-          
-          # Determine project name based on environment
-          if [ "${{ github.event.inputs.environment }}" == "staging" ]; then
-            PROJECT_NAME="salunga-ai-staging"
-            DEPLOY_URL="https://salunga-ai-staging-wokp.shuttle.app"
-          else
-            PROJECT_NAME="salunga-ai-production"  
-            DEPLOY_URL="https://salunga-ai-production-wokp.shuttle.app"
-          fi
-          
-          echo "Deploying to project: $PROJECT_NAME"
-          echo "Expected URL: $DEPLOY_URL"
-          
-          # Deploy (this will create resources as needed)
-          shuttle deploy --name $PROJECT_NAME
-          
-          echo "deployment_url=$DEPLOY_URL" >> $GITHUB_OUTPUT
+        uses: shuttle-hq/deploy-action@v2
+        with:
+          shuttle-api-key: ${{ secrets.SHUTTLE_API_KEY }}
+          working-directory: services/api-gateway
+          project-name: ${{ github.event.inputs.environment == 'staging' && 'salunga-ai-staging' || 'salunga-ai-production' }}
         env:
           # Shuttle-managed database is automatically provided via #[Postgres] annotation
           # Only Clerk secrets are needed for authentication
@@ -89,6 +69,16 @@ jobs:
           CLERK_JWKS_URL: ${{ github.event.inputs.environment == 'staging' && secrets.STAGING_CLERK_JWKS_URL || secrets.PRODUCTION_CLERK_JWKS_URL }}
           CLERK_JWT_ISSUER: ${{ github.event.inputs.environment == 'staging' && secrets.STAGING_CLERK_JWT_ISSUER || secrets.PRODUCTION_CLERK_JWT_ISSUER }}
           CLERK_JWT_AUDIENCE: ${{ github.event.inputs.environment == 'staging' && secrets.STAGING_CLERK_JWT_AUDIENCE || secrets.PRODUCTION_CLERK_JWT_AUDIENCE }}
+          
+      - name: Set deployment URL
+        id: set-url
+        run: |
+          if [ "${{ github.event.inputs.environment }}" == "staging" ]; then
+            DEPLOY_URL="https://salunga-ai-staging-wokp.shuttle.app"
+          else
+            DEPLOY_URL="https://salunga-ai-production-wokp.shuttle.app"
+          fi
+          echo "deployment_url=$DEPLOY_URL" >> $GITHUB_OUTPUT
 
   # =============================================================================
   # BASIC DEPLOYMENT VERIFICATION (NO STRICT HEALTH CHECKS)
