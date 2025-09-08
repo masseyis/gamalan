@@ -29,35 +29,35 @@ jobs:
   # =============================================================================
   # INITIAL BACKEND DEPLOYMENT (NO HEALTH CHECKS)
   # =============================================================================
-  
+
   deploy-backend:
     name: Deploy Backend to ${{ github.event.inputs.environment }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: ${{ github.event.inputs.environment }}
-    
+
     outputs:
       deployment_url: ${{ steps.set-url.outputs.deployment_url }}
-      
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
           toolchain: 1.85
           override: true
-          
+
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "rust-deploy"
-          cache-all-crates: "true"
-          
+          shared-key: 'rust-deploy'
+          cache-all-crates: 'true'
+
       - name: Deploy to Shuttle
         id: deploy
-        uses: shuttle-hq/deploy-action@main
+        uses: shuttle-hq/deploy-action@v2
         with:
           shuttle-api-key: ${{ secrets.SHUTTLE_API_KEY }}
           project-id: ${{ github.event.inputs.environment == 'staging' && secrets.SHUTTLE_PROJECT_ID_STAGING || secrets.SHUTTLE_PROJECT_ID_PRODUCTION }}
@@ -67,7 +67,7 @@ jobs:
             CLERK_JWKS_URL = '${{ github.event.inputs.environment == 'staging' && secrets.STAGING_CLERK_JWKS_URL || secrets.PRODUCTION_CLERK_JWKS_URL }}'
             CLERK_JWT_ISSUER = '${{ github.event.inputs.environment == 'staging' && secrets.STAGING_CLERK_JWT_ISSUER || secrets.PRODUCTION_CLERK_JWT_ISSUER }}'
             CLERK_JWT_AUDIENCE = '${{ github.event.inputs.environment == 'staging' && secrets.STAGING_CLERK_JWT_AUDIENCE || secrets.PRODUCTION_CLERK_JWT_AUDIENCE }}'
-          
+
       - name: Set deployment URL
         id: set-url
         run: |
@@ -81,29 +81,29 @@ jobs:
   # =============================================================================
   # BASIC DEPLOYMENT VERIFICATION (NO STRICT HEALTH CHECKS)
   # =============================================================================
-  
+
   verify-deployment:
     name: Verify Deployment
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: deploy-backend
     if: success()
-    
+
     steps:
       - name: Wait for deployment to settle
         run: |
           echo "Waiting 60 seconds for deployment to fully start..."
           sleep 60
-          
+
       - name: Basic connectivity test
         run: |
           echo "Testing basic connectivity to: ${{ needs.deploy-backend.outputs.deployment_url }}"
-          
+
           # Try to connect (any HTTP response is acceptable for initial deployment)
           RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${{ needs.deploy-backend.outputs.deployment_url }}" || echo "000")
-          
+
           echo "Response code: $RESPONSE_CODE"
-          
+
           if [ "$RESPONSE_CODE" = "000" ]; then
             echo "❌ No response from deployment (connection failed)"
             exit 1
@@ -113,13 +113,13 @@ jobs:
           else
             echo "✅ Deployment responding with HTTP $RESPONSE_CODE"
           fi
-          
+
           echo "Deployment verification completed"
 
   # =============================================================================
-  # FRONTEND DEPLOYMENT (OPTIONAL)  
+  # FRONTEND DEPLOYMENT (OPTIONAL)
   # =============================================================================
-  
+
   deploy-frontend:
     name: Deploy Frontend to ${{ github.event.inputs.environment }}
     runs-on: ubuntu-latest
@@ -127,23 +127,23 @@ jobs:
     needs: deploy-backend
     if: github.event.inputs.skip_frontend != 'true'
     environment: ${{ github.event.inputs.environment }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          
+
       - name: Install pnpm
         uses: pnpm/action-setup@v4
-        
+
       - name: Install dependencies
         working-directory: apps/web
         run: pnpm install --frozen-lockfile
-        
+
       - name: Build application
         working-directory: apps/web
         run: pnpm build
@@ -153,7 +153,7 @@ jobs:
           NEXT_PUBLIC_API_BASE_URL: ${{ needs.deploy-backend.outputs.deployment_url }}
           NEXT_PUBLIC_ENABLE_AI_FEATURES: true
           NEXT_PUBLIC_ENABLE_MOCK_DATA: ${{ github.event.inputs.environment == 'staging' }}
-          
+
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v25
         with:
@@ -167,13 +167,13 @@ jobs:
   # =============================================================================
   # DEPLOYMENT SUMMARY
   # =============================================================================
-  
+
   deployment-summary:
     name: Deployment Summary
     runs-on: ubuntu-latest
     if: always()
     needs: [deploy-backend, verify-deployment, deploy-frontend]
-    
+
     steps:
       - name: Generate summary
         run: |
@@ -181,7 +181,7 @@ jobs:
           echo "**Environment:** ${{ github.event.inputs.environment }}" >> $GITHUB_STEP_SUMMARY
           echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           # Backend status
           if [ "${{ needs.deploy-backend.result }}" == "success" ]; then
             echo "✅ **Backend Deployment:** Success" >> $GITHUB_STEP_SUMMARY
@@ -189,7 +189,7 @@ jobs:
           else
             echo "❌ **Backend Deployment:** Failed" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           # Verification status  
           if [ "${{ needs.verify-deployment.result }}" == "success" ]; then
             echo "✅ **Deployment Verification:** Passed" >> $GITHUB_STEP_SUMMARY
@@ -198,7 +198,7 @@ jobs:
           else
             echo "⏭️ **Deployment Verification:** Skipped" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           # Frontend status
           if [ "${{ github.event.inputs.skip_frontend }}" == "true" ]; then
             echo "⏭️ **Frontend Deployment:** Skipped (as requested)" >> $GITHUB_STEP_SUMMARY
@@ -209,9 +209,10 @@ jobs:
           else
             echo "⏭️ **Frontend Deployment:** Not attempted" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
           echo "1. Configure environment variables if services return 502/503 errors" >> $GITHUB_STEP_SUMMARY
           echo "2. Set up database credentials for full functionality" >> $GITHUB_STEP_SUMMARY
           echo "3. Test endpoints manually to verify configuration" >> $GITHUB_STEP_SUMMARY
+
