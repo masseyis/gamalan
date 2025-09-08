@@ -83,8 +83,27 @@ jobs:
           # Add cargo bin to PATH for this step  
           export PATH="$HOME/.cargo/bin:$PATH"
           
+          # Debug: Check if files exist and PATH is working
+          echo "DEBUG: Contents of ~/.cargo/bin:"
+          ls -la ~/.cargo/bin/ || echo "Directory doesn't exist"
+          echo "DEBUG: Current PATH: $PATH"
+          echo "DEBUG: Which shuttle: $(which shuttle || echo 'not found')"
+          echo "DEBUG: Which cargo-shuttle: $(which cargo-shuttle || echo 'not found')"
+          
+          # Try using absolute path as fallback
+          if [ -f "$HOME/.cargo/bin/shuttle" ]; then
+            SHUTTLE_CMD="$HOME/.cargo/bin/shuttle"
+          elif [ -f "$HOME/.cargo/bin/cargo-shuttle" ]; then
+            SHUTTLE_CMD="$HOME/.cargo/bin/cargo-shuttle" 
+          else
+            echo "ERROR: Neither shuttle nor cargo-shuttle found!"
+            exit 1
+          fi
+          
+          echo "DEBUG: Using command: $SHUTTLE_CMD"
+          
           # Login to Shuttle
-          shuttle login --api-key ${{ secrets.SHUTTLE_API_KEY }}
+          $SHUTTLE_CMD login --api-key ${{ secrets.SHUTTLE_API_KEY }}
           
           # Get project ID based on environment
           PROJECT_ID="${{ github.event.inputs.environment == 'staging' && secrets.SHUTTLE_PROJECT_ID_STAGING || secrets.SHUTTLE_PROJECT_ID_PRODUCTION }}"
@@ -92,7 +111,7 @@ jobs:
           echo "Deploying to project: $PROJECT_ID"
           
           # Deploy using project ID
-          shuttle deploy --id "$PROJECT_ID"
+          $SHUTTLE_CMD deploy --id "$PROJECT_ID"
 
       - name: Set deployment URL
         id: set-url
