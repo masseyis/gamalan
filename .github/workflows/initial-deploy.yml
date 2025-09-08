@@ -62,9 +62,19 @@ jobs:
           
       - name: Install Shuttle CLI
         run: |
-          cargo binstall -y --locked cargo-shuttle
-          # Create shuttle symlink for shuttle.dev platform
+          # Force install cargo-shuttle (override any cached/broken installation)
+          cargo binstall -y --locked --force cargo-shuttle
+          
+          # Verify installation
+          echo "Verifying cargo-shuttle installation:"
+          ls -la ~/.cargo/bin/cargo-shuttle || echo "cargo-shuttle not found!"
+          
+          # Create shuttle symlink for shuttle.dev platform  
           ln -sf ~/.cargo/bin/cargo-shuttle ~/.cargo/bin/shuttle
+          
+          # Verify symlink
+          echo "Verifying shuttle symlink:"
+          ls -la ~/.cargo/bin/shuttle || echo "shuttle symlink failed!"
           
       - name: Create Secrets file
         working-directory: services/api-gateway
