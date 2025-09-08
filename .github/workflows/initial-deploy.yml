@@ -58,6 +58,7 @@ jobs:
       - name: Install Shuttle CLI
         run: |
           cargo install cargo-shuttle --version 0.47.0
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
           
       - name: Deploy to Shuttle
         id: deploy
