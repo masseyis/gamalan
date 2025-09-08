@@ -80,6 +80,9 @@ jobs:
         id: deploy
         working-directory: services/api-gateway
         run: |
+          # Add cargo bin to PATH for this step  
+          export PATH="$HOME/.cargo/bin:$PATH"
+          
           # Login to Shuttle
           shuttle login --api-key ${{ secrets.SHUTTLE_API_KEY }}
           
