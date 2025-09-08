@@ -55,13 +55,28 @@ jobs:
           shared-key: "rust-deploy"
           cache-all-crates: "true"
           
+      - name: Install Shuttle CLI
+        run: |
+          curl -sSfL https://www.shuttle.dev/install | bash
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          
       - name: Deploy to Shuttle
         id: deploy
-        uses: shuttle-hq/deploy-action@v2
-        with:
-          shuttle-api-key: ${{ secrets.SHUTTLE_API_KEY }}
-          working-directory: services/api-gateway
-          project-name: ${{ github.event.inputs.environment == 'staging' && 'salunga-ai-staging' || 'salunga-ai-production' }}
+        run: |
+          cd services/api-gateway
+          shuttle login --api-key ${{ secrets.SHUTTLE_API_KEY }}
+          
+          # Determine project name based on environment
+          if [ "${{ github.event.inputs.environment }}" == "staging" ]; then
+            PROJECT_NAME="salunga-ai-staging"
+          else
+            PROJECT_NAME="salunga-ai-production"
+          fi
+          
+          echo "Deploying to project: $PROJECT_NAME"
+          
+          # Deploy (this will create the project if it doesn't exist)
+          shuttle deploy --name $PROJECT_NAME
         env:
           # Shuttle-managed database is automatically provided via #[Postgres] annotation
           # Only Clerk secrets are needed for authentication
