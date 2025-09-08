@@ -32,7 +32,7 @@ jobs:
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.81
+          toolchain: 1.85
           components: rustfmt, clippy
           override: true
           
@@ -42,14 +42,6 @@ jobs:
           shared-key: "rust-static-analysis"
           cache-all-crates: "true"
           
-      - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.6
-        
-      - name: Configure sccache environment
-        run: |
-          echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
-          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
-            
       - name: Check Rust formatting
         run: cargo fmt --all -- --check
         
@@ -113,7 +105,7 @@ jobs:
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.81
+          toolchain: 1.85
           override: true
           
       - name: Setup Rust cache
@@ -122,14 +114,6 @@ jobs:
           shared-key: "rust-unit-tests"
           cache-all-crates: "true"
           
-      - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.6
-        
-      - name: Configure sccache environment
-        run: |
-          echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
-          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
-            
       - name: Install jq for smart test runner
         run: sudo apt-get update && sudo apt-get install -y jq
         
@@ -294,7 +278,7 @@ jobs:
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.81
+          toolchain: 1.85
           override: true
           
       - name: Setup Rust cache
@@ -303,14 +287,6 @@ jobs:
           shared-key: "rust-integration-tests"
           cache-all-crates: "true"
           
-      - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.6
-        
-      - name: Configure sccache environment
-        run: |
-          echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
-          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
-            
       - name: Run database migrations
         run: |
           cargo install sqlx-cli --no-default-features --features "postgres,rustls"
@@ -364,7 +340,7 @@ jobs:
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.81
+          toolchain: 1.85
           override: true
           
       - name: Setup Rust cache
@@ -372,14 +348,6 @@ jobs:
         with:
           shared-key: "rust-contract-tests"
           cache-all-crates: "true"
-          
-      - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.6
-        
-      - name: Configure sccache environment
-        run: |
-          echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
-          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
           
       - name: Setup Node.js for OpenAPI tools
         uses: actions/setup-node@v4
