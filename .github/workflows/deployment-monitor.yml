@@ -1,0 +1,427 @@
+name: Deployment Monitoring & Health Checks
+
+on:
+  schedule:
+    # Run every 5 minutes during business hours (9 AM - 6 PM UTC, Mon-Fri)
+    - cron: '*/5 9-18 * * 1-5'
+    # Run every 15 minutes outside business hours
+    - cron: '*/15 0-8,19-23 * * *'
+    # Run every 30 minutes on weekends
+    - cron: '*/30 * * * 0,6'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to monitor'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+          - both
+      detailed_check:
+        description: 'Run detailed health checks'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  issues: write
+  deployments: read
+
+env:
+  MONITORING_TIMEOUT: 30
+
+jobs:
+  # =============================================================================
+  # PRODUCTION MONITORING
+  # =============================================================================
+  
+  production-health-check:
+    name: Production Health Monitoring
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event.inputs.environment == 'production' || github.event.inputs.environment == 'both' || github.event_name == 'schedule'
+    
+    outputs:
+      production_status: ${{ steps.health.outputs.status }}
+      production_response_time: ${{ steps.health.outputs.avg_response_time }}
+      
+    steps:
+      - name: Production health check
+        id: health
+        run: |
+          echo "🔍 Checking production health..."
+          
+          PROD_API="${{ secrets.PRODUCTION_API_URL }}"
+          PROD_FRONTEND="${{ secrets.PRODUCTION_FRONTEND_URL }}"
+          
+          if [ -z "$PROD_API" ]; then
+            echo "⚠️ PRODUCTION_API_URL not configured"
+            echo "status=unknown" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # Health check function with retries
+          check_service() {
+            local url=$1
+            local service_name=$2
+            local retries=3
+            local timeout=10
+            
+            echo "Checking $service_name at $url"
+            
+            for i in $(seq 1 $retries); do
+              response=$(curl -s -o /dev/null -w "%{http_code},%{time_total}" --max-time $timeout "$url" || echo "000,999")
+              http_code=$(echo $response | cut -d',' -f1)
+              response_time=$(echo $response | cut -d',' -f2)
+              
+              if [ "$http_code" == "200" ]; then
+                echo "✅ $service_name: OK (${response_time}s)"
+                echo "${service_name}_status=healthy" >> $GITHUB_OUTPUT
+                echo "${service_name}_response_time=$response_time" >> $GITHUB_OUTPUT
+                return 0
+              else
+                if [ $i -eq $retries ]; then
+                  echo "❌ $service_name: Failed after $retries attempts (HTTP $http_code)"
+                  echo "${service_name}_status=unhealthy" >> $GITHUB_OUTPUT
+                  echo "${service_name}_response_time=999" >> $GITHUB_OUTPUT
+                  return 1
+                else
+                  echo "⚠️ $service_name: Attempt $i failed (HTTP $http_code), retrying..."
+                  sleep 5
+                fi
+              fi
+            done
+          }
+          
+          # Check core services
+          API_FAILED=0
+          FRONTEND_FAILED=0
+          
+          # API Health Checks
+          check_service "$PROD_API/health" "API_Health" || API_FAILED=1
+          check_service "$PROD_API/ready" "API_Ready" || API_FAILED=1
+          
+          # Service-specific health checks
+          check_service "$PROD_API/api/v1/projects/health" "Projects_Service" || API_FAILED=1
+          check_service "$PROD_API/api/v1/backlog/health" "Backlog_Service" || API_FAILED=1
+          check_service "$PROD_API/api/v1/readiness/health" "Readiness_Service" || API_FAILED=1
+          check_service "$PROD_API/api/v1/prompt-builder/health" "Prompt_Builder_Service" || API_FAILED=1
+          
+          # Frontend Health Check
+          if [ -n "$PROD_FRONTEND" ]; then
+            check_service "$PROD_FRONTEND" "Frontend" || FRONTEND_FAILED=1
+          fi
+          
+          # Overall status determination
+          if [ $API_FAILED -eq 0 ] && [ $FRONTEND_FAILED -eq 0 ]; then
+            echo "status=healthy" >> $GITHUB_OUTPUT
+            echo "🎉 All production services are healthy"
+          elif [ $API_FAILED -eq 0 ]; then
+            echo "status=degraded" >> $GITHUB_OUTPUT
+            echo "⚠️ Production API healthy, but frontend issues detected"
+          else
+            echo "status=unhealthy" >> $GITHUB_OUTPUT
+            echo "🚨 Production API services are unhealthy"
+          fi
+          
+      - name: Detailed production diagnostics
+        if: github.event.inputs.detailed_check == 'true' || steps.health.outputs.status == 'unhealthy'
+        run: |
+          echo "🔬 Running detailed production diagnostics..."
+          
+          PROD_API="${{ secrets.PRODUCTION_API_URL }}"
+          
+          # DNS resolution check
+          echo "DNS Resolution Check:"
+          nslookup $(echo $PROD_API | sed 's|https\?://||' | cut -d'/' -f1) || echo "DNS lookup failed"
+          
+          # SSL certificate check
+          echo "SSL Certificate Check:"
+          echo | openssl s_client -connect $(echo $PROD_API | sed 's|https\?://||' | cut -d'/' -f1):443 -servername $(echo $PROD_API | sed 's|https\?://||' | cut -d'/' -f1) 2>/dev/null | openssl x509 -noout -dates || echo "SSL check failed"
+          
+          # Response headers check
+          echo "Response Headers:"
+          curl -I --max-time 10 "$PROD_API/health" || echo "Header check failed"
+          
+          # Connection timing
+          echo "Connection Timing:"
+          curl -w "@-" -o /dev/null -s "$PROD_API/health" <<< 'time_namelookup:  %{time_namelookup}\ntime_connect:     %{time_connect}\ntime_appconnect:  %{time_appconnect}\ntime_pretransfer: %{time_pretransfer}\ntime_redirect:    %{time_redirect}\ntime_starttransfer: %{time_starttransfer}\ntime_total:       %{time_total}\n' || echo "Timing check failed"
+
+  # =============================================================================
+  # STAGING MONITORING
+  # =============================================================================
+  
+  staging-health-check:
+    name: Staging Health Monitoring
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event.inputs.environment == 'staging' || github.event.inputs.environment == 'both'
+    
+    outputs:
+      staging_status: ${{ steps.health.outputs.status }}
+      
+    steps:
+      - name: Staging health check
+        id: health
+        run: |
+          echo "🔍 Checking staging health..."
+          
+          STAGING_API="${{ secrets.STAGING_API_BASE_URL }}"
+          STAGING_FRONTEND="${{ secrets.STAGING_BASE_URL }}"
+          
+          if [ -z "$STAGING_API" ]; then
+            echo "⚠️ STAGING_API_BASE_URL not configured"
+            echo "status=unknown" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # Quick health check for staging
+          api_status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "$STAGING_API/health" || echo "000")
+          frontend_status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "$STAGING_FRONTEND" || echo "000")
+          
+          if [ "$api_status" == "200" ]; then
+            echo "✅ Staging API: Healthy"
+            if [ "$frontend_status" == "200" ]; then
+              echo "✅ Staging Frontend: Healthy"
+              echo "status=healthy" >> $GITHUB_OUTPUT
+            else
+              echo "⚠️ Staging Frontend: Issues (HTTP $frontend_status)"
+              echo "status=degraded" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "❌ Staging API: Unhealthy (HTTP $api_status)"
+            echo "status=unhealthy" >> $GITHUB_OUTPUT
+          fi
+
+  # =============================================================================
+  # PERFORMANCE MONITORING
+  # =============================================================================
+  
+  performance-monitoring:
+    name: Performance & SLA Monitoring
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [production-health-check]
+    if: always() && needs.production-health-check.outputs.production_status == 'healthy'
+    
+    steps:
+      - name: Performance benchmarks
+        run: |
+          echo "📊 Running production performance benchmarks..."
+          
+          PROD_API="${{ secrets.PRODUCTION_API_URL }}"
+          
+          # Performance test function
+          benchmark_endpoint() {
+            local endpoint=$1
+            local sla_threshold=${2:-2.0}
+            local iterations=10
+            
+            echo "Benchmarking $endpoint (SLA: ${sla_threshold}s)"
+            
+            total_time=0
+            success_count=0
+            
+            for i in $(seq 1 $iterations); do
+              response=$(curl -s -o /dev/null -w "%{http_code},%{time_total}" --max-time 10 "$PROD_API/$endpoint" || echo "000,999")
+              http_code=$(echo $response | cut -d',' -f1)
+              time=$(echo $response | cut -d',' -f2)
+              
+              if [ "$http_code" == "200" ]; then
+                success_count=$((success_count + 1))
+                total_time=$(echo "$total_time + $time" | bc -l)
+              fi
+            done
+            
+            if [ $success_count -gt 0 ]; then
+              avg_time=$(echo "scale=3; $total_time / $success_count" | bc -l)
+              success_rate=$(echo "scale=1; $success_count * 100 / $iterations" | bc -l)
+              
+              echo "Results: ${success_rate}% success rate, ${avg_time}s avg response time"
+              
+              # Check SLA compliance
+              if (( $(echo "$avg_time > $sla_threshold" | bc -l) )); then
+                echo "⚠️ SLA violation: ${avg_time}s > ${sla_threshold}s"
+                return 1
+              else
+                echo "✅ SLA compliant: ${avg_time}s <= ${sla_threshold}s"
+                return 0
+              fi
+            else
+              echo "❌ All requests failed"
+              return 1
+            fi
+          }
+          
+          # Benchmark critical endpoints with SLA thresholds
+          SLA_VIOLATIONS=0
+          
+          benchmark_endpoint "health" 1.0 || SLA_VIOLATIONS=$((SLA_VIOLATIONS + 1))
+          benchmark_endpoint "ready" 1.0 || SLA_VIOLATIONS=$((SLA_VIOLATIONS + 1))
+          benchmark_endpoint "api/v1/projects/health" 2.0 || SLA_VIOLATIONS=$((SLA_VIOLATIONS + 1))
+          benchmark_endpoint "api/v1/backlog/health" 2.0 || SLA_VIOLATIONS=$((SLA_VIOLATIONS + 1))
+          
+          echo "SLA Violations: $SLA_VIOLATIONS"
+          
+          if [ $SLA_VIOLATIONS -gt 0 ]; then
+            echo "🚨 Performance SLA violations detected"
+            echo "sla_status=violated" >> $GITHUB_OUTPUT
+          else
+            echo "✅ All SLA requirements met"
+            echo "sla_status=compliant" >> $GITHUB_OUTPUT
+          fi
+
+  # =============================================================================
+  # ALERTING & INCIDENT MANAGEMENT
+  # =============================================================================
+  
+  alert-management:
+    name: Alert Management
+    runs-on: ubuntu-latest
+    needs: [production-health-check, staging-health-check, performance-monitoring]
+    if: always() && (needs.production-health-check.outputs.production_status == 'unhealthy' || needs.performance-monitoring.outputs.sla_status == 'violated')
+    
+    steps:
+      - name: Create or update incident
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const productionStatus = '${{ needs.production-health-check.outputs.production_status }}';
+            const stagingStatus = '${{ needs.staging-health-check.outputs.staging_status || 'not-checked' }}';
+            const slaStatus = '${{ needs.performance-monitoring.outputs.sla_status || 'not-checked' }}';
+            
+            const severity = productionStatus === 'unhealthy' ? 'critical' : 'warning';
+            const title = productionStatus === 'unhealthy' ? 
+              '🚨 Production Service Outage Detected' : 
+              '⚠️ Production Performance Degradation';
+            
+            const body = `## Service Health Status Report
+            
+            **Detection Time:** ${new Date().toISOString()}
+            **Severity:** ${severity.toUpperCase()}
+            
+            ### Status Summary
+            - **Production:** ${productionStatus === 'healthy' ? '✅' : '❌'} ${productionStatus}
+            - **Staging:** ${stagingStatus === 'healthy' ? '✅' : stagingStatus === 'not-checked' ? '➖' : '⚠️'} ${stagingStatus}
+            - **Performance SLA:** ${slaStatus === 'compliant' ? '✅' : slaStatus === 'not-checked' ? '➖' : '❌'} ${slaStatus}
+            
+            ### Immediate Actions Required
+            - [ ] Investigate root cause
+            - [ ] Check service logs
+            - [ ] Verify infrastructure status
+            - [ ] Consider rollback if recent deployment
+            - [ ] Update status page
+            
+            ### Monitoring Details
+            **Workflow Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            
+            ---
+            *This incident was automatically created by the deployment monitoring system.*`;
+            
+            // Search for existing incident
+            const existingIssues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'incident,production',
+              state: 'open'
+            });
+            
+            const existingIncident = existingIssues.data.find(issue => 
+              issue.title.includes('Production Service') || issue.title.includes('Performance Degradation')
+            );
+            
+            if (existingIncident) {
+              // Update existing incident
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIncident.number,
+                body: `## Status Update - ${new Date().toISOString()}
+                
+                Production Status: **${productionStatus}**
+                Performance SLA: **${slaStatus}**
+                
+                [View latest monitoring results](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`
+              });
+            } else {
+              // Create new incident
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+                labels: ['incident', 'production', severity, 'monitoring']
+              });
+            }
+            
+      - name: Notify team (placeholder)
+        run: |
+          echo "🚨 ALERT: Production issues detected"
+          echo "Status: ${{ needs.production-health-check.outputs.production_status }}"
+          echo "SLA: ${{ needs.performance-monitoring.outputs.sla_status }}"
+          echo ""
+          echo "In a real deployment, this would:"
+          echo "- Send Slack/Teams notifications"
+          echo "- Trigger PagerDuty alerts"
+          echo "- Update status page"
+          echo "- Send email notifications to on-call team"
+
+  # =============================================================================
+  # MONITORING SUMMARY
+  # =============================================================================
+  
+  monitoring-summary:
+    name: Monitoring Summary
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [production-health-check, staging-health-check, performance-monitoring, alert-management]
+    
+    steps:
+      - name: Generate monitoring summary
+        run: |
+          echo "## 📊 Deployment Health Summary" >> $GITHUB_STEP_SUMMARY
+          echo "**Check Time:** $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ github.event.inputs.environment || 'scheduled-all' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Production status
+          PROD_STATUS="${{ needs.production-health-check.outputs.production_status }}"
+          if [ "$PROD_STATUS" == "healthy" ]; then
+            echo "✅ **Production:** All services healthy" >> $GITHUB_STEP_SUMMARY
+          elif [ "$PROD_STATUS" == "degraded" ]; then
+            echo "⚠️ **Production:** Some services degraded" >> $GITHUB_STEP_SUMMARY
+          elif [ "$PROD_STATUS" == "unhealthy" ]; then
+            echo "❌ **Production:** Services unhealthy" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❓ **Production:** Status unknown" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Staging status
+          STAGING_STATUS="${{ needs.staging-health-check.outputs.staging_status }}"
+          if [ "$STAGING_STATUS" == "healthy" ]; then
+            echo "✅ **Staging:** All services healthy" >> $GITHUB_STEP_SUMMARY
+          elif [ "$STAGING_STATUS" == "degraded" ]; then
+            echo "⚠️ **Staging:** Some services degraded" >> $GITHUB_STEP_SUMMARY  
+          elif [ "$STAGING_STATUS" == "unhealthy" ]; then
+            echo "❌ **Staging:** Services unhealthy" >> $GITHUB_STEP_SUMMARY
+          elif [ -n "$STAGING_STATUS" ]; then
+            echo "❓ **Staging:** Status unknown" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "➖ **Staging:** Not monitored this run" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Performance status
+          SLA_STATUS="${{ needs.performance-monitoring.outputs.sla_status }}"
+          if [ "$SLA_STATUS" == "compliant" ]; then
+            echo "✅ **Performance:** All SLAs met" >> $GITHUB_STEP_SUMMARY
+          elif [ "$SLA_STATUS" == "violated" ]; then
+            echo "❌ **Performance:** SLA violations detected" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "➖ **Performance:** Not monitored this run" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Next scheduled check:** $(date -d '+5 minutes' -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY

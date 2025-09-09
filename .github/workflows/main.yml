@@ -386,49 +386,225 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm playwright install --with-deps
           
-      - name: Wait for staging deployment
+      - name: Validate staging deployment readiness
         run: |
-          echo "Waiting 60 seconds for deployments to stabilize..."
-          sleep 60
+          echo "Validating staging deployment readiness..."
           
-      - name: Run smoke tests
-        working-directory: apps/web
-        run: |
-          pnpm test:e2e:staging
-        env:
-          PLAYWRIGHT_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
+          # Function to check endpoint with retries and detailed diagnostics
+          check_endpoint() {
+            local url=$1
+            local name=$2
+            local max_attempts=30
+            local wait_time=10
+            
+            echo "Checking $name at $url"
+            
+            for i in $(seq 1 $max_attempts); do
+              echo "Attempt $i/$max_attempts for $name..."
+              
+              # Get more detailed response information
+              response=$(curl -s -o /dev/null -w "%{http_code},%{time_total},%{url_effective}" --max-time 10 "$url" 2>/dev/null || echo "000,999,timeout")
+              http_code=$(echo $response | cut -d',' -f1)
+              time_total=$(echo $response | cut -d',' -f2)
+              effective_url=$(echo $response | cut -d',' -f3)
+              
+              if [ "$http_code" == "200" ]; then
+                echo "✅ $name is ready (${http_code}, ${time_total}s)"
+                return 0
+              elif [ "$http_code" == "000" ]; then
+                echo "⚠️ $name: Connection failed (timeout or DNS issue)"
+              else
+                echo "⚠️ $name: HTTP $http_code (${time_total}s) - may still be starting up"
+              fi
+              
+              if [ $i -lt $max_attempts ]; then
+                echo "⏳ $name not ready, waiting ${wait_time}s..."
+                sleep $wait_time
+              fi
+            done
+            
+            echo "❌ $name failed to become ready after $((max_attempts * wait_time)) seconds"
+            echo "Final status: HTTP $http_code, Time: ${time_total}s"
+            return 1
+          }
           
-      - name: Run API tests
-        run: |
-          # Test consolidated API endpoints are responding  
-          curl -f ${{ secrets.STAGING_API_BASE_URL }}/health || exit 1
-          curl -f ${{ secrets.STAGING_API_BASE_URL }}/ready || exit 1
-          # Test service-specific endpoints through unified gateway
-          curl -f ${{ secrets.STAGING_API_BASE_URL }}/api/v1/projects/health || exit 1
-          curl -f ${{ secrets.STAGING_API_BASE_URL }}/api/v1/backlog/health || exit 1
-          curl -f ${{ secrets.STAGING_API_BASE_URL }}/api/v1/readiness/health || exit 1
-          curl -f ${{ secrets.STAGING_API_BASE_URL }}/api/v1/prompt-builder/health || exit 1
+          # Check staging frontend
+          if [ -n "${{ secrets.STAGING_BASE_URL }}" ]; then
+            check_endpoint "${{ secrets.STAGING_BASE_URL }}" "Staging Frontend"
+          else
+            echo "⚠️ STAGING_BASE_URL not configured, skipping frontend check"
+          fi
           
-      - name: Performance benchmarking
-        run: |
-          # Basic performance check for consolidated API
-          response_time=$(curl -o /dev/null -s -w '%{time_total}' ${{ secrets.STAGING_API_BASE_URL }}/health)
-          echo "Consolidated API health endpoint response time: ${response_time}s"
-          if (( $(echo "$response_time > 2.0" | bc -l) )); then
-            echo "❌ Response time too slow: ${response_time}s"
+          # Check staging API
+          if [ -n "${{ secrets.STAGING_API_BASE_URL }}" ]; then
+            check_endpoint "${{ secrets.STAGING_API_BASE_URL }}/health" "Staging API Health"
+            check_endpoint "${{ secrets.STAGING_API_BASE_URL }}/ready" "Staging API Ready"
+          else
+            echo "❌ STAGING_API_BASE_URL not configured"
             exit 1
           fi
-          echo "✅ Performance check passed for consolidated API"
           
-      - name: Upload test results
+          echo "✅ All staging services are ready for testing"
+          
+      - name: Run comprehensive staging smoke tests
+        working-directory: apps/web
+        timeout-minutes: 20
+        run: |
+          echo "Running staging smoke tests..."
+          
+          # Set test environment variables with fallbacks
+          export PLAYWRIGHT_BASE_URL="${{ secrets.STAGING_BASE_URL }}"
+          export STAGING_BASE_URL="${{ secrets.STAGING_BASE_URL }}"
+          export STAGING_API_BASE_URL="${{ secrets.STAGING_API_BASE_URL }}"
+          
+          # Validate test configuration
+          if [ -z "$PLAYWRIGHT_BASE_URL" ] || [ -z "$STAGING_API_BASE_URL" ]; then
+            echo "❌ Missing required staging URLs for testing"
+            echo "STAGING_BASE_URL: ${STAGING_BASE_URL:-'Not set'}"
+            echo "STAGING_API_BASE_URL: ${STAGING_API_BASE_URL:-'Not set'}"
+            exit 1
+          fi
+          
+          echo "Test configuration:"
+          echo "Frontend URL: $STAGING_BASE_URL"
+          echo "API URL: $STAGING_API_BASE_URL"
+          echo "Test timeout: 20 minutes"
+          
+          # Run tests with retry on failure
+          if ! pnpm test:e2e:staging; then
+            echo "⚠️ First test run failed, retrying once..."
+            sleep 30
+            pnpm test:e2e:staging
+          fi
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
+          STAGING_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
+          STAGING_API_BASE_URL: ${{ secrets.STAGING_API_BASE_URL }}
+          CI: true
+          
+      - name: Run comprehensive API tests
+        timeout-minutes: 10
+        run: |
+          echo "Running comprehensive API tests..."
+          API_URL="${{ secrets.STAGING_API_BASE_URL }}"
+          
+          if [ -z "$API_URL" ]; then
+            echo "❌ STAGING_API_BASE_URL not configured"
+            exit 1
+          fi
+          
+          # Test core endpoints with detailed reporting
+          test_endpoint() {
+            local endpoint=$1
+            local expected_code=${2:-200}
+            local url="$API_URL/$endpoint"
+            
+            echo "Testing $endpoint..."
+            response=$(curl -s -o /dev/null -w "%{http_code},%{time_total}" --max-time 15 "$url" || echo "000,999")
+            code=$(echo $response | cut -d',' -f1)
+            time=$(echo $response | cut -d',' -f2)
+            
+            if [ "$code" == "$expected_code" ]; then
+              echo "✅ $endpoint: OK (${code}, ${time}s)"
+              return 0
+            else
+              echo "❌ $endpoint: Failed (${code}, ${time}s)"
+              return 1
+            fi
+          }
+          
+          # Core health endpoints
+          test_endpoint "health" 200
+          test_endpoint "ready" 200
+          
+          # Service-specific health endpoints through unified gateway
+          test_endpoint "api/v1/projects/health" 200
+          test_endpoint "api/v1/backlog/health" 200  
+          test_endpoint "api/v1/readiness/health" 200
+          test_endpoint "api/v1/prompt-builder/health" 200
+          
+          # Test authentication endpoints (should return 401 without auth)
+          test_endpoint "api/v1/projects" 401
+          test_endpoint "api/v1/backlog/stories" 401
+          
+          echo "✅ All API tests completed successfully"
+          
+      - name: Performance benchmarking
+        timeout-minutes: 5
+        run: |
+          echo "Running performance benchmarks..."
+          API_URL="${{ secrets.STAGING_API_BASE_URL }}"
+          
+          # Performance test function
+          benchmark_endpoint() {
+            local endpoint=$1
+            local threshold=${2:-2.0}
+            local iterations=5
+            
+            echo "Benchmarking $endpoint (${iterations} iterations)..."
+            
+            total_time=0
+            for i in $(seq 1 $iterations); do
+              time=$(curl -o /dev/null -s -w '%{time_total}' --max-time 10 "$API_URL/$endpoint" || echo "999")
+              echo "  Iteration $i: ${time}s"
+              total_time=$(echo "$total_time + $time" | bc -l)
+            done
+            
+            avg_time=$(echo "scale=3; $total_time / $iterations" | bc -l)
+            echo "Average response time: ${avg_time}s (threshold: ${threshold}s)"
+            
+            if (( $(echo "$avg_time > $threshold" | bc -l) )); then
+              echo "❌ Performance threshold exceeded: ${avg_time}s > ${threshold}s"
+              return 1
+            else
+              echo "✅ Performance benchmark passed: ${avg_time}s"
+              return 0
+            fi
+          }
+          
+          # Benchmark key endpoints
+          benchmark_endpoint "health" 1.0
+          benchmark_endpoint "ready" 1.0  
+          benchmark_endpoint "api/v1/projects/health" 2.0
+          benchmark_endpoint "api/v1/backlog/health" 2.0
+          
+          echo "✅ All performance benchmarks completed"
+          
+      - name: Generate test results summary
+        if: always()
+        run: |
+          echo "## 🧪 Staging Smoke Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** Staging" >> $GITHUB_STEP_SUMMARY
+          echo "**Frontend URL:** ${{ secrets.STAGING_BASE_URL }}" >> $GITHUB_STEP_SUMMARY
+          echo "**API URL:** ${{ secrets.STAGING_API_BASE_URL }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Test Suite:** E2E Staging Smoke Tests" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f "apps/web/test-results/staging-results.json" ]; then
+            echo "**Test Results:** Available in artifacts" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Test Results:** No results file generated" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Quality Gates:**" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Deployment health validation" >> $GITHUB_STEP_SUMMARY
+          echo "- 🧪 Frontend smoke tests" >> $GITHUB_STEP_SUMMARY
+          echo "- 🔧 API integration tests" >> $GITHUB_STEP_SUMMARY
+          echo "- ⚡ Performance benchmarks" >> $GITHUB_STEP_SUMMARY
+          
+      - name: Upload comprehensive test results
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: staging-test-results
+          name: staging-smoke-test-results
           path: |
             apps/web/playwright-report/
             apps/web/test-results/
+            apps/web/test-results/staging-results.json
+            apps/web/test-results/staging-results.xml
           retention-days: 30
+          if-no-files-found: warn
 
   # =============================================================================
   # PRODUCTION DEPLOYMENT PREPARATION

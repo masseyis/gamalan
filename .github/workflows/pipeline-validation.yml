@@ -1,0 +1,468 @@
+name: Pipeline Validation & Health Check
+
+on:
+  workflow_dispatch:
+    inputs:
+      validation_type:
+        description: 'Type of validation to run'
+        required: true
+        default: 'full'
+        type: choice
+        options:
+          - full
+          - configuration-only
+          - workflow-syntax-only
+          - secrets-only
+  schedule:
+    # Run weekly pipeline validation on Sundays at 2 AM UTC
+    - cron: '0 2 * * 0'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  # =============================================================================
+  # WORKFLOW SYNTAX VALIDATION
+  # =============================================================================
+  
+  validate-workflow-syntax:
+    name: Validate Workflow Syntax
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event.inputs.validation_type == 'full' || github.event.inputs.validation_type == 'workflow-syntax-only' || github.event_name == 'schedule'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Install actionlint
+        run: |
+          bash <(curl https://raw.githubusercontent.com/rhymond/actionlint/main/scripts/download-actionlint.bash)
+          sudo mv ./actionlint /usr/local/bin/
+          
+      - name: Validate workflow syntax
+        run: |
+          echo "🔍 Validating GitHub Actions workflow syntax..."
+          
+          # Run actionlint on all workflow files
+          if actionlint .github/workflows/*.yml; then
+            echo "✅ All workflow files have valid syntax"
+          else
+            echo "❌ Workflow syntax validation failed"
+            exit 1
+          fi
+          
+      - name: Check for common workflow anti-patterns
+        run: |
+          echo "🔍 Checking for common workflow anti-patterns..."
+          
+          # Check for hardcoded secrets
+          echo "Checking for hardcoded secrets..."
+          if grep -r -i "password\|secret\|key\|token" .github/workflows/ | grep -v "secrets\." | grep -v "inputs\." | grep -v "#" | grep -v "name:" | grep -v "description:"; then
+            echo "⚠️ Potential hardcoded secrets found (review above)"
+          else
+            echo "✅ No hardcoded secrets detected"
+          fi
+          
+          # Check for missing timeout specifications
+          echo "Checking for missing timeout specifications..."
+          MISSING_TIMEOUTS=$(grep -L "timeout-minutes:" .github/workflows/*.yml | wc -l)
+          if [ "$MISSING_TIMEOUTS" -gt 0 ]; then
+            echo "⚠️ $MISSING_TIMEOUTS workflow files missing timeout specifications"
+            grep -L "timeout-minutes:" .github/workflows/*.yml | sed 's/^/  - /'
+          else
+            echo "✅ All workflow files have timeout specifications"
+          fi
+          
+          # Check for overly broad permissions
+          echo "Checking workflow permissions..."
+          if grep -r "permissions:" .github/workflows/ | grep -i "write-all\|contents: write" | grep -v "deployments: write"; then
+            echo "⚠️ Some workflows have elevated permissions - review if necessary"
+          else
+            echo "✅ Workflow permissions appear appropriate"
+          fi
+
+  # =============================================================================
+  # CONFIGURATION VALIDATION
+  # =============================================================================
+  
+  validate-configuration:
+    name: Validate Configuration
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event.inputs.validation_type == 'full' || github.event.inputs.validation_type == 'configuration-only' || github.event_name == 'schedule'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Validate environment configurations
+        run: |
+          echo "🔍 Validating environment configurations..."
+          
+          # Check for required .env.example files
+          echo "Checking for .env.example files..."
+          if [ -f ".env.example" ]; then
+            echo "✅ Root .env.example found"
+          else
+            echo "⚠️ Root .env.example not found"
+          fi
+          
+          if [ -f "apps/web/.env.example" ]; then
+            echo "✅ Frontend .env.example found"
+          else
+            echo "⚠️ Frontend .env.example not found"
+          fi
+          
+          # Validate Shuttle.toml configurations
+          echo "Checking Shuttle.toml configurations..."
+          SHUTTLE_CONFIGS=$(find services -name "Shuttle.toml" 2>/dev/null | wc -l)
+          echo "Found $SHUTTLE_CONFIGS Shuttle.toml files"
+          
+          if [ "$SHUTTLE_CONFIGS" -eq 0 ]; then
+            echo "⚠️ No Shuttle.toml configurations found"
+          else
+            find services -name "Shuttle.toml" | while read -r config; do
+              echo "Validating $config..."
+              if grep -q "name =" "$config" && grep -q "version =" "$config"; then
+                echo "✅ $config has required fields"
+              else
+                echo "❌ $config missing required fields"
+              fi
+            done
+          fi
+          
+      - name: Validate package configurations
+        run: |
+          echo "🔍 Validating package configurations..."
+          
+          # Check Cargo.toml workspace configuration
+          if [ -f "Cargo.toml" ]; then
+            echo "✅ Root Cargo.toml found"
+            if grep -q "\[workspace\]" Cargo.toml; then
+              echo "✅ Workspace configuration present"
+            else
+              echo "⚠️ No workspace configuration found"
+            fi
+          else
+            echo "❌ Root Cargo.toml not found"
+          fi
+          
+          # Check package.json in frontend
+          if [ -f "apps/web/package.json" ]; then
+            echo "✅ Frontend package.json found"
+          else
+            echo "❌ Frontend package.json not found"
+          fi
+          
+      - name: Validate documentation structure
+        run: |
+          echo "🔍 Validating documentation structure..."
+          
+          # Check for required documentation
+          REQUIRED_DOCS=(
+            "README.md"
+            "docs/deployment/SECRETS_CONFIGURATION.md"
+            "docs/deployment/PIPELINE_ARCHITECTURE.md"
+          )
+          
+          for doc in "${REQUIRED_DOCS[@]}"; do
+            if [ -f "$doc" ]; then
+              echo "✅ $doc found"
+            else
+              echo "❌ $doc missing"
+            fi
+          done
+
+  # =============================================================================
+  # WORKFLOW DEPENDENCIES VALIDATION
+  # =============================================================================
+  
+  validate-workflow-dependencies:
+    name: Validate Workflow Dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event.inputs.validation_type == 'full' || github.event_name == 'schedule'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Check workflow dependencies
+        run: |
+          echo "🔍 Validating workflow dependencies..."
+          
+          # Check for action version consistency
+          echo "Checking GitHub Action versions..."
+          
+          # Extract all action uses from workflows
+          grep -h "uses:" .github/workflows/*.yml | sort | uniq -c | sort -nr > action_usage.txt
+          
+          echo "Most frequently used actions:"
+          head -10 action_usage.txt
+          
+          # Check for outdated common actions
+          echo ""
+          echo "Checking for potentially outdated actions..."
+          
+          if grep -r "actions/checkout@v3" .github/workflows/; then
+            echo "⚠️ Some workflows use actions/checkout@v3 - consider upgrading to v4"
+          fi
+          
+          if grep -r "actions/setup-node@v3" .github/workflows/; then
+            echo "⚠️ Some workflows use actions/setup-node@v3 - consider upgrading to v4"
+          fi
+          
+          # Check for deprecated actions
+          if grep -r "actions/upload-artifact@v3" .github/workflows/; then
+            echo "⚠️ Some workflows use actions/upload-artifact@v3 - consider upgrading to v4"
+          fi
+          
+          echo "✅ Workflow dependency check completed"
+          
+      - name: Validate workflow triggers
+        run: |
+          echo "🔍 Validating workflow triggers..."
+          
+          # Check that critical workflows have proper triggers
+          echo "Checking deployment workflow triggers..."
+          
+          if grep -q "on:" .github/workflows/deploy.yml && grep -A 5 "on:" .github/workflows/deploy.yml | grep -q "deployment:"; then
+            echo "✅ Production deployment has deployment trigger"
+          else
+            echo "❌ Production deployment missing deployment trigger"
+          fi
+          
+          if grep -q "workflow_dispatch:" .github/workflows/rollback.yml; then
+            echo "✅ Rollback workflow has manual trigger"
+          else
+            echo "❌ Rollback workflow missing manual trigger"
+          fi
+          
+          # Check for proper concurrency controls
+          echo "Checking concurrency controls..."
+          WORKFLOWS_WITH_CONCURRENCY=$(grep -l "concurrency:" .github/workflows/*.yml | wc -l)
+          TOTAL_WORKFLOWS=$(ls .github/workflows/*.yml | wc -l)
+          
+          echo "Workflows with concurrency control: $WORKFLOWS_WITH_CONCURRENCY/$TOTAL_WORKFLOWS"
+          
+          if [ "$WORKFLOWS_WITH_CONCURRENCY" -lt 3 ]; then
+            echo "⚠️ Some workflows may need concurrency controls"
+          else
+            echo "✅ Concurrency controls appear adequate"
+          fi
+
+  # =============================================================================
+  # SECRET CONFIGURATION VALIDATION
+  # =============================================================================
+  
+  validate-secrets-configuration:
+    name: Validate Secrets Configuration
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event.inputs.validation_type == 'full' || github.event.inputs.validation_type == 'secrets-only' || github.event_name == 'schedule'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Validate secret references
+        run: |
+          echo "🔍 Validating secret references in workflows..."
+          
+          # Extract all secret references
+          grep -hr "secrets\." .github/workflows/ | sed 's/.*secrets\.//' | sed 's/[^A-Z_].*//' | sort | uniq > used_secrets.txt
+          
+          echo "Secrets referenced in workflows:"
+          cat used_secrets.txt | sed 's/^/  - /'
+          
+          # Check for common required secrets
+          REQUIRED_SECRETS=(
+            "SHUTTLE_API_KEY"
+            "PRODUCTION_API_URL" 
+            "STAGING_API_BASE_URL"
+            "VERCEL_TOKEN"
+          )
+          
+          echo ""
+          echo "Checking for required secrets..."
+          for secret in "${REQUIRED_SECRETS[@]}"; do
+            if grep -q "$secret" used_secrets.txt; then
+              echo "✅ $secret is referenced"
+            else
+              echo "⚠️ $secret not found in workflows"
+            fi
+          done
+          
+          # Check for consistent naming patterns
+          echo ""
+          echo "Checking secret naming patterns..."
+          
+          if grep -q "PRODUCTION_" used_secrets.txt && grep -q "STAGING_" used_secrets.txt; then
+            echo "✅ Consistent environment prefixes used"
+          else
+            echo "⚠️ Environment prefixes may be inconsistent"
+          fi
+          
+          echo ""
+          echo "Total unique secrets referenced: $(wc -l < used_secrets.txt)"
+
+  # =============================================================================
+  # PIPELINE FLOW VALIDATION
+  # =============================================================================
+  
+  validate-pipeline-flow:
+    name: Validate Pipeline Flow
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event.inputs.validation_type == 'full' || github.event_name == 'schedule'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Validate deployment flow
+        run: |
+          echo "🔍 Validating deployment pipeline flow..."
+          
+          # Check CI pipeline structure
+          echo "Checking CI pipeline (ci.yml)..."
+          if [ -f ".github/workflows/ci.yml" ]; then
+            if grep -q "static-analysis" .github/workflows/ci.yml; then
+              echo "✅ CI has static analysis stage"
+            else
+              echo "❌ CI missing static analysis stage"
+            fi
+            
+            if grep -q "unit-tests\|test" .github/workflows/ci.yml; then
+              echo "✅ CI has testing stage"
+            else
+              echo "❌ CI missing testing stage"
+            fi
+            
+            if grep -q "coverage" .github/workflows/ci.yml; then
+              echo "✅ CI has coverage checking"
+            else
+              echo "⚠️ CI missing coverage checking"
+            fi
+          else
+            echo "❌ CI workflow not found"
+          fi
+          
+          # Check staging deployment
+          echo ""
+          echo "Checking staging deployment (main.yml)..."
+          if [ -f ".github/workflows/main.yml" ]; then
+            if grep -q "staging" .github/workflows/main.yml; then
+              echo "✅ Staging deployment configured"
+            else
+              echo "❌ Staging deployment not found"
+            fi
+            
+            if grep -q "smoke.*test\|e2e.*test\|regression.*test" .github/workflows/main.yml; then
+              echo "✅ Staging has automated testing"
+            else
+              echo "⚠️ Staging missing automated testing"
+            fi
+          else
+            echo "❌ Main deployment workflow not found"
+          fi
+          
+          # Check production deployment
+          echo ""
+          echo "Checking production deployment (deploy.yml)..."
+          if [ -f ".github/workflows/deploy.yml" ]; then
+            if grep -q "canary" .github/workflows/deploy.yml; then
+              echo "✅ Production has canary deployment"
+            else
+              echo "⚠️ Production missing canary deployment"
+            fi
+            
+            if grep -q "soak.*test\|monitoring" .github/workflows/deploy.yml; then
+              echo "✅ Production has monitoring/soak testing"
+            else
+              echo "⚠️ Production missing soak testing"
+            fi
+            
+            if grep -q "rollback" .github/workflows/deploy.yml; then
+              echo "✅ Production has rollback capability"
+            else
+              echo "⚠️ Production missing automatic rollback"
+            fi
+          else
+            echo "❌ Production deployment workflow not found"
+          fi
+
+  # =============================================================================
+  # VALIDATION SUMMARY
+  # =============================================================================
+  
+  validation-summary:
+    name: Validation Summary
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [validate-workflow-syntax, validate-configuration, validate-workflow-dependencies, validate-secrets-configuration, validate-pipeline-flow]
+    
+    steps:
+      - name: Generate validation summary
+        run: |
+          echo "## 🔍 Pipeline Validation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "**Validation Date:** $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY
+          echo "**Validation Type:** ${{ github.event.inputs.validation_type || 'scheduled-full' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Workflow syntax validation
+          if [ "${{ needs.validate-workflow-syntax.result }}" == "success" ]; then
+            echo "✅ **Workflow Syntax:** All workflows have valid syntax" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.validate-workflow-syntax.result }}" == "skipped" ]; then
+            echo "⏭️ **Workflow Syntax:** Skipped" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Workflow Syntax:** Issues detected" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Configuration validation
+          if [ "${{ needs.validate-configuration.result }}" == "success" ]; then
+            echo "✅ **Configuration:** All configurations valid" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.validate-configuration.result }}" == "skipped" ]; then
+            echo "⏭️ **Configuration:** Skipped" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Configuration:** Issues detected" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Dependencies validation
+          if [ "${{ needs.validate-workflow-dependencies.result }}" == "success" ]; then
+            echo "✅ **Dependencies:** All dependencies current" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.validate-workflow-dependencies.result }}" == "skipped" ]; then
+            echo "⏭️ **Dependencies:** Skipped" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Dependencies:** Issues detected" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Secrets validation
+          if [ "${{ needs.validate-secrets-configuration.result }}" == "success" ]; then
+            echo "✅ **Secrets:** Configuration appears valid" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.validate-secrets-configuration.result }}" == "skipped" ]; then
+            echo "⏭️ **Secrets:** Skipped" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Secrets:** Configuration issues detected" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Pipeline flow validation
+          if [ "${{ needs.validate-pipeline-flow.result }}" == "success" ]; then
+            echo "✅ **Pipeline Flow:** All flows properly configured" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.validate-pipeline-flow.result }}" == "skipped" ]; then
+            echo "⏭️ **Pipeline Flow:** Skipped" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Pipeline Flow:** Flow issues detected" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Recommendations:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Review any failed validations above" >> $GITHUB_STEP_SUMMARY
+          echo "- Update outdated action versions" >> $GITHUB_STEP_SUMMARY
+          echo "- Ensure all required secrets are configured" >> $GITHUB_STEP_SUMMARY
+          echo "- Regularly run pipeline validation" >> $GITHUB_STEP_SUMMARY
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Next scheduled validation:** $(date -d 'next Sunday 2:00' -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY

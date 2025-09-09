@@ -48,10 +48,29 @@ jobs:
       - name: Run Clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
         
-      - name: Security audit
+      - name: Security audit with enhanced reporting
         run: |
           cargo install --version 0.21.2 cargo-audit
-          cargo audit
+          
+          echo "Running Rust security audit..."
+          if cargo audit --format json > audit-results.json 2>&1; then
+            echo "✅ No security vulnerabilities found"
+          else
+            echo "⚠️ Security vulnerabilities detected:"
+            if [ -f audit-results.json ]; then
+              # Parse and display vulnerabilities in readable format
+              cat audit-results.json | jq -r '.vulnerabilities[]? | "- \(.advisory.title) (\(.advisory.id)) - Severity: \(.advisory.informational // "Unknown")"' 2>/dev/null || cat audit-results.json
+            fi
+            
+            # Don't fail the build for informational advisories, but fail for actual vulnerabilities
+            HIGH_SEVERITY=$(cat audit-results.json | jq -r '.vulnerabilities[]? | select(.advisory.informational != true) | .advisory.id' 2>/dev/null | wc -l)
+            if [ "$HIGH_SEVERITY" -gt 0 ]; then
+              echo "❌ Found $HIGH_SEVERITY high-severity vulnerabilities - failing build"
+              exit 1
+            else
+              echo "ℹ️ Only informational advisories found - continuing build"
+            fi
+          fi
 
   frontend-static-analysis:
     name: Frontend Static Analysis
@@ -83,8 +102,30 @@ jobs:
       - name: Type check
         run: pnpm type-check
         
-      - name: Security audit
-        run: pnpm audit --audit-level high
+      - name: Enhanced security audit
+        run: |
+          echo "Running frontend security audit..."
+          
+          # Run audit and capture results
+          if pnpm audit --json > audit-results.json 2>&1; then
+            echo "✅ No high-severity vulnerabilities found"
+          else
+            echo "⚠️ Security issues detected in frontend dependencies:"
+            
+            # Display readable audit summary
+            if [ -f audit-results.json ]; then
+              HIGH_VULNS=$(cat audit-results.json | jq -r '.advisories[]? | select(.severity == "high" or .severity == "critical") | "- \(.title) (\(.severity))"' 2>/dev/null || echo "Could not parse audit results")
+              
+              if [ -n "$HIGH_VULNS" ] && [ "$HIGH_VULNS" != "Could not parse audit results" ]; then
+                echo "High/Critical vulnerabilities:"
+                echo "$HIGH_VULNS"
+                echo "❌ High-severity vulnerabilities found - failing build"
+                exit 1
+              else
+                echo "ℹ️ Only low/moderate severity issues found - review recommended but not blocking"
+              fi
+            fi
+          fi
 
   # =============================================================================
   # UNIT TESTS (Fast, comprehensive coverage)

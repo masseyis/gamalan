@@ -2,6 +2,7 @@ name: Production Canary Deployment
 
 on:
   deployment:
+    types: [created]
   workflow_dispatch:
     inputs:
       deployment_target:
@@ -62,8 +63,17 @@ jobs:
         id: deployment
         run: |
           if [ "${{ github.event_name }}" == "deployment" ]; then
+            DEPLOY_ENV="${{ github.event.deployment.environment }}"
             echo "deployment_id=${{ github.event.deployment.id }}" >> $GITHUB_OUTPUT
-            echo "environment=${{ github.event.deployment.environment }}" >> $GITHUB_OUTPUT
+            echo "environment=$DEPLOY_ENV" >> $GITHUB_OUTPUT
+            
+            # Only handle production deployments - skip for staging/other environments
+            if [ "$DEPLOY_ENV" != "production" ] && [ "$DEPLOY_ENV" != "canary" ]; then
+              echo "ℹ️ This workflow only handles production deployments, not '$DEPLOY_ENV'"
+              echo "🔄 Staging deployments are handled by main.yml workflow"
+              echo "should_deploy=false" >> $GITHUB_OUTPUT
+              exit 0
+            fi
           else
             echo "deployment_id=manual" >> $GITHUB_OUTPUT
             echo "environment=production" >> $GITHUB_OUTPUT
@@ -119,18 +129,28 @@ jobs:
         run: |
           echo "Checking current production health..."
           
-          # Health endpoint checks
+          # Health endpoint checks with retry logic
           for endpoint in health ready; do
-            response=$(curl -s -o /dev/null -w "%{http_code},%{time_total}" "${{ secrets.PRODUCTION_API_URL }}/$endpoint" || echo "000,999")
-            code=$(echo $response | cut -d',' -f1)
-            time=$(echo $response | cut -d',' -f2)
+            echo "Checking $endpoint endpoint..."
             
-            if [ "$code" != "200" ]; then
-              echo "❌ Production $endpoint endpoint returned $code"
-              exit 1
-            fi
-            
-            echo "✅ $endpoint endpoint: ${code} (${time}s)"
+            for attempt in {1..3}; do
+              response=$(curl -s -o /dev/null -w "%{http_code},%{time_total}" "${{ secrets.PRODUCTION_API_URL }}/$endpoint" || echo "000,999")
+              code=$(echo $response | cut -d',' -f1)
+              time=$(echo $response | cut -d',' -f2)
+              
+              if [ "$code" == "200" ]; then
+                echo "✅ $endpoint endpoint: ${code} (${time}s)"
+                break
+              else
+                if [ $attempt -eq 3 ]; then
+                  echo "❌ Production $endpoint endpoint returned $code after 3 attempts"
+                  exit 1
+                else
+                  echo "⚠️ Attempt $attempt failed with $code, retrying in 10s..."
+                  sleep 10
+                fi
+              fi
+            done
           done
           
       - name: Collect baseline metrics
@@ -138,11 +158,19 @@ jobs:
         run: |
           echo "Collecting baseline performance metrics..."
           
-          # Simulate baseline metrics collection
-          ERROR_RATE=$(curl -s "${{ secrets.MONITORING_API_URL }}/api/v1/query?query=error_rate" | jq -r '.data.result[0].value[1]' || echo "0.001")
-          P95_LATENCY=$(curl -s "${{ secrets.MONITORING_API_URL }}/api/v1/query?query=http_request_duration_seconds_95" | jq -r '.data.result[0].value[1]' || echo "0.200")
-          CPU_USAGE=$(curl -s "${{ secrets.MONITORING_API_URL }}/api/v1/query?query=cpu_usage_percent" | jq -r '.data.result[0].value[1]' || echo "45.0")
-          MEMORY_USAGE=$(curl -s "${{ secrets.MONITORING_API_URL }}/api/v1/query?query=memory_usage_percent" | jq -r '.data.result[0].value[1]' || echo "60.0")
+          # Collect baseline metrics with fallbacks
+          if [ -n "${{ secrets.MONITORING_API_URL }}" ]; then
+            ERROR_RATE=$(curl -s --max-time 10 "${{ secrets.MONITORING_API_URL }}/api/v1/query?query=error_rate" | jq -r '.data.result[0].value[1]' 2>/dev/null || echo "0.001")
+            P95_LATENCY=$(curl -s --max-time 10 "${{ secrets.MONITORING_API_URL }}/api/v1/query?query=http_request_duration_seconds_95" | jq -r '.data.result[0].value[1]' 2>/dev/null || echo "0.200")
+            CPU_USAGE=$(curl -s --max-time 10 "${{ secrets.MONITORING_API_URL }}/api/v1/query?query=cpu_usage_percent" | jq -r '.data.result[0].value[1]' 2>/dev/null || echo "45.0")
+            MEMORY_USAGE=$(curl -s --max-time 10 "${{ secrets.MONITORING_API_URL }}/api/v1/query?query=memory_usage_percent" | jq -r '.data.result[0].value[1]' 2>/dev/null || echo "60.0")
+          else
+            echo "⚠️ No monitoring API configured, using fallback baseline metrics"
+            ERROR_RATE="0.001"
+            P95_LATENCY="0.200"
+            CPU_USAGE="45.0"
+            MEMORY_USAGE="60.0"
+          fi
           
           BASELINE="{\"error_rate\":$ERROR_RATE,\"p95_latency\":$P95_LATENCY,\"cpu_usage\":$CPU_USAGE,\"memory_usage\":$MEMORY_USAGE}"
           echo "Baseline metrics: $BASELINE"

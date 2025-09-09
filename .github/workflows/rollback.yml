@@ -103,51 +103,123 @@ jobs:
     
     strategy:
       matrix:
-        service: [api-gateway, auth-gateway, projects, backlog, readiness, prompt-builder, context-orchestrator]
+        service: [api-gateway]
+        # Note: Since we're using consolidated API Gateway, we only need to rollback the main service
+        # All microservices (projects, backlog, readiness, prompt-builder, context-orchestrator) are included
       fail-fast: false
-      max-parallel: 3
+      max-parallel: 1
       
     steps:
       - name: Setup Shuttle CLI
         run: |
           cargo install cargo-shuttle --version 0.47.0
           
-      - name: Rollback service
+      - name: Rollback service with enhanced error handling
         run: |
           echo "🔄 Rolling back ${{ matrix.service }} to ${{ needs.validate-rollback.outputs.target_version }}"
           
-          shuttle login --api-key ${{ secrets.SHUTTLE_API_KEY }}
+          # Enhanced error handling with retries
+          retry_command() {
+            local cmd="$1"
+            local max_attempts=3
+            local wait_time=10
+            
+            for attempt in $(seq 1 $max_attempts); do
+              echo "Attempt $attempt/$max_attempts: $cmd"
+              if eval "$cmd"; then
+                return 0
+              else
+                if [ $attempt -lt $max_attempts ]; then
+                  echo "Command failed, waiting ${wait_time}s before retry..."
+                  sleep $wait_time
+                else
+                  echo "Command failed after $max_attempts attempts"
+                  return 1
+                fi
+              fi
+            done
+          }
+          
+          # Login with retry
+          if ! retry_command "shuttle login --api-key ${{ secrets.SHUTTLE_API_KEY }}"; then
+            echo "❌ Failed to login to Shuttle after multiple attempts"
+            exit 1
+          fi
+          
+          # Get current service status before rollback
+          echo "Getting current status for ${{ matrix.service }}..."
+          CURRENT_STATUS=$(shuttle project status --name "${{ matrix.service }}" 2>/dev/null || echo "unknown")
+          echo "Current status: $CURRENT_STATUS"
           
           # Stop any canary deployments first
-          CANARY_PROJECTS=$(shuttle project list | grep "${{ matrix.service }}-canary" || true)
+          echo "Checking for canary deployments..."
+          CANARY_PROJECTS=$(shuttle project list 2>/dev/null | grep "${{ matrix.service }}-canary" || true)
           if [ -n "$CANARY_PROJECTS" ]; then
-            echo "Stopping canary deployments for ${{ matrix.service }}"
+            echo "Found canary deployments for ${{ matrix.service }}"
             echo "$CANARY_PROJECTS" | while read -r canary_project; do
-              echo "Stopping $canary_project"
-              # shuttle project stop --name "$canary_project" 2>/dev/null || true
+              if [ -n "$canary_project" ]; then
+                echo "Stopping canary: $canary_project"
+                shuttle project stop --name "$canary_project" 2>/dev/null || echo "Failed to stop $canary_project"
+              fi
             done
+          else
+            echo "No canary deployments found for ${{ matrix.service }}"
           fi
           
-          # Rollback main service
+          # Perform rollback with enhanced error handling
           if [ "${{ needs.validate-rollback.outputs.target_version }}" == "previous-stable" ]; then
-            echo "Rolling back to previous stable deployment"
-            # shuttle rollback --project ${{ matrix.service }}
-            echo "Simulating rollback to previous stable version"
+            echo "Rolling back ${{ matrix.service }} to previous stable deployment"
+            if ! retry_command "shuttle rollback --project ${{ matrix.service }}"; then
+              echo "⚠️ Automatic rollback failed, attempting manual recovery"
+              # Try alternative rollback method
+              echo "Attempting deployment list retrieval..."
+              DEPLOYMENTS=$(shuttle project deployments --name "${{ matrix.service }}" 2>/dev/null || echo "")
+              if [ -n "$DEPLOYMENTS" ]; then
+                echo "Available deployments: $DEPLOYMENTS"
+              else
+                echo "❌ Could not retrieve deployment history"
+              fi
+            fi
           else
-            echo "Rolling back to specific version: ${{ needs.validate-rollback.outputs.target_version }}"
-            # shuttle deploy --project ${{ matrix.service }} --version ${{ needs.validate-rollback.outputs.target_version }}
-            echo "Simulating rollback to version ${{ needs.validate-rollback.outputs.target_version }}"
+            echo "Rolling back ${{ matrix.service }} to specific version: ${{ needs.validate-rollback.outputs.target_version }}"
+            if ! retry_command "shuttle deploy --project ${{ matrix.service }} --version ${{ needs.validate-rollback.outputs.target_version }}"; then
+              echo "❌ Version-specific rollback failed for ${{ matrix.service }}"
+              exit 1
+            fi
           fi
           
-          # Verify service is responding
-          sleep 10
-          
+          # Enhanced verification with multiple attempts
+          echo "Verifying rollback for ${{ matrix.service }}..."
           SERVICE_URL="https://${{ matrix.service }}.shuttle.app"
-          if curl -f -s "$SERVICE_URL/health" > /dev/null; then
-            echo "✅ ${{ matrix.service }} health check passed"
-          else
-            echo "⚠️ ${{ matrix.service }} health check failed - continuing with rollback"
-          fi
+          VERIFICATION_ATTEMPTS=6
+          VERIFICATION_WAIT=15
+          
+          for attempt in $(seq 1 $VERIFICATION_ATTEMPTS); do
+            echo "Verification attempt $attempt/$VERIFICATION_ATTEMPTS..."
+            
+            response=$(curl -s -o /dev/null -w "%{http_code},%{time_total}" --max-time 10 "$SERVICE_URL/health" || echo "000,999")
+            http_code=$(echo $response | cut -d',' -f1)
+            response_time=$(echo $response | cut -d',' -f2)
+            
+            if [ "$http_code" == "200" ]; then
+              echo "✅ ${{ matrix.service }} rollback verified (${response_time}s)"
+              echo "rollback_status=success" >> $GITHUB_OUTPUT
+              break
+            else
+              if [ $attempt -eq $VERIFICATION_ATTEMPTS ]; then
+                echo "❌ ${{ matrix.service }} verification failed after $VERIFICATION_ATTEMPTS attempts (HTTP $http_code)"
+                echo "rollback_status=failed" >> $GITHUB_OUTPUT
+                
+                # Get additional diagnostics
+                echo "Additional diagnostics for ${{ matrix.service }}:"
+                shuttle project status --name "${{ matrix.service }}" 2>/dev/null || echo "Could not get project status"
+                curl -I --max-time 5 "$SERVICE_URL" || echo "Could not get response headers"
+              else
+                echo "⚠️ ${{ matrix.service }} not ready (HTTP $http_code), waiting ${VERIFICATION_WAIT}s..."
+                sleep $VERIFICATION_WAIT
+              fi
+            fi
+          done
 
   # =============================================================================
   # FRONTEND ROLLBACK
