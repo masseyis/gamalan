@@ -315,6 +315,17 @@ jobs:
           name: api-gateway-binary
           path: ./artifacts
           
+      - name: Create Secrets file for staging
+        working-directory: services/api-gateway
+        run: |
+          cat > Secrets.toml << EOF
+          CLERK_WEBHOOK_SECRET = "${{ secrets.STAGING_CLERK_WEBHOOK_SECRET }}"
+          CLERK_JWKS_URL = "${{ secrets.STAGING_CLERK_JWKS_URL }}"
+          CLERK_JWT_ISSUER = "${{ secrets.STAGING_CLERK_JWT_ISSUER }}"
+          CLERK_JWT_AUDIENCE = "${{ secrets.STAGING_CLERK_JWT_AUDIENCE }}"
+          EOF
+          echo "Created Secrets.toml for staging deployment"
+          
       - name: Deploy to Shuttle staging
         run: |
           cd services/api-gateway
@@ -329,15 +340,9 @@ jobs:
             cargo shuttle project new --name $PROJECT_NAME
           fi
           
-          # Deploy to staging
+          # Deploy to staging with Secrets.toml
           export PATH="$HOME/.cargo/bin:$PATH"
           cargo shuttle deploy --name $PROJECT_NAME
-        env:
-          # Shuttle-managed database is automatically provided via #[Postgres] annotation
-          CLERK_WEBHOOK_SECRET: ${{ secrets.STAGING_CLERK_WEBHOOK_SECRET }}
-          CLERK_JWKS_URL: ${{ secrets.STAGING_CLERK_JWKS_URL }}
-          CLERK_JWT_ISSUER: ${{ secrets.STAGING_CLERK_JWT_ISSUER }}
-          CLERK_JWT_AUDIENCE: ${{ secrets.STAGING_CLERK_JWT_AUDIENCE }}
 
   deploy-staging-frontend:
     name: Deploy Frontend to Staging
