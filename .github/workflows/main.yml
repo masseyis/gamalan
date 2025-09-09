@@ -121,13 +121,23 @@ jobs:
           cargo check --workspace
           cargo test --lib --workspace -- --test-threads=1
           
+      - name: Setup Node.js and pnpm for frontend checks
+        if: steps.changes.outputs.frontend == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install pnpm for frontend checks
+        if: steps.changes.outputs.frontend == 'true'
+        uses: pnpm/action-setup@v4
+        
       - name: Frontend quick checks
         if: steps.changes.outputs.frontend == 'true'
         working-directory: apps/web
         run: |
-          npm ci
-          npm run type-check
-          npm run lint
+          pnpm install --frozen-lockfile
+          pnpm run type-check
+          pnpm run lint
           
       - name: Deployment decision
         id: decision
