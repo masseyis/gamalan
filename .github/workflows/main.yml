@@ -30,6 +30,11 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
+permissions:
+  contents: read
+  deployments: write
+  actions: read
+
 jobs:
   # =============================================================================
   # PRE-DEPLOYMENT VERIFICATION
@@ -204,7 +209,7 @@ jobs:
       - name: Generate SBOM
         run: |
           cargo install cargo-cyclonedx
-          cargo cyclonedx --format json --output-pattern "sbom-api-gateway.json"
+          cargo cyclonedx --format json > sbom-api-gateway.json
           
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -252,8 +257,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: frontend-build
-          path: apps/web/.next
+          path: |
+            apps/web/.next
+            apps/web/public
+            apps/web/package.json
           retention-days: 7
+          if-no-files-found: error
 
   # =============================================================================
   # STAGING DEPLOYMENT
@@ -273,7 +282,10 @@ jobs:
         
       - name: Install Shuttle CLI
         run: |
-          # Force install cargo-shuttle (override any cached/broken installation)
+          # First install cargo-binstall for faster installation
+          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+          
+          # Force install cargo-shuttle (override any cached/broken installation)  
           cargo binstall -y --locked --force cargo-shuttle
           
           # Verify installation

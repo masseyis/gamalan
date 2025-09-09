@@ -46,7 +46,7 @@ jobs:
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.85
+          toolchain: stable
           override: true
 
       - name: Setup Rust cache
@@ -100,15 +100,8 @@ jobs:
           echo "DEBUG: Which shuttle: $(which shuttle || echo 'not found')"
           echo "DEBUG: Which cargo-shuttle: $(which cargo-shuttle || echo 'not found')"
           
-          # Try using absolute path as fallback
-          if [ -f "$HOME/.cargo/bin/shuttle" ]; then
-            SHUTTLE_CMD="$HOME/.cargo/bin/shuttle"
-          elif [ -f "$HOME/.cargo/bin/cargo-shuttle" ]; then
-            SHUTTLE_CMD="$HOME/.cargo/bin/cargo-shuttle" 
-          else
-            echo "ERROR: Neither shuttle nor cargo-shuttle found!"
-            exit 1
-          fi
+          # Use cargo shuttle command consistently
+          SHUTTLE_CMD="cargo shuttle"
           
           echo "DEBUG: Using command: $SHUTTLE_CMD"
           
