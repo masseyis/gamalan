@@ -345,18 +345,17 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: frontend-build
-          path: apps/web/.next
+          path: apps/web
           
       - name: Deploy to Vercel staging
         uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--env staging'
+          vercel-args: ''
           working-directory: apps/web
-        env:
-          VERCEL_ENV: staging
 
   # =============================================================================
   # REGRESSION TESTING ON STAGING
