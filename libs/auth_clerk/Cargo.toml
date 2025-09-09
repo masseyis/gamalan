@@ -16,7 +16,12 @@ reqwest = { version = "0.12.4", features = ["json"] }
 chrono = "0.4.38"
 axum-extra = { workspace = true }
 tracing = { workspace = true }
+ring = "0.17.8"
+base64 = "0.22.1"
+subtle = "2.5.0"
 
 [dev-dependencies]
 serde_json = { workspace = true }
 mockito = "1.4.0"
+rsa = "0.9.6"
+base64 = "0.22.1"

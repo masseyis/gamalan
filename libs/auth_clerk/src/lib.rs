@@ -1,5 +1,6 @@
 pub mod claims;
 pub mod jwks;
+pub mod webhook;
 
 use crate::claims::Claims;
 use crate::jwks::{Jwk, JwksCache};
@@ -24,12 +25,23 @@ impl JwtVerifier {
         let mut validation = Validation::new(Algorithm::RS256);
         validation.set_issuer(&[issuer]);
 
-        // Only set audience validation if an audience is provided
-        if let Some(aud) = audience {
-            validation.set_audience(&[aud]);
-        } else {
-            // Disable audience validation since Clerk doesn't include aud by default
-            validation.validate_aud = false;
+        // Handle audience validation with security-first approach
+        match audience {
+            Some(aud) if !aud.trim().is_empty() => {
+                // Only validate audience if a non-empty audience is explicitly configured
+                tracing::debug!("JWT audience validation enabled for: {}", aud);
+                validation.set_audience(&[aud]);
+            }
+            Some(_empty_aud) => {
+                // Log warning for empty/whitespace audience configuration
+                tracing::warn!("Empty audience string provided - disabling audience validation");
+                validation.validate_aud = false;
+            }
+            None => {
+                // No audience configured - disable validation (common for Clerk)
+                tracing::debug!("No audience configured - disabling audience validation");
+                validation.validate_aud = false;
+            }
         }
         validation.leeway = 5;
 
