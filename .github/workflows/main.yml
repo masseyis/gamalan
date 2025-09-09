@@ -111,9 +111,10 @@ jobs:
           
       - name: Quick smoke tests
         if: steps.changes.outputs.backend == 'true'
+        timeout-minutes: 5
         run: |
           cargo check --workspace
-          cargo test --lib --workspace -- --test-threads=1 --timeout 30
+          cargo test --lib --workspace -- --test-threads=1
           
       - name: Frontend quick checks
         if: steps.changes.outputs.frontend == 'true'
