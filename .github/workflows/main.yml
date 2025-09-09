@@ -106,7 +106,7 @@ jobs:
         if: steps.changes.outputs.backend == 'true'
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.85
+          toolchain: stable
           override: true
           
       - name: Quick smoke tests
@@ -187,7 +187,7 @@ jobs:
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.85
+          toolchain: stable
           override: true
           
       - name: Setup Rust cache
@@ -273,7 +273,19 @@ jobs:
         
       - name: Install Shuttle CLI
         run: |
-          cargo install cargo-shuttle --version 0.47.0
+          # Force install cargo-shuttle (override any cached/broken installation)
+          cargo binstall -y --locked --force cargo-shuttle
+          
+          # Verify installation
+          echo "Verifying cargo-shuttle installation:"
+          ls -la ~/.cargo/bin/cargo-shuttle || echo "cargo-shuttle not found!"
+          
+          # Create shuttle symlink for shuttle.dev platform  
+          ln -sf ~/.cargo/bin/cargo-shuttle ~/.cargo/bin/shuttle
+          
+          # Export PATH to ensure shuttle is available
+          export PATH="$HOME/.cargo/bin:$PATH"
+          echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
           
       - name: Download build artifacts
         uses: actions/download-artifact@v4
@@ -284,19 +296,20 @@ jobs:
       - name: Deploy to Shuttle staging
         run: |
           cd services/api-gateway
-          shuttle login --api-key ${{ secrets.SHUTTLE_API_KEY }}
+          cargo shuttle login --api-key ${{ secrets.SHUTTLE_API_KEY }}
           
           # Deploy with staging suffix
           PROJECT_NAME="salunga-ai-staging"
           
-          # Check if staging project exists, create if not
-          if ! shuttle project status --name $PROJECT_NAME 2>/dev/null; then
+          # Check if staging project exists, create if not  
+          if ! cargo shuttle project status --name $PROJECT_NAME 2>/dev/null; then
             echo "Creating staging project: $PROJECT_NAME"
-            shuttle project new --name $PROJECT_NAME
+            cargo shuttle project new --name $PROJECT_NAME
           fi
           
           # Deploy to staging
-          shuttle deploy --name $PROJECT_NAME
+          export PATH="$HOME/.cargo/bin:$PATH"
+          cargo shuttle deploy --name $PROJECT_NAME
         env:
           # Shuttle-managed database is automatically provided via #[Postgres] annotation
           CLERK_WEBHOOK_SECRET: ${{ secrets.STAGING_CLERK_WEBHOOK_SECRET }}
@@ -323,7 +336,7 @@ jobs:
           path: apps/web/.next
           
       - name: Deploy to Vercel staging
-        uses: vercel/action@v1
+        uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
