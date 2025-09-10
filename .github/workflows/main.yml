@@ -369,7 +369,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: ''
+          vercel-args: '--build-env NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="${{ secrets.STAGING_CLERK_PUBLISHABLE_KEY }}" --build-env CLERK_SECRET_KEY="${{ secrets.STAGING_CLERK_SECRET_KEY }}" --build-env NEXT_PUBLIC_API_BASE_URL="${{ secrets.STAGING_API_BASE_URL }}"'
           working-directory: apps/web
 
   # =============================================================================
