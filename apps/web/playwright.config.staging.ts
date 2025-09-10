@@ -50,13 +50,7 @@ export default defineConfig({
     viewport: { width: 1280, height: 720 },
     ignoreHTTPSErrors: false, // Enforce HTTPS validation
     
-    /* Enhanced error reporting */
-    contextOptions: {
-      recordVideo: {
-        mode: 'retain-on-failure',
-        size: { width: 1280, height: 720 }
-      }
-    },
+    /* Enhanced error reporting - video configured at project level */
     
     /* User agent for staging identification */
     userAgent: 'Playwright-Staging-Tests/1.0',

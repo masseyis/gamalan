@@ -186,19 +186,19 @@ export async function signOut(page: Page, baseUrl: string): Promise<void> {
   
   // Try different sign-out methods
   const userMenuVisible = await page.locator('[data-testid="user-menu"]').isVisible({ timeout: 5000 })
-  const signOutButtonVisible = await page.locator('text=Sign out', 'button:has-text("Sign out")').isVisible({ timeout: 5000 })
+  const signOutButtonVisible = await page.locator('text=Sign out').isVisible({ timeout: 5000 })
 
   if (userMenuVisible) {
     console.log('👤 Found user menu, clicking to reveal sign-out option')
     await page.locator('[data-testid="user-menu"]').click()
     await page.waitForTimeout(1000)
     
-    const signOutOption = page.locator('text=Sign out', 'button:has-text("Sign out")').first()
+    const signOutOption = page.locator('text=Sign out').first()
     await expect(signOutOption).toBeVisible({ timeout: 5000 })
     await signOutOption.click()
   } else if (signOutButtonVisible) {
     console.log('🔲 Found direct sign-out button')
-    await page.locator('text=Sign out', 'button:has-text("Sign out")').first().click()
+    await page.locator('text=Sign out').first().click()
   } else {
     // Try Clerk sign-out URL
     console.log('🔗 No sign-out UI found, trying Clerk sign-out URL')
