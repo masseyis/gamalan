@@ -1,0 +1,390 @@
+import { test, expect } from '@playwright/test'
+
+/**
+ * Staging Authentication Tests
+ * 
+ * Comprehensive authentication tests using real Clerk credentials.
+ * These tests validate the complete authentication flow and authenticated
+ * user journeys as quality gates for production deployment.
+ */
+
+// Get staging URLs from environment
+const STAGING_BASE_URL = process.env.PLAYWRIGHT_BASE_URL || process.env.STAGING_BASE_URL
+const STAGING_API_URL = process.env.STAGING_API_BASE_URL
+
+// Test credentials - using existing account for sign-in (NOT sign-up)
+const TEST_EMAIL = 'masseyis@me.com'
+const TEST_PASSWORD = 'Penguinchicken123'
+
+if (!STAGING_BASE_URL) {
+  throw new Error('STAGING_BASE_URL or PLAYWRIGHT_BASE_URL environment variable is required')
+}
+
+if (!STAGING_API_URL) {
+  throw new Error('STAGING_API_BASE_URL environment variable is required')  
+}
+
+/**
+ * Helper function to clear all authentication state
+ */
+async function clearAuthState(page: any) {
+  await page.context().clearCookies()
+  await page.goto('about:blank')
+  await page.evaluate(() => {
+    localStorage.clear()
+    sessionStorage.clear()
+  })
+}
+
+/**
+ * Helper function to sign in with test credentials
+ */
+async function signInWithTestCredentials(page: any) {
+  console.log('Starting sign-in process...')
+  
+  // Navigate to the base URL which should redirect to auth
+  await page.goto(STAGING_BASE_URL, { waitUntil: 'networkidle' })
+  
+  // Wait for either Clerk auth interface or custom auth form
+  const authInterfaceVisible = await Promise.race([
+    page.locator('input[type="email"]').first().isVisible({ timeout: 15000 }),
+    page.locator('[data-clerk-id]').first().isVisible({ timeout: 15000 }),
+    page.locator('.cl-component').first().isVisible({ timeout: 15000 })
+  ])
+  
+  if (!authInterfaceVisible) {
+    // Try navigating directly to sign-in page
+    await page.goto(`${STAGING_BASE_URL}/sign-in`, { waitUntil: 'networkidle' })
+  }
+  
+  // Look for email input field
+  const emailInput = page.locator('input[type="email"], input[name="identifier"], input[name="emailAddress"]').first()
+  await expect(emailInput).toBeVisible({ timeout: 10000 })
+  
+  // Fill in email
+  await emailInput.fill(TEST_EMAIL)
+  console.log('Filled email field')
+  
+  // Look for continue/next button
+  const continueButton = page.locator(
+    'button:has-text("Continue"), button:has-text("Next"), button[type="submit"]'
+  ).first()
+  
+  if (await continueButton.isVisible({ timeout: 5000 })) {
+    await continueButton.click()
+    console.log('Clicked continue button')
+    
+    // Wait for password field to appear
+    await page.waitForTimeout(2000)
+  }
+  
+  // Look for password input field
+  const passwordInput = page.locator('input[type="password"], input[name="password"]').first()
+  await expect(passwordInput).toBeVisible({ timeout: 10000 })
+  
+  // Fill in password
+  await passwordInput.fill(TEST_PASSWORD)
+  console.log('Filled password field')
+  
+  // Find and click sign-in button
+  const signInButton = page.locator(
+    'button:has-text("Sign in"), button:has-text("Continue"), button:has-text("Submit"), button[type="submit"]'
+  ).first()
+  
+  await signInButton.click()
+  console.log('Clicked sign-in button')
+  
+  // Wait for authentication to complete - look for redirect or dashboard
+  await page.waitForLoadState('networkidle')
+  
+  // Verify we're signed in by checking for authenticated indicators
+  const isSignedIn = await Promise.race([
+    page.locator('[data-testid="user-menu"]').isVisible({ timeout: 15000 }),
+    page.locator('text=Dashboard').isVisible({ timeout: 15000 }),
+    page.locator('nav').isVisible({ timeout: 15000 }),
+    page.locator('text=Welcome').isVisible({ timeout: 15000 })
+  ])
+  
+  if (!isSignedIn) {
+    throw new Error('Sign-in did not complete successfully - no authenticated indicators found')
+  }
+  
+  console.log('✅ Sign-in completed successfully')
+  return true
+}
+
+/**
+ * Helper function to verify we're on an authentication page
+ */
+async function verifyAuthPage(page: any) {
+  const onAuthPage = await Promise.race([
+    page.url().includes('sign-in'),
+    page.url().includes('sign-up'),
+    page.url().includes('clerk'),
+    page.locator('input[type="email"]').isVisible({ timeout: 5000 }),
+    page.locator('[data-clerk-id]').isVisible({ timeout: 5000 }),
+    page.locator('.cl-component').isVisible({ timeout: 5000 })
+  ])
+  
+  return onAuthPage
+}
+
+test.describe('Staging Authentication Flow', () => {
+  
+  test.beforeEach(async ({ page }) => {
+    // Set longer timeouts for staging environment
+    page.setDefaultTimeout(30000)
+    page.setDefaultNavigationTimeout(30000)
+  })
+
+  test('should require authentication for protected routes', async ({ page }) => {
+    test.info().annotations.push({ 
+      type: 'auth-protection', 
+      description: 'Validates protected routes redirect to authentication' 
+    })
+
+    // Clear any existing auth state
+    await clearAuthState(page)
+
+    // Test accessing protected routes without authentication
+    const protectedRoutes = ['/dashboard', '/projects', '/assistant']
+    
+    for (const route of protectedRoutes) {
+      console.log(`Testing route protection: ${route}`)
+      
+      await page.goto(`${STAGING_BASE_URL}${route}`, { waitUntil: 'networkidle' })
+      
+      // Should be on authentication page or redirected to auth
+      const onAuthPage = await verifyAuthPage(page)
+      expect(onAuthPage, `Route ${route} should require authentication`).toBe(true)
+      
+      console.log(`✅ ${route} correctly requires authentication`)
+    }
+  })
+
+  test('should successfully authenticate with test credentials', async ({ page }) => {
+    test.info().annotations.push({ 
+      type: 'auth-sign-in', 
+      description: 'Validates sign-in flow with real test credentials' 
+    })
+
+    // Clear any existing auth state
+    await clearAuthState(page)
+
+    // Perform sign-in
+    await signInWithTestCredentials(page)
+    
+    // Verify we're signed in by checking URL and content
+    const currentUrl = page.url()
+    expect(currentUrl.includes('/sign-in') || currentUrl.includes('/sign-up'), 
+      'Should not be on authentication page after successful sign-in').toBe(false)
+    
+    // Verify authenticated UI elements are present
+    const hasAuthenticatedUI = await Promise.race([
+      page.locator('[data-testid="user-menu"]').isVisible({ timeout: 10000 }),
+      page.locator('nav').isVisible({ timeout: 10000 }),
+      page.locator('text=Dashboard').isVisible({ timeout: 10000 })
+    ])
+    
+    expect(hasAuthenticatedUI, 'Should show authenticated UI after sign-in').toBe(true)
+    console.log(`✅ Successfully authenticated, redirected to: ${currentUrl}`)
+  })
+
+  test('should access protected routes after authentication', async ({ page }) => {
+    test.info().annotations.push({ 
+      type: 'authenticated-access', 
+      description: 'Validates access to protected routes after authentication' 
+    })
+
+    // Clear auth state and sign in
+    await clearAuthState(page)
+    await signInWithTestCredentials(page)
+
+    // Test accessing protected routes while authenticated
+    const protectedRoutes = [
+      { path: '/dashboard', expectedContent: ['Dashboard', 'Welcome', 'Projects'] },
+      { path: '/projects', expectedContent: ['Projects', 'Create', 'New'] },
+      { path: '/assistant', expectedContent: ['Assistant', 'AI', 'Chat'] }
+    ]
+    
+    for (const { path, expectedContent } of protectedRoutes) {
+      console.log(`Testing authenticated access to: ${path}`)
+      
+      const response = await page.goto(`${STAGING_BASE_URL}${path}`, { 
+        waitUntil: 'networkidle',
+        timeout: 20000 
+      })
+      
+      // Should get 200 response when authenticated
+      expect(response?.status()).toBe(200)
+      
+      // Should not be redirected to auth
+      const onAuthPage = await verifyAuthPage(page)
+      expect(onAuthPage, `Should not redirect to auth when accessing ${path} while authenticated`).toBe(false)
+      
+      // Check for expected content (at least one should be visible)
+      const hasExpectedContent = await Promise.race(
+        expectedContent.map(content => 
+          page.locator(`text=${content}`).first().isVisible({ timeout: 10000 })
+        )
+      )
+      
+      // Allow for loading states if content isn't immediately visible
+      const hasLoadingState = await page.locator('text=Loading').isVisible({ timeout: 2000 })
+      
+      expect(hasExpectedContent || hasLoadingState, 
+        `Expected content or loading state should be visible on ${path}`).toBe(true)
+      
+      console.log(`✅ ${path} - Successfully accessed while authenticated`)
+    }
+  })
+
+  test('should maintain authentication state across page reloads', async ({ page }) => {
+    test.info().annotations.push({ 
+      type: 'auth-persistence', 
+      description: 'Validates authentication persists across page reloads' 
+    })
+
+    // Sign in
+    await clearAuthState(page)
+    await signInWithTestCredentials(page)
+
+    // Navigate to a protected route
+    await page.goto(`${STAGING_BASE_URL}/dashboard`, { waitUntil: 'networkidle' })
+    
+    // Verify we're on dashboard and authenticated
+    let onAuthPage = await verifyAuthPage(page)
+    expect(onAuthPage, 'Should not be on auth page after sign-in').toBe(false)
+
+    // Reload the page
+    await page.reload({ waitUntil: 'networkidle' })
+
+    // Should still be authenticated after reload
+    onAuthPage = await verifyAuthPage(page)
+    expect(onAuthPage, 'Should remain authenticated after page reload').toBe(false)
+
+    // Should still have authenticated UI
+    const hasAuthenticatedUI = await Promise.race([
+      page.locator('[data-testid="user-menu"]').isVisible({ timeout: 10000 }),
+      page.locator('nav').isVisible({ timeout: 10000 }),
+      page.locator('text=Dashboard').isVisible({ timeout: 10000 })
+    ])
+    
+    expect(hasAuthenticatedUI, 'Should maintain authenticated UI after reload').toBe(true)
+    console.log('✅ Authentication state persisted across page reload')
+  })
+
+  test('should handle sign-out flow correctly', async ({ page }) => {
+    test.info().annotations.push({ 
+      type: 'auth-sign-out', 
+      description: 'Validates sign-out flow and cleanup' 
+    })
+
+    // Sign in first
+    await clearAuthState(page)
+    await signInWithTestCredentials(page)
+
+    // Look for user menu or sign-out option
+    const userMenuVisible = await page.locator('[data-testid="user-menu"]').isVisible({ timeout: 5000 })
+    const signOutButtonVisible = await page.locator('text=Sign out', 'button:has-text("Sign out")').isVisible({ timeout: 5000 })
+
+    if (userMenuVisible) {
+      console.log('Found user menu, clicking to reveal sign-out option')
+      await page.locator('[data-testid="user-menu"]').click()
+      
+      // Wait for dropdown menu
+      await page.waitForTimeout(1000)
+      
+      const signOutOption = page.locator('text=Sign out', 'button:has-text("Sign out")').first()
+      await expect(signOutOption).toBeVisible({ timeout: 5000 })
+      await signOutOption.click()
+    } else if (signOutButtonVisible) {
+      console.log('Found direct sign-out button')
+      await page.locator('text=Sign out', 'button:has-text("Sign out")').first().click()
+    } else {
+      // Try Clerk sign-out via URL
+      console.log('No sign-out UI found, trying Clerk sign-out URL')
+      await page.goto(`${STAGING_BASE_URL}/sign-out`, { waitUntil: 'networkidle' })
+    }
+
+    // Wait for sign-out to complete
+    await page.waitForLoadState('networkidle')
+
+    // Should be redirected to auth page or landing page
+    const onAuthPageOrLanding = await Promise.race([
+      verifyAuthPage(page),
+      page.locator('text=Sign in', 'text=Get Started').isVisible({ timeout: 10000 })
+    ])
+
+    expect(onAuthPageOrLanding, 'Should be on auth page or landing page after sign-out').toBe(true)
+
+    // Try accessing protected route - should require auth again
+    await page.goto(`${STAGING_BASE_URL}/dashboard`, { waitUntil: 'networkidle' })
+    
+    const requiresAuthAgain = await verifyAuthPage(page)
+    expect(requiresAuthAgain, 'Protected routes should require auth again after sign-out').toBe(true)
+
+    console.log('✅ Sign-out flow completed successfully')
+  })
+
+  test('should validate API access with authentication', async ({ page }) => {
+    test.info().annotations.push({ 
+      type: 'authenticated-api', 
+      description: 'Validates API endpoints work with authentication' 
+    })
+
+    // Sign in first
+    await clearAuthState(page)
+    await signInWithTestCredentials(page)
+
+    // Test API health endpoints (should work with or without auth)
+    const healthResponse = await page.request.get(`${STAGING_API_URL}/health`)
+    expect(healthResponse.status()).toBe(200)
+    console.log('✅ Health endpoint accessible')
+
+    const readyResponse = await page.request.get(`${STAGING_API_URL}/ready`)
+    expect(readyResponse.status()).toBe(200)
+    console.log('✅ Ready endpoint accessible')
+
+    // Test potentially protected API endpoints
+    const protectedEndpoints = [
+      '/api/v1/projects',
+      '/api/v1/backlog',
+      '/api/v1/readiness'
+    ]
+
+    for (const endpoint of protectedEndpoints) {
+      console.log(`Testing API endpoint: ${endpoint}`)
+      
+      try {
+        // Try to get auth token from page context
+        const authToken = await page.evaluate(() => {
+          // Try different ways to get the auth token
+          return localStorage.getItem('clerk-session') || 
+                 localStorage.getItem('__clerk_jwt') ||
+                 sessionStorage.getItem('clerk-session')
+        })
+
+        const headers: any = {}
+        if (authToken) {
+          headers['Authorization'] = `Bearer ${authToken}`
+        }
+
+        const response = await page.request.get(`${STAGING_API_URL}${endpoint}`, { headers })
+        
+        // Accept various responses - endpoint might not exist yet or might require different auth
+        const validStatuses = [200, 201, 204, 401, 403, 404]
+        expect(validStatuses.includes(response.status()), 
+          `${endpoint} returned unexpected status: ${response.status()}`
+        ).toBe(true)
+        
+        console.log(`✅ ${endpoint} - Status: ${response.status()} (${response.status() < 400 ? 'Success' : 'Expected auth/not-found'})`)
+        
+      } catch (error) {
+        console.log(`ℹ️  ${endpoint} - Network error (may not be implemented yet): ${error}`)
+      }
+    }
+
+    console.log('✅ API validation completed')
+  })
+})

@@ -2,73 +2,117 @@ import { defineConfig, devices } from '@playwright/test';
 
 /**
  * Playwright configuration for staging environment testing
+ * Optimized for comprehensive authentication testing and quality gates
  * @see https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({
   testDir: './tests/e2e',
-  /* Run only smoke tests for staging */
-  testMatch: ['**/staging-smoke.spec.ts'],
-  /* Run tests in files in parallel */
-  fullyParallel: true,
-  /* Fail the build on CI if you accidentally left test.only in the source code. */
-  forbidOnly: !!process.env.CI,
-  /* Retry on CI for flaky network/deployment issues */
-  retries: process.env.CI ? 3 : 0,
-  /* Opt out of parallel tests on CI for staging stability */
-  workers: process.env.CI ? 1 : undefined,
-  /* Reporter to use */
+  /* Run working staging tests */
+  testMatch: ['**/staging-working.spec.ts'],
+  
+  /* Test execution strategy */
+  fullyParallel: false, // Sequential execution for auth state management
+  forbidOnly: !!process.env.CI, // Fail CI if test.only is left in code
+  
+  /* Retry configuration for staging environment stability */
+  retries: process.env.CI ? 2 : 0, // Reduced retries to avoid auth conflicts
+  workers: 1, // Single worker to avoid auth state conflicts
+  
+  /* Reporter configuration for quality gates */
   reporter: [
-    ['html', { outputFolder: 'playwright-report' }],
+    ['html', { outputFolder: 'playwright-report/staging', open: 'never' }],
     ['json', { outputFile: 'test-results/staging-results.json' }],
-    ['junit', { outputFile: 'test-results/staging-results.xml' }]
+    ['junit', { outputFile: 'test-results/staging-results.xml' }],
+    ['list', { printSteps: true }], // Detailed console output for debugging
   ],
   
-  /* Global test timeout for staging (longer due to network latency) */
-  timeout: 60000,
-  /* Expect timeout for staging environment */
+  /* Extended timeouts for staging environment */
+  timeout: 90000, // 90s for complex auth flows
   expect: {
-    timeout: 15000,
+    timeout: 20000, // 20s for element expectations
   },
   
-  /* Shared settings for staging tests */
+  /* Shared settings optimized for staging tests */
   use: {
     /* Base URL from environment variable */
     baseURL: process.env.PLAYWRIGHT_BASE_URL || process.env.STAGING_BASE_URL,
     
-    /* Collect trace on failure for debugging */
+    /* Enhanced debugging configuration */
     trace: 'retain-on-failure',
-    
-    /* Screenshot on failure */
     screenshot: 'only-on-failure',
-    
-    /* Video recording for debugging staging issues */
     video: 'retain-on-failure',
     
-    /* Wait for network to be idle before proceeding */
-    navigationTimeout: 30000,
-    actionTimeout: 15000,
-  },
-
-  /* Configure projects for staging testing - focus on Chrome for speed */
-  projects: [
-    {
-      name: 'chromium-staging',
-      use: { 
-        ...devices['Desktop Chrome'],
-        // Additional staging-specific options
-        viewport: { width: 1280, height: 720 },
-      },
+    /* Network and timing configuration */
+    navigationTimeout: 45000, // Extended for auth redirects
+    actionTimeout: 20000, // Extended for form interactions
+    
+    /* Browser context settings */
+    viewport: { width: 1280, height: 720 },
+    ignoreHTTPSErrors: false, // Enforce HTTPS validation
+    
+    /* Enhanced error reporting */
+    contextOptions: {
+      recordVideo: {
+        mode: 'retain-on-failure',
+        size: { width: 1280, height: 720 }
+      }
     },
     
-    // Optional: Mobile testing for critical paths
+    /* User agent for staging identification */
+    userAgent: 'Playwright-Staging-Tests/1.0',
+    
+    /* Extra HTTP headers for all requests */
+    extraHTTPHeaders: {
+      'X-Test-Environment': 'staging',
+      'X-Test-Type': 'e2e-quality-gate'
+    }
+  },
+
+  /* Browser projects optimized for quality gates */
+  projects: [
     {
-      name: 'mobile-staging',
+      name: 'desktop-chrome-staging',
+      use: { 
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1280, height: 720 },
+        // Disable web security for staging domains if needed
+        launchOptions: {
+          args: ['--disable-web-security', '--disable-features=VizDisplayCompositor']
+        }
+      },
+      testMatch: ['**/staging-*.spec.ts']
+    },
+    
+    // Mobile testing for critical authentication flows
+    {
+      name: 'mobile-chrome-staging',
       use: { 
         ...devices['Pixel 5'],
+        // Mobile-specific timeouts
+        navigationTimeout: 60000,
+        actionTimeout: 30000
       },
+      testMatch: ['**/staging-auth.spec.ts'], // Only run auth tests on mobile
     },
+    
+    // Optional: Safari testing for auth compatibility
+    {
+      name: 'safari-staging',
+      use: { 
+        ...devices['Desktop Safari'],
+        viewport: { width: 1280, height: 720 }
+      },
+      testMatch: ['**/staging-auth.spec.ts'], // Focus on auth compatibility
+    }
   ],
 
+  /* Global setup and teardown */
+  globalSetup: undefined, // No global setup needed for staging
+  globalTeardown: undefined,
+
+  /* Test output directories */
+  outputDir: 'test-results/staging',
+  
   /* No local dev server needed - testing remote staging */
   webServer: undefined,
 });

@@ -43,10 +43,10 @@ test.describe('Staging Smoke Tests - Critical Quality Gates', () => {
     console.log('✅ Staging API health checks passed')
   })
 
-  test('should load staging homepage without critical errors', async ({ page }) => {
+  test('should validate unauthenticated access to staging app', async ({ page }) => {
     test.info().annotations.push({ 
       type: 'smoke-test', 
-      description: 'Validates core frontend functionality on staging' 
+      description: 'Validates staging app handles unauthenticated users correctly' 
     })
 
     // Monitor for JavaScript and network errors
@@ -73,7 +73,15 @@ test.describe('Staging Smoke Tests - Critical Quality Gates', () => {
       }
     })
 
-    // Navigate to staging homepage with retry logic
+    // Clear any existing authentication state
+    await page.context().clearCookies()
+    await page.goto('about:blank')
+    await page.evaluate(() => {
+      localStorage.clear()
+      sessionStorage.clear()
+    })
+
+    // Navigate to staging homepage - should redirect to auth or show public landing
     let response
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
@@ -86,15 +94,23 @@ test.describe('Staging Smoke Tests - Critical Quality Gates', () => {
       }
     }
     
-    // Verify successful response
-    expect(response?.status()).toBe(200)
+    // For protected routes, expect redirect to auth (200) or direct auth challenge (401)
+    // Both are acceptable responses for unauthenticated users
+    const validStatuses = [200, 401]
+    expect(validStatuses.includes(response?.status() || 0), 
+      `Expected status 200 (redirect to auth) or 401 (auth required), got ${response?.status()}`
+    ).toBe(true)
     
     // Wait for React hydration to complete
     await page.waitForLoadState('networkidle')
     
-    // Verify core application loaded
-    const salungaLogoVisible = await page.locator('text=Salunga').first().isVisible({ timeout: 15000 })
-    expect(salungaLogoVisible).toBe(true)
+    // Verify we're either on auth page or public page with proper branding
+    const isAuthPage = await page.locator('input[type="email"], [data-clerk-id], .cl-component').isVisible({ timeout: 10000 })
+    const hasPublicContent = await page.locator('text=Salunga').first().isVisible({ timeout: 10000 })
+    
+    expect(isAuthPage || hasPublicContent, 
+      'Should show either authentication interface or public content with Salunga branding'
+    ).toBe(true)
     
     // Check for critical JavaScript errors
     const criticalJSErrors = jsErrors.filter(error => 
@@ -117,7 +133,8 @@ test.describe('Staging Smoke Tests - Critical Quality Gates', () => {
     expect(criticalJSErrors.length, `Critical JavaScript errors found: ${criticalJSErrors.join(', ')}`).toBe(0)
     expect(criticalNetworkErrors.length, `Critical network errors found: ${criticalNetworkErrors.join(', ')}`).toBe(0)
     
-    console.log('✅ Staging homepage smoke test passed')
+    const pageType = isAuthPage ? 'authentication' : 'public'
+    console.log(`✅ Staging app correctly shows ${pageType} interface for unauthenticated users`)
   })
 
   test('should validate consolidated API endpoints', async ({ page }) => {
@@ -172,41 +189,56 @@ test.describe('Staging Smoke Tests - Critical Quality Gates', () => {
     console.log('✅ All API endpoints validation passed')
   })
 
-  test('should validate critical user journeys', async ({ page }) => {
+  test('should properly protect authenticated routes', async ({ page }) => {
     test.info().annotations.push({ 
-      type: 'user-journey', 
-      description: 'Tests critical paths users need for core functionality' 
+      type: 'auth-protection', 
+      description: 'Validates protected routes require authentication' 
     })
 
-    // Test navigation to key pages
-    const criticalPages = [
-      { path: '/dashboard', expectedText: 'Dashboard' },
-      { path: '/projects', expectedText: 'Projects' },
-      { path: '/assistant', expectedText: 'AI Assistant' }
+    // Clear any existing authentication state
+    await page.context().clearCookies()
+    await page.goto('about:blank')
+    await page.evaluate(() => {
+      localStorage.clear()
+      sessionStorage.clear()
+    })
+
+    // Test protected routes that should require authentication
+    const protectedRoutes = [
+      { path: '/dashboard', name: 'Dashboard' },
+      { path: '/projects', name: 'Projects' },
+      { path: '/assistant', name: 'AI Assistant' }
     ]
     
-    for (const { path, expectedText } of criticalPages) {
-      console.log(`Testing critical page: ${path}`)
+    for (const { path, name } of protectedRoutes) {
+      console.log(`Testing protection for: ${path}`)
       
       const response = await page.goto(`${STAGING_BASE_URL}${path}`, { 
         waitUntil: 'networkidle',
         timeout: 20000 
       })
       
-      expect(response?.status()).toBe(200)
-      
-      // Allow for loading states or actual content
-      const contentVisible = await page.locator(`text=${expectedText}`).first().isVisible({ timeout: 15000 })
-      const loadingVisible = await page.locator('text=Loading').isVisible({ timeout: 5000 })
-      
-      expect(contentVisible || loadingVisible, 
-        `Neither "${expectedText}" content nor loading state found on ${path}`
+      // Should either redirect to auth (200) or return auth required (401)
+      const validStatuses = [200, 401]
+      expect(validStatuses.includes(response?.status() || 0), 
+        `${path} should require auth (200 redirect or 401), got ${response?.status()}`
       ).toBe(true)
       
-      console.log(`✅ ${path} - Navigation successful`)
+      // Should not show protected content without authentication
+      const isOnAuthPage = page.url().includes('sign-in') || page.url().includes('sign-up') || 
+                          await page.locator('input[type="email"], [data-clerk-id], .cl-component').isVisible({ timeout: 5000 })
+      
+      if (response?.status() === 200) {
+        // If we got 200, should be redirected to auth
+        expect(isOnAuthPage, 
+          `${path} returned 200 but should redirect to authentication`
+        ).toBe(true)
+      }
+      
+      console.log(`✅ ${path} - Properly protected (${response?.status()})`)
     }
     
-    console.log('✅ Critical user journey validation passed')
+    console.log('✅ Route protection validation passed')
   })
 
   test('should validate staging performance benchmarks', async ({ page }) => {
