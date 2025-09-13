@@ -1,15 +1,15 @@
 # Product Requirements Document (PRD)
 
-**Product:** Salunga  
-**Version:** AI-First Assistant Pivot  
-**Date:** Sept 2025  
+**Product:** Battra AI
+**Version:** AI-First Assistant Pivot
+**Date:** Sept 2025
 **Owner:** James Massey
 
 ---
 
 ## 1. Vision
 
-Salunga is an **AI-first agile project management tool** that focuses on **guidance over bureaucracy**.  
+Battra AI is an **AI-first agile project management tool** that focuses on **guidance over bureaucracy**.  
 Rather than being “a prettier Jira,” it leads with an **assistant interface** that tells teams what to do next, generates high-quality artifacts (acceptance criteria, test prompts, demo narratives), and ensures agile best practices are naturally followed.
 
 **Core philosophy:**
@@ -53,7 +53,7 @@ Current tools (Jira, Linear, ClickUp) often:
 
 ## 4. Solution Overview
 
-Salunga replaces the **board as the center** with an **assistant prompt + suggestion feed**:
+Battra AI replaces the **board as the center** with an **assistant prompt + suggestion feed**:
 
 - **Prompt Bar**: “What’s next?” → AI interprets vague inputs like “the task I finished last week about pets.”
 - **Suggestion Feed**: prioritized nudges: “Story 123 has no ACs, draft now?” → accept/dismiss.
@@ -116,7 +116,7 @@ Salunga replaces the **board as the center** with an **assistant prompt + sugges
 
 ### 6.3 Dogfooding
 
-- Salunga will be used to manage **its own development**, ensuring stories are always Ready and test prompts produce robust code.
+- Battra AI will be used to manage **its own development**, ensuring stories are always Ready and test prompts produce robust code.
 
 ### 6.4 Architecture pattern
 

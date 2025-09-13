@@ -18,8 +18,8 @@ const spaceGrotesk = Space_Grotesk({
 })
 
 export const metadata: Metadata = {
-  title: 'SpecMint - Salunga AI-Enhanced Agile Project Management',
-  description: 'AI-enhanced agile project management tool that helps teams focus on delivering value',
+  title: 'Battra AI - AI-Enhanced Agile Project Management',
+  description: 'AI-enhanced agile project management tool that brings powerful intelligence and bold design to modern development teams',
 }
 
 export default function RootLayout({

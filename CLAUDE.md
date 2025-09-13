@@ -1,8 +1,8 @@
 
-# CLAUDE.MD — Salunga Engineering Charter for Claude Code
+# CLAUDE.MD — Battra AI Engineering Charter for Claude Code
 
-> **Purpose**  
-> This file defines the **architectural design plan**, **non-negotiable quality bars**, and **working rules** for Claude Code when proposing or committing changes in the Salunga monorepo. Treat it as a **contract**: follow it unless an ADR explicitly updates it.
+> **Purpose**
+> This file defines the **architectural design plan**, **non-negotiable quality bars**, and **working rules** for Claude Code when proposing or committing changes in the Battra AI monorepo. Treat it as a **contract**: follow it unless an ADR explicitly updates it.
 
 ---
 
