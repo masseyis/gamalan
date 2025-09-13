@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test"
 
-test.describe("Salunga Brand Assets", () => {
+test.describe("Battra AI Brand Assets", () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to the brand preview page
     await page.goto("/brand")
@@ -10,22 +10,20 @@ test.describe("Salunga Brand Assets", () => {
     // Check page title
 
     // Check main heading
-    await expect(page.locator("h1")).toContainText("Salunga Brand System")
+    await expect(page.locator("h1")).toContainText("Battra AI Brand System")
 
     // Check description
     await expect(page.locator("p").first()).toContainText("AI-enhanced agile project management tool")
   })
 
   test("should render logo assets correctly", async ({ page }) => {
-    // Check that the full logo renders with correct alt text
-    const fullLogo = page.locator('img[alt="Salunga logo"]')
-    await expect(fullLogo).toBeVisible()
-    await expect(fullLogo).toHaveAttribute("src", "/logo-full.png")
+    // Check that the Zap icon is visible in navigation (Battra AI uses Zap icon instead of traditional logo)
+    const zapIcon = page.locator('nav [data-testid="battra-logo"] svg')
+    await expect(zapIcon).toBeVisible()
 
-    // Check that the icon logo renders
-    const iconLogo = page.locator('img[alt="Salunga icon"]')
-    await expect(iconLogo).toBeVisible()
-    await expect(iconLogo).toHaveAttribute("src", "/logo-icon.png")
+    // Check that the brand text is correct
+    const brandText = page.locator('nav').locator('text=Battra AI')
+    await expect(brandText).toBeVisible()
 
     // Check favicon previews
     const favicon16 = page.locator('img[alt="16x16 favicon"]')
@@ -41,18 +39,19 @@ test.describe("Salunga Brand Assets", () => {
     // Check that color palette section exists
     await expect(page.locator("h2").filter({ hasText: "Color Palette" })).toBeVisible()
 
-    // Check specific color swatches and their hex values
+    // Check Battra's signature yellow primary color
     const primaryColorCard = page.locator("text=Primary").locator("..").locator("..")
-    await expect(primaryColorCard).toContainText("#0ea5e9")
-    await expect(primaryColorCard).toContainText("--salunga-primary")
+    await expect(primaryColorCard).toContainText("#ffcc00")
+    await expect(primaryColorCard).toContainText("--battra-yellow")
 
+    // Check Battra's red accent color
     const accentColorCard = page.locator("text=Accent").locator("..").locator("..")
-    await expect(accentColorCard).toContainText("#14b8a6")
-    await expect(accentColorCard).toContainText("--salunga-accent")
+    await expect(accentColorCard).toContainText("#b91c1c")
+    await expect(accentColorCard).toContainText("--battra-red")
 
-    const successColorCard = page.locator("text=Success").locator("..").locator("..")
-    await expect(successColorCard).toContainText("#22c55e")
-    await expect(successColorCard).toContainText("--salunga-success")
+    // Check dark background color
+    const backgroundCard = page.locator("text=Background").locator("..").locator("..")
+    await expect(backgroundCard).toContainText("#0a0a0a")
   })
 
   test("should apply brand colors to button variants correctly", async ({ page }) => {
@@ -70,21 +69,10 @@ test.describe("Salunga Brand Assets", () => {
     })
 
     // Convert hex to rgb for comparison (CSS returns rgb values)
-    // #0ea5e9 = rgb(14, 165, 233)
-    expect(primaryBgColor).toBe("rgb(14, 165, 233)")
+    // #ffcc00 = rgb(255, 204, 0) - Battra's yellow
+    expect(primaryBgColor).toBe("rgb(255, 204, 0)")
 
-    // Check accent button
-    const accentButton = page.locator("button").filter({ hasText: "Accent" }).first()
-    await expect(accentButton).toBeVisible()
-
-    const accentBgColor = await accentButton.evaluate((el) => {
-      return window.getComputedStyle(el).backgroundColor
-    })
-
-    // #14b8a6 = rgb(20, 184, 166)
-    expect(accentBgColor).toBe("rgb(20, 184, 166)")
-
-    // Check destructive button
+    // Check destructive button (using Battra's red)
     const destructiveButton = page.locator("button").filter({ hasText: "Destructive" }).first()
     await expect(destructiveButton).toBeVisible()
 
@@ -92,8 +80,8 @@ test.describe("Salunga Brand Assets", () => {
       return window.getComputedStyle(el).backgroundColor
     })
 
-    // #ef4444 = rgb(239, 68, 68)
-    expect(destructiveBgColor).toBe("rgb(239, 68, 68)")
+    // #b91c1c = rgb(185, 28, 28) - Battra's red
+    expect(destructiveBgColor).toBe("rgb(185, 28, 28)")
   })
 
   test("should display typography sections correctly", async ({ page }) => {
@@ -167,13 +155,12 @@ test.describe("Salunga Brand Assets", () => {
     const nav = page.locator("nav")
     await expect(nav).toBeVisible()
 
-    // Check navigation logo
-    const navLogo = page.locator('nav img[alt="Salunga"]')
-    await expect(navLogo).toBeVisible()
-    await expect(navLogo).toHaveAttribute("src", "/logo-icon.png")
+    // Check navigation Zap icon
+    const zapIcon = nav.locator('svg[data-testid="zap-icon"]')
+    await expect(zapIcon).toBeVisible()
 
     // Check navigation brand text
-    await expect(page.locator("nav").locator("text=Salunga")).toBeVisible()
+    await expect(page.locator("nav").locator("text=Battra AI")).toBeVisible()
 
     // Check navigation menu items
     await expect(page.locator("nav a").filter({ hasText: "Dashboard" })).toBeVisible()
@@ -211,7 +198,7 @@ test.describe("Salunga Brand Assets", () => {
 
     // Check that content is still visible and accessible
     await expect(page.locator("h1")).toBeVisible()
-    await expect(page.locator('img[alt="Salunga logo"]')).toBeVisible()
+    await expect(page.locator("nav").locator("text=Battra AI")).toBeVisible()
 
     // Check that navigation adapts to mobile
     const nav = page.locator("nav")

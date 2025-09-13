@@ -11,7 +11,7 @@ test.describe('Project Detail', () => {
   test('should show project detail page', async ({ page }) => {
     await page.goto('/projects/proj-1')
     
-    await expect(page.locator('h1:has-text("Salunga Web Platform")')).toBeVisible()
+    await expect(page.locator('h1:has-text("Battra AI")')).toBeVisible()
     await expect(page.locator('text=Next.js frontend for the AI-enhanced agile project management platform')).toBeVisible()
   })
 

@@ -1,6 +1,6 @@
-# Salunga - AI-Enhanced Agile Project Management Platform
+# Battra AI - AI-Enhanced Agile Project Management Platform
 
-This is a monorepo for Salunga, an AI-enhanced agile project management platform combining Rust microservices backend with a modern Next.js frontend.
+This is a monorepo for Battra AI, an AI-enhanced agile project management platform combining Rust microservices backend with a modern Next.js frontend.
 
 ## 🏗 Architecture
 

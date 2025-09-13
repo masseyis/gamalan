@@ -88,23 +88,23 @@ export default function DashboardPage() {
   const recentProjects = projects?.slice(0, 3) || []
 
   return (
-    <div className="bg-gradient-soft">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="container mx-auto py-8">
-        <div className="mb-8 animate-fade-in">
+        <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-4xl font-bold text-gradient-primary">
+              <h1 className="text-4xl font-bold text-primary glow-yellow">
                 Welcome back, {user?.firstName || 'User'}!
               </h1>
               <p className="text-muted-foreground mt-2 text-lg">
                 Here&apos;s an overview of your projects and recent activity.
               </p>
             </div>
-            <div className="glass p-4 rounded-xl animate-scale-in">
+            <div className="battra-gradient p-4 rounded-xl border border-border">
               <div className="text-sm text-muted-foreground">Today</div>
-              <div className="text-2xl font-bold">
-                {new Date().toLocaleDateString('en-US', { 
-                  month: 'short', 
+              <div className="text-2xl font-bold text-primary">
+                {new Date().toLocaleDateString('en-US', {
+                  month: 'short',
                   day: 'numeric',
                   year: 'numeric'
                 })}
@@ -115,9 +115,9 @@ export default function DashboardPage() {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="card-premium animate-slide-up">
+          <Card className="battra-gradient border-border kaiju-pattern">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center">
+              <CardTitle className="text-sm font-medium flex items-center text-primary">
                 <Zap className="h-4 w-4 mr-2" />
                 Quick Actions
               </CardTitle>
@@ -125,13 +125,13 @@ export default function DashboardPage() {
             <CardContent className="pt-0">
               <div className="space-y-3">
                 <Link href="/projects/new">
-                  <Button size="sm" className="w-full justify-start bg-white/20 hover:bg-white/30 text-white border-white/20">
+                  <Button size="sm" className="w-full justify-start pulse-glow">
                     <Plus className="h-4 w-4 mr-2" />
                     New Project
                   </Button>
                 </Link>
                 <Link href="/projects">
-                  <Button variant="outline" size="sm" className="w-full justify-start border-white/20 text-white hover:bg-white/10">
+                  <Button variant="outline" size="sm" className="w-full justify-start border-border hover:bg-secondary">
                     <FolderOpen className="h-4 w-4 mr-2" />
                     Browse Projects
                   </Button>
@@ -141,10 +141,10 @@ export default function DashboardPage() {
           </Card>
 
           {/* Enhanced Stats Cards */}
-          <Card className="card-elevated animate-slide-up" style={{animationDelay: '100ms'}}>
+          <Card className="battra-gradient border-border glow-yellow">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <CardDescription className="flex items-center">
+                <CardDescription className="flex items-center text-muted-foreground">
                   <Target className="h-4 w-4 mr-2 text-primary" />
                   Active Projects
                 </CardDescription>
@@ -158,35 +158,35 @@ export default function DashboardPage() {
             </CardHeader>
           </Card>
 
-          <Card className="card-elevated animate-slide-up" style={{animationDelay: '200ms'}}>
+          <Card className="battra-gradient border-border">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <CardDescription className="flex items-center">
-                  <Activity className="h-4 w-4 mr-2 text-info" />
+                <CardDescription className="flex items-center text-muted-foreground">
+                  <Activity className="h-4 w-4 mr-2 text-primary" />
                   In Progress
                 </CardDescription>
-                <div className="p-2 bg-info/10 rounded-lg">
-                  <Activity className="h-4 w-4 text-info" />
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <Activity className="h-4 w-4 text-primary" />
                 </div>
               </div>
-              <CardTitle className="text-3xl font-bold text-info">
+              <CardTitle className="text-3xl font-bold text-primary">
                 {storiesInProgress}
               </CardTitle>
             </CardHeader>
           </Card>
 
-          <Card className="card-elevated animate-slide-up" style={{animationDelay: '300ms'}}>
+          <Card className="battra-gradient border-border glow-red">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <CardDescription className="flex items-center">
-                  <CheckCircle className="h-4 w-4 mr-2 text-success" />
+                <CardDescription className="flex items-center text-muted-foreground">
+                  <CheckCircle className="h-4 w-4 mr-2 text-accent" />
                   Completed
                 </CardDescription>
-                <div className="p-2 bg-success/10 rounded-lg">
-                  <CheckCircle className="h-4 w-4 text-success" />
+                <div className="p-2 bg-accent/10 rounded-lg">
+                  <CheckCircle className="h-4 w-4 text-accent" />
                 </div>
               </div>
-              <CardTitle className="text-3xl font-bold text-success">
+              <CardTitle className="text-3xl font-bold text-accent">
                 {storiesCompleted}
               </CardTitle>
             </CardHeader>
@@ -195,12 +195,12 @@ export default function DashboardPage() {
 
         {/* Recent Projects and Activity */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <Card className="card-elevated animate-slide-up" style={{animationDelay: '400ms'}}>
+          <Card className="battra-gradient border-border kaiju-pattern">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-xl">Recent Projects</CardTitle>
-                  <CardDescription className="mt-1">
+                  <CardTitle className="text-xl text-foreground">Recent Projects</CardTitle>
+                  <CardDescription className="mt-1 text-muted-foreground">
                     Your most recently accessed projects
                   </CardDescription>
                 </div>
@@ -266,17 +266,17 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="card-elevated animate-slide-up" style={{animationDelay: '500ms'}}>
+          <Card className="battra-gradient border-border">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-xl">Team Velocity</CardTitle>
-                  <CardDescription className="mt-1">
+                  <CardTitle className="text-xl text-foreground">Team Velocity</CardTitle>
+                  <CardDescription className="mt-1 text-muted-foreground">
                     Your team&apos;s performance overview
                   </CardDescription>
                 </div>
-                <div className="p-2 bg-success/10 rounded-lg">
-                  <TrendingUp className="h-5 w-5 text-success" />
+                <div className="p-2 bg-accent/10 rounded-lg">
+                  <TrendingUp className="h-5 w-5 text-accent" />
                 </div>
               </div>
             </CardHeader>
@@ -284,22 +284,22 @@ export default function DashboardPage() {
               <div className="space-y-6">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Sprint Velocity</span>
-                    <span className="text-2xl font-bold text-success">32 pts</span>
+                    <span className="text-sm font-medium text-foreground">Sprint Velocity</span>
+                    <span className="text-2xl font-bold text-primary">32 pts</span>
                   </div>
                   <div className="w-full bg-muted rounded-full h-2">
-                    <div className="bg-gradient-to-r from-success to-success/80 h-2 rounded-full transition-all duration-500" style={{width: '75%'}}></div>
+                    <div className="bg-gradient-to-r from-primary to-primary/80 h-2 rounded-full transition-all duration-500 glow-yellow" style={{width: '75%'}}></div>
                   </div>
                   <div className="text-xs text-muted-foreground">75% of capacity</div>
                 </div>
-                
+
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Completion Rate</span>
-                    <span className="text-2xl font-bold text-info">87%</span>
+                    <span className="text-sm font-medium text-foreground">Completion Rate</span>
+                    <span className="text-2xl font-bold text-accent">87%</span>
                   </div>
                   <div className="w-full bg-muted rounded-full h-2">
-                    <div className="bg-gradient-to-r from-info to-info/80 h-2 rounded-full transition-all duration-500" style={{width: '87%'}}></div>
+                    <div className="bg-gradient-to-r from-accent to-accent/80 h-2 rounded-full transition-all duration-500 glow-red" style={{width: '87%'}}></div>
                   </div>
                   <div className="text-xs text-muted-foreground">Above team average</div>
                 </div>
