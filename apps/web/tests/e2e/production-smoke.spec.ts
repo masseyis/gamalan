@@ -28,8 +28,8 @@ test.describe('Production Smoke Tests', () => {
     // Wait for the page to be fully loaded
     await page.waitForLoadState('networkidle')
     
-    // Check if Salunga logo/title is visible
-    await expect(page.locator('text=Salunga')).toBeVisible({ timeout: 10000 })
+    // Check if Battra AI logo/title is visible
+    await expect(page.locator('text=Battra AI')).toBeVisible({ timeout: 10000 })
     
     // Log any JavaScript errors found
     if (jsErrors.length > 0) {

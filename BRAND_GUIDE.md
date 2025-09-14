@@ -1,4 +1,4 @@
-# Salunga Brand Guidelines
+# Battra AI Brand Guidelines
 
 ## Table of Contents
 
@@ -17,15 +17,15 @@
 
 ### Mission Statement
 
-Salunga is an AI-enhanced agile project management tool designed to streamline workflows, enhance team collaboration, and deliver intelligent insights for modern development teams.
+Battra AI is an AI-enhanced agile project management tool designed to streamline workflows, enhance team collaboration, and deliver intelligent insights for modern development teams. Named after the dark kaiju, Battra AI brings powerful intelligence to project management with a bold, distinctive aesthetic.
 
 ### Brand Personality
 
-- **Professional**: Trustworthy and reliable for enterprise use
-- **Modern**: Clean, contemporary design that feels current
-- **Intelligent**: Sophisticated AI capabilities without complexity
-- **Collaborative**: Designed for team-first experiences
-- **Efficient**: Streamlined interfaces that reduce cognitive load
+- **Bold**: Confident and distinctive dark aesthetic inspired by the Battra kaiju
+- **Powerful**: Advanced AI capabilities with striking visual presence
+- **Modern**: Cutting-edge dark theme with yellow and red accents
+- **Intelligent**: Sophisticated features wrapped in an intuitive interface
+- **Dynamic**: Energetic animations and glowing effects that feel alive
 
 ### Visual Principles
 
@@ -40,7 +40,7 @@ Salunga is an AI-enhanced agile project management tool designed to streamline w
 
 ### Primary Logo
 
-The Salunga wordmark combines clean typography with a distinctive hexagonal spiral icon that represents the iterative nature of agile development and the flow of intelligent automation.
+The Battra AI wordmark features bold typography paired with a lightning bolt (Zap) icon that represents the power and energy of AI-driven project management, inspired by the electromagnetic abilities of the Battra kaiju.
 
 #### Logo Variations
 
@@ -81,26 +81,38 @@ Maintain clear space around the logo equal to the height of the hexagonal icon o
 
 ### Primary Colors
 
-Our color system is built around professional blues and teals that convey trust, technology, and forward-thinking innovation.
+Our dark theme color system draws inspiration from the Battra kaiju, featuring dramatic blacks with striking yellow and red accents that create a powerful, modern aesthetic.
 
 #### Brand Colors
 
-| Color             | Hex       | RGB                  | Usage                                   |
-| ----------------- | --------- | -------------------- | --------------------------------------- |
-| **Primary**       | `#0ea5e9` | `rgb(14, 165, 233)`  | Main CTAs, navigation, primary actions  |
-| **Primary Hover** | `#0284c7` | `rgb(2, 132, 199)`   | Hover states for primary elements       |
-| **Primary Light** | `#e0f2fe` | `rgb(224, 242, 254)` | Backgrounds, subtle highlights          |
-| **Accent**        | `#14b8a6` | `rgb(20, 184, 166)`  | Secondary actions, highlights, progress |
-| **Accent Hover**  | `#0d9488` | `rgb(13, 148, 136)`  | Hover states for accent elements        |
-| **Accent Light**  | `#ccfbf1` | `rgb(204, 251, 241)` | Accent backgrounds, notifications       |
+| Color             | Hex       | HSL                   | Usage                                   |
+| ----------------- | --------- | --------------------- | --------------------------------------- |
+| **Background**    | `#0a0a0a` | `hsl(0 0% 4%)`       | Primary dark background                 |
+| **Card**          | `#141414` | `hsl(0 0% 8%)`       | Card backgrounds, elevated surfaces     |
+| **Primary**       | `#ffcc00` | `hsl(45 100% 50%)`   | Main CTAs, branding, primary actions   |
+| **Accent**        | `#b91c1c` | `hsl(0 74% 42%)`     | Destructive actions, alerts, warnings  |
+| **Secondary**     | `#1f1f1f` | `hsl(0 0% 12%)`      | Secondary buttons, muted elements       |
+| **Muted**         | `#292929` | `hsl(0 0% 16%)`      | Borders, dividers, disabled states     |
+| **Foreground**    | `#fafafa` | `hsl(0 0% 98%)`      | Primary text, icons                     |
 
-#### Semantic Colors
+#### Special Effects
 
-| Color       | Hex       | RGB                 | Usage                           |
-| ----------- | --------- | ------------------- | ------------------------------- |
-| **Success** | `#22c55e` | `rgb(34, 197, 94)`  | Success states, completed tasks |
-| **Warning** | `#f59e0b` | `rgb(245, 158, 11)` | Warnings, pending states        |
-| **Danger**  | `#ef4444` | `rgb(239, 68, 68)`  | Errors, destructive actions     |
+| Effect            | CSS Class         | Usage                                      |
+| ----------------- | ----------------- | ------------------------------------------ |
+| **Yellow Glow**   | `.glow-yellow`    | Highlight active elements, CTAs            |
+| **Red Glow**      | `.glow-red`       | Error states, destructive actions          |
+| **Pulse Glow**    | `.pulse-glow`     | Animated attention-drawing elements        |
+| **Kaiju Pattern** | `.kaiju-pattern`  | Subtle background texture with gradients   |
+| **Battra Gradient** | `.battra-gradient` | Card backgrounds with depth               |
+
+#### Typography
+
+| Element         | Font Family | Weight | Usage                           |
+| --------------- | ----------- | ------ | ------------------------------- |
+| **Headings**    | Inter       | 600-700| Page titles, section headers   |
+| **Body Text**   | Inter       | 400-500| Paragraph text, descriptions   |
+| **UI Text**     | Inter       | 500    | Buttons, labels, navigation     |
+| **Monospace**   | JetBrains Mono | 400 | Code snippets, technical data   |
 
 #### Neutral Colors
 

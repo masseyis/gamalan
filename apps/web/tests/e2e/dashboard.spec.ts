@@ -36,7 +36,7 @@ test.describe('Dashboard', () => {
     await expect(page.locator('text=Recent Projects')).toBeVisible()
     
     // Should show at least one project from mock data
-    await expect(page.locator('text=Salunga Web Platform')).toBeVisible()
+    await expect(page.locator('text=Battra AI')).toBeVisible()
   })
 
   test('should navigate to projects from quick actions', async ({ page }) => {

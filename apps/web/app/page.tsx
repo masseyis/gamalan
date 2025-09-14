@@ -7,7 +7,7 @@ export default function Home() {
       <div className="text-center space-y-8 max-w-4xl mx-auto">
         <div className="space-y-4">
           <h1 className="text-5xl font-bold text-gray-900 tracking-tight">
-            Welcome to <span className="text-indigo-600">Salunga</span>
+            Welcome to <span className="text-primary">Battra AI</span>
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
             AI-Enhanced Agile Project Management. Transform your development workflow with intelligent story management, automated readiness checks, and smart prompt generation.

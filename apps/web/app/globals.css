@@ -1,90 +1,73 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 224 71.4% 4.1%;
-    --card: 0 0% 100%;
-    --card-foreground: 224 71.4% 4.1%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 224 71.4% 4.1%;
-    --primary: 199.8 89.1% 48.4%; /* #0ea5e9 - Salunga Primary */
-    --primary-foreground: 210 20% 98%;
-    --secondary: 220 14.3% 95.9%;
-    --secondary-foreground: 220.9 39.3% 11%;
-    --muted: 220 14.3% 95.9%;
-    --muted-foreground: 220 8.9% 46.1%;
-    --accent: 172.5 66% 50.4%; /* #14b8a6 - Salunga Accent */
-    --accent-foreground: 220.9 39.3% 11%;
-    --destructive: 0 72.2% 50.6%; /* #ef4444 */
-    --destructive-foreground: 210 20% 98%;
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 199.8 89.1% 48.4%;
-    --radius: 0.75rem;
-    
-    /* Salunga Brand Colors */
-    --salunga-primary: 199.8 89.1% 48.4%; /* #0ea5e9 */
-    --salunga-accent: 172.5 66% 50.4%; /* #14b8a6 */
-    --salunga-success: 142.1 76.2% 36.3%; /* #22c55e */
-    
-    /* Enhanced modern colors */
-    --success: 142.1 76.2% 36.3%;
-    --success-foreground: 355.7 100% 97.3%;
-    --warning: 32.5 94.6% 43.7%;
-    --warning-foreground: 355.7 100% 97.3%;
-    --info: 221.2 83.2% 53.3%;
-    --info-foreground: 210 20% 98%;
-    
-    /* Gradient colors */
-    --gradient-from: 262.1 83.3% 57.8%;
-    --gradient-to: 221.2 83.2% 53.3%;
-    
-    /* Surface elevations */
-    --surface-1: 0 0% 99%;
-    --surface-2: 220 14.3% 97.9%;
-    --surface-3: 220 14.3% 95.9%;
-  }
+    /* Battra-inspired dark theme with black, yellow, and red */
+    --background: 0 0% 4%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 6%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 45 100% 50%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 85%;
+    --muted: 0 0% 16%;
+    --muted-foreground: 0 0% 65%;
+    --accent: 0 74% 42%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 74% 42%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 20%;
+    --input: 0 0% 14%;
+    --ring: 45 100% 50%;
+    --chart-1: 45 100% 50%;
+    --chart-2: 0 74% 42%;
+    --chart-3: 30 100% 50%;
+    --chart-4: 15 90% 45%;
+    --chart-5: 60 100% 45%;
+    --sidebar: 0 0% 8%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 45 100% 50%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 0 0% 12%;
+    --sidebar-accent-foreground: 0 0% 85%;
+    --sidebar-border: 0 0% 20%;
+    --sidebar-ring: 45 100% 50%;
+    --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-serif: Georgia, serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --radius: 0.5rem;
 
-  .dark {
-    --background: 224 71.4% 4.1%;
-    --foreground: 210 20% 98%;
-    --card: 224 71.4% 4.1%;
-    --card-foreground: 210 20% 98%;
-    --popover: 224 71.4% 4.1%;
-    --popover-foreground: 210 20% 98%;
-    --primary: 263.4 70% 50.4%;
-    --primary-foreground: 210 20% 98%;
-    --secondary: 215 27.9% 16.9%;
-    --secondary-foreground: 210 20% 98%;
-    --muted: 215 27.9% 16.9%;
-    --muted-foreground: 217.9 10.6% 64.9%;
-    --accent: 215 27.9% 16.9%;
-    --accent-foreground: 210 20% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 20% 98%;
-    --border: 215 27.9% 16.9%;
-    --input: 215 27.9% 16.9%;
-    --ring: 263.4 70% 50.4%;
-    
-    /* Enhanced dark colors */
-    --success: 142.1 70.6% 45.3%;
-    --success-foreground: 144.3 60.7% 12%;
-    --warning: 32.5 85.6% 55.7%;
-    --warning-foreground: 20.5 90.2% 4.3%;
-    --info: 221.2 83.2% 53.3%;
-    --info-foreground: 210 20% 98%;
-    
-    /* Dark gradient colors */
-    --gradient-from: 263.4 70% 50.4%;
-    --gradient-to: 221.2 83.2% 53.3%;
-    
-    /* Dark surface elevations */
-    --surface-1: 215 27.9% 8.9%;
-    --surface-2: 215 27.9% 12.9%;
-    --surface-3: 215 27.9% 16.9%;
+    /* Battra Brand Colors */
+    --battra-yellow: 45 100% 50%; /* #ffcc00 */
+    --battra-red: 0 74% 42%; /* #b91c1c */
+    --battra-orange: 25 95% 53%; /* #ea580c */
+    --battra-green: 142 76% 36%; /* #16a34a */
+
+    /* Enhanced semantic colors */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    --warning: 45 93% 47%;
+    --warning-foreground: 0 0% 0%;
+    --info: 45 100% 50%;
+    --info-foreground: 0 0% 0%;
+
+    /* Shadow system with yellow glow */
+    --shadow-2xs: 0px 2px 0px 0px hsl(45 100% 50% / 0.05);
+    --shadow-xs: 0px 2px 0px 0px hsl(45 100% 50% / 0.05);
+    --shadow-sm: 0px 2px 0px 0px hsl(45 100% 50% / 0.05), 0px 1px 2px -1px hsl(45 100% 50% / 0.1);
+    --shadow: 0px 2px 0px 0px hsl(45 100% 50% / 0.05), 0px 1px 2px -1px hsl(45 100% 50% / 0.1);
+    --shadow-md: 0px 2px 0px 0px hsl(45 100% 50% / 0.05), 0px 2px 4px -1px hsl(45 100% 50% / 0.1);
+    --shadow-lg: 0px 2px 0px 0px hsl(45 100% 50% / 0.05), 0px 4px 6px -1px hsl(45 100% 50% / 0.1);
+    --shadow-xl: 0px 2px 0px 0px hsl(45 100% 50% / 0.05), 0px 8px 10px -1px hsl(45 100% 50% / 0.1);
+    --shadow-2xl: 0px 2px 0px 0px hsl(45 100% 50% / 0.05);
+    --tracking-normal: 0em;
+    --spacing: 0.25rem;
   }
 }
 
@@ -92,11 +75,38 @@
   * {
     @apply border-border;
   }
+
   body {
-    @apply bg-background text-foreground;
-    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    @apply font-sans antialiased bg-background text-foreground;
   }
-  
+
+  /* Custom Battra-themed utilities */
+  .glow-yellow {
+    box-shadow: 0 0 10px hsl(45 100% 50% / 0.3);
+  }
+
+  .glow-red {
+    box-shadow: 0 0 10px hsl(0 74% 42% / 0.3);
+  }
+
+  .battra-gradient {
+    background: linear-gradient(135deg, var(--card) 0%, hsl(0 0% 6%) 100%);
+  }
+
+  .pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite alternate;
+  }
+
+  @keyframes pulse-glow {
+    from { box-shadow: 0 0 5px hsl(45 100% 50% / 0.2); }
+    to { box-shadow: 0 0 15px hsl(45 100% 50% / 0.4); }
+  }
+
+  .kaiju-pattern {
+    background-image: radial-gradient(circle at 25% 25%, hsl(45 100% 50% / 0.1) 0%, transparent 50%),
+                      radial-gradient(circle at 75% 75%, hsl(0 74% 42% / 0.1) 0%, transparent 50%);
+  }
+
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
   }

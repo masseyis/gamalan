@@ -5,16 +5,17 @@ import { usePathname } from 'next/navigation'
 // import Image from 'next/image' - using regular img for SVG logos
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { 
-  LayoutDashboard, 
-  FolderOpen, 
-  Users, 
-  Settings, 
+import {
+  LayoutDashboard,
+  FolderOpen,
+  Users,
+  Settings,
   Bell,
   Search,
   Plus,
   Sparkles,
-  Command
+  Command,
+  Zap
 } from 'lucide-react'
 
 import { useUser, useClerk } from '@clerk/nextjs'
@@ -89,23 +90,16 @@ function NavigationContent({ pathname, isSignedIn, user, signOut, loading }: any
     : user?.emailAddresses?.[0]?.emailAddress?.[0]?.toUpperCase() || 'U'
 
   return (
-    <nav className="glass border-b border-border/50 sticky top-0 z-50 backdrop-blur-xl">
+    <nav className="border-b border-border bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/50 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link href="/assistant" className="flex items-center gap-3 group" prefetch={false}>
-            <div className="relative">
-              <img 
-                src="/logo-icon.png" 
-                alt="Salunga" 
-                width={32} 
-                height={32}
-                className="transition-transform group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-gradient-primary opacity-0 group-hover:opacity-20 rounded-full transition-opacity"></div>
+          <Link href="/assistant" className="flex items-center gap-3 group" prefetch={false} data-testid="battra-logo">
+            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center group-hover:glow-yellow transition-all duration-200">
+              <Zap className="text-primary-foreground w-4 h-4" data-testid="zap-icon" />
             </div>
-            <span className="text-2xl font-bold text-gradient-primary">
-              Salunga
+            <span className="text-xl font-bold text-primary">
+              Battra AI
             </span>
           </Link>
 

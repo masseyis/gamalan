@@ -89,7 +89,7 @@ test.describe('Navigation & Routing', () => {
     
     // Should be back at project detail
     await expect(page).toHaveURL(/.*\/projects\/proj-1$/)
-    await expect(page.locator('h1:has-text("Salunga Web Platform")')).toBeVisible()
+    await expect(page.locator('h1:has-text("Battra AI")')).toBeVisible()
   })
 
   test('should show breadcrumbs or navigation indicators', async ({ page }) => {
