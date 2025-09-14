@@ -17,6 +17,9 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
+  /* Global timeout for the entire test suite */
+  globalTimeout: 10 * 60 * 1000, // 10 minutes max for all tests
+
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
@@ -24,9 +27,13 @@ export default defineConfig({
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
-    
+
     /* Screenshot on failure */
     screenshot: 'only-on-failure',
+
+    /* Test timeout */
+    actionTimeout: 30 * 1000, // 30 seconds per action
+    navigationTimeout: 60 * 1000, // 1 minute for navigation
   },
 
   /* Configure projects for major browsers */
@@ -72,5 +79,8 @@ export default defineConfig({
     command: 'pnpm dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
+    timeout: 120 * 1000, // 2 minutes timeout for server startup
+    stderr: 'pipe',
+    stdout: 'pipe',
   },
 });
