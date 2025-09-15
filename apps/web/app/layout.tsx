@@ -48,6 +48,3 @@ export default function RootLayout({
 
 // Force dynamic rendering for the entire app to avoid Clerk context issues during SSR
 export const dynamic = 'force-dynamic'
-
-// Temporarily disable all client-side JS to isolate EOF issue
-// export const runtime = 'edge' // This would help isolate but might break things
