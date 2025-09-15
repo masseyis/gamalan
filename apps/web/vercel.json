@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run build",
+  "buildCommand": "pnpm run build",
   "framework": "nextjs",
   "nodejs": "18.x",
   "regions": ["iad1"],
