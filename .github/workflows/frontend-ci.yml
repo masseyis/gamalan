@@ -92,8 +92,8 @@ jobs:
         run: pnpm playwright:install
 
       - name: Run E2E tests
-        run: timeout 600 pnpm test:e2e || exit 1
-        timeout-minutes: 15
+        run: pnpm playwright test --config=playwright.config.ci.ts
+        timeout-minutes: 10
         env:
           # Mock environment variables for E2E tests
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_mock_key_for_e2e
