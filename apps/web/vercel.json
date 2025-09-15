@@ -1,14 +1,7 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "pnpm run build",
   "framework": "nextjs",
-  "nodejs": "18.x",
-  "regions": ["iad1"],
-  "env": {
-    "NODE_ENV": "production"
-  },
-  "build": {
-    "env": {
-      "NODE_OPTIONS": "--max-old-space-size=4096"
-    }
-  }
+  "regions": ["iad1"]
 }
+
