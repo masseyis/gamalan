@@ -1,0 +1,58 @@
+# Code Owners for Battra AI Repository
+#
+# This file defines who must review changes to specific parts of the codebase
+# GitHub will automatically request reviews from the appropriate code owners
+
+# Global owner - all files require review from masseyis by default
+* @masseyis
+
+# Frontend Application
+/apps/web/ @masseyis
+/apps/web/**/*.tsx @masseyis
+/apps/web/**/*.ts @masseyis
+/apps/web/**/*.js @masseyis
+/apps/web/**/*.jsx @masseyis
+/apps/web/**/*.css @masseyis
+/apps/web/**/*.scss @masseyis
+/apps/web/package.json @masseyis
+/apps/web/tailwind.config.ts @masseyis
+/apps/web/next.config.js @masseyis
+/apps/web/playwright.config*.ts @masseyis
+
+# Rust Backend Services
+/services/ @masseyis
+/services/**/*.rs @masseyis
+/services/**/Cargo.toml @masseyis
+/services/**/Shuttle.toml @masseyis
+
+# Shared Libraries
+/libs/ @masseyis
+/libs/**/*.rs @masseyis
+/libs/**/Cargo.toml @masseyis
+
+# Infrastructure & DevOps
+/.github/ @masseyis
+/.github/workflows/ @masseyis
+/Makefile @masseyis
+/docker-compose*.yml @masseyis
+/Dockerfile* @masseyis
+/scripts/ @masseyis
+
+# Configuration Files
+/Cargo.toml @masseyis
+/Cargo.lock @masseyis
+/rust-toolchain.toml @masseyis
+/.clippy.toml @masseyis
+/.env.example @masseyis
+/turbo.json @masseyis
+/pnpm-workspace.yaml @masseyis
+
+# Documentation (can be more relaxed, but still require review)
+/*.md @masseyis
+/docs/ @masseyis
+
+# Critical Security & Configuration Files (require extra scrutiny)
+/.github/workflows/*.yml @masseyis
+/services/**/src/adapters/persistence/ @masseyis
+/libs/auth_clerk/ @masseyis
+/apps/web/middleware.ts @masseyis

@@ -1,0 +1,216 @@
+name: Branch Protection Validation
+
+on:
+  pull_request:
+    branches: [ main ]
+    types: [opened, synchronize, reopened]
+
+  # Run on schedule to verify protection rules are still in place
+  schedule:
+    - cron: '0 0 * * 1'  # Run every Monday at midnight UTC
+
+jobs:
+  validate-branch-protection:
+    runs-on: ubuntu-latest
+    name: Validate Branch Protection Rules
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate PR comes from feature branch
+        if: github.event_name == 'pull_request'
+        run: |
+          if [[ "${{ github.head_ref }}" == "main" ]]; then
+            echo "❌ Error: Pull requests cannot target main from main branch"
+            echo "Please create a feature branch for your changes"
+            exit 1
+          fi
+
+          if [[ "${{ github.head_ref }}" =~ ^(master|develop|dev)$ ]]; then
+            echo "❌ Error: Pull requests from protected branches are not allowed"
+            echo "Please create a feature branch for your changes"
+            exit 1
+          fi
+
+          echo "✅ PR source branch validation passed: ${{ github.head_ref }}"
+
+      - name: Validate feature branch naming
+        if: github.event_name == 'pull_request'
+        run: |
+          branch="${{ github.head_ref }}"
+
+          # Check if branch follows naming convention
+          if [[ ! "$branch" =~ ^(feature|fix|hotfix|chore|docs|refactor)/ ]]; then
+            echo "⚠️  Warning: Branch name doesn't follow convention (feature/*, fix/*, etc.)"
+            echo "Current branch: $branch"
+            echo "Recommended format: feature/your-feature-name, fix/bug-description, etc."
+          else
+            echo "✅ Branch naming convention followed: $branch"
+          fi
+
+      - name: Check for direct commits to main
+        if: github.event_name == 'pull_request'
+        run: |
+          # This shouldn't happen with proper branch protection, but let's double-check
+          if [[ "${{ github.base_ref }}" != "main" ]]; then
+            echo "⚠️  Warning: This PR is not targeting the main branch"
+            echo "Target branch: ${{ github.base_ref }}"
+          else
+            echo "✅ PR correctly targets main branch"
+          fi
+
+      - name: Validate commit messages
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "Checking commit messages for conventional commit format..."
+
+          # Get commits in the PR
+          commits=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.number }}/commits --jq '.[].commit.message' || echo "")
+
+          if [[ -z "$commits" ]]; then
+            echo "⚠️  Could not fetch commit messages"
+            exit 0
+          fi
+
+          echo "Commits found:"
+          echo "$commits"
+
+          # Check if commits follow conventional commit format (loosely)
+          non_conventional=0
+          while IFS= read -r commit_msg; do
+            if [[ -n "$commit_msg" ]] && ! [[ "$commit_msg" =~ ^(feat|fix|docs|style|refactor|test|chore|ci|build|perf)(\(.+\))?: ]]; then
+              echo "⚠️  Non-conventional commit: ${commit_msg:0:50}..."
+              non_conventional=$((non_conventional + 1))
+            fi
+          done <<< "$commits"
+
+          if [[ $non_conventional -gt 0 ]]; then
+            echo "⚠️  Found $non_conventional commits that don't follow conventional commit format"
+            echo "Consider using: feat:, fix:, docs:, chore:, refactor:, test:, ci:, build:"
+          else
+            echo "✅ All commits follow conventional commit format"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check for sensitive files
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "Checking for potentially sensitive files..."
+
+          # Get changed files in the PR
+          changed_files=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.number }}/files --jq '.[].filename' || echo "")
+
+          if [[ -z "$changed_files" ]]; then
+            echo "⚠️  Could not fetch changed files"
+            exit 0
+          fi
+
+          sensitive_patterns=(
+            "\.env$"
+            "\.env\."
+            "private.*key"
+            "secret"
+            "password"
+            "credential"
+            "\.pem$"
+            "\.key$"
+            "\.p12$"
+            "\.pfx$"
+          )
+
+          found_sensitive=false
+          while IFS= read -r file; do
+            if [[ -n "$file" ]]; then
+              for pattern in "${sensitive_patterns[@]}"; do
+                if [[ "$file" =~ $pattern ]] && [[ "$file" != ".env.example" ]]; then
+                  echo "⚠️  Potentially sensitive file detected: $file"
+                  found_sensitive=true
+                fi
+              done
+            fi
+          done <<< "$changed_files"
+
+          if [[ "$found_sensitive" == "true" ]]; then
+            echo "❌ Potentially sensitive files detected in PR"
+            echo "Please ensure no secrets, private keys, or credentials are committed"
+            echo "Use .env.example files instead of actual .env files"
+            exit 1
+          else
+            echo "✅ No sensitive files detected"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify branch protection status (scheduled check)
+        if: github.event_name == 'schedule'
+        run: |
+          echo "Checking branch protection rules for main branch..."
+
+          protection=$(gh api repos/${{ github.repository }}/branches/main/protection || echo "")
+
+          if [[ -z "$protection" ]]; then
+            echo "❌ ERROR: Branch protection rules not found for main branch!"
+            echo "Please set up branch protection rules immediately"
+            exit 1
+          fi
+
+          echo "✅ Branch protection rules are active for main branch"
+
+          # Check specific protections
+          required_pr=$(echo "$protection" | jq -r '.required_pull_request_reviews.required_approving_review_count // 0')
+          enforce_admins=$(echo "$protection" | jq -r '.enforce_admins.enabled // false')
+          allow_force_pushes=$(echo "$protection" | jq -r '.allow_force_pushes.enabled // true')
+
+          echo "Current protection settings:"
+          echo "  Required PR reviews: $required_pr"
+          echo "  Enforce for admins: $enforce_admins"
+          echo "  Allow force pushes: $allow_force_pushes"
+
+          issues=0
+          if [[ "$required_pr" -lt 1 ]]; then
+            echo "⚠️  Warning: No required PR reviews configured"
+            issues=$((issues + 1))
+          fi
+
+          if [[ "$enforce_admins" != "true" ]]; then
+            echo "⚠️  Warning: Branch protection not enforced for administrators"
+            issues=$((issues + 1))
+          fi
+
+          if [[ "$allow_force_pushes" == "true" ]]; then
+            echo "⚠️  Warning: Force pushes are allowed (not recommended)"
+            issues=$((issues + 1))
+          fi
+
+          if [[ $issues -gt 0 ]]; then
+            echo "Found $issues potential issues with branch protection configuration"
+          else
+            echo "✅ Branch protection configuration looks good!"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  summary:
+    runs-on: ubuntu-latest
+    needs: validate-branch-protection
+    if: always()
+    steps:
+      - name: Protection Summary
+        run: |
+          echo "## 🛡️ Branch Protection Validation Complete"
+          echo ""
+          if [[ "${{ needs.validate-branch-protection.result }}" == "success" ]]; then
+            echo "✅ All branch protection validations passed!"
+          else
+            echo "❌ Some branch protection validations failed"
+            echo "Please review the logs above and address any issues"
+          fi
+          echo ""
+          echo "This workflow helps ensure:"
+          echo "- PRs come from appropriate feature branches"
+          echo "- No sensitive files are accidentally committed"
+          echo "- Branch naming conventions are followed"
+          echo "- Conventional commit format is encouraged"
+          echo "- Branch protection rules remain active"
