@@ -1,9 +1,6 @@
 name: Frontend CI
 
 on:
-  push:
-    branches: [ main, develop ]
-    paths: [ 'apps/web/**' ]
   pull_request:
     branches: [ main ]
     paths: [ 'apps/web/**' ]
@@ -95,7 +92,8 @@ jobs:
         run: pnpm playwright:install
 
       - name: Run E2E tests
-        run: pnpm test:e2e
+        run: pnpm playwright test --config=playwright.config.ci.ts
+        timeout-minutes: 10
         env:
           # Mock environment variables for E2E tests
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_mock_key_for_e2e

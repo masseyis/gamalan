@@ -1,31 +1,36 @@
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: '404 - Page Not Found',
+  description: 'The page you are looking for could not be found.',
+}
 
 export default function NotFound() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="text-center space-y-6 max-w-md mx-auto px-4">
-        <div className="space-y-2">
-          <h1 className="text-6xl font-bold text-gray-900">404</h1>
-          <h2 className="text-2xl font-semibold text-gray-700">Page Not Found</h2>
-          <p className="text-gray-600">
-            Sorry, we couldn&apos;t find the page you&apos;re looking for.
-          </p>
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Link href="/">
-            <Button className="bg-indigo-600 hover:bg-indigo-700">
-              Go Home
-            </Button>
-          </Link>
-          <Link href="/dashboard">
-            <Button variant="outline">
-              Go to Dashboard
-            </Button>
-          </Link>
-        </div>
-      </div>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: '100vh',
+      padding: '20px',
+      textAlign: 'center'
+    }}>
+      <h1 style={{ fontSize: '4rem', marginBottom: '1rem' }}>404</h1>
+      <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Page Not Found</h2>
+      <p style={{ marginBottom: '2rem' }}>
+        Sorry, we could not find the page you are looking for.
+      </p>
+      <Link href="/" style={{
+        padding: '10px 20px',
+        backgroundColor: '#4f46e5',
+        color: 'white',
+        textDecoration: 'none',
+        borderRadius: '5px'
+      }}>
+        Go Home
+      </Link>
     </div>
   )
 }
