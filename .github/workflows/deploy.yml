@@ -298,7 +298,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--build-env NEXT_PUBLIC_API_URL="${{ steps.deploy.outputs.canary_url }}" --build-env NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="${{ secrets.PRODUCTION_CLERK_PUBLISHABLE_KEY }}" --build-env CLERK_SECRET_KEY="${{ secrets.PRODUCTION_CLERK_SECRET_KEY }}"'
+          vercel-args: '--build-env NEXT_PUBLIC_API_URL="${{ steps.deploy.outputs.canary_url }}" --build-env NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="${{ secrets.PRODUCTION_CLERK_PUBLISHABLE_KEY }}" --build-env CLERK_SECRET_KEY="${{ secrets.PRODUCTION_CLERK_SECRET_KEY }}" --build-env CLERK_DOMAIN="battra.penchi.co.uk"'
           working-directory: apps/web
 
   # =============================================================================
