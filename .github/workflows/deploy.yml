@@ -260,15 +260,37 @@ jobs:
           # For now, we'll simulate the configuration
           echo "Traffic routing configured for consolidated API canary deployment"
           
-      - name: Deploy frontend canary
+      - name: Setup frontend deployment
+        if: contains(github.event.head_commit.modified, 'apps/web/')
+        run: |
+          echo "Setting up frontend deployment environment..."
+
+      - name: Setup Node.js for frontend
+        if: contains(github.event.head_commit.modified, 'apps/web/')
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm for frontend
+        if: contains(github.event.head_commit.modified, 'apps/web/')
+        uses: pnpm/action-setup@v4
+
+      - name: Install frontend dependencies
         if: contains(github.event.head_commit.modified, 'apps/web/')
         run: |
           cd apps/web
-          
-          # Deploy to Vercel with canary alias
-          npx vercel --token ${{ secrets.VERCEL_TOKEN }} \
-            --env NEXT_PUBLIC_API_URL="${{ steps.deploy-backend.outputs.canary_url }}" \
-            --alias "canary-${{ steps.version.outputs.deployment_version }}"
+          pnpm install --frozen-lockfile
+
+      - name: Deploy frontend canary
+        if: contains(github.event.head_commit.modified, 'apps/web/')
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--build-env NEXT_PUBLIC_API_URL="${{ steps.deploy-backend.outputs.canary_url }}" --build-env NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="${{ secrets.PRODUCTION_CLERK_PUBLISHABLE_KEY }}" --build-env CLERK_SECRET_KEY="${{ secrets.PRODUCTION_CLERK_SECRET_KEY }}"'
+          working-directory: apps/web
             
       - name: Set deployment outputs
         id: deploy
