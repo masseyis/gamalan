@@ -356,12 +356,35 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          name: frontend-build
-          path: apps/web
+          node-version: '20'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        working-directory: apps/web
+        run: pnpm install --frozen-lockfile
           
+      - name: Verify Vercel secrets
+        run: |
+          echo "Checking Vercel configuration..."
+          if [ -z "${{ secrets.VERCEL_TOKEN }}" ]; then
+            echo "❌ VERCEL_TOKEN is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.VERCEL_ORG_ID }}" ]; then
+            echo "❌ VERCEL_ORG_ID is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.VERCEL_PROJECT_ID }}" ]; then
+            echo "❌ VERCEL_PROJECT_ID is not set"
+            exit 1
+          fi
+          echo "✅ All required Vercel secrets are present"
+
       - name: Deploy to Vercel staging
         uses: amondnet/vercel-action@v25
         with:
@@ -369,8 +392,10 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--build-env NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="${{ secrets.STAGING_CLERK_PUBLISHABLE_KEY }}" --build-env CLERK_SECRET_KEY="${{ secrets.STAGING_CLERK_SECRET_KEY }}" --build-env NEXT_PUBLIC_API_BASE_URL="${{ secrets.STAGING_API_BASE_URL }}"'
+          vercel-args: '--build-env NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="${{ secrets.STAGING_CLERK_PUBLISHABLE_KEY }}" --build-env CLERK_SECRET_KEY="${{ secrets.STAGING_CLERK_SECRET_KEY }}" --build-env NEXT_PUBLIC_API_BASE_URL="${{ secrets.STAGING_API_BASE_URL }}" --build-env NODE_ENV=production'
           working-directory: apps/web
+          alias-domains: |
+            staging-battra-ai.vercel.app
 
   # =============================================================================
   # REGRESSION TESTING ON STAGING
