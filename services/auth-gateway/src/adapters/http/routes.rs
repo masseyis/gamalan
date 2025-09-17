@@ -1,6 +1,6 @@
 use crate::adapters::http::handlers::{
     add_member_to_organization, clerk_webhooks, create_organization,
-    get_organization_by_external_id, get_user_organizations, ready,
+    get_organization_by_external_id, get_user_organizations,
 };
 use crate::adapters::persistence::repo::{OrganizationRepositoryImpl, UserRepositoryImpl};
 use crate::application::usecases::{OrganizationUsecases, UserUsecases};
@@ -37,9 +37,6 @@ pub async fn create_auth_router(
             "/organizations/{org_id}/members",
             post(add_member_to_organization),
         )
-        // Health checks
-        .route("/health", get(|| async { "OK" }))
-        .route("/ready", get(ready))
         .layer(shuttle_axum::axum::Extension(user_usecases))
         .layer(shuttle_axum::axum::Extension(org_usecases))
         .layer(shuttle_axum::axum::Extension(verifier))

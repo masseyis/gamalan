@@ -1,5 +1,5 @@
 use crate::adapters::http::handlers::{
-    create_project, delete_project, get_project, get_project_settings, get_projects, ready,
+    create_project, delete_project, get_project, get_project_settings, get_projects,
     update_project, update_project_settings,
 };
 use crate::adapters::persistence::repo::{ProjectRepositoryImpl, ProjectSettingsRepositoryImpl};
@@ -22,9 +22,6 @@ pub async fn create_projects_router(
     let project_usecases = Arc::new(ProjectUsecases::new(project_repo, settings_repo));
 
     shuttle_axum::axum::Router::new()
-        // Health checks
-        .route("/health", get(|| async { "OK" }))
-        .route("/ready", get(ready))
         // Project management
         .route("/projects", get(get_projects).post(create_project))
         .route(

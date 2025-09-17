@@ -225,7 +225,3 @@ pub async fn add_member_to_organization(
     org_usecases.add_member(&org_id, &request).await?;
     Ok(StatusCode::CREATED)
 }
-
-pub async fn ready() -> impl IntoResponse {
-    (StatusCode::OK, "Ready")
-}

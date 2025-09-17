@@ -213,7 +213,3 @@ pub async fn get_stories_by_project(
         stories.into_iter().map(StoryResponse::from).collect();
     Ok(Json(story_responses))
 }
-
-pub async fn health() -> impl IntoResponse {
-    "OK"
-}

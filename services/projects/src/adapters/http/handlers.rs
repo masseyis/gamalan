@@ -7,7 +7,6 @@ use auth_clerk::AuthenticatedWithOrg;
 use axum::{
     extract::{Path, Query},
     http::StatusCode,
-    response::IntoResponse,
     Extension, Json,
 };
 use common::AppError;
@@ -175,8 +174,4 @@ pub async fn update_project_settings(
         .await?;
 
     Ok(Json(settings.into()))
-}
-
-pub async fn ready() -> impl IntoResponse {
-    (StatusCode::OK, "Ready")
 }
