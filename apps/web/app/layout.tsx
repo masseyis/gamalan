@@ -31,7 +31,10 @@ export default function RootLayout({
   const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 
   return (
-    <ClerkProvider publishableKey={publishableKey}>
+    <ClerkProvider
+      publishableKey={publishableKey}
+      clerkJSUrl="https://clerk.battra.penchi.co.uk/npm/@clerk/clerk-js@4/dist/clerk.browser.js"
+    >
       <html lang="en">
         <body className={`${inter.variable} ${spaceGrotesk.variable} font-sans`}>
           <Providers>

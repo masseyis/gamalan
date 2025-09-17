@@ -124,6 +124,19 @@ impl JwtVerifier {
             }
         })?;
 
+        // Temporarily decode without validation to see actual claims for debugging
+        if self.validation.iss.is_some() {
+            let mut debug_validation = self.validation.clone();
+            debug_validation.iss = None;
+            debug_validation.validate_aud = false;
+            debug_validation.validate_exp = false;
+
+            if let Ok(debug_token) = decode::<Claims>(token, &decoding_key, &debug_validation) {
+                tracing::info!("JWT token issuer: {}", debug_token.claims.iss);
+                tracing::info!("Expected issuer: {:?}", self.validation.iss);
+            }
+        }
+
         let token_data = decode::<Claims>(token, &decoding_key, &self.validation).map_err(|e| {
             tracing::error!("Failed to decode JWT token: {}", e);
             let error_code = match e.kind() {
