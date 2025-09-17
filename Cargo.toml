@@ -19,11 +19,11 @@ members = [
 
 [workspace.dependencies]
 axum = "0.8.4"
-serde = "1.0.203"
-serde_json = "1.0.117"
-tokio = { version = "1.38.0", features = ["full"] }
-thiserror = "1.0.61"
-anyhow = "1.0.86"
+serde = "1.0.225"
+serde_json = "1.0.145"
+tokio = { version = "1.47.1", features = ["full"] }
+thiserror = "1.0.69"
+anyhow = "1.0.99"
 shuttle-runtime = "0.56.0"
 shuttle-axum = "0.56.0"
 shuttle-shared-db = { version = "0.56.0", features = ["postgres"] }
@@ -31,14 +31,14 @@ shuttle-qdrant = "0.56.0"
 sqlx = { version = "0.8.6", features = ["postgres", "uuid", "chrono", "runtime-tokio-rustls"] }
 utoipa = { version = "4.2.3", features = ["axum_extras"] }
 utoipa-swagger-ui = { version = "7.1.0", features = ["axum"] }
-tower-http = { version = "0.5.2", features = ["trace", "cors"] }
+tower-http = { version = "0.6.2", features = ["trace", "cors"] }
 axum-extra = { version = "0.10.0", features = ["typed-header"] }
-async-trait = "0.1.80"
-tracing = "0.1.40"
+async-trait = "0.1.83"
+tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.20", features = ["env-filter", "json", "fmt"] }
 tracing-error = "0.2.0"
 color-eyre = "0.6.3"
 serde_with = "3.11.0"
 http-body-util = "0.1.2"
-uuid = { version = "1.8.0", features = ["v4", "serde"] }
-reqwest = { version = "0.12.4", features = ["json"] }
+uuid = { version = "1.11.0", features = ["v4", "serde"] }
+reqwest = { version = "0.12.11", features = ["json"] }
