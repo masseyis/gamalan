@@ -26,11 +26,12 @@ impl BacklogUsecases {
     pub async fn create_story(
         &self,
         project_id: Uuid,
+        organization_id: Option<Uuid>,
         title: String,
         description: Option<String>,
         labels: Vec<String>,
     ) -> Result<Uuid, AppError> {
-        let mut story = Story::new(project_id, title, description)?;
+        let mut story = Story::new(project_id, organization_id, title, description)?;
         for label in labels {
             story.add_label(label);
         }
@@ -39,24 +40,35 @@ impl BacklogUsecases {
         Ok(story.id)
     }
 
-    pub async fn get_story(&self, id: Uuid) -> Result<Option<Story>, AppError> {
-        self.story_repo.get_story(id).await
+    pub async fn get_story(
+        &self,
+        id: Uuid,
+        organization_id: Option<Uuid>,
+    ) -> Result<Option<Story>, AppError> {
+        self.story_repo.get_story(id, organization_id).await
     }
 
-    pub async fn get_stories_by_project(&self, project_id: Uuid) -> Result<Vec<Story>, AppError> {
-        self.story_repo.get_stories_by_project(project_id).await
+    pub async fn get_stories_by_project(
+        &self,
+        project_id: Uuid,
+        organization_id: Option<Uuid>,
+    ) -> Result<Vec<Story>, AppError> {
+        self.story_repo
+            .get_stories_by_project(project_id, organization_id)
+            .await
     }
 
     pub async fn update_story(
         &self,
         id: Uuid,
+        organization_id: Option<Uuid>,
         title: Option<String>,
         description: Option<String>,
         labels: Option<Vec<String>>,
     ) -> Result<(), AppError> {
         let mut story = self
             .story_repo
-            .get_story(id)
+            .get_story(id, organization_id)
             .await?
             .ok_or_else(|| AppError::NotFound(format!("Story with id {} not found", id)))?;
 
@@ -73,10 +85,15 @@ impl BacklogUsecases {
         self.story_repo.update_story(&story).await
     }
 
-    pub async fn update_story_status(&self, id: Uuid, status: StoryStatus) -> Result<(), AppError> {
+    pub async fn update_story_status(
+        &self,
+        id: Uuid,
+        organization_id: Option<Uuid>,
+        status: StoryStatus,
+    ) -> Result<(), AppError> {
         let mut story = self
             .story_repo
-            .get_story(id)
+            .get_story(id, organization_id)
             .await?
             .ok_or_else(|| AppError::NotFound(format!("Story with id {} not found", id)))?;
 
@@ -84,26 +101,31 @@ impl BacklogUsecases {
         self.story_repo.update_story(&story).await
     }
 
-    pub async fn delete_story(&self, id: Uuid) -> Result<(), AppError> {
+    pub async fn delete_story(
+        &self,
+        id: Uuid,
+        organization_id: Option<Uuid>,
+    ) -> Result<(), AppError> {
         // Check if story exists
         self.story_repo
-            .get_story(id)
+            .get_story(id, organization_id)
             .await?
             .ok_or_else(|| AppError::NotFound(format!("Story with id {} not found", id)))?;
 
-        self.story_repo.delete_story(id).await
+        self.story_repo.delete_story(id, organization_id).await
     }
 
     pub async fn create_task(
         &self,
         story_id: Uuid,
+        organization_id: Option<Uuid>,
         title: String,
         description: Option<String>,
         acceptance_criteria_refs: Vec<String>,
     ) -> Result<Uuid, AppError> {
         // Verify story exists
         self.story_repo
-            .get_story(story_id)
+            .get_story(story_id, organization_id)
             .await?
             .ok_or_else(|| AppError::NotFound(format!("Story with id {} not found", story_id)))?;
 
@@ -120,31 +142,48 @@ impl BacklogUsecases {
             )));
         }
 
-        let task = Task::new(story_id, title, description, acceptance_criteria_refs)?;
+        let task = Task::new(
+            story_id,
+            organization_id,
+            title,
+            description,
+            acceptance_criteria_refs,
+        )?;
         self.task_repo.create_task(&task).await?;
         Ok(task.id)
     }
 
-    pub async fn get_tasks_by_story(&self, story_id: Uuid) -> Result<Vec<Task>, AppError> {
-        self.task_repo.get_tasks_by_story(story_id).await
+    pub async fn get_tasks_by_story(
+        &self,
+        story_id: Uuid,
+        organization_id: Option<Uuid>,
+    ) -> Result<Vec<Task>, AppError> {
+        self.task_repo
+            .get_tasks_by_story(story_id, organization_id)
+            .await
     }
 
     #[allow(dead_code)]
-    pub async fn get_task(&self, id: Uuid) -> Result<Option<Task>, AppError> {
-        self.task_repo.get_task(id).await
+    pub async fn get_task(
+        &self,
+        id: Uuid,
+        organization_id: Option<Uuid>,
+    ) -> Result<Option<Task>, AppError> {
+        self.task_repo.get_task(id, organization_id).await
     }
 
     #[allow(dead_code)]
     pub async fn update_task(
         &self,
         id: Uuid,
+        organization_id: Option<Uuid>,
         title: Option<String>,
         description: Option<String>,
         acceptance_criteria_refs: Option<Vec<String>>,
     ) -> Result<(), AppError> {
         let mut task = self
             .task_repo
-            .get_task(id)
+            .get_task(id, organization_id)
             .await?
             .ok_or_else(|| AppError::NotFound(format!("Task with id {} not found", id)))?;
 

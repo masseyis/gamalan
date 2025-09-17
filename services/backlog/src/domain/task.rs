@@ -6,6 +6,7 @@ use uuid::Uuid;
 pub struct Task {
     pub id: Uuid,
     pub story_id: Uuid,
+    pub organization_id: Option<Uuid>,
     pub title: String,
     pub description: Option<String>,
     pub acceptance_criteria_refs: Vec<String>,
@@ -14,6 +15,7 @@ pub struct Task {
 impl Task {
     pub fn new(
         story_id: Uuid,
+        organization_id: Option<Uuid>,
         title: String,
         description: Option<String>,
         acceptance_criteria_refs: Vec<String>,
@@ -44,6 +46,7 @@ impl Task {
         Ok(Self {
             id: Uuid::new_v4(),
             story_id,
+            organization_id,
             title,
             description,
             acceptance_criteria_refs,
@@ -83,6 +86,7 @@ mod tests {
         let ac_refs = vec!["AC1".to_string(), "AC2".to_string()];
         let task = Task::new(
             story_id,
+            None,
             "Test task".to_string(),
             Some("Description".to_string()),
             ac_refs.clone(),
@@ -97,7 +101,7 @@ mod tests {
     fn test_new_task_with_empty_ac_ref() {
         let story_id = Uuid::new_v4();
         let ac_refs = vec!["AC1".to_string(), "".to_string()];
-        let task = Task::new(story_id, "Test task".to_string(), None, ac_refs);
+        let task = Task::new(story_id, None, "Test task".to_string(), None, ac_refs);
 
         assert!(task.is_err());
     }
@@ -107,6 +111,7 @@ mod tests {
         let story_id = Uuid::new_v4();
         let mut task = Task::new(
             story_id,
+            None,
             "Test task".to_string(),
             None,
             vec!["AC1".to_string()],
