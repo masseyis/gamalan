@@ -5,7 +5,7 @@ use crate::adapters::http::handlers::{
 use crate::adapters::persistence::repo::{ProjectRepositoryImpl, ProjectSettingsRepositoryImpl};
 use crate::application::usecases::ProjectUsecases;
 use auth_clerk::JwtVerifier;
-use shuttle_axum::axum::routing::{delete, get, post, put};
+use shuttle_axum::axum::routing::get;
 use sqlx::PgPool;
 use std::sync::Arc;
 use tokio::sync::Mutex;

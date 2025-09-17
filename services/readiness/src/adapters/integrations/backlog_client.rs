@@ -44,7 +44,11 @@ impl HttpBacklogService {
 
 #[async_trait]
 impl StoryService for HttpBacklogService {
-    async fn get_story_info(&self, story_id: Uuid) -> Result<Option<StoryInfo>, AppError> {
+    async fn get_story_info(
+        &self,
+        story_id: Uuid,
+        _organization_id: Option<Uuid>,
+    ) -> Result<Option<StoryInfo>, AppError> {
         let url = format!("{}/stories/{}", self.base_url, story_id);
         let response = self
             .client
@@ -73,7 +77,11 @@ impl StoryService for HttpBacklogService {
         }))
     }
 
-    async fn get_tasks_for_story(&self, story_id: Uuid) -> Result<Vec<TaskInfo>, AppError> {
+    async fn get_tasks_for_story(
+        &self,
+        story_id: Uuid,
+        _organization_id: Option<Uuid>,
+    ) -> Result<Vec<TaskInfo>, AppError> {
         let url = format!("{}/stories/{}/tasks", self.base_url, story_id);
         let response = self
             .client

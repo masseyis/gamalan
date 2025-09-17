@@ -173,7 +173,7 @@ impl ProjectRepository for ProjectRepositoryImpl {
         .bind(organization_id)
         .bind(&request.name)
         .bind(&request.description)
-        .bind(&request.team_id)
+        .bind(request.team_id)
         .bind(now)
         .fetch_one(&self.pool)
         .await

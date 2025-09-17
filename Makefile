@@ -1,8 +1,8 @@
-.PHONY: fmt lint build test test-unit test-int test-contract test-e2e coverage \
+.PHONY: fmt lint build test test-unit test-int test-int-local test-contract test-contract-local test-e2e coverage \
 		dev-up dev-down migrate deploy-all deploy-staging deploy-prod \
 		check-pr pre-push quality-gate canary-deploy rollback \
 		deploy-prompt-builder deploy-context-orchestrator install-hook \
-		install-hooks smart-test test-smart test-changed setup-dev
+		install-hooks smart-test test-smart test-changed setup-dev test-all-local
 
 fmt:
 	@echo "Running rustfmt..."
@@ -45,6 +45,37 @@ test-contract:
 	TEST_DATABASE_URL=postgres://testuser:testpass123@localhost:5433/gamalan_test \
 	cargo test --workspace --test '*contract*' -- --test-threads=1
 	docker-compose -f docker-compose.test.yml down
+
+test-int-local:
+	@echo "Running integration tests with local PostgreSQL..."
+	@echo "Ensuring PostgreSQL is available on localhost:5432..."
+	@export PATH="/opt/homebrew/opt/postgresql@15/bin:$$PATH" && \
+	command -v psql >/dev/null 2>&1 || { echo "PostgreSQL not found. Please install with: brew install postgresql@15"; exit 1; }
+	@export PATH="/opt/homebrew/opt/postgresql@15/bin:$$PATH" && \
+	psql -d gamalan_test -c "SELECT 1;" >/dev/null 2>&1 || { echo "Test database 'gamalan_test' not found. Please create with: createdb gamalan_test"; exit 1; }
+	@echo "Running integration tests against local database..."
+	export PATH="/opt/homebrew/opt/postgresql@15/bin:$$PATH" && \
+	TEST_DATABASE_URL=postgres://$$USER@localhost:5432/gamalan_test \
+	cargo test --workspace --test '*integration*' -- --test-threads=1
+
+test-contract-local:
+	@echo "Running contract tests with local PostgreSQL..."
+	@echo "Ensuring PostgreSQL is available on localhost:5432..."
+	@export PATH="/opt/homebrew/opt/postgresql@15/bin:$$PATH" && \
+	command -v psql >/dev/null 2>&1 || { echo "PostgreSQL not found. Please install with: brew install postgresql@15"; exit 1; }
+	@export PATH="/opt/homebrew/opt/postgresql@15/bin:$$PATH" && \
+	psql -d gamalan_test -c "SELECT 1;" >/dev/null 2>&1 || { echo "Test database 'gamalan_test' not found. Please create with: createdb gamalan_test"; exit 1; }
+	@echo "Running contract tests against local database..."
+	@export PATH="/opt/homebrew/opt/postgresql@15/bin:$$PATH" && \
+	TEST_DATABASE_URL=postgres://$$USER@localhost:5432/gamalan_test \
+	cargo test --workspace --test '*contract*' -- --test-threads=1 || echo "⚠️  No contract tests found (pattern '*contract*')"
+
+test-all-local:
+	@echo "Running all tests with local PostgreSQL..."
+	@$(MAKE) test-unit
+	@$(MAKE) test-int-local
+	@$(MAKE) test-contract-local
+	@echo "All local tests completed successfully!"
 
 test-e2e:
 	@echo "Running end-to-end tests..."

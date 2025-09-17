@@ -17,6 +17,7 @@ impl LlmService for MockLlmService {
         let criteria = vec![
             AcceptanceCriterion::new(
                 story_info.id,
+                None,
                 "AC1".to_string(),
                 "user is authenticated".to_string(),
                 "user interacts with the feature".to_string(),
@@ -24,6 +25,7 @@ impl LlmService for MockLlmService {
             )?,
             AcceptanceCriterion::new(
                 story_info.id,
+                None,
                 "AC2".to_string(),
                 "system is in valid state".to_string(),
                 "user completes the action".to_string(),
@@ -155,7 +157,7 @@ impl LlmService for OpenAiLlmService {
         let mut criteria = Vec::new();
         for c in criteria_json {
             let criterion =
-                AcceptanceCriterion::new(story_info.id, c.ac_id, c.given, c.when, c.then)?;
+                AcceptanceCriterion::new(story_info.id, None, c.ac_id, c.given, c.when, c.then)?;
             criteria.push(criterion);
         }
 

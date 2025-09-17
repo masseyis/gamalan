@@ -9,15 +9,21 @@ pub trait AcceptanceCriteriaRepository: Send + Sync {
     async fn get_criteria_by_story(
         &self,
         story_id: Uuid,
+        organization_id: Option<Uuid>,
     ) -> Result<Vec<AcceptanceCriterion>, AppError>;
     #[allow(dead_code)]
     async fn update_criterion(&self, criterion: &AcceptanceCriterion) -> Result<(), AppError>;
     #[allow(dead_code)]
-    async fn delete_criteria_by_story(&self, story_id: Uuid) -> Result<(), AppError>;
+    async fn delete_criteria_by_story(
+        &self,
+        story_id: Uuid,
+        organization_id: Option<Uuid>,
+    ) -> Result<(), AppError>;
     #[allow(dead_code)]
     async fn get_criterion_by_story_and_ac_id(
         &self,
         story_id: Uuid,
+        organization_id: Option<Uuid>,
         ac_id: &str,
     ) -> Result<Option<AcceptanceCriterion>, AppError>;
 }
@@ -29,13 +35,22 @@ pub trait ReadinessEvaluationRepository: Send + Sync {
     async fn get_latest_evaluation(
         &self,
         story_id: Uuid,
+        organization_id: Option<Uuid>,
     ) -> Result<Option<ReadinessEvaluation>, AppError>;
 }
 
 #[async_trait]
 pub trait StoryService: Send + Sync {
-    async fn get_story_info(&self, story_id: Uuid) -> Result<Option<StoryInfo>, AppError>;
-    async fn get_tasks_for_story(&self, story_id: Uuid) -> Result<Vec<TaskInfo>, AppError>;
+    async fn get_story_info(
+        &self,
+        story_id: Uuid,
+        organization_id: Option<Uuid>,
+    ) -> Result<Option<StoryInfo>, AppError>;
+    async fn get_tasks_for_story(
+        &self,
+        story_id: Uuid,
+        organization_id: Option<Uuid>,
+    ) -> Result<Vec<TaskInfo>, AppError>;
 }
 
 #[derive(Debug, Clone)]

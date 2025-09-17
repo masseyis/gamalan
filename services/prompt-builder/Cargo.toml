@@ -20,6 +20,7 @@ utoipa = { workspace = true }
 utoipa-swagger-ui = { workspace = true }
 tower-http = { workspace = true }
 async-trait = { workspace = true }
-uuid = { version = "1.8.0", features = ["v4", "serde"] }
+uuid = { workspace = true }
 reqwest = { version = "0.12.4", features = ["json"] }
-chrono = { version = "0.4.31", features = ["serde"] }
+chrono = { workspace = true }
+tracing = { workspace = true }

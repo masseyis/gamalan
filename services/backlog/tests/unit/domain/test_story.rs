@@ -10,6 +10,7 @@ mod tests {
         let project_id = Uuid::new_v4();
         let story = Story::new(
             project_id,
+            None,
             "Test Story".to_string(),
             Some("Test description".to_string()),
         )
@@ -26,7 +27,7 @@ mod tests {
     #[test]
     fn test_story_status_update() {
         let project_id = Uuid::new_v4();
-        let mut story = Story::new(project_id, "Test".to_string(), None).unwrap();
+        let mut story = Story::new(project_id, None, "Test".to_string(), None).unwrap();
 
         story.update_status(StoryStatus::InProgress);
         assert_eq!(story.status, StoryStatus::InProgress);
@@ -38,7 +39,7 @@ mod tests {
     #[test]
     fn test_story_label_management() {
         let project_id = Uuid::new_v4();
-        let mut story = Story::new(project_id, "Test".to_string(), None).unwrap();
+        let mut story = Story::new(project_id, None, "Test".to_string(), None).unwrap();
 
         // Add labels
         story.add_label("bug".to_string());
@@ -109,7 +110,7 @@ mod tests {
     #[test]
     fn test_story_clone() {
         let project_id = Uuid::new_v4();
-        let mut story = Story::new(project_id, "Test".to_string(), None).unwrap();
+        let mut story = Story::new(project_id, None, "Test".to_string(), None).unwrap();
         story.add_label("test".to_string());
 
         let cloned = story.clone();
@@ -124,15 +125,15 @@ mod tests {
         let project_id = Uuid::new_v4();
 
         // Empty title should fail
-        let result = Story::new(project_id, "".to_string(), None);
+        let result = Story::new(project_id, None, "".to_string(), None);
         assert!(result.is_err());
 
         // Whitespace-only title should fail
-        let result = Story::new(project_id, "   ".to_string(), None);
+        let result = Story::new(project_id, None, "   ".to_string(), None);
         assert!(result.is_err());
 
         // Valid title should succeed
-        let result = Story::new(project_id, "Valid Title".to_string(), None);
+        let result = Story::new(project_id, None, "Valid Title".to_string(), None);
         assert!(result.is_ok());
     }
 }

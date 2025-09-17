@@ -234,7 +234,11 @@ mod tests {
             Ok(())
         }
 
-        async fn get_story(&self, id: Uuid) -> Result<Option<Story>, AppError> {
+        async fn get_story(
+            &self,
+            id: Uuid,
+            _organization_id: Option<Uuid>,
+        ) -> Result<Option<Story>, AppError> {
             let stories = self.stories.lock().unwrap();
             Ok(stories.get(&id).cloned())
         }
@@ -245,13 +249,21 @@ mod tests {
             Ok(())
         }
 
-        async fn delete_story(&self, id: Uuid) -> Result<(), AppError> {
+        async fn delete_story(
+            &self,
+            id: Uuid,
+            _organization_id: Option<Uuid>,
+        ) -> Result<(), AppError> {
             let mut stories = self.stories.lock().unwrap();
             stories.remove(&id);
             Ok(())
         }
 
-        async fn get_stories_by_project(&self, project_id: Uuid) -> Result<Vec<Story>, AppError> {
+        async fn get_stories_by_project(
+            &self,
+            project_id: Uuid,
+            _organization_id: Option<Uuid>,
+        ) -> Result<Vec<Story>, AppError> {
             let stories = self.stories.lock().unwrap();
             Ok(stories
                 .values()
@@ -274,12 +286,20 @@ mod tests {
             Ok(())
         }
 
-        async fn get_task(&self, id: Uuid) -> Result<Option<Task>, AppError> {
+        async fn get_task(
+            &self,
+            id: Uuid,
+            _organization_id: Option<Uuid>,
+        ) -> Result<Option<Task>, AppError> {
             let tasks = self.tasks.lock().unwrap();
             Ok(tasks.get(&id).cloned())
         }
 
-        async fn get_tasks_by_story(&self, story_id: Uuid) -> Result<Vec<Task>, AppError> {
+        async fn get_tasks_by_story(
+            &self,
+            story_id: Uuid,
+            _organization_id: Option<Uuid>,
+        ) -> Result<Vec<Task>, AppError> {
             let tasks = self.tasks.lock().unwrap();
             Ok(tasks
                 .values()
@@ -294,7 +314,11 @@ mod tests {
             Ok(())
         }
 
-        async fn delete_task(&self, id: Uuid) -> Result<(), AppError> {
+        async fn delete_task(
+            &self,
+            id: Uuid,
+            _organization_id: Option<Uuid>,
+        ) -> Result<(), AppError> {
             let mut tasks = self.tasks.lock().unwrap();
             tasks.remove(&id);
             Ok(())
@@ -336,6 +360,7 @@ mod tests {
         let story_id = usecases
             .create_story(
                 project_id,
+                None,
                 "Test story".to_string(),
                 Some("Description".to_string()),
                 vec!["label1".to_string()],
@@ -343,7 +368,7 @@ mod tests {
             .await
             .unwrap();
 
-        let story = usecases.get_story(story_id).await.unwrap().unwrap();
+        let story = usecases.get_story(story_id, None).await.unwrap().unwrap();
         assert_eq!(story.title, "Test story");
         assert_eq!(story.project_id, project_id);
         assert!(story.labels.contains(&"label1".to_string()));
@@ -356,7 +381,7 @@ mod tests {
 
         // First create a story
         let story_id = usecases
-            .create_story(project_id, "Test story".to_string(), None, vec![])
+            .create_story(project_id, None, "Test story".to_string(), None, vec![])
             .await
             .unwrap();
 
@@ -364,6 +389,7 @@ mod tests {
         let task_id = usecases
             .create_task(
                 story_id,
+                None,
                 "Test task".to_string(),
                 None,
                 vec!["AC1".to_string(), "AC2".to_string()],
@@ -371,7 +397,7 @@ mod tests {
             .await
             .unwrap();
 
-        let task = usecases.get_task(task_id).await.unwrap().unwrap();
+        let task = usecases.get_task(task_id, None).await.unwrap().unwrap();
         assert_eq!(task.title, "Test task");
         assert_eq!(task.acceptance_criteria_refs, vec!["AC1", "AC2"]);
     }
@@ -383,7 +409,7 @@ mod tests {
 
         // First create a story
         let story_id = usecases
-            .create_story(project_id, "Test story".to_string(), None, vec![])
+            .create_story(project_id, None, "Test story".to_string(), None, vec![])
             .await
             .unwrap();
 
@@ -391,6 +417,7 @@ mod tests {
         let result = usecases
             .create_task(
                 story_id,
+                None,
                 "Test task".to_string(),
                 None,
                 vec!["INVALID_AC".to_string()],

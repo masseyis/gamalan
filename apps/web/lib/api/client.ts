@@ -22,7 +22,7 @@ class ApiClient {
   }
 
   private setupInterceptors() {
-    // Request interceptor to add auth token
+    // Request interceptor to add auth token and organization context
     this.client.interceptors.request.use(
       async (config) => {
         // Try to get auth token from Clerk if available
@@ -34,6 +34,18 @@ class ApiClient {
               const token = await Clerk.session.getToken()
               if (token) {
                 config.headers.Authorization = `Bearer ${token}`
+              }
+
+              // Add organization context headers
+              const user = Clerk.user
+              const organization = Clerk.organization
+
+              if (organization) {
+                config.headers['X-Organization-Id'] = organization.id
+                config.headers['X-Context-Type'] = 'organization'
+              } else if (user) {
+                config.headers['X-User-Id'] = user.id
+                config.headers['X-Context-Type'] = 'personal'
               }
             }
           } catch (error) {
