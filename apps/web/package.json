@@ -57,6 +57,7 @@
     "zustand": "^4.5.2"
   },
   "devDependencies": {
+    "@clerk/testing": "^1.12.6",
     "@playwright/test": "^1.55.0",
     "@tailwindcss/typography": "^0.5.16",
     "@testing-library/jest-dom": "^6.4.2",

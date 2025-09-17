@@ -33,7 +33,7 @@ export default function RootLayout({
   return (
     <ClerkProvider
       publishableKey={publishableKey}
-      clerkJSUrl="https://clerk.battra.penchi.co.uk/npm/@clerk/clerk-js@4/dist/clerk.browser.js"
+      domain={undefined}
     >
       <html lang="en">
         <body className={`${inter.variable} ${spaceGrotesk.variable} font-sans`}>
