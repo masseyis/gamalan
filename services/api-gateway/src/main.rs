@@ -33,7 +33,7 @@ async fn main(
         .get("CLERK_DOMAIN")
         .context("CLERK_DOMAIN must be set")?;
     // For Clerk, the issuer is typically the same as the JWKS URL domain
-    let clerk_issuer = format!("https://{}.clerk.accounts.dev", clerk_domain);
+    let clerk_issuer = format!("https://{}", clerk_domain);
     let clerk_audience = secrets
         .get("CLERK_AUDIENCE")
         .unwrap_or_else(|| format!("{}.clerk.accounts.dev", clerk_domain)); // Use proper domain format
