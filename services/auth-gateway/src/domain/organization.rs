@@ -65,6 +65,7 @@ pub struct CreateOrganizationRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct UpdateOrganizationRequest {
     pub name: Option<String>,
     pub description: Option<String>,
