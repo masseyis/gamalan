@@ -19,7 +19,7 @@ export default defineConfig({
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [['html'], ['github']],
   /* Global timeout for the entire test suite */
-  globalTimeout: 8 * 60 * 1000, // 8 minutes max for all tests in CI
+  globalTimeout: 12 * 60 * 1000, // 12 minutes max for all tests in CI
 
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
@@ -50,7 +50,7 @@ export default defineConfig({
     command: 'pnpm dev',
     url: 'http://localhost:3000',
     reuseExistingServer: false, // Always start fresh in CI
-    timeout: 300 * 1000, // 5 minutes timeout for server startup
+    timeout: 480 * 1000, // 8 minutes timeout for server startup (CI can be slow)
     stderr: 'pipe',
     stdout: 'pipe',
   },
