@@ -233,7 +233,7 @@ quality-gate:
 	cargo tarpaulin --workspace --out Json --target-dir target/tarpaulin --timeout 300 | \
 		jq -r '.files | map(.coverage) | add / length' | \
 		awk '{ if ($$1 < 85.0) { print "❌ Coverage below 85%: " $$1 "%"; exit 1 } else { print "✅ Coverage: " $$1 "%" } }'
-	@echo "Checking for security vulnerabilities..."
+	@echo "Checking for some security vulnerabilities..."
 	cargo audit || (echo "❌ Security vulnerabilities found!" && exit 1)
 	@echo "Running performance quality checks..."
 	TEST_DATABASE_URL=postgres://testuser:testpass123@localhost:5433/gamalan_test \
