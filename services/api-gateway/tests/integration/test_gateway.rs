@@ -29,9 +29,18 @@ async fn create_test_app() -> Router {
         .expect("Failed to connect to test database");
 
     // Clean test database - include all tables from all services
-    let _ = sqlx::query("TRUNCATE TABLE organization_memberships, organizations, users, stories, tasks, projects CASCADE")
+    // Handle missing tables gracefully in case migrations haven't run
+    let cleanup_result = sqlx::query("TRUNCATE TABLE organization_memberships, organizations, users, stories, tasks, projects CASCADE")
         .execute(&pool)
         .await;
+
+    if let Err(e) = cleanup_result {
+        eprintln!(
+            "Warning: Failed to truncate some tables (they may not exist): {}",
+            e
+        );
+        eprintln!("This is normal if migrations haven't run yet or tables don't exist");
+    }
 
     // Create a test JWT verifier
     let verifier = Arc::new(Mutex::new(JwtVerifier::new(
