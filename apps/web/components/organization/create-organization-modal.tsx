@@ -66,7 +66,7 @@ export function CreateOrganizationModal({ open, onClose }: CreateOrganizationMod
     setIsCreating(true)
 
     try {
-      const organization = await createOrganization({
+      const organization = await createOrganization?.({
         name: name.trim(),
         slug: slug.trim(),
         // Note: Clerk doesn't support custom descriptions in basic plan

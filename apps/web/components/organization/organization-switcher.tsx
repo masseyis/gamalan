@@ -26,16 +26,16 @@ import { CreateOrganizationModal } from './create-organization-modal'
 export function OrganizationSwitcher() {
   const { user } = useUser()
   const { organization } = useOrganization()
-  const { organizationList, setActive } = useOrganizationList()
+  const { userMemberships, setActive } = useOrganizationList()
   const [showCreateModal, setShowCreateModal] = useState(false)
 
   if (!user) return null
 
   const handleOrganizationSwitch = (organizationId: string) => {
-    setActive({ organization: organizationId })
+    setActive?.({ organization: organizationId })
   }
 
-  const currentOrg = organization || organizationList?.[0]?.organization
+  const currentOrg = organization || userMemberships?.data?.[0]?.organization
 
   return (
     <>
@@ -77,7 +77,7 @@ export function OrganizationSwitcher() {
 
           {/* Personal Account */}
           <DropdownMenuItem
-            onClick={() => setActive({ organization: null })}
+            onClick={() => setActive?.({ organization: null })}
             className="h-12 px-3 py-2 cursor-pointer"
           >
             <div className="flex items-center gap-3 w-full">
@@ -104,7 +104,7 @@ export function OrganizationSwitcher() {
           </DropdownMenuItem>
 
           {/* Organizations */}
-          {organizationList?.map(({ organization: org }) => (
+          {userMemberships?.data?.map(({ organization: org }: { organization: any }) => (
             <DropdownMenuItem
               key={org.id}
               onClick={() => handleOrganizationSwitch(org.id)}

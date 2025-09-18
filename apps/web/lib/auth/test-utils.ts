@@ -16,7 +16,7 @@ export const isTestEnvironment = (): boolean => {
   return (
     process.env.NODE_ENV === 'test' ||
     process.env.NEXT_PUBLIC_ENABLE_MOCK_AUTH === 'true' ||
-    typeof window !== 'undefined' && window.__MOCK_AUTH__
+    (typeof window !== 'undefined' && !!window.__MOCK_AUTH__)
   )
 }
 
