@@ -124,7 +124,7 @@ jobs:
           while IFS= read -r file; do
             if [[ -n "$file" ]]; then
               for pattern in "${sensitive_patterns[@]}"; do
-                if [[ "$file" =~ $pattern ]] && [[ "$file" != ".env.example" ]] && [[ "$file" != ".env.test" ]]; then
+                if [[ "$file" =~ $pattern ]] && [[ "$file" != ".env.example" ]] && [[ "$file" !=~ "\.env.test" ]]; then
                   echo "⚠️  Potentially sensitive file detected: $file"
                   found_sensitive=true
                 fi
