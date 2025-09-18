@@ -28,8 +28,8 @@ async fn create_test_app() -> Router {
         .await
         .expect("Failed to connect to test database");
 
-    // Clean test database
-    let _ = sqlx::query("TRUNCATE TABLE stories, tasks, projects CASCADE")
+    // Clean test database - include all tables from all services
+    let _ = sqlx::query("TRUNCATE TABLE organization_memberships, organizations, users, stories, tasks, projects CASCADE")
         .execute(&pool)
         .await;
 

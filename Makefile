@@ -173,6 +173,7 @@ migrate:
 	cargo install sqlx-cli --no-default-features --features "postgres,uuid,tls-rustls"
 	@echo "All services use single database through api-gateway"
 	# Run all migrations in sequence against single database
+	sqlx migrate run --source services/auth-gateway/migrations --database-url $$DATABASE_URL
 	sqlx migrate run --source services/projects/migrations --database-url $$DATABASE_URL
 	sqlx migrate run --source services/backlog/migrations --database-url $$DATABASE_URL
 	sqlx migrate run --source services/readiness/migrations --database-url $$DATABASE_URL
