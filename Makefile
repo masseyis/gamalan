@@ -32,7 +32,7 @@ test-int:
 	sleep 10
 	@echo "Running integration tests against unified gateway..."
 	TEST_DATABASE_URL=postgres://testuser:testpass123@localhost:5433/gamalan_test \
-	cargo test --workspace --test '*integration*' -- --test-threads=1
+	cargo test --workspace integration:: -- --test-threads=1
 	docker-compose -f docker-compose.test.yml down
 
 test-contract:

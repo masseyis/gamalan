@@ -30,7 +30,7 @@ shuttle-shared-db = { version = "0.56.0", features = ["postgres"] }
 shuttle-qdrant = "0.56.0"
 sqlx = { version = "0.8.6", features = ["postgres", "uuid", "chrono", "runtime-tokio-rustls"] }
 utoipa = { version = "4.2.3", features = ["axum_extras"] }
-utoipa-swagger-ui = { version = "7.1.0", features = ["axum"] }
+utoipa-swagger-ui = { version = "9.0.2", features = ["axum"] }
 tower-http = { version = "0.6.2", features = ["trace", "cors"] }
 axum-extra = { version = "0.10.0", features = ["typed-header"] }
 async-trait = "0.1.83"
