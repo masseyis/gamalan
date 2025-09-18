@@ -13,11 +13,6 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 #[derive(Debug, Deserialize)]
-pub struct GenerateCriteriaRequest {
-    // This endpoint uses the story info from the backlog service
-}
-
-#[derive(Debug, Deserialize)]
 pub struct AddCriteriaRequest {
     pub criteria: Vec<CriterionRequest>,
 }
