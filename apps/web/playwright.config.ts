@@ -1,4 +1,4 @@
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test'
 
 /**
  * @see https://playwright.dev/docs/test-configuration
@@ -6,6 +6,7 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './tests',
   /* Exclude staging tests from default runs (use staging config for those) */
+  testMatch: '**/*.spec.ts',
   testIgnore: [
     '**/staging-*.spec.ts',
     '**/production-*.spec.ts',
@@ -15,7 +16,7 @@ export default defineConfig({
     '**/story-detail.spec.ts',
     '**/sprint-board.spec.ts',
     '**/responsive-design.spec.ts',
-    '**/brand/bran.spec.ts'
+    '**/brand/bran.spec.ts',
   ],
   /* Run tests in files in parallel */
   fullyParallel: true,
@@ -79,6 +80,7 @@ export default defineConfig({
         /.*authenticated\.spec\.ts/,
         /.*auth\.spec\.ts/,
         /.*public\.spec\.ts/,
+        /.*staging.*spec\.ts/,
         /global\.setup\.ts/,
       ],
       use: { ...devices['Desktop Chrome'] },
@@ -114,4 +116,5 @@ export default defineConfig({
       NEXT_PUBLIC_ENABLE_MOCK_AUTH: 'true',
     },
   },
-});
+})
+

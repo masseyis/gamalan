@@ -2,8 +2,8 @@ name: Main Branch Deployment
 
 on:
   push:
-    branches: [ main ]
-    paths: 
+    branches: [main]
+    paths:
       - 'services/**'
       - 'libs/**'
       - 'apps/web/**'
@@ -39,25 +39,25 @@ jobs:
   # =============================================================================
   # PRE-DEPLOYMENT VERIFICATION
   # =============================================================================
-  
+
   pre-deployment-checks:
     name: Pre-deployment Verification
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    
+
     outputs:
       should_deploy: ${{ steps.decision.outputs.should_deploy }}
       backend_changed: ${{ steps.changes.outputs.backend }}
       frontend_changed: ${{ steps.changes.outputs.frontend }}
       deploy_backend: ${{ steps.decision.outputs.deploy_backend }}
       deploy_frontend: ${{ steps.decision.outputs.deploy_frontend }}
-      
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          
+
       - name: Check previous run status
         id: check_previous
         uses: actions/github-script@v7
@@ -76,7 +76,7 @@ jobs:
             console.log(`Previous run: ${previousRun?.id}, conclusion: ${previousRun?.conclusion}`);
             core.setOutput('previous_failed', failed ? 'true' : 'false');
             return failed;
-            
+
       - name: Get last successful deployment
         id: last_success
         env:
@@ -92,7 +92,7 @@ jobs:
             echo "Last successful deployment: $LAST_SUCCESS"
           fi
           echo "last_success_sha=${LAST_SUCCESS}" >> $GITHUB_OUTPUT
-          
+
       - name: Detect changes
         uses: dorny/paths-filter@v3
         id: changes
@@ -106,31 +106,31 @@ jobs:
               - 'Cargo.lock'
             frontend:
               - 'apps/web/**'
-              
+
       - name: Install Rust toolchain
         if: steps.changes.outputs.backend == 'true'
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: true
-          
+
       - name: Quick smoke tests
         if: steps.changes.outputs.backend == 'true'
         timeout-minutes: 5
         run: |
           cargo check --workspace
           cargo test --lib --workspace -- --test-threads=1
-          
+
       - name: Setup Node.js and pnpm for frontend checks
         if: steps.changes.outputs.frontend == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          
+
       - name: Install pnpm for frontend checks
         if: steps.changes.outputs.frontend == 'true'
         uses: pnpm/action-setup@v4
-        
+
       - name: Frontend quick checks
         if: steps.changes.outputs.frontend == 'true'
         working-directory: apps/web
@@ -138,7 +138,7 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm run type-check
           pnpm run lint
-          
+
       - name: Deployment decision
         id: decision
         run: |
@@ -146,14 +146,14 @@ jobs:
           frontend_changed="${{ steps.changes.outputs.frontend }}"
           previous_failed="${{ steps.check_previous.outputs.previous_failed }}"
           is_manual="${{ github.event_name == 'workflow_dispatch' }}"
-          
+
           echo "=== Deployment Decision Analysis ==="
           echo "Backend changed: $backend_changed"
           echo "Frontend changed: $frontend_changed"
           echo "Previous run failed: $previous_failed"
           echo "Manual trigger: $is_manual"
           echo "=================================="
-          
+
           if [ "$backend_changed" == "true" ] || [ "$frontend_changed" == "true" ] || [ "$previous_failed" == "true" ] || [ "$is_manual" == "true" ]; then
             echo "should_deploy=true" >> $GITHUB_OUTPUT
             
@@ -187,40 +187,40 @@ jobs:
   # =============================================================================
   # BUILD & PACKAGE ARTIFACTS
   # =============================================================================
-  
+
   build-backend:
     name: Build API Gateway (Consolidated Services)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: pre-deployment-checks
     if: needs.pre-deployment-checks.outputs.should_deploy == 'true' && needs.pre-deployment-checks.outputs.deploy_backend == 'true'
-        
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: true
-          
+
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "rust-main-deploy"
-          cache-all-crates: "true"
-          
+          shared-key: 'rust-main-deploy'
+          cache-all-crates: 'true'
+
       - name: Build API Gateway
         run: |
           echo "Building consolidated API Gateway with all services..."
           cargo build --release --package api-gateway
-          
+
       - name: Generate SBOM
         run: |
           cargo install cargo-cyclonedx
           cargo cyclonedx --format json > sbom-api-gateway.json
-          
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -236,23 +236,23 @@ jobs:
     timeout-minutes: 15
     needs: pre-deployment-checks
     if: needs.pre-deployment-checks.outputs.should_deploy == 'true' && needs.pre-deployment-checks.outputs.deploy_frontend == 'true'
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          
+
       - name: Install pnpm
         uses: pnpm/action-setup@v4
-        
+
       - name: Install dependencies
         working-directory: apps/web
         run: pnpm install --frozen-lockfile
-        
+
       - name: Build application
         working-directory: apps/web
         run: pnpm build
@@ -262,7 +262,7 @@ jobs:
           NEXT_PUBLIC_API_BASE_URL: ${{ secrets.STAGING_API_BASE_URL }}
           NEXT_PUBLIC_ENABLE_AI_FEATURES: true
           NEXT_PUBLIC_ENABLE_MOCK_DATA: false
-          
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -277,7 +277,7 @@ jobs:
   # =============================================================================
   # STAGING DEPLOYMENT
   # =============================================================================
-  
+
   deploy-staging-backend:
     name: Deploy API Gateway to Staging
     runs-on: ubuntu-latest
@@ -285,36 +285,36 @@ jobs:
     needs: [pre-deployment-checks, build-backend]
     if: needs.pre-deployment-checks.outputs.should_deploy == 'true' && needs.pre-deployment-checks.outputs.deploy_backend == 'true'
     environment: staging
-      
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Install Shuttle CLI
         run: |
           # First install cargo-binstall for faster installation
           curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
-          
+
           # Force install cargo-shuttle (override any cached/broken installation)  
           cargo binstall -y --locked --force cargo-shuttle
-          
+
           # Verify installation
           echo "Verifying cargo-shuttle installation:"
           ls -la ~/.cargo/bin/cargo-shuttle || echo "cargo-shuttle not found!"
-          
+
           # Create shuttle symlink for shuttle.dev platform  
           ln -sf ~/.cargo/bin/cargo-shuttle ~/.cargo/bin/shuttle
-          
+
           # Export PATH to ensure shuttle is available
           export PATH="$HOME/.cargo/bin:$PATH"
           echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
-          
+
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
           name: api-gateway-binary
           path: ./artifacts
-          
+
       - name: Create Secrets file for staging
         working-directory: services/api-gateway
         run: |
@@ -325,21 +325,21 @@ jobs:
           CLERK_WEBHOOK_SECRET = "${{ secrets.STAGING_CLERK_WEBHOOK_SECRET }}"
           EOF
           echo "Created Secrets.toml for staging deployment with correct secret names"
-          
+
       - name: Deploy to Shuttle staging
         run: |
           cd services/api-gateway
           cargo shuttle login --api-key ${{ secrets.SHUTTLE_API_KEY }}
-          
+
           # Deploy with staging suffix
           PROJECT_NAME="salunga-ai-staging"
-          
+
           # Check if staging project exists, create if not  
           if ! cargo shuttle project status --name $PROJECT_NAME 2>/dev/null; then
             echo "Creating staging project: $PROJECT_NAME"
             cargo shuttle project new --name $PROJECT_NAME
           fi
-          
+
           # Deploy to staging with Secrets.toml
           export PATH="$HOME/.cargo/bin:$PATH"
           cargo shuttle deploy --name $PROJECT_NAME
@@ -351,11 +351,11 @@ jobs:
     needs: [pre-deployment-checks, build-frontend]
     if: needs.pre-deployment-checks.outputs.should_deploy == 'true' && needs.pre-deployment-checks.outputs.deploy_frontend == 'true'
     environment: staging
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -367,7 +367,7 @@ jobs:
       - name: Install dependencies
         working-directory: apps/web
         run: pnpm install --frozen-lockfile
-          
+
       - name: Verify Vercel secrets
         run: |
           echo "Checking Vercel configuration..."
@@ -394,42 +394,43 @@ jobs:
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
           vercel-args: '--build-env NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="${{ secrets.STAGING_CLERK_PUBLISHABLE_KEY }}" --build-env CLERK_SECRET_KEY="${{ secrets.STAGING_CLERK_SECRET_KEY }}" --build-env NEXT_PUBLIC_API_BASE_URL="${{ secrets.STAGING_API_BASE_URL }}" --build-env NODE_ENV=production'
           working-directory: apps/web
+          github-comment: false
           alias-domains: |
             staging-battra-ai.vercel.app
 
   # =============================================================================
   # REGRESSION TESTING ON STAGING
   # =============================================================================
-  
+
   staging-regression-tests:
     name: Staging Regression Tests
     runs-on: ubuntu-latest
     timeout-minutes: 25
     needs: [deploy-staging-backend, deploy-staging-frontend]
     if: always() && (needs.deploy-staging-backend.result == 'success' || needs.deploy-staging-frontend.result == 'success')
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          
+
       - name: Install pnpm
         uses: pnpm/action-setup@v4
-        
+
       - name: Install Playwright
         working-directory: apps/web
         run: |
           pnpm install --frozen-lockfile
           pnpm playwright install --with-deps
-          
+
       - name: Validate staging deployment readiness
         run: |
           echo "Validating staging deployment readiness..."
-          
+
           # Function to check endpoint with retries and detailed diagnostics
           check_endpoint() {
             local url=$1
@@ -467,14 +468,14 @@ jobs:
             echo "Final status: HTTP $http_code, Time: ${time_total}s"
             return 1
           }
-          
+
           # Check staging frontend
           if [ -n "${{ secrets.STAGING_BASE_URL }}" ]; then
             check_endpoint "${{ secrets.STAGING_BASE_URL }}" "Staging Frontend"
           else
             echo "⚠️ STAGING_BASE_URL not configured, skipping frontend check"
           fi
-          
+
           # Check staging API
           if [ -n "${{ secrets.STAGING_API_BASE_URL }}" ]; then
             check_endpoint "${{ secrets.STAGING_API_BASE_URL }}/health" "Staging API Health"
@@ -483,20 +484,20 @@ jobs:
             echo "❌ STAGING_API_BASE_URL not configured"
             exit 1
           fi
-          
+
           echo "✅ All staging services are ready for testing"
-          
+
       - name: Run comprehensive staging smoke tests
         working-directory: apps/web
         timeout-minutes: 20
         run: |
           echo "Running staging smoke tests..."
-          
+
           # Set test environment variables with fallbacks
           export PLAYWRIGHT_BASE_URL="${{ secrets.STAGING_BASE_URL }}"
           export STAGING_BASE_URL="${{ secrets.STAGING_BASE_URL }}"
           export STAGING_API_BASE_URL="${{ secrets.STAGING_API_BASE_URL }}"
-          
+
           # Validate test configuration
           if [ -z "$PLAYWRIGHT_BASE_URL" ] || [ -z "$STAGING_API_BASE_URL" ]; then
             echo "❌ Missing required staging URLs for testing"
@@ -504,12 +505,12 @@ jobs:
             echo "STAGING_API_BASE_URL: ${STAGING_API_BASE_URL:-'Not set'}"
             exit 1
           fi
-          
+
           echo "Test configuration:"
           echo "Frontend URL: $STAGING_BASE_URL"
           echo "API URL: $STAGING_API_BASE_URL"
           echo "Test timeout: 20 minutes"
-          
+
           # Run tests with retry on failure
           if ! pnpm test:e2e:staging; then
             echo "⚠️ First test run failed, retrying once..."
@@ -521,18 +522,18 @@ jobs:
           STAGING_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
           STAGING_API_BASE_URL: ${{ secrets.STAGING_API_BASE_URL }}
           CI: true
-          
+
       - name: Run comprehensive API tests
         timeout-minutes: 10
         run: |
           echo "Running comprehensive API tests..."
           API_URL="${{ secrets.STAGING_API_BASE_URL }}"
-          
+
           if [ -z "$API_URL" ]; then
             echo "❌ STAGING_API_BASE_URL not configured"
             exit 1
           fi
-          
+
           # Test core endpoints with detailed reporting
           test_endpoint() {
             local endpoint=$1
@@ -552,29 +553,29 @@ jobs:
               return 1
             fi
           }
-          
+
           # Core health endpoints
           test_endpoint "health" 200
           test_endpoint "ready" 200
-          
+
           # Service-specific health endpoints through unified gateway
           test_endpoint "api/v1/projects/health" 200
           test_endpoint "api/v1/backlog/health" 200  
           test_endpoint "api/v1/readiness/health" 200
           test_endpoint "api/v1/prompt-builder/health" 200
-          
+
           # Test authentication endpoints (should return 401 without auth)
           test_endpoint "api/v1/projects" 401
           test_endpoint "api/v1/backlog/stories" 401
-          
+
           echo "✅ All API tests completed successfully"
-          
+
       - name: Performance benchmarking
         timeout-minutes: 5
         run: |
           echo "Running performance benchmarks..."
           API_URL="${{ secrets.STAGING_API_BASE_URL }}"
-          
+
           # Performance test function
           benchmark_endpoint() {
             local endpoint=$1
@@ -601,15 +602,15 @@ jobs:
               return 0
             fi
           }
-          
+
           # Benchmark key endpoints
           benchmark_endpoint "health" 1.0
           benchmark_endpoint "ready" 1.0  
           benchmark_endpoint "api/v1/projects/health" 2.0
           benchmark_endpoint "api/v1/backlog/health" 2.0
-          
+
           echo "✅ All performance benchmarks completed"
-          
+
       - name: Generate test results summary
         if: always()
         run: |
@@ -619,20 +620,20 @@ jobs:
           echo "**API URL:** ${{ secrets.STAGING_API_BASE_URL }}" >> $GITHUB_STEP_SUMMARY
           echo "**Test Suite:** E2E Staging Smoke Tests" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           if [ -f "apps/web/test-results/staging-results.json" ]; then
             echo "**Test Results:** Available in artifacts" >> $GITHUB_STEP_SUMMARY
           else
             echo "**Test Results:** No results file generated" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Quality Gates:**" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ Deployment health validation" >> $GITHUB_STEP_SUMMARY
           echo "- 🧪 Frontend smoke tests" >> $GITHUB_STEP_SUMMARY
           echo "- 🔧 API integration tests" >> $GITHUB_STEP_SUMMARY
           echo "- ⚡ Performance benchmarks" >> $GITHUB_STEP_SUMMARY
-          
+
       - name: Upload comprehensive test results
         uses: actions/upload-artifact@v4
         if: always()
@@ -649,16 +650,16 @@ jobs:
   # =============================================================================
   # PRODUCTION DEPLOYMENT PREPARATION
   # =============================================================================
-  
+
   create-production-deployment:
     name: Create Production Deployment Request
     runs-on: ubuntu-latest
     needs: [staging-regression-tests]
     if: success() && github.ref == 'refs/heads/main'
-    
+
     outputs:
       deployment_id: ${{ steps.deployment.outputs.deployment_id }}
-      
+
     steps:
       - name: Create deployment
         id: deployment
@@ -674,9 +675,9 @@ jobs:
               required_contexts: [],
               auto_merge: false
             });
-            
+
             core.setOutput('deployment_id', deployment.id);
-            
+
             // Create deployment status
             await github.rest.repos.createDeploymentStatus({
               owner: context.repo.owner,
@@ -689,13 +690,20 @@ jobs:
   # =============================================================================
   # NOTIFICATIONS & SUMMARY
   # =============================================================================
-  
+
   deployment-summary:
     name: Deployment Summary
     runs-on: ubuntu-latest
     if: always()
-    needs: [pre-deployment-checks, deploy-staging-backend, deploy-staging-frontend, staging-regression-tests, create-production-deployment]
-    
+    needs:
+      [
+        pre-deployment-checks,
+        deploy-staging-backend,
+        deploy-staging-frontend,
+        staging-regression-tests,
+        create-production-deployment,
+      ]
+
     steps:
       - name: Generate deployment summary
         run: |
@@ -704,14 +712,14 @@ jobs:
           echo "**Triggered by:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
           echo "**Architecture:** Single API Gateway (Consolidated Services)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           if [ "${{ needs.pre-deployment-checks.outputs.should_deploy }}" == "true" ]; then
             echo "✅ **Pre-deployment checks:** Passed" >> $GITHUB_STEP_SUMMARY
           else
             echo "⏭️ **Deployment skipped:** No changes detected" >> $GITHUB_STEP_SUMMARY
             exit 0
           fi
-          
+
           # API Gateway deployment status (includes all services)
           if [ "${{ needs.pre-deployment-checks.outputs.backend_changed }}" == "true" ]; then
             if [ "${{ needs.deploy-staging-backend.result }}" == "success" ]; then
@@ -725,7 +733,7 @@ jobs:
               echo "❌ **API Gateway deployment:** Failed" >> $GITHUB_STEP_SUMMARY
             fi
           fi
-          
+
           # Frontend deployment status
           if [ "${{ needs.pre-deployment-checks.outputs.frontend_changed }}" == "true" ]; then
             if [ "${{ needs.deploy-staging-frontend.result }}" == "success" ]; then
@@ -734,20 +742,20 @@ jobs:
               echo "❌ **Frontend deployment:** Failed" >> $GITHUB_STEP_SUMMARY
             fi
           fi
-          
+
           # Regression tests status
           if [ "${{ needs.staging-regression-tests.result }}" == "success" ]; then
             echo "✅ **Regression tests:** Passed" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ **Regression tests:** Failed" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           # Production deployment status
           if [ "${{ needs.create-production-deployment.result }}" == "success" ]; then
             echo "🎯 **Production deployment:** Ready for approval" >> $GITHUB_STEP_SUMMARY
             echo "[Approve Production Deployment](https://github.com/${{ github.repository }}/deployments)" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
           echo "- Review staging environment" >> $GITHUB_STEP_SUMMARY
@@ -759,3 +767,4 @@ jobs:
         run: |
           echo "🚨 Staging deployment failed for commit ${{ github.sha }}"
           echo "Check the workflow run for details: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
