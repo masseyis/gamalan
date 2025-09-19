@@ -50,7 +50,10 @@ async fn create_test_app() -> Router {
     )));
 
     // Create actual service routers with shared resources (matching production structure)
+    println!("Creating auth router...");
     let auth_router = auth_gateway::create_auth_router(pool.clone(), verifier.clone()).await;
+    println!("Auth router created successfully");
+
     let projects_router = projects::create_projects_router(pool.clone(), verifier.clone()).await;
     let backlog_router = backlog::create_backlog_router(pool.clone(), verifier.clone()).await;
     let readiness_router = readiness::create_readiness_router(pool.clone(), verifier.clone()).await;
@@ -125,6 +128,7 @@ async fn test_auth_service_routing() {
     let app = create_test_app().await;
 
     // Test that auth service routes are reachable (should return 401 for unauthenticated requests)
+    println!("Making request to /auth/organizations/test-org-id");
     let response = app
         .oneshot(
             Request::builder()
@@ -136,7 +140,13 @@ async fn test_auth_service_routing() {
         .await
         .unwrap();
 
+    println!("Response status: {}", response.status());
+
     // Should not return 404 (route exists), accepting either auth failure or internal error
+    if response.status() == StatusCode::NOT_FOUND {
+        println!("ERROR: Got 404, which means the auth route is not properly mounted!");
+    }
+
     assert_ne!(response.status(), StatusCode::NOT_FOUND);
 }
 
