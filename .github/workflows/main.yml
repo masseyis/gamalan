@@ -309,11 +309,12 @@ jobs:
           export PATH="$HOME/.cargo/bin:$PATH"
           echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
 
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: api-gateway-binary
-          path: ./artifacts
+      # Skip artifact download - deploy from source instead
+      # - name: Download build artifacts
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: api-gateway-binary
+      #     path: ./artifacts
 
       # - name: Create Secrets file for staging
       #   working-directory: services/api-gateway
@@ -324,7 +325,7 @@ jobs:
       #     CLERK_AUDIENCE = "${{ secrets.STAGING_CLERK_JWT_AUDIENCE }}"
       #     CLERK_WEBHOOK_SECRET = "${{ secrets.STAGING_CLERK_WEBHOOK_SECRET }}"
       #     EOF
-      #     echo "Created Secrets.toml for staging deployment with correct secret names"
+      #     echo "Created Secrets.toml for staging deployment"
 
       - name: Deploy to Shuttle staging
         run: |
@@ -340,7 +341,7 @@ jobs:
             cargo shuttle project new --name $PROJECT_NAME
           fi
 
-          # Deploy to staging with Secrets.toml
+          # Deploy to staging - from api-gateway directory ensures correct service is deployed
           export PATH="$HOME/.cargo/bin:$PATH"
           cargo shuttle deploy --name $PROJECT_NAME
 
