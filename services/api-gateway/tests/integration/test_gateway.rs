@@ -42,6 +42,34 @@ async fn create_test_app() -> Router {
         eprintln!("This is normal if migrations haven't run yet or tables don't exist");
     }
 
+    // Insert test data for auth endpoints to work properly
+    // Only insert if the tables exist (ignore errors if they don't exist)
+    let test_user_id = Uuid::new_v4();
+    let test_org_id = Uuid::new_v4();
+
+    // Insert test user (ignore error if table doesn't exist)
+    let _ = sqlx::query(
+        "INSERT INTO users (id, external_id, email, created_at, updated_at)
+         VALUES ($1, $2, $3, NOW(), NOW())",
+    )
+    .bind(test_user_id)
+    .bind("test-user-id")
+    .bind("test@example.com")
+    .execute(&pool)
+    .await;
+
+    // Insert test organization (ignore error if table doesn't exist)
+    let _ = sqlx::query(
+        "INSERT INTO organizations (id, external_id, name, slug, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, NOW(), NOW())",
+    )
+    .bind(test_org_id)
+    .bind("test-org-id")
+    .bind("Test Organization")
+    .bind("test-org")
+    .execute(&pool)
+    .await;
+
     // Create a test JWT verifier
     let verifier = Arc::new(Mutex::new(JwtVerifier::new(
         "https://test.jwks.url".to_string(),
@@ -50,9 +78,7 @@ async fn create_test_app() -> Router {
     )));
 
     // Create actual service routers with shared resources (matching production structure)
-    println!("Creating auth router...");
     let auth_router = auth_gateway::create_auth_router(pool.clone(), verifier.clone()).await;
-    println!("Auth router created successfully");
 
     let projects_router = projects::create_projects_router(pool.clone(), verifier.clone()).await;
     let backlog_router = backlog::create_backlog_router(pool.clone(), verifier.clone()).await;
@@ -128,7 +154,6 @@ async fn test_auth_service_routing() {
     let app = create_test_app().await;
 
     // Test that auth service routes are reachable (should return 401 for unauthenticated requests)
-    println!("Making request to /auth/organizations/test-org-id");
     let response = app
         .oneshot(
             Request::builder()
@@ -140,12 +165,7 @@ async fn test_auth_service_routing() {
         .await
         .unwrap();
 
-    println!("Response status: {}", response.status());
-
     // Should not return 404 (route exists), accepting either auth failure or internal error
-    if response.status() == StatusCode::NOT_FOUND {
-        println!("ERROR: Got 404, which means the auth route is not properly mounted!");
-    }
 
     assert_ne!(response.status(), StatusCode::NOT_FOUND);
 }
