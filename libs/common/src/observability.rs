@@ -8,44 +8,64 @@ use tracing_subscriber::{
 
 /// Initialize production-ready tracing with enhanced debugging capabilities
 pub fn init_production_tracing(service_name: &str) -> Result<()> {
-    // Install color-eyre for better error reports
-    color_eyre::install()?;
+    // Check if a global subscriber is already set
+    use std::sync::Once;
+    static INIT: Once = Once::new();
+    static mut ALREADY_INITIALIZED: bool = false;
 
-    // Enable backtraces in production for debugging
-    if env::var("RUST_BACKTRACE").is_err() {
-        env::set_var("RUST_BACKTRACE", "1");
-    }
+    INIT.call_once(|| {
+        // Install color-eyre for better error reports
+        let _ = color_eyre::install();
 
-    let env_filter = EnvFilter::try_from_default_env()
-        .or_else(|_| EnvFilter::try_new("info"))
-        .unwrap()
-        .add_directive(
-            format!("{}=debug", service_name.replace("-", "_"))
-                .parse()
-                .unwrap(),
-        );
+        // Enable backtraces in production for debugging
+        if env::var("RUST_BACKTRACE").is_err() {
+            env::set_var("RUST_BACKTRACE", "1");
+        }
 
-    let fmt_layer = fmt::layer()
-        .with_file(true)
-        .with_line_number(true)
-        .with_target(true)
-        .with_thread_ids(true)
-        .with_thread_names(true)
-        .json()
-        .fmt_fields(JsonFields::new())
-        .with_span_events(fmt::format::FmtSpan::CLOSE);
+        let env_filter = EnvFilter::try_from_default_env()
+            .or_else(|_| EnvFilter::try_new("info"))
+            .unwrap()
+            .add_directive(
+                format!("{}=debug", service_name.replace("-", "_"))
+                    .parse()
+                    .unwrap(),
+            );
 
-    let error_layer = tracing_error::ErrorLayer::default();
+        let fmt_layer = fmt::layer()
+            .with_file(true)
+            .with_line_number(true)
+            .with_target(true)
+            .with_thread_ids(true)
+            .with_thread_names(true)
+            .json()
+            .fmt_fields(JsonFields::new())
+            .with_span_events(fmt::format::FmtSpan::CLOSE);
 
-    let registry = Registry::default()
-        .with(env_filter)
-        .with(fmt_layer)
-        .with(error_layer);
+        let error_layer = tracing_error::ErrorLayer::default();
 
-    tracing::subscriber::set_global_default(registry)?;
+        let registry = Registry::default()
+            .with(env_filter)
+            .with(fmt_layer)
+            .with(error_layer);
 
-    // Set up panic handler to capture panics with context
-    setup_panic_handler(service_name);
+        // Only try to set global default if no subscriber is already set
+        match tracing::subscriber::set_global_default(registry) {
+            Ok(_) => {
+                unsafe {
+                    ALREADY_INITIALIZED = true;
+                }
+                // Set up panic handler to capture panics with context
+                setup_panic_handler(service_name);
+            }
+            Err(_) => {
+                // Global subscriber already set, which is fine
+                eprintln!(
+                    "Tracing subscriber already initialized for {}",
+                    service_name
+                );
+            }
+        }
+    });
 
     Ok(())
 }
