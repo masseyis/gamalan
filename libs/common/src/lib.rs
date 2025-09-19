@@ -27,8 +27,8 @@ pub fn init_tracing(service_name: &str) {
     if let Err(e) = observability::init_production_tracing(service_name) {
         eprintln!("Failed to initialize tracing: {}", e);
         // Fallback to basic tracing, but only if no subscriber is already set
-        if let Err(_) =
-            tracing::subscriber::set_global_default(tracing_subscriber::fmt().json().finish())
+        if tracing::subscriber::set_global_default(tracing_subscriber::fmt().json().finish())
+            .is_err()
         {
             eprintln!("Tracing subscriber already initialized, skipping fallback setup");
         }
