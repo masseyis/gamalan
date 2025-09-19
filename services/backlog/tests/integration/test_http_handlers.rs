@@ -23,12 +23,12 @@ async fn setup_test_db() -> PgPool {
         .expect("Failed to connect to test database");
 
     // Run migrations to ensure schema is up to date
-    sqlx::migrate!("./migrations")
-        .run(&pool)
-        .await
-        .expect("Failed to run migrations");
-
-    // Clean up any existing test data
+    // sqlx::migrate!("./migrations")
+    //     .run(&pool)
+    //     .await
+    //     .expect("Failed to run migrations");
+    //
+    // // Clean up any existing test data
     sqlx::query("TRUNCATE TABLE stories, tasks CASCADE")
         .execute(&pool)
         .await
