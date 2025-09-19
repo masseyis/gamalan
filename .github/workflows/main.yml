@@ -329,7 +329,6 @@ jobs:
 
       - name: Deploy to Shuttle staging
         run: |
-          cd services/api-gateway
           cargo shuttle login --api-key ${{ secrets.SHUTTLE_API_KEY }}
 
           # Deploy with staging suffix
@@ -343,6 +342,7 @@ jobs:
 
           # Deploy to staging - from api-gateway directory ensures correct service is deployed
           export PATH="$HOME/.cargo/bin:$PATH"
+          cd services/api-gateway
           cargo shuttle deploy --name $PROJECT_NAME
 
   deploy-staging-frontend:
@@ -393,7 +393,6 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--build-env NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="${{ secrets.STAGING_CLERK_PUBLISHABLE_KEY }}" --build-env CLERK_SECRET_KEY="${{ secrets.STAGING_CLERK_SECRET_KEY }}" --build-env NEXT_PUBLIC_API_BASE_URL="${{ secrets.STAGING_API_BASE_URL }}" --build-env NODE_ENV=production'
           working-directory: apps/web
           github-comment: false
           alias-domains: |
@@ -768,4 +767,3 @@ jobs:
         run: |
           echo "🚨 Staging deployment failed for commit ${{ github.sha }}"
           echo "Check the workflow run for details: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
