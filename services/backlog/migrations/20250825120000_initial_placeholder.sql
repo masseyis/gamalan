@@ -1,0 +1,3 @@
+-- Placeholder migration to satisfy SQLx version expectations
+-- This migration intentionally left empty as the actual schema creation
+-- is handled by migration 20250825120200_create_backlog_tables.sql
