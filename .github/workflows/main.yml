@@ -329,7 +329,6 @@ jobs:
 
       - name: Deploy to Shuttle staging
         run: |
-          cd services/api-gateway
           cargo shuttle login --api-key ${{ secrets.SHUTTLE_API_KEY }}
 
           # Deploy with staging suffix
@@ -343,6 +342,7 @@ jobs:
 
           # Deploy to staging - from api-gateway directory ensures correct service is deployed
           export PATH="$HOME/.cargo/bin:$PATH"
+          cd services/api-gateway
           cargo shuttle deploy --name $PROJECT_NAME
 
   deploy-staging-frontend:
@@ -767,4 +767,3 @@ jobs:
         run: |
           echo "🚨 Staging deployment failed for commit ${{ github.sha }}"
           echo "Check the workflow run for details: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
