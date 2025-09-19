@@ -1,6 +1,6 @@
 use crate::adapters::http::handlers::{
     create_story, create_task, delete_story, get_stories_by_project, get_story, get_tasks_by_story,
-    health, update_story, update_story_status,
+    update_story, update_story_status,
 };
 use crate::adapters::integrations::HttpReadinessService;
 use crate::adapters::persistence::{SqlStoryRepository, SqlTaskRepository};
@@ -32,8 +32,6 @@ pub async fn create_backlog_router(
     ));
 
     shuttle_axum::axum::Router::new()
-        // Health endpoint (no auth required)
-        .route("/health", get(health))
         // Authenticated project-scoped endpoints
         .route("/projects/{project_id}/stories", post(create_story))
         .route(

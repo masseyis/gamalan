@@ -1,6 +1,6 @@
 use crate::application::BacklogUsecases;
 use crate::domain::{Story, StoryStatus, Task};
-use auth_clerk::Authenticated;
+use auth_clerk::AuthenticatedWithOrg;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -94,7 +94,7 @@ impl From<Task> for TaskResponse {
 }
 
 pub async fn create_story(
-    _auth: Authenticated,
+    AuthenticatedWithOrg { org_context, .. }: AuthenticatedWithOrg,
     Path(project_id): Path<Uuid>,
     State(usecases): State<Arc<BacklogUsecases>>,
     Json(payload): Json<CreateStoryRequest>,
@@ -102,6 +102,7 @@ pub async fn create_story(
     let story_id = usecases
         .create_story(
             project_id,
+            org_context.effective_organization_uuid(),
             payload.title,
             payload.description,
             payload.labels.unwrap_or_default(),
@@ -112,11 +113,12 @@ pub async fn create_story(
 }
 
 pub async fn get_story(
+    AuthenticatedWithOrg { org_context, .. }: AuthenticatedWithOrg,
     Path(id): Path<Uuid>,
     State(usecases): State<Arc<BacklogUsecases>>,
 ) -> Result<impl IntoResponse, AppError> {
     let story = usecases
-        .get_story(id)
+        .get_story(id, org_context.effective_organization_uuid())
         .await?
         .ok_or_else(|| AppError::NotFound(format!("Story with id {} not found", id)))?;
 
@@ -124,20 +126,26 @@ pub async fn get_story(
 }
 
 pub async fn update_story(
-    _auth: Authenticated,
+    AuthenticatedWithOrg { org_context, .. }: AuthenticatedWithOrg,
     Path(id): Path<Uuid>,
     State(usecases): State<Arc<BacklogUsecases>>,
     Json(payload): Json<UpdateStoryRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     usecases
-        .update_story(id, payload.title, payload.description, payload.labels)
+        .update_story(
+            id,
+            org_context.effective_organization_uuid(),
+            payload.title,
+            payload.description,
+            payload.labels,
+        )
         .await?;
 
     Ok(StatusCode::OK)
 }
 
 pub async fn create_task(
-    _auth: Authenticated,
+    AuthenticatedWithOrg { org_context, .. }: AuthenticatedWithOrg,
     Path(story_id): Path<Uuid>,
     State(usecases): State<Arc<BacklogUsecases>>,
     Json(payload): Json<CreateTaskRequest>,
@@ -145,6 +153,7 @@ pub async fn create_task(
     let task_id = usecases
         .create_task(
             story_id,
+            org_context.effective_organization_uuid(),
             payload.title,
             payload.description,
             payload.acceptance_criteria_refs,
@@ -155,16 +164,19 @@ pub async fn create_task(
 }
 
 pub async fn get_tasks_by_story(
+    AuthenticatedWithOrg { org_context, .. }: AuthenticatedWithOrg,
     Path(story_id): Path<Uuid>,
     State(usecases): State<Arc<BacklogUsecases>>,
 ) -> Result<impl IntoResponse, AppError> {
-    let tasks = usecases.get_tasks_by_story(story_id).await?;
+    let tasks = usecases
+        .get_tasks_by_story(story_id, org_context.effective_organization_uuid())
+        .await?;
     let task_responses: Vec<TaskResponse> = tasks.into_iter().map(TaskResponse::from).collect();
     Ok(Json(task_responses))
 }
 
 pub async fn update_story_status(
-    _auth: Authenticated,
+    AuthenticatedWithOrg { org_context, .. }: AuthenticatedWithOrg,
     Path(id): Path<Uuid>,
     State(usecases): State<Arc<BacklogUsecases>>,
     Json(payload): Json<UpdateStoryStatusRequest>,
@@ -172,30 +184,32 @@ pub async fn update_story_status(
     let status = StoryStatus::from_str(&payload.status)
         .ok_or_else(|| AppError::BadRequest(format!("Invalid status: {}", payload.status)))?;
 
-    usecases.update_story_status(id, status).await?;
+    usecases
+        .update_story_status(id, org_context.effective_organization_uuid(), status)
+        .await?;
     Ok(StatusCode::OK)
 }
 
 pub async fn delete_story(
-    _auth: Authenticated,
+    AuthenticatedWithOrg { org_context, .. }: AuthenticatedWithOrg,
     Path(id): Path<Uuid>,
     State(usecases): State<Arc<BacklogUsecases>>,
 ) -> Result<impl IntoResponse, AppError> {
-    usecases.delete_story(id).await?;
+    usecases
+        .delete_story(id, org_context.effective_organization_uuid())
+        .await?;
     Ok(StatusCode::OK)
 }
 
 pub async fn get_stories_by_project(
-    _auth: Authenticated,
+    AuthenticatedWithOrg { org_context, .. }: AuthenticatedWithOrg,
     Path(project_id): Path<Uuid>,
     State(usecases): State<Arc<BacklogUsecases>>,
 ) -> Result<impl IntoResponse, AppError> {
-    let stories = usecases.get_stories_by_project(project_id).await?;
+    let stories = usecases
+        .get_stories_by_project(project_id, org_context.effective_organization_uuid())
+        .await?;
     let story_responses: Vec<StoryResponse> =
         stories.into_iter().map(StoryResponse::from).collect();
     Ok(Json(story_responses))
-}
-
-pub async fn health() -> impl IntoResponse {
-    "OK"
 }

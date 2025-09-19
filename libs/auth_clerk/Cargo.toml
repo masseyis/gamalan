@@ -19,6 +19,7 @@ tracing = { workspace = true }
 ring = "0.17.8"
 base64 = "0.22.1"
 subtle = "2.5.0"
+uuid = { workspace = true }
 
 [dev-dependencies]
 serde_json = { workspace = true }

@@ -116,11 +116,12 @@ impl StoryRepository for SqlStoryRepository {
             .map_err(|_| AppError::InternalServerError)?;
 
         sqlx::query(
-            "INSERT INTO stories (id, project_id, title, description, status) 
-             VALUES ($1, $2, $3, $4, $5)",
+            "INSERT INTO stories (id, project_id, organization_id, title, description, status)
+             VALUES ($1, $2, $3, $4, $5, $6)",
         )
         .bind(story.id)
         .bind(story.project_id)
+        .bind(story.organization_id)
         .bind(&story.title)
         .bind(&story.description)
         .bind(story.status.to_string())
@@ -146,12 +147,17 @@ impl StoryRepository for SqlStoryRepository {
         Ok(())
     }
 
-    async fn get_story(&self, id: Uuid) -> Result<Option<Story>, AppError> {
+    async fn get_story(
+        &self,
+        id: Uuid,
+        organization_id: Option<Uuid>,
+    ) -> Result<Option<Story>, AppError> {
         let story_row = sqlx::query_as::<_, StoryRow>(
-            "SELECT id, project_id, title, description, status FROM stories 
-             WHERE id = $1 AND deleted_at IS NULL",
+            "SELECT id, project_id, organization_id, title, description, status FROM stories
+             WHERE id = $1 AND (organization_id = $2 OR ($2 IS NULL AND organization_id IS NULL)) AND deleted_at IS NULL",
         )
         .bind(id)
+        .bind(organization_id)
         .fetch_optional(&self.pool)
         .await
         .map_err(|_| AppError::InternalServerError)?;
@@ -177,13 +183,14 @@ impl StoryRepository for SqlStoryRepository {
             .map_err(|_| AppError::InternalServerError)?;
 
         sqlx::query(
-            "UPDATE stories SET title = $2, description = $3, status = $4 
-             WHERE id = $1",
+            "UPDATE stories SET title = $2, description = $3, status = $4
+             WHERE id = $1 AND (organization_id = $5 OR ($5 IS NULL AND organization_id IS NULL))",
         )
         .bind(story.id)
         .bind(&story.title)
         .bind(&story.description)
         .bind(story.status.to_string())
+        .bind(story.organization_id)
         .execute(&mut *tx)
         .await
         .map_err(|_| AppError::InternalServerError)?;
@@ -212,22 +219,28 @@ impl StoryRepository for SqlStoryRepository {
         Ok(())
     }
 
-    async fn delete_story(&self, id: Uuid) -> Result<(), AppError> {
-        sqlx::query("UPDATE stories SET deleted_at = NOW() WHERE id = $1")
+    async fn delete_story(&self, id: Uuid, organization_id: Option<Uuid>) -> Result<(), AppError> {
+        sqlx::query("UPDATE stories SET deleted_at = NOW() WHERE id = $1 AND (organization_id = $2 OR ($2 IS NULL AND organization_id IS NULL))")
             .bind(id)
+            .bind(organization_id)
             .execute(&self.pool)
             .await
             .map_err(|_| AppError::InternalServerError)?;
         Ok(())
     }
 
-    async fn get_stories_by_project(&self, project_id: Uuid) -> Result<Vec<Story>, AppError> {
+    async fn get_stories_by_project(
+        &self,
+        project_id: Uuid,
+        organization_id: Option<Uuid>,
+    ) -> Result<Vec<Story>, AppError> {
         let story_rows = sqlx::query_as::<_, StoryRow>(
-            "SELECT id, project_id, title, description, status FROM stories 
-             WHERE project_id = $1 AND deleted_at IS NULL
+            "SELECT id, project_id, organization_id, title, description, status FROM stories
+             WHERE project_id = $1 AND (organization_id = $2 OR ($2 IS NULL AND organization_id IS NULL)) AND deleted_at IS NULL
              ORDER BY title",
         )
         .bind(project_id)
+        .bind(organization_id)
         .fetch_all(&self.pool)
         .await
         .map_err(|_| AppError::InternalServerError)?;
@@ -260,11 +273,12 @@ impl SqlTaskRepository {
 impl TaskRepository for SqlTaskRepository {
     async fn create_task(&self, task: &Task) -> Result<(), AppError> {
         sqlx::query(
-            "INSERT INTO tasks (id, story_id, title, description, acceptance_criteria_refs) 
-             VALUES ($1, $2, $3, $4, $5)",
+            "INSERT INTO tasks (id, story_id, organization_id, title, description, acceptance_criteria_refs)
+             VALUES ($1, $2, $3, $4, $5, $6)",
         )
         .bind(task.id)
         .bind(task.story_id)
+        .bind(task.organization_id)
         .bind(&task.title)
         .bind(&task.description)
         .bind(&task.acceptance_criteria_refs)
@@ -275,12 +289,17 @@ impl TaskRepository for SqlTaskRepository {
         Ok(())
     }
 
-    async fn get_task(&self, id: Uuid) -> Result<Option<Task>, AppError> {
+    async fn get_task(
+        &self,
+        id: Uuid,
+        organization_id: Option<Uuid>,
+    ) -> Result<Option<Task>, AppError> {
         let task_row = sqlx::query_as::<_, TaskRow>(
-            "SELECT id, story_id, title, description, acceptance_criteria_refs FROM tasks 
-             WHERE id = $1",
+            "SELECT id, story_id, organization_id, title, description, acceptance_criteria_refs FROM tasks
+             WHERE id = $1 AND (organization_id = $2 OR ($2 IS NULL AND organization_id IS NULL))",
         )
         .bind(id)
+        .bind(organization_id)
         .fetch_optional(&self.pool)
         .await
         .map_err(|_| AppError::InternalServerError)?;
@@ -288,13 +307,18 @@ impl TaskRepository for SqlTaskRepository {
         Ok(task_row.map(Task::from))
     }
 
-    async fn get_tasks_by_story(&self, story_id: Uuid) -> Result<Vec<Task>, AppError> {
+    async fn get_tasks_by_story(
+        &self,
+        story_id: Uuid,
+        organization_id: Option<Uuid>,
+    ) -> Result<Vec<Task>, AppError> {
         let task_rows = sqlx::query_as::<_, TaskRow>(
-            "SELECT id, story_id, title, description, acceptance_criteria_refs FROM tasks 
-             WHERE story_id = $1
+            "SELECT id, story_id, organization_id, title, description, acceptance_criteria_refs FROM tasks
+             WHERE story_id = $1 AND (organization_id = $2 OR ($2 IS NULL AND organization_id IS NULL))
              ORDER BY title",
         )
         .bind(story_id)
+        .bind(organization_id)
         .fetch_all(&self.pool)
         .await
         .map_err(|_| AppError::InternalServerError)?;
@@ -304,13 +328,14 @@ impl TaskRepository for SqlTaskRepository {
 
     async fn update_task(&self, task: &Task) -> Result<(), AppError> {
         sqlx::query(
-            "UPDATE tasks SET title = $2, description = $3, acceptance_criteria_refs = $4 
-             WHERE id = $1",
+            "UPDATE tasks SET title = $2, description = $3, acceptance_criteria_refs = $4
+             WHERE id = $1 AND (organization_id = $5 OR ($5 IS NULL AND organization_id IS NULL))",
         )
         .bind(task.id)
         .bind(&task.title)
         .bind(&task.description)
         .bind(&task.acceptance_criteria_refs)
+        .bind(task.organization_id)
         .execute(&self.pool)
         .await
         .map_err(|_| AppError::InternalServerError)?;
@@ -318,9 +343,10 @@ impl TaskRepository for SqlTaskRepository {
         Ok(())
     }
 
-    async fn delete_task(&self, id: Uuid) -> Result<(), AppError> {
-        sqlx::query("DELETE FROM tasks WHERE id = $1")
+    async fn delete_task(&self, id: Uuid, organization_id: Option<Uuid>) -> Result<(), AppError> {
+        sqlx::query("DELETE FROM tasks WHERE id = $1 AND (organization_id = $2 OR ($2 IS NULL AND organization_id IS NULL))")
             .bind(id)
+            .bind(organization_id)
             .execute(&self.pool)
             .await
             .map_err(|_| AppError::InternalServerError)?;

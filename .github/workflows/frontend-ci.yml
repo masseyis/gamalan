@@ -93,11 +93,11 @@ jobs:
 
       - name: Run E2E tests
         run: pnpm playwright test --config=playwright.config.ci.ts
-        timeout-minutes: 10
+        timeout-minutes: 15
         env:
           # Mock environment variables for E2E tests
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_mock_key_for_e2e
-          CLERK_SECRET_KEY: sk_test_mock_key_for_e2e
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ""
+          CLERK_SECRET_KEY: ""
           NEXT_PUBLIC_PROJECTS_API_URL: http://localhost:8001
           NEXT_PUBLIC_BACKLOG_API_URL: http://localhost:8002
           NEXT_PUBLIC_READINESS_API_URL: http://localhost:8003
@@ -137,8 +137,8 @@ jobs:
         run: pnpm build
         env:
           # Mock environment variables for build
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_mock_key_for_build
-          CLERK_SECRET_KEY: sk_test_mock_key_for_build
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ""
+          CLERK_SECRET_KEY: ""
           NEXT_PUBLIC_PROJECTS_API_URL: http://localhost:8001
           NEXT_PUBLIC_BACKLOG_API_URL: http://localhost:8002
           NEXT_PUBLIC_READINESS_API_URL: http://localhost:8003

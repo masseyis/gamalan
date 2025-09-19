@@ -6,6 +6,7 @@ use uuid::Uuid;
 pub struct AcceptanceCriterion {
     pub id: Uuid,
     pub story_id: Uuid,
+    pub organization_id: Option<Uuid>,
     pub ac_id: String,
     pub given: String,
     pub when: String,
@@ -15,6 +16,7 @@ pub struct AcceptanceCriterion {
 impl AcceptanceCriterion {
     pub fn new(
         story_id: Uuid,
+        organization_id: Option<Uuid>,
         ac_id: String,
         given: String,
         when: String,
@@ -32,6 +34,7 @@ impl AcceptanceCriterion {
         Ok(Self {
             id: Uuid::new_v4(),
             story_id,
+            organization_id,
             ac_id: ac_id.trim().to_string(),
             given: given.trim().to_string(),
             when: when.trim().to_string(),
@@ -80,6 +83,7 @@ mod tests {
         let story_id = Uuid::new_v4();
         let ac = AcceptanceCriterion::new(
             story_id,
+            None,
             "AC1".to_string(),
             "user is logged in".to_string(),
             "user clicks save".to_string(),
@@ -97,6 +101,7 @@ mod tests {
         let story_id = Uuid::new_v4();
         let ac = AcceptanceCriterion::new(
             story_id,
+            None,
             "".to_string(),
             "given".to_string(),
             "when".to_string(),
@@ -112,6 +117,7 @@ mod tests {
 
         let ac = AcceptanceCriterion::new(
             story_id,
+            None,
             "AC1".to_string(),
             "".to_string(),
             "when".to_string(),

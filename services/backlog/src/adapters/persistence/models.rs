@@ -6,6 +6,7 @@ use uuid::Uuid;
 pub struct StoryRow {
     pub id: Uuid,
     pub project_id: Uuid,
+    pub organization_id: Option<Uuid>,
     pub title: String,
     pub description: Option<String>,
     pub status: String,
@@ -17,6 +18,7 @@ impl From<StoryRow> for Story {
         Story {
             id: row.id,
             project_id: row.project_id,
+            organization_id: row.organization_id,
             title: row.title,
             description: row.description,
             status,
@@ -29,6 +31,7 @@ impl From<StoryRow> for Story {
 pub struct TaskRow {
     pub id: Uuid,
     pub story_id: Uuid,
+    pub organization_id: Option<Uuid>,
     pub title: String,
     pub description: Option<String>,
     pub acceptance_criteria_refs: Vec<String>,
@@ -39,6 +42,7 @@ impl From<TaskRow> for Task {
         Task {
             id: row.id,
             story_id: row.story_id,
+            organization_id: row.organization_id,
             title: row.title,
             description: row.description,
             acceptance_criteria_refs: row.acceptance_criteria_refs,

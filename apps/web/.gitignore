@@ -54,5 +54,10 @@ Thumbs.db
 test-results/
 playwright-report/
 playwright/.cache/
+tests/playwright/.clerk/
+
+# Vercel
 .vercel
+
+# Environment variables
 .env*.local

@@ -37,6 +37,7 @@ impl std::fmt::Display for StoryStatus {
 pub struct Story {
     pub id: Uuid,
     pub project_id: Uuid,
+    pub organization_id: Option<Uuid>,
     pub title: String,
     pub description: Option<String>,
     pub status: StoryStatus,
@@ -46,6 +47,7 @@ pub struct Story {
 impl Story {
     pub fn new(
         project_id: Uuid,
+        organization_id: Option<Uuid>,
         title: String,
         description: Option<String>,
     ) -> Result<Self, common::AppError> {
@@ -58,6 +60,7 @@ impl Story {
         Ok(Self {
             id: Uuid::new_v4(),
             project_id,
+            organization_id,
             title,
             description,
             status: StoryStatus::Ready,

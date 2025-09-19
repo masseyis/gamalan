@@ -6,6 +6,7 @@ use uuid::Uuid;
 pub struct AcceptanceCriterionRow {
     pub id: Uuid,
     pub story_id: Uuid,
+    pub organization_id: Option<Uuid>,
     pub ac_id: String,
     pub given: String,
     pub when: String,
@@ -17,6 +18,7 @@ impl From<AcceptanceCriterionRow> for AcceptanceCriterion {
         AcceptanceCriterion {
             id: row.id,
             story_id: row.story_id,
+            organization_id: row.organization_id,
             ac_id: row.ac_id,
             given: row.given,
             when: row.when,
@@ -29,6 +31,7 @@ impl From<AcceptanceCriterionRow> for AcceptanceCriterion {
 pub struct ReadinessEvaluationRow {
     pub id: Uuid,
     pub story_id: Uuid,
+    pub organization_id: Option<Uuid>,
     pub score: i32,
     pub missing_items: Vec<String>,
 }
@@ -38,6 +41,7 @@ impl From<ReadinessEvaluationRow> for ReadinessEvaluation {
         ReadinessEvaluation {
             id: row.id,
             story_id: row.story_id,
+            organization_id: row.organization_id,
             score: row.score,
             missing_items: row.missing_items,
         }

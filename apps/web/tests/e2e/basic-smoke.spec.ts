@@ -2,9 +2,10 @@ import { test, expect } from '@playwright/test'
 
 test.describe('Basic Smoke Tests', () => {
   test.beforeEach(async ({ page }) => {
-    // Mock authentication for demo mode
+    // Mock authentication and enable mock data for CI
     await page.addInitScript(() => {
       window.localStorage.setItem('__clerk_jwt', 'mock-jwt-token')
+      window.localStorage.setItem('NEXT_PUBLIC_ENABLE_MOCK_DATA', 'true')
     })
   })
 

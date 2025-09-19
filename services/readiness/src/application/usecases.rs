@@ -31,10 +31,11 @@ impl ReadinessUsecases {
     pub async fn generate_acceptance_criteria(
         &self,
         story_id: Uuid,
+        organization_id: Option<Uuid>,
     ) -> Result<Vec<AcceptanceCriterion>, AppError> {
         let story_info = self
             .story_service
-            .get_story_info(story_id)
+            .get_story_info(story_id, organization_id)
             .await?
             .ok_or_else(|| AppError::NotFound(format!("Story {} not found", story_id)))?;
 
@@ -54,19 +55,26 @@ impl ReadinessUsecases {
     pub async fn get_criteria_for_story(
         &self,
         story_id: Uuid,
+        organization_id: Option<Uuid>,
     ) -> Result<Vec<AcceptanceCriterion>, AppError> {
-        self.criteria_repo.get_criteria_by_story(story_id).await
+        self.criteria_repo
+            .get_criteria_by_story(story_id, organization_id)
+            .await
     }
 
     pub async fn evaluate_story_readiness(
         &self,
         story_id: Uuid,
+        organization_id: Option<Uuid>,
     ) -> Result<ReadinessEvaluation, AppError> {
         let mut missing_items = Vec::new();
         let mut score = 100;
 
         // Check 1: Story must have acceptance criteria
-        let criteria = self.criteria_repo.get_criteria_by_story(story_id).await?;
+        let criteria = self
+            .criteria_repo
+            .get_criteria_by_story(story_id, organization_id)
+            .await?;
         if criteria.is_empty() {
             missing_items.push(ReadinessCheck::AcceptanceCriteria.description().to_string());
             score -= 50;
@@ -74,7 +82,10 @@ impl ReadinessUsecases {
 
         // Check 2: All acceptance criteria must be covered by tasks
         if !criteria.is_empty() {
-            let tasks = self.story_service.get_tasks_for_story(story_id).await?;
+            let tasks = self
+                .story_service
+                .get_tasks_for_story(story_id, organization_id)
+                .await?;
             let covered_ac_ids: std::collections::HashSet<String> = tasks
                 .iter()
                 .flat_map(|t| &t.acceptance_criteria_refs)
@@ -96,13 +107,16 @@ impl ReadinessUsecases {
         }
 
         // Check 3: Story should have tasks
-        let tasks = self.story_service.get_tasks_for_story(story_id).await?;
+        let tasks = self
+            .story_service
+            .get_tasks_for_story(story_id, organization_id)
+            .await?;
         if tasks.is_empty() {
             missing_items.push("Story has no implementation tasks".to_string());
             score -= 20;
         }
 
-        let evaluation = ReadinessEvaluation::new(story_id, score, missing_items);
+        let evaluation = ReadinessEvaluation::new(story_id, organization_id, score, missing_items);
         self.readiness_repo.save_evaluation(&evaluation).await?;
 
         Ok(evaluation)
@@ -111,12 +125,14 @@ impl ReadinessUsecases {
     pub async fn add_acceptance_criteria(
         &self,
         story_id: Uuid,
+        organization_id: Option<Uuid>,
         criteria: Vec<(String, String, String, String)>, // (ac_id, given, when, then)
     ) -> Result<Vec<AcceptanceCriterion>, AppError> {
         let mut new_criteria = Vec::new();
 
         for (ac_id, given, when, then) in criteria {
-            let criterion = AcceptanceCriterion::new(story_id, ac_id, given, when, then)?;
+            let criterion =
+                AcceptanceCriterion::new(story_id, organization_id, ac_id, given, when, then)?;
             new_criteria.push(criterion);
         }
 
@@ -128,9 +144,13 @@ impl ReadinessUsecases {
     pub async fn validate_acceptance_criteria_refs(
         &self,
         story_id: Uuid,
+        organization_id: Option<Uuid>,
         ac_refs: &[String],
     ) -> Result<Vec<String>, AppError> {
-        let criteria = self.criteria_repo.get_criteria_by_story(story_id).await?;
+        let criteria = self
+            .criteria_repo
+            .get_criteria_by_story(story_id, organization_id)
+            .await?;
         let valid_ac_ids: std::collections::HashSet<String> =
             criteria.into_iter().map(|c| c.ac_id).collect();
 
@@ -171,6 +191,7 @@ mod tests {
         async fn get_criteria_by_story(
             &self,
             story_id: Uuid,
+            _organization_id: Option<Uuid>,
         ) -> Result<Vec<AcceptanceCriterion>, AppError> {
             let map = self.criteria.lock().unwrap();
             Ok(map.get(&story_id).cloned().unwrap_or_default())
@@ -186,7 +207,11 @@ mod tests {
             Ok(())
         }
 
-        async fn delete_criteria_by_story(&self, story_id: Uuid) -> Result<(), AppError> {
+        async fn delete_criteria_by_story(
+            &self,
+            story_id: Uuid,
+            _organization_id: Option<Uuid>,
+        ) -> Result<(), AppError> {
             let mut map = self.criteria.lock().unwrap();
             map.remove(&story_id);
             Ok(())
@@ -195,6 +220,7 @@ mod tests {
         async fn get_criterion_by_story_and_ac_id(
             &self,
             story_id: Uuid,
+            _organization_id: Option<Uuid>,
             ac_id: &str,
         ) -> Result<Option<AcceptanceCriterion>, AppError> {
             let map = self.criteria.lock().unwrap();
@@ -218,6 +244,7 @@ mod tests {
         async fn get_latest_evaluation(
             &self,
             _story_id: Uuid,
+            _organization_id: Option<Uuid>,
         ) -> Result<Option<ReadinessEvaluation>, AppError> {
             Ok(None)
         }
@@ -230,6 +257,7 @@ mod tests {
         async fn get_story_info(
             &self,
             story_id: Uuid,
+            _organization_id: Option<Uuid>,
         ) -> Result<Option<crate::application::ports::StoryInfo>, AppError> {
             Ok(Some(crate::application::ports::StoryInfo {
                 id: story_id,
@@ -241,6 +269,7 @@ mod tests {
         async fn get_tasks_for_story(
             &self,
             _story_id: Uuid,
+            _organization_id: Option<Uuid>,
         ) -> Result<Vec<crate::application::ports::TaskInfo>, AppError> {
             Ok(vec![crate::application::ports::TaskInfo {
                 id: Uuid::new_v4(),
@@ -261,6 +290,7 @@ mod tests {
         ) -> Result<Vec<AcceptanceCriterion>, AppError> {
             Ok(vec![AcceptanceCriterion::new(
                 story_info.id,
+                None,
                 "AC1".to_string(),
                 "user is authenticated".to_string(),
                 "user performs action".to_string(),
@@ -283,7 +313,7 @@ mod tests {
         let usecases = setup_usecases();
         let story_id = Uuid::new_v4();
 
-        let result = usecases.generate_acceptance_criteria(story_id).await;
+        let result = usecases.generate_acceptance_criteria(story_id, None).await;
         assert!(result.is_ok());
 
         let criteria = result.unwrap();
@@ -300,6 +330,7 @@ mod tests {
         let _ = usecases
             .add_acceptance_criteria(
                 story_id,
+                None,
                 vec![(
                     "AC1".to_string(),
                     "given".to_string(),
@@ -310,7 +341,10 @@ mod tests {
             .await
             .unwrap();
 
-        let evaluation = usecases.evaluate_story_readiness(story_id).await.unwrap();
+        let evaluation = usecases
+            .evaluate_story_readiness(story_id, None)
+            .await
+            .unwrap();
         assert!(evaluation.score > 50); // Should have some score since criteria exist and are covered
     }
 
@@ -323,6 +357,7 @@ mod tests {
         let _ = usecases
             .add_acceptance_criteria(
                 story_id,
+                None,
                 vec![(
                     "AC1".to_string(),
                     "given".to_string(),
@@ -335,7 +370,7 @@ mod tests {
 
         // Test valid refs
         let invalid = usecases
-            .validate_acceptance_criteria_refs(story_id, &["AC1".to_string()])
+            .validate_acceptance_criteria_refs(story_id, None, &["AC1".to_string()])
             .await
             .unwrap();
         assert!(invalid.is_empty());
@@ -344,6 +379,7 @@ mod tests {
         let invalid = usecases
             .validate_acceptance_criteria_refs(
                 story_id,
+                None,
                 &["AC1".to_string(), "INVALID".to_string()],
             )
             .await

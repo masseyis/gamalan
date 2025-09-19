@@ -5,15 +5,22 @@ use uuid::Uuid;
 pub struct ReadinessEvaluation {
     pub id: Uuid,
     pub story_id: Uuid,
+    pub organization_id: Option<Uuid>,
     pub score: i32,
     pub missing_items: Vec<String>,
 }
 
 impl ReadinessEvaluation {
-    pub fn new(story_id: Uuid, score: i32, missing_items: Vec<String>) -> Self {
+    pub fn new(
+        story_id: Uuid,
+        organization_id: Option<Uuid>,
+        score: i32,
+        missing_items: Vec<String>,
+    ) -> Self {
         Self {
             id: Uuid::new_v4(),
             story_id,
+            organization_id,
             score: score.clamp(0, 100), // Clamp between 0-100
             missing_items,
         }
@@ -52,7 +59,7 @@ mod tests {
     #[test]
     fn test_readiness_evaluation() {
         let story_id = Uuid::new_v4();
-        let eval = ReadinessEvaluation::new(story_id, 85, vec![]);
+        let eval = ReadinessEvaluation::new(story_id, None, 85, vec![]);
 
         assert_eq!(eval.story_id, story_id);
         assert_eq!(eval.score, 85);
@@ -64,6 +71,7 @@ mod tests {
         let story_id = Uuid::new_v4();
         let eval = ReadinessEvaluation::new(
             story_id,
+            None,
             90,
             vec!["Missing acceptance criteria".to_string()],
         );
@@ -74,10 +82,10 @@ mod tests {
     #[test]
     fn test_score_clamping() {
         let story_id = Uuid::new_v4();
-        let eval = ReadinessEvaluation::new(story_id, 150, vec![]);
+        let eval = ReadinessEvaluation::new(story_id, None, 150, vec![]);
         assert_eq!(eval.score, 100);
 
-        let eval = ReadinessEvaluation::new(story_id, -50, vec![]);
+        let eval = ReadinessEvaluation::new(story_id, None, -50, vec![]);
         assert_eq!(eval.score, 0);
     }
 }

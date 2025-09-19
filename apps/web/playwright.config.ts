@@ -9,16 +9,12 @@ export default defineConfig({
   testIgnore: [
     '**/staging-*.spec.ts',
     '**/production-*.spec.ts',
-    // Temporarily skip tests for unimplemented features
+    // Skip tests that require full implementation
     '**/ai-features.spec.ts',
     '**/backlog-management.spec.ts',
     '**/story-detail.spec.ts',
     '**/sprint-board.spec.ts',
-    '**/auth.spec.ts',
     '**/responsive-design.spec.ts',
-    '**/navigation.spec.ts',
-    '**/projects.spec.ts',
-    '**/backlog.spec.ts',
     '**/brand/bran.spec.ts'
   ],
   /* Run tests in files in parallel */
@@ -52,8 +48,39 @@ export default defineConfig({
 
   /* Configure projects for major browsers */
   projects: [
+    // Global setup project for Clerk authentication
+    {
+      name: 'global setup',
+      testMatch: /global\.setup\.ts/,
+    },
+
+    // Authenticated tests project
+    {
+      name: 'authenticated tests',
+      testMatch: /.*authenticated\.spec\.ts|.*auth\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'tests/playwright/.clerk/user.json',
+      },
+      dependencies: ['global setup'],
+    },
+
+    // Unauthenticated tests project (public pages)
+    {
+      name: 'public tests',
+      testMatch: /.*public\.spec\.ts|.*basic-smoke\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'] },
+    },
+
+    // All other tests (default project)
     {
       name: 'chromium',
+      testIgnore: [
+        /.*authenticated\.spec\.ts/,
+        /.*auth\.spec\.ts/,
+        /.*public\.spec\.ts/,
+        /global\.setup\.ts/,
+      ],
       use: { ...devices['Desktop Chrome'] },
     },
     // Temporarily disable other browsers to focus on core functionality
@@ -77,11 +104,14 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: 'pnpm dev',
+    command: 'NEXT_PUBLIC_ENABLE_MOCK_AUTH=true pnpm dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 300 * 1000, // 5 minutes timeout for server startup in CI
     stderr: 'pipe',
     stdout: 'pipe',
+    env: {
+      NEXT_PUBLIC_ENABLE_MOCK_AUTH: 'true',
+    },
   },
 });

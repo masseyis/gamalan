@@ -1,6 +1,6 @@
 use crate::application::ReadinessUsecases;
 use crate::domain::{AcceptanceCriterion, ReadinessEvaluation};
-use auth_clerk::Authenticated;
+use auth_clerk::organization::AuthenticatedWithOrg;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -11,11 +11,6 @@ use common::AppError;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use uuid::Uuid;
-
-#[derive(Debug, Deserialize)]
-pub struct GenerateCriteriaRequest {
-    // This endpoint uses the story info from the backlog service
-}
 
 #[derive(Debug, Deserialize)]
 pub struct AddCriteriaRequest {
@@ -69,20 +64,26 @@ impl From<ReadinessEvaluation> for ReadinessEvaluationResponse {
 }
 
 pub async fn evaluate_readiness(
-    _auth: Authenticated,
+    auth: AuthenticatedWithOrg,
     Path(story_id): Path<Uuid>,
     State(usecases): State<Arc<ReadinessUsecases>>,
 ) -> Result<impl IntoResponse, AppError> {
-    let evaluation = usecases.evaluate_story_readiness(story_id).await?;
+    let organization_id = auth.org_context.effective_organization_uuid();
+    let evaluation = usecases
+        .evaluate_story_readiness(story_id, organization_id)
+        .await?;
     Ok(Json(ReadinessEvaluationResponse::from(evaluation)))
 }
 
 pub async fn generate_criteria(
-    _auth: Authenticated,
+    auth: AuthenticatedWithOrg,
     Path(story_id): Path<Uuid>,
     State(usecases): State<Arc<ReadinessUsecases>>,
 ) -> Result<impl IntoResponse, AppError> {
-    let criteria = usecases.generate_acceptance_criteria(story_id).await?;
+    let organization_id = auth.org_context.effective_organization_uuid();
+    let criteria = usecases
+        .generate_acceptance_criteria(story_id, organization_id)
+        .await?;
     let responses: Vec<AcceptanceCriterionResponse> = criteria
         .into_iter()
         .map(AcceptanceCriterionResponse::from)
@@ -91,10 +92,14 @@ pub async fn generate_criteria(
 }
 
 pub async fn get_criteria(
+    auth: AuthenticatedWithOrg,
     Path(story_id): Path<Uuid>,
     State(usecases): State<Arc<ReadinessUsecases>>,
 ) -> Result<impl IntoResponse, AppError> {
-    let criteria = usecases.get_criteria_for_story(story_id).await?;
+    let organization_id = auth.org_context.effective_organization_uuid();
+    let criteria = usecases
+        .get_criteria_for_story(story_id, organization_id)
+        .await?;
     let responses: Vec<AcceptanceCriterionResponse> = criteria
         .into_iter()
         .map(AcceptanceCriterionResponse::from)
@@ -103,11 +108,12 @@ pub async fn get_criteria(
 }
 
 pub async fn add_criteria(
-    _auth: Authenticated,
+    auth: AuthenticatedWithOrg,
     Path(story_id): Path<Uuid>,
     State(usecases): State<Arc<ReadinessUsecases>>,
     Json(payload): Json<AddCriteriaRequest>,
 ) -> Result<impl IntoResponse, AppError> {
+    let organization_id = auth.org_context.effective_organization_uuid();
     let criteria_tuples: Vec<(String, String, String, String)> = payload
         .criteria
         .into_iter()
@@ -115,7 +121,7 @@ pub async fn add_criteria(
         .collect();
 
     let criteria = usecases
-        .add_acceptance_criteria(story_id, criteria_tuples)
+        .add_acceptance_criteria(story_id, organization_id, criteria_tuples)
         .await?;
     let responses: Vec<AcceptanceCriterionResponse> = criteria
         .into_iter()

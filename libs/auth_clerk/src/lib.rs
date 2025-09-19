@@ -1,6 +1,9 @@
 pub mod claims;
 pub mod jwks;
+pub mod organization;
 pub mod webhook;
+
+pub use organization::{AuthenticatedWithOrg, ContextType, OrganizationContext};
 
 use crate::claims::Claims;
 use crate::jwks::{Jwk, JwksCache};

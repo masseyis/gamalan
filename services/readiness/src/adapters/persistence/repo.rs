@@ -52,13 +52,15 @@ impl AcceptanceCriteriaRepository for SqlAcceptanceCriteriaRepository {
     async fn get_criteria_by_story(
         &self,
         story_id: Uuid,
+        organization_id: Option<Uuid>,
     ) -> Result<Vec<AcceptanceCriterion>, AppError> {
         let rows = sqlx::query_as::<_, AcceptanceCriterionRow>(
-            "SELECT id, story_id, ac_id, given, when, then FROM criteria 
-             WHERE story_id = $1
+            "SELECT id, story_id, ac_id, given, when, then FROM criteria
+             WHERE story_id = $1 AND (organization_id = $2 OR ($2 IS NULL AND organization_id IS NULL))
              ORDER BY ac_id",
         )
         .bind(story_id)
+        .bind(organization_id)
         .fetch_all(&self.pool)
         .await
         .map_err(|_| AppError::InternalServerError)?;
@@ -83,9 +85,14 @@ impl AcceptanceCriteriaRepository for SqlAcceptanceCriteriaRepository {
         Ok(())
     }
 
-    async fn delete_criteria_by_story(&self, story_id: Uuid) -> Result<(), AppError> {
-        sqlx::query("DELETE FROM criteria WHERE story_id = $1")
+    async fn delete_criteria_by_story(
+        &self,
+        story_id: Uuid,
+        organization_id: Option<Uuid>,
+    ) -> Result<(), AppError> {
+        sqlx::query("DELETE FROM criteria WHERE story_id = $1 AND (organization_id = $2 OR ($2 IS NULL AND organization_id IS NULL))")
             .bind(story_id)
+            .bind(organization_id)
             .execute(&self.pool)
             .await
             .map_err(|_| AppError::InternalServerError)?;
@@ -96,13 +103,15 @@ impl AcceptanceCriteriaRepository for SqlAcceptanceCriteriaRepository {
     async fn get_criterion_by_story_and_ac_id(
         &self,
         story_id: Uuid,
+        organization_id: Option<Uuid>,
         ac_id: &str,
     ) -> Result<Option<AcceptanceCriterion>, AppError> {
         let row = sqlx::query_as::<_, AcceptanceCriterionRow>(
-            "SELECT id, story_id, ac_id, given, when, then FROM criteria 
-             WHERE story_id = $1 AND ac_id = $2",
+            "SELECT id, story_id, ac_id, given, when, then FROM criteria
+             WHERE story_id = $1 AND (organization_id = $2 OR ($2 IS NULL AND organization_id IS NULL)) AND ac_id = $3",
         )
         .bind(story_id)
+        .bind(organization_id)
         .bind(ac_id)
         .fetch_optional(&self.pool)
         .await
@@ -143,14 +152,16 @@ impl ReadinessEvaluationRepository for SqlReadinessEvaluationRepository {
     async fn get_latest_evaluation(
         &self,
         story_id: Uuid,
+        organization_id: Option<Uuid>,
     ) -> Result<Option<ReadinessEvaluation>, AppError> {
         let row = sqlx::query_as::<_, ReadinessEvaluationRow>(
-            "SELECT id, story_id, score, missing_items FROM readiness_evals 
-             WHERE story_id = $1 
+            "SELECT id, story_id, score, missing_items FROM readiness_evals
+             WHERE story_id = $1 AND (organization_id = $2 OR ($2 IS NULL AND organization_id IS NULL)) 
              ORDER BY id DESC 
              LIMIT 1",
         )
         .bind(story_id)
+        .bind(organization_id)
         .fetch_optional(&self.pool)
         .await
         .map_err(|_| AppError::InternalServerError)?;

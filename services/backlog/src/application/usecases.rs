@@ -26,11 +26,12 @@ impl BacklogUsecases {
     pub async fn create_story(
         &self,
         project_id: Uuid,
+        organization_id: Option<Uuid>,
         title: String,
         description: Option<String>,
         labels: Vec<String>,
     ) -> Result<Uuid, AppError> {
-        let mut story = Story::new(project_id, title, description)?;
+        let mut story = Story::new(project_id, organization_id, title, description)?;
         for label in labels {
             story.add_label(label);
         }
@@ -39,24 +40,35 @@ impl BacklogUsecases {
         Ok(story.id)
     }
 
-    pub async fn get_story(&self, id: Uuid) -> Result<Option<Story>, AppError> {
-        self.story_repo.get_story(id).await
+    pub async fn get_story(
+        &self,
+        id: Uuid,
+        organization_id: Option<Uuid>,
+    ) -> Result<Option<Story>, AppError> {
+        self.story_repo.get_story(id, organization_id).await
     }
 
-    pub async fn get_stories_by_project(&self, project_id: Uuid) -> Result<Vec<Story>, AppError> {
-        self.story_repo.get_stories_by_project(project_id).await
+    pub async fn get_stories_by_project(
+        &self,
+        project_id: Uuid,
+        organization_id: Option<Uuid>,
+    ) -> Result<Vec<Story>, AppError> {
+        self.story_repo
+            .get_stories_by_project(project_id, organization_id)
+            .await
     }
 
     pub async fn update_story(
         &self,
         id: Uuid,
+        organization_id: Option<Uuid>,
         title: Option<String>,
         description: Option<String>,
         labels: Option<Vec<String>>,
     ) -> Result<(), AppError> {
         let mut story = self
             .story_repo
-            .get_story(id)
+            .get_story(id, organization_id)
             .await?
             .ok_or_else(|| AppError::NotFound(format!("Story with id {} not found", id)))?;
 
@@ -73,10 +85,15 @@ impl BacklogUsecases {
         self.story_repo.update_story(&story).await
     }
 
-    pub async fn update_story_status(&self, id: Uuid, status: StoryStatus) -> Result<(), AppError> {
+    pub async fn update_story_status(
+        &self,
+        id: Uuid,
+        organization_id: Option<Uuid>,
+        status: StoryStatus,
+    ) -> Result<(), AppError> {
         let mut story = self
             .story_repo
-            .get_story(id)
+            .get_story(id, organization_id)
             .await?
             .ok_or_else(|| AppError::NotFound(format!("Story with id {} not found", id)))?;
 
@@ -84,26 +101,31 @@ impl BacklogUsecases {
         self.story_repo.update_story(&story).await
     }
 
-    pub async fn delete_story(&self, id: Uuid) -> Result<(), AppError> {
+    pub async fn delete_story(
+        &self,
+        id: Uuid,
+        organization_id: Option<Uuid>,
+    ) -> Result<(), AppError> {
         // Check if story exists
         self.story_repo
-            .get_story(id)
+            .get_story(id, organization_id)
             .await?
             .ok_or_else(|| AppError::NotFound(format!("Story with id {} not found", id)))?;
 
-        self.story_repo.delete_story(id).await
+        self.story_repo.delete_story(id, organization_id).await
     }
 
     pub async fn create_task(
         &self,
         story_id: Uuid,
+        organization_id: Option<Uuid>,
         title: String,
         description: Option<String>,
         acceptance_criteria_refs: Vec<String>,
     ) -> Result<Uuid, AppError> {
         // Verify story exists
         self.story_repo
-            .get_story(story_id)
+            .get_story(story_id, organization_id)
             .await?
             .ok_or_else(|| AppError::NotFound(format!("Story with id {} not found", story_id)))?;
 
@@ -120,31 +142,48 @@ impl BacklogUsecases {
             )));
         }
 
-        let task = Task::new(story_id, title, description, acceptance_criteria_refs)?;
+        let task = Task::new(
+            story_id,
+            organization_id,
+            title,
+            description,
+            acceptance_criteria_refs,
+        )?;
         self.task_repo.create_task(&task).await?;
         Ok(task.id)
     }
 
-    pub async fn get_tasks_by_story(&self, story_id: Uuid) -> Result<Vec<Task>, AppError> {
-        self.task_repo.get_tasks_by_story(story_id).await
+    pub async fn get_tasks_by_story(
+        &self,
+        story_id: Uuid,
+        organization_id: Option<Uuid>,
+    ) -> Result<Vec<Task>, AppError> {
+        self.task_repo
+            .get_tasks_by_story(story_id, organization_id)
+            .await
     }
 
     #[allow(dead_code)]
-    pub async fn get_task(&self, id: Uuid) -> Result<Option<Task>, AppError> {
-        self.task_repo.get_task(id).await
+    pub async fn get_task(
+        &self,
+        id: Uuid,
+        organization_id: Option<Uuid>,
+    ) -> Result<Option<Task>, AppError> {
+        self.task_repo.get_task(id, organization_id).await
     }
 
     #[allow(dead_code)]
     pub async fn update_task(
         &self,
         id: Uuid,
+        organization_id: Option<Uuid>,
         title: Option<String>,
         description: Option<String>,
         acceptance_criteria_refs: Option<Vec<String>>,
     ) -> Result<(), AppError> {
         let mut task = self
             .task_repo
-            .get_task(id)
+            .get_task(id, organization_id)
             .await?
             .ok_or_else(|| AppError::NotFound(format!("Task with id {} not found", id)))?;
 
@@ -195,7 +234,11 @@ mod tests {
             Ok(())
         }
 
-        async fn get_story(&self, id: Uuid) -> Result<Option<Story>, AppError> {
+        async fn get_story(
+            &self,
+            id: Uuid,
+            _organization_id: Option<Uuid>,
+        ) -> Result<Option<Story>, AppError> {
             let stories = self.stories.lock().unwrap();
             Ok(stories.get(&id).cloned())
         }
@@ -206,13 +249,21 @@ mod tests {
             Ok(())
         }
 
-        async fn delete_story(&self, id: Uuid) -> Result<(), AppError> {
+        async fn delete_story(
+            &self,
+            id: Uuid,
+            _organization_id: Option<Uuid>,
+        ) -> Result<(), AppError> {
             let mut stories = self.stories.lock().unwrap();
             stories.remove(&id);
             Ok(())
         }
 
-        async fn get_stories_by_project(&self, project_id: Uuid) -> Result<Vec<Story>, AppError> {
+        async fn get_stories_by_project(
+            &self,
+            project_id: Uuid,
+            _organization_id: Option<Uuid>,
+        ) -> Result<Vec<Story>, AppError> {
             let stories = self.stories.lock().unwrap();
             Ok(stories
                 .values()
@@ -235,12 +286,20 @@ mod tests {
             Ok(())
         }
 
-        async fn get_task(&self, id: Uuid) -> Result<Option<Task>, AppError> {
+        async fn get_task(
+            &self,
+            id: Uuid,
+            _organization_id: Option<Uuid>,
+        ) -> Result<Option<Task>, AppError> {
             let tasks = self.tasks.lock().unwrap();
             Ok(tasks.get(&id).cloned())
         }
 
-        async fn get_tasks_by_story(&self, story_id: Uuid) -> Result<Vec<Task>, AppError> {
+        async fn get_tasks_by_story(
+            &self,
+            story_id: Uuid,
+            _organization_id: Option<Uuid>,
+        ) -> Result<Vec<Task>, AppError> {
             let tasks = self.tasks.lock().unwrap();
             Ok(tasks
                 .values()
@@ -255,7 +314,11 @@ mod tests {
             Ok(())
         }
 
-        async fn delete_task(&self, id: Uuid) -> Result<(), AppError> {
+        async fn delete_task(
+            &self,
+            id: Uuid,
+            _organization_id: Option<Uuid>,
+        ) -> Result<(), AppError> {
             let mut tasks = self.tasks.lock().unwrap();
             tasks.remove(&id);
             Ok(())
@@ -297,6 +360,7 @@ mod tests {
         let story_id = usecases
             .create_story(
                 project_id,
+                None,
                 "Test story".to_string(),
                 Some("Description".to_string()),
                 vec!["label1".to_string()],
@@ -304,7 +368,7 @@ mod tests {
             .await
             .unwrap();
 
-        let story = usecases.get_story(story_id).await.unwrap().unwrap();
+        let story = usecases.get_story(story_id, None).await.unwrap().unwrap();
         assert_eq!(story.title, "Test story");
         assert_eq!(story.project_id, project_id);
         assert!(story.labels.contains(&"label1".to_string()));
@@ -317,7 +381,7 @@ mod tests {
 
         // First create a story
         let story_id = usecases
-            .create_story(project_id, "Test story".to_string(), None, vec![])
+            .create_story(project_id, None, "Test story".to_string(), None, vec![])
             .await
             .unwrap();
 
@@ -325,6 +389,7 @@ mod tests {
         let task_id = usecases
             .create_task(
                 story_id,
+                None,
                 "Test task".to_string(),
                 None,
                 vec!["AC1".to_string(), "AC2".to_string()],
@@ -332,7 +397,7 @@ mod tests {
             .await
             .unwrap();
 
-        let task = usecases.get_task(task_id).await.unwrap().unwrap();
+        let task = usecases.get_task(task_id, None).await.unwrap().unwrap();
         assert_eq!(task.title, "Test task");
         assert_eq!(task.acceptance_criteria_refs, vec!["AC1", "AC2"]);
     }
@@ -344,7 +409,7 @@ mod tests {
 
         // First create a story
         let story_id = usecases
-            .create_story(project_id, "Test story".to_string(), None, vec![])
+            .create_story(project_id, None, "Test story".to_string(), None, vec![])
             .await
             .unwrap();
 
@@ -352,6 +417,7 @@ mod tests {
         let result = usecases
             .create_task(
                 story_id,
+                None,
                 "Test task".to_string(),
                 None,
                 vec!["INVALID_AC".to_string()],
