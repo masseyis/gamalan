@@ -315,16 +315,16 @@ jobs:
           name: api-gateway-binary
           path: ./artifacts
 
-      - name: Create Secrets file for staging
-        working-directory: services/api-gateway
-        run: |
-          cat > Secrets.toml << EOF
-          CLERK_DOMAIN = "${{ secrets.STAGING_CLERK_DOMAIN }}"
-          CLERK_JWKS_URL = "${{ secrets.STAGING_CLERK_JWKS_URL }}"
-          CLERK_AUDIENCE = "${{ secrets.STAGING_CLERK_JWT_AUDIENCE }}"
-          CLERK_WEBHOOK_SECRET = "${{ secrets.STAGING_CLERK_WEBHOOK_SECRET }}"
-          EOF
-          echo "Created Secrets.toml for staging deployment with correct secret names"
+      # - name: Create Secrets file for staging
+      #   working-directory: services/api-gateway
+      #   run: |
+      #     cat > Secrets.toml << EOF
+      #     CLERK_DOMAIN = "${{ secrets.STAGING_CLERK_DOMAIN }}"
+      #     CLERK_JWKS_URL = "${{ secrets.STAGING_CLERK_JWKS_URL }}"
+      #     CLERK_AUDIENCE = "${{ secrets.STAGING_CLERK_JWT_AUDIENCE }}"
+      #     CLERK_WEBHOOK_SECRET = "${{ secrets.STAGING_CLERK_WEBHOOK_SECRET }}"
+      #     EOF
+      #     echo "Created Secrets.toml for staging deployment with correct secret names"
 
       - name: Deploy to Shuttle staging
         run: |
