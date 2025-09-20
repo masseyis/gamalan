@@ -512,10 +512,10 @@ jobs:
           echo "Running staging smoke tests..."
 
           # Get the staging URLs from configured secrets
-          STAGING_API_URL="${{ secrets.STAGING_API_BASE_URL }}"
-          STAGING_FRONTEND_URL="${{ secrets.STAGING_BASE_URL }}"
+          STAGING_API_URL="${{ vars.STAGING_API_URL }}"
+          STAGING_FRONTEND_URL="${{ vars.STAGING_FRONTEND_URL }}"
 
-          echo "🔍 Test configuration with URLs from secrets:"
+          echo "🔍 Test configuration with URLs from vars:"
           echo "  Frontend URL: ${STAGING_FRONTEND_URL:-'Not configured'}"
           echo "  API URL: ${STAGING_API_URL:-'Not configured'}"
           echo "  Test timeout: 20 minutes"
@@ -550,7 +550,7 @@ jobs:
           echo "Running comprehensive API tests..."
 
           # Get the staging API URL from configured secrets
-          API_URL="${{ secrets.STAGING_API_BASE_URL }}"
+          API_URL="${{ vars.STAGING_API_URL }}"
 
           echo "🔍 Testing API at: ${API_URL:-'Not configured'}"
 
@@ -601,7 +601,7 @@ jobs:
           echo "Running performance benchmarks..."
 
           # Get the staging API URL from configured secrets
-          API_URL="${{ secrets.STAGING_API_BASE_URL }}"
+          API_URL="${{ vars.STAGING_API_URL }}"
 
           echo "🔍 Benchmarking API at: ${API_URL:-'Not configured'}"
 
