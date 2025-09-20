@@ -312,7 +312,7 @@ jobs:
     name: Deploy Frontend to Staging
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: pre-deployment-checks
+    needs: [pre-deployment-checks, build-frontend]
     if: needs.pre-deployment-checks.outputs.should_deploy == 'true' && needs.pre-deployment-checks.outputs.deploy_frontend == 'true'
     environment: staging
 
