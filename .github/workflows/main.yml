@@ -374,7 +374,7 @@ jobs:
     if: always() && (needs.deploy-staging-backend.result == 'success' || needs.deploy-staging-frontend.result == 'success')
     env:
       STAGING_API_URL: ${{ STAGING_API_URL }}
-      STAGING_FRONTEND_URL: ${{ env.STAGING_FRONTEND_URL }}
+      STAGING_FRONTEND_URL: ${{ STAGING_FRONTEND_URL }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
