@@ -266,8 +266,7 @@ jobs:
         env:
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.STAGING_CLERK_PUBLISHABLE_KEY }}
           CLERK_SECRET_KEY: ${{ secrets.STAGING_CLERK_SECRET_KEY }}
-          # Note: Frontend build uses this for API calls, will be overridden in E2E tests with dynamic URL
-          NEXT_PUBLIC_API_BASE_URL: ${{ secrets.STAGING_API_BASE_URL || 'https://salunga-ai-staging-wokp.shuttle.app' }}
+          NEXT_PUBLIC_API_BASE_URL: ${{ secrets.STAGING_API_BASE_URL }}
           NEXT_PUBLIC_ENABLE_AI_FEATURES: true
           NEXT_PUBLIC_ENABLE_MOCK_DATA: false
 
@@ -293,9 +292,6 @@ jobs:
     needs: [pre-deployment-checks, build-backend]
     if: needs.pre-deployment-checks.outputs.should_deploy == 'true' && needs.pre-deployment-checks.outputs.deploy_backend == 'true'
     environment: staging
-
-    outputs:
-      staging_api_url: ${{ steps.capture-url.outputs.staging_api_url }}
 
     steps:
       - name: Checkout code
@@ -358,30 +354,6 @@ jobs:
           cargo shuttle deploy --name $PROJECT_NAME
           echo "✅ Deployment completed"
 
-      - name: Capture staging deployment URL
-        id: capture-url
-        run: |
-          PROJECT_NAME="salunga-ai-staging"
-
-          echo "🔍 Querying Shuttle project status to get deployment URL..."
-          cargo shuttle project status --name $PROJECT_NAME > project_status.txt 2>&1
-
-          # Extract the URL from project status output
-          STAGING_URL=$(grep -E "https://.*\.shuttle\.app" project_status.txt | head -1 | sed 's/.*- //' || echo "")
-
-          if [ -z "$STAGING_URL" ]; then
-            echo "❌ Failed to extract staging URL from project status"
-            echo "Project status output:"
-            cat project_status.txt
-            exit 1
-          fi
-
-          echo "✅ Captured staging URL: $STAGING_URL"
-          echo "staging_api_url=$STAGING_URL" >> $GITHUB_OUTPUT
-
-          # Also set as environment variable for this job
-          echo "STAGING_API_URL=$STAGING_URL" >> $GITHUB_ENV
-
   deploy-staging-frontend:
     name: Deploy Frontend to Staging
     runs-on: ubuntu-latest
@@ -424,6 +396,7 @@ jobs:
           echo "✅ All required Vercel secrets are present"
 
       - name: Deploy to Vercel staging
+        id: vercel-deploy
         uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
@@ -434,6 +407,7 @@ jobs:
           github-comment: false
           alias-domains: |
             staging-battra-ai.vercel.app
+
 
   # =============================================================================
   # REGRESSION TESTING ON STAGING
@@ -468,12 +442,12 @@ jobs:
         run: |
           echo "Validating staging deployment readiness..."
 
-          # Get the staging API URL from the deployment job
-          STAGING_API_URL="${{ needs.deploy-staging-backend.outputs.staging_api_url }}"
+          # Get the staging URLs from configured secrets
+          STAGING_API_URL="${{ secrets.STAGING_API_BASE_URL }}"
           STAGING_FRONTEND_URL="${{ secrets.STAGING_BASE_URL }}"
 
-          echo "🔍 Dynamic staging URLs for testing:"
-          echo "  API URL: ${STAGING_API_URL:-'Not available'}"
+          echo "🔍 Staging URLs for testing (from secrets):"
+          echo "  API URL: ${STAGING_API_URL:-'Not configured'}"
           echo "  Frontend URL: ${STAGING_FRONTEND_URL:-'Not configured'}"
 
           # Function to check endpoint with retries and detailed diagnostics
@@ -526,8 +500,7 @@ jobs:
             check_endpoint "$STAGING_API_URL/health" "Staging API Health"
             check_endpoint "$STAGING_API_URL/ready" "Staging API Ready"
           else
-            echo "❌ Dynamic staging API URL not available from deployment job"
-            echo "This indicates the backend deployment may have failed"
+            echo "❌ STAGING_API_BASE_URL not configured in secrets"
             exit 1
           fi
 
@@ -539,18 +512,18 @@ jobs:
         run: |
           echo "Running staging smoke tests..."
 
-          # Get the dynamic staging URLs
-          STAGING_API_URL="${{ needs.deploy-staging-backend.outputs.staging_api_url }}"
+          # Get the staging URLs from configured secrets
+          STAGING_API_URL="${{ secrets.STAGING_API_BASE_URL }}"
           STAGING_FRONTEND_URL="${{ secrets.STAGING_BASE_URL }}"
 
-          echo "🔍 Test configuration with dynamic URLs:"
+          echo "🔍 Test configuration with URLs from secrets:"
           echo "  Frontend URL: ${STAGING_FRONTEND_URL:-'Not configured'}"
-          echo "  API URL: ${STAGING_API_URL:-'Not available'}"
+          echo "  API URL: ${STAGING_API_URL:-'Not configured'}"
           echo "  Test timeout: 20 minutes"
 
           # Validate test configuration
           if [ -z "$STAGING_API_URL" ]; then
-            echo "❌ Dynamic staging API URL not available from deployment job"
+            echo "❌ STAGING_API_BASE_URL not configured in secrets"
             echo "Cannot run E2E tests without API endpoint"
             exit 1
           fi
@@ -567,6 +540,9 @@ jobs:
             pnpm test:e2e:staging
           fi
         env:
+          PLAYWRIGHT_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
+          STAGING_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
+          STAGING_API_BASE_URL: ${{ secrets.STAGING_API_BASE_URL }}
           CI: true
 
       - name: Run comprehensive API tests
@@ -574,13 +550,13 @@ jobs:
         run: |
           echo "Running comprehensive API tests..."
 
-          # Get the dynamic staging API URL
-          API_URL="${{ needs.deploy-staging-backend.outputs.staging_api_url }}"
+          # Get the staging API URL from configured secrets
+          API_URL="${{ secrets.STAGING_API_BASE_URL }}"
 
-          echo "🔍 Testing API at: ${API_URL:-'Not available'}"
+          echo "🔍 Testing API at: ${API_URL:-'Not configured'}"
 
           if [ -z "$API_URL" ]; then
-            echo "❌ Dynamic staging API URL not available from deployment job"
+            echo "❌ STAGING_API_BASE_URL not configured in secrets"
             exit 1
           fi
 
@@ -625,10 +601,10 @@ jobs:
         run: |
           echo "Running performance benchmarks..."
 
-          # Get the dynamic staging API URL
-          API_URL="${{ needs.deploy-staging-backend.outputs.staging_api_url }}"
+          # Get the staging API URL from configured secrets
+          API_URL="${{ secrets.STAGING_API_BASE_URL }}"
 
-          echo "🔍 Benchmarking API at: ${API_URL:-'Not available'}"
+          echo "🔍 Benchmarking API at: ${API_URL:-'Not configured'}"
 
           # Performance test function
           benchmark_endpoint() {
@@ -671,7 +647,7 @@ jobs:
           echo "## 🧪 Staging Smoke Test Results" >> $GITHUB_STEP_SUMMARY
           echo "**Environment:** Staging" >> $GITHUB_STEP_SUMMARY
           echo "**Frontend URL:** ${{ secrets.STAGING_BASE_URL }}" >> $GITHUB_STEP_SUMMARY
-          echo "**API URL:** ${{ needs.deploy-staging-backend.outputs.staging_api_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "**API URL:** ${{ secrets.STAGING_API_BASE_URL }}" >> $GITHUB_STEP_SUMMARY
           echo "**Test Suite:** E2E Staging Smoke Tests" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
