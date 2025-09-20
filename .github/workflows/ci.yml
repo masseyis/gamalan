@@ -37,7 +37,7 @@ jobs:
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "rust-static-analysis"
+          shared-key: "rust-workspace"
           cache-all-crates: "true"
           
       - name: Check Rust formatting
@@ -150,7 +150,7 @@ jobs:
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "rust-unit-tests"
+          shared-key: "rust-workspace"
           cache-all-crates: "true"
           
       - name: Install jq for smart test runner
@@ -323,7 +323,7 @@ jobs:
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "rust-integration-tests"
+          shared-key: "rust-workspace"
           cache-all-crates: "true"
           
       - name: Run database migrations
@@ -386,7 +386,7 @@ jobs:
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "rust-contract-tests"
+          shared-key: "rust-workspace"
           cache-all-crates: "true"
           
       - name: Setup Node.js for OpenAPI tools

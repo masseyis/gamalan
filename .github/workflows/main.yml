@@ -114,6 +114,13 @@ jobs:
           toolchain: stable
           override: true
 
+      - name: Setup Rust cache for smoke tests
+        if: steps.changes.outputs.backend == 'true'
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: 'rust-workspace'
+          cache-all-crates: 'true'
+
       - name: Quick smoke tests
         if: steps.changes.outputs.backend == 'true'
         timeout-minutes: 5
@@ -208,7 +215,7 @@ jobs:
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: 'rust-main-deploy'
+          shared-key: 'rust-workspace'
           cache-all-crates: 'true'
 
       - name: Build API Gateway
