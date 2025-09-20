@@ -204,7 +204,7 @@ jobs:
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "rust-canary-deploy"
+          shared-key: "rust-workspace"
           cache-all-crates: "true"
           
       - name: Setup deployment version
