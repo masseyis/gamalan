@@ -191,52 +191,6 @@ jobs:
             echo "ℹ️ No deployment needed - No changes, no previous failure, not manual"
           fi
 
-  # =============================================================================
-  # BUILD & PACKAGE ARTIFACTS
-  # =============================================================================
-
-  build-backend:
-    name: Build API Gateway (Consolidated Services)
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    needs: pre-deployment-checks
-    if: needs.pre-deployment-checks.outputs.should_deploy == 'true' && needs.pre-deployment-checks.outputs.deploy_backend == 'true'
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-
-      - name: Setup Rust cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: 'rust-workspace'
-          cache-all-crates: 'true'
-
-      - name: Build API Gateway
-        run: |
-          echo "Building consolidated API Gateway with all services..."
-          cargo build --release --package api-gateway
-
-      - name: Generate SBOM
-        run: |
-          cargo install cargo-cyclonedx
-          cargo cyclonedx --format json > sbom-api-gateway.json
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: api-gateway-binary
-          path: |
-            target/release/api-gateway
-            sbom-api-gateway.json
-          retention-days: 7
-
   build-frontend:
     name: Build Frontend
     runs-on: ubuntu-latest
@@ -289,7 +243,7 @@ jobs:
     name: Deploy API Gateway to Staging
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [pre-deployment-checks, build-backend]
+    needs: pre-deployment-checks
     if: needs.pre-deployment-checks.outputs.should_deploy == 'true' && needs.pre-deployment-checks.outputs.deploy_backend == 'true'
     environment: staging
 
@@ -358,7 +312,7 @@ jobs:
     name: Deploy Frontend to Staging
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [pre-deployment-checks, build-frontend]
+    needs: pre-deployment-checks
     if: needs.pre-deployment-checks.outputs.should_deploy == 'true' && needs.pre-deployment-checks.outputs.deploy_frontend == 'true'
     environment: staging
 
@@ -418,7 +372,9 @@ jobs:
     timeout-minutes: 25
     needs: [deploy-staging-backend, deploy-staging-frontend]
     if: always() && (needs.deploy-staging-backend.result == 'success' || needs.deploy-staging-frontend.result == 'success')
-
+    env:
+      STAGING_API_URL: STAGING_API_URL
+      STAGING_FRONTEND_URL: STAGING_FRONTEND_URL
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -442,10 +398,10 @@ jobs:
           echo "Validating staging deployment readiness..."
 
           # Get the staging URLs from configured secrets
-          STAGING_API_URL="${{ vars.STAGING_API_BASE_URL }}"
-          STAGING_FRONTEND_URL="${{ vars.STAGING_BASE_URL }}"
+          # STAGING_API_URL="${{ vars.STAGING_API_BASE_URL }}"
+          # STAGING_FRONTEND_URL="${{ vars.STAGING_BASE_URL }}"
 
-          echo "🔍 Staging URLs for testing (from secrets):"
+          echo "🔍 Staging URLs for testing (from vars):"
           echo "  API URL: ${STAGING_API_URL:-'Not configured'}"
           echo "  Frontend URL: ${STAGING_FRONTEND_URL:-'Not configured'}"
 
@@ -512,8 +468,8 @@ jobs:
           echo "Running staging smoke tests..."
 
           # Get the staging URLs from configured secrets
-          STAGING_API_URL="${{ vars.STAGING_API_URL }}"
-          STAGING_FRONTEND_URL="${{ vars.STAGING_FRONTEND_URL }}"
+          # STAGING_API_URL="${{ vars.STAGING_API_URL }}"
+          # STAGING_FRONTEND_URL="${{ vars.STAGING_FRONTEND_URL }}"
 
           echo "🔍 Test configuration with URLs from vars:"
           echo "  Frontend URL: ${STAGING_FRONTEND_URL:-'Not configured'}"
@@ -550,7 +506,7 @@ jobs:
           echo "Running comprehensive API tests..."
 
           # Get the staging API URL from configured secrets
-          API_URL="${{ vars.STAGING_API_URL }}"
+          API_URL=$STAGING_API_URL
 
           echo "🔍 Testing API at: ${API_URL:-'Not configured'}"
 
@@ -601,7 +557,7 @@ jobs:
           echo "Running performance benchmarks..."
 
           # Get the staging API URL from configured secrets
-          API_URL="${{ vars.STAGING_API_URL }}"
+          API_URL=$STAGING_API_URL
 
           echo "🔍 Benchmarking API at: ${API_URL:-'Not configured'}"
 
