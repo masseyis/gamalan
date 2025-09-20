@@ -1,38 +1,22 @@
-use anyhow::Context;
+// This service is now used as a library by api-gateway
+// The main function here is only for local testing if needed
 
-use shuttle_axum::ShuttleAxum;
-use shuttle_shared_db::Postgres;
+use anyhow::Context;
 use sqlx::PgPool;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-mod adapters;
-mod application;
-mod config;
-mod domain;
+pub mod adapters;
+pub mod application;
+pub mod config;
+pub mod domain;
 
-use crate::{adapters::http::routes::create_auth_router, config::AppConfig};
-use common::init_tracing;
+pub use crate::{adapters::http::routes::create_auth_router, config::AppConfig};
 
-#[shuttle_runtime::main]
-async fn main(
-    #[Postgres(local_uri = "postgres://postgres:password@localhost:5432/gamalan")] db_uri: String,
-) -> ShuttleAxum {
-    init_tracing("auth-gateway");
-
-    let config = AppConfig::new().context("Failed to load config")?;
-
-    let pool = PgPool::connect(&db_uri)
-        .await
-        .context("Failed to connect to database")?;
-
-    let verifier = Arc::new(Mutex::new(auth_clerk::JwtVerifier::new(
-        config.clerk_jwks_url,
-        config.clerk_issuer,
-        Some(config.clerk_audience),
-    )));
-
-    let app = create_auth_router(pool, verifier).await;
-
-    Ok(app.into())
+// Local testing main - not used in production deployment
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    println!("auth-gateway is now a library service used by api-gateway");
+    println!("Use 'cargo run --bin api-gateway' to run the full application");
+    Ok(())
 }
