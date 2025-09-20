@@ -1,11 +1,6 @@
 // This service is now used as a library by api-gateway
 // The main function here is only for local testing if needed
 
-use anyhow::Context;
-use sqlx::PgPool;
-use std::sync::Arc;
-use tokio::sync::Mutex;
-
 pub mod adapters;
 pub mod application;
 pub mod config;
