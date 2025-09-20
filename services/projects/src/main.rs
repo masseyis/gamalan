@@ -1,44 +1,17 @@
-use anyhow::Context;
+// This service is now used as a library by api-gateway
+// The main function here is only for local testing if needed
 
-use shuttle_axum::ShuttleAxum;
-use shuttle_shared_db::Postgres;
-use sqlx::PgPool;
-use std::sync::Arc;
-use tokio::sync::Mutex;
-use tower_http::trace::TraceLayer;
+pub mod adapters;
+pub mod application;
+pub mod config;
+pub mod domain;
 
-mod adapters;
-mod application;
-mod config;
-mod domain;
+pub use crate::{adapters::http::routes::create_projects_router, config::AppConfig};
 
-use crate::{adapters::http::routes::create_projects_router, config::AppConfig};
-use common::{enhanced_request_middleware, init_tracing};
-
-#[shuttle_runtime::main]
-async fn main(
-    #[Postgres(local_uri = "postgres://postgres:password@localhost:5432/gamalan")] db_uri: String,
-) -> ShuttleAxum {
-    init_tracing("projects");
-
-    let config = AppConfig::new().context("Failed to load config")?;
-
-    let pool = PgPool::connect(&db_uri)
-        .await
-        .context("Failed to connect to database")?;
-
-    let verifier = Arc::new(Mutex::new(auth_clerk::JwtVerifier::new(
-        config.clerk_jwks_url,
-        config.clerk_issuer,
-        Some(config.clerk_audience),
-    )));
-
-    let app = create_projects_router(pool, verifier)
-        .await
-        .layer(shuttle_axum::axum::middleware::from_fn(
-            enhanced_request_middleware,
-        ))
-        .layer(TraceLayer::new_for_http());
-
-    Ok(app.into())
+// Local testing main - not used in production deployment
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    println!("projects is now a library service used by api-gateway");
+    println!("Use 'cargo run --bin api-gateway' to run the full application");
+    Ok(())
 }
