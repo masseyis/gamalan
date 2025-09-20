@@ -312,7 +312,7 @@ jobs:
     name: Deploy Frontend to Staging
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [pre-deployment-checks, build-frontend]
+    needs: build-frontend
     if: needs.pre-deployment-checks.outputs.should_deploy == 'true' && needs.pre-deployment-checks.outputs.deploy_frontend == 'true'
     environment: staging
 
@@ -373,8 +373,8 @@ jobs:
     needs: [deploy-staging-backend, deploy-staging-frontend]
     if: always() && (needs.deploy-staging-backend.result == 'success' || needs.deploy-staging-frontend.result == 'success')
     env:
-      STAGING_API_URL: STAGING_API_URL
-      STAGING_FRONTEND_URL: STAGING_FRONTEND_URL
+      STAGING_API_URL: ${{ STAGING_API_URL }}
+      STAGING_FRONTEND_URL: ${{ env.STAGING_FRONTEND_URL }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
