@@ -391,12 +391,11 @@ jobs:
           pnpm playwright install --with-deps
 
       - name: Validate staging deployment readiness
+        env:
+          STAGING_API_URL: ${{ vars.STAGING_API_URL }}
+          STAGING_FRONTEND_URL: ${{ vars.STAGING_FRONTEND_URL }}
         run: |
           echo "Validating staging deployment readiness..."
-
-          # Get the staging URLs from configured secrets
-          # STAGING_API_URL="${{ vars.STAGING_API_BASE_URL }}"
-          # STAGING_FRONTEND_URL="${{ vars.STAGING_BASE_URL }}"
 
           echo "🔍 Staging URLs for testing (from vars):"
           echo "  API URL: ${STAGING_API_URL:-'Not configured'}"
@@ -461,12 +460,15 @@ jobs:
       - name: Run comprehensive staging smoke tests
         working-directory: apps/web
         timeout-minutes: 20
+        env:
+          STAGING_API_URL: ${{ vars.STAGING_API_URL }}
+          STAGING_FRONTEND_URL: ${{ vars.STAGING_FRONTEND_URL }}
+          PLAYWRIGHT_BASE_URL: ${{ vars.STAGING_FRONTEND_URL }}
+          STAGING_BASE_URL: ${{ vars.STAGING_FRONTEND_URL }}
+          STAGING_API_BASE_URL: ${{ vars.STAGING_API_URL }}
+          CI: true
         run: |
           echo "Running staging smoke tests..."
-
-          # Get the staging URLs from configured secrets
-          # STAGING_API_URL="${{ vars.STAGING_API_URL }}"
-          # STAGING_FRONTEND_URL="${{ vars.STAGING_FRONTEND_URL }}"
 
           echo "🔍 Test configuration with URLs from vars:"
           echo "  Frontend URL: ${STAGING_FRONTEND_URL:-'Not configured'}"
@@ -475,15 +477,10 @@ jobs:
 
           # Validate test configuration
           if [ -z "$STAGING_API_URL" ]; then
-            echo "❌ STAGING_API_BASE_URL not configured in secrets"
+            echo "❌ STAGING_API_URL not configured in repository variables"
             echo "Cannot run E2E tests without API endpoint"
             exit 1
           fi
-
-          # Set environment variables for tests
-          export PLAYWRIGHT_BASE_URL="$STAGING_FRONTEND_URL"
-          export STAGING_BASE_URL="$STAGING_FRONTEND_URL"
-          export STAGING_API_BASE_URL="$STAGING_API_URL"
 
           # Run tests with retry on failure
           if ! pnpm test:e2e:staging; then
@@ -491,24 +488,21 @@ jobs:
             sleep 30
             pnpm test:e2e:staging
           fi
-        env:
-          PLAYWRIGHT_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
-          STAGING_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
-          STAGING_API_BASE_URL: ${{ secrets.STAGING_API_BASE_URL }}
-          CI: true
 
       - name: Run comprehensive API tests
         timeout-minutes: 10
+        env:
+          STAGING_API_URL: ${{ vars.STAGING_API_URL }}
         run: |
           echo "Running comprehensive API tests..."
 
-          # Get the staging API URL from configured secrets
+          # Get the staging API URL from configured variables
           API_URL=$STAGING_API_URL
 
           echo "🔍 Testing API at: ${API_URL:-'Not configured'}"
 
           if [ -z "$API_URL" ]; then
-            echo "❌ STAGING_API_BASE_URL not configured in secrets"
+            echo "❌ STAGING_API_URL not configured in repository variables"
             exit 1
           fi
 
@@ -550,10 +544,12 @@ jobs:
 
       - name: Performance benchmarking
         timeout-minutes: 5
+        env:
+          STAGING_API_URL: ${{ vars.STAGING_API_URL }}
         run: |
           echo "Running performance benchmarks..."
 
-          # Get the staging API URL from configured secrets
+          # Get the staging API URL from configured variables
           API_URL=$STAGING_API_URL
 
           echo "🔍 Benchmarking API at: ${API_URL:-'Not configured'}"
@@ -595,11 +591,14 @@ jobs:
 
       - name: Generate test results summary
         if: always()
+        env:
+          STAGING_API_URL: ${{ vars.STAGING_API_URL }}
+          STAGING_FRONTEND_URL: ${{ vars.STAGING_FRONTEND_URL }}
         run: |
           echo "## 🧪 Staging Smoke Test Results" >> $GITHUB_STEP_SUMMARY
           echo "**Environment:** Staging" >> $GITHUB_STEP_SUMMARY
-          echo "**Frontend URL:** ${{ secrets.STAGING_BASE_URL }}" >> $GITHUB_STEP_SUMMARY
-          echo "**API URL:** ${{ secrets.STAGING_API_BASE_URL }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Frontend URL:** ${STAGING_FRONTEND_URL}" >> $GITHUB_STEP_SUMMARY
+          echo "**API URL:** ${STAGING_API_URL}" >> $GITHUB_STEP_SUMMARY
           echo "**Test Suite:** E2E Staging Smoke Tests" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
