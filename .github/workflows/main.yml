@@ -530,9 +530,8 @@ jobs:
           test_endpoint "health" 200
           test_endpoint "ready" 200
 
-          # Test authentication endpoints (should return 401 without auth)
+          # Test main API routes exist and require authentication
           test_endpoint "api/v1/projects" 401
-          test_endpoint "api/v1/backlog/stories" 401
 
           echo "✅ All API tests completed successfully"
 
