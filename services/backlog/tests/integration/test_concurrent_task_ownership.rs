@@ -1,7 +1,6 @@
 use axum::{
     body::Body,
     http::{Method, Request, StatusCode},
-    Extension,
 };
 use serde_json::{json, Value};
 use sqlx::PgPool;
@@ -21,7 +20,7 @@ async fn setup_test_app(pool: PgPool) -> axum::Router {
     let story_repo = Arc::new(SqlStoryRepository::new(pool.clone()));
     let task_repo = Arc::new(SqlTaskRepository::new(pool.clone()));
     let readiness_service = Arc::new(MockReadinessService::new());
-    let usecases = Arc::new(BacklogUsecases::new(
+    let _usecases = Arc::new(BacklogUsecases::new(
         story_repo,
         task_repo,
         readiness_service,
@@ -127,7 +126,7 @@ async fn test_concurrent_task_ownership_race_condition(
                 .body(Body::empty())
                 .unwrap();
 
-            let response = app_clone.clone().oneshot(request).await.unwrap();
+            let response = (*app_clone).clone().oneshot(request).await.unwrap();
             (i, response.status(), user_id)
         });
     }
@@ -169,13 +168,13 @@ async fn test_concurrent_task_ownership_race_condition(
     // Verify the task is actually owned by the winning user
     let get_request = Request::builder()
         .method(Method::GET)
-        .uri(format!("/api/tasks/owned"))
+        .uri("/api/tasks/owned")
         .header("authorization", "Bearer mock-jwt-token")
         .header("x-organization-id", org_id.to_string())
         .header("x-user-id", winning_user_id.unwrap().to_string())
         .body(Body::empty())?;
 
-    let response = app.oneshot(get_request).await?;
+    let response = (*app).clone().oneshot(get_request).await?;
     assert_eq!(response.status(), StatusCode::OK);
 
     let body = axum::body::to_bytes(response.into_body(), usize::MAX).await?;
@@ -205,7 +204,7 @@ async fn test_concurrent_task_workflow_operations(
         .header("x-user-id", user_id.to_string())
         .body(Body::empty())?;
 
-    let response = app.clone().oneshot(claim_request).await?;
+    let response = (*app).clone().oneshot(claim_request).await?;
     assert_eq!(response.status(), StatusCode::OK);
 
     // Now test concurrent operations on the owned task
@@ -226,7 +225,7 @@ async fn test_concurrent_task_workflow_operations(
             .body(Body::empty())
             .unwrap();
 
-        let response = app_clone.oneshot(request).await.unwrap();
+        let response = (*app_clone).clone().oneshot(request).await.unwrap();
         ("start_work", response.status())
     });
 
@@ -251,7 +250,7 @@ async fn test_concurrent_task_workflow_operations(
             ))
             .unwrap();
 
-        let response = app_clone.oneshot(request).await.unwrap();
+        let response = (*app_clone).clone().oneshot(request).await.unwrap();
         ("set_estimate", response.status())
     });
 
@@ -270,7 +269,7 @@ async fn test_concurrent_task_workflow_operations(
             .body(Body::empty())
             .unwrap();
 
-        let response = app_clone.oneshot(request).await.unwrap();
+        let response = (*app_clone).clone().oneshot(request).await.unwrap();
         ("unauthorized_start", response.status())
     });
 
@@ -363,7 +362,7 @@ async fn test_high_load_task_creation_and_ownership(
                 ))
                 .unwrap();
 
-            let response = app_clone.oneshot(request).await.unwrap();
+            let response = (*app_clone).clone().oneshot(request).await.unwrap();
             (i, response.status())
         });
     }
@@ -400,7 +399,7 @@ async fn test_high_load_task_creation_and_ownership(
         .header("x-organization-id", org_id.to_string())
         .body(Body::empty())?;
 
-    let response = app.oneshot(get_available_request).await?;
+    let response = (*app).clone().oneshot(get_available_request).await?;
     assert_eq!(response.status(), StatusCode::OK);
 
     let body = axum::body::to_bytes(response.into_body(), usize::MAX).await?;

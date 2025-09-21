@@ -1,9 +1,7 @@
 use axum::{
     body::Body,
     http::{Method, Request, StatusCode},
-    Extension,
 };
-use common::AppError;
 use serde_json::{json, Value};
 use sqlx::PgPool;
 use std::sync::Arc;
@@ -21,7 +19,7 @@ async fn setup_test_app(pool: PgPool) -> axum::Router {
     let story_repo = Arc::new(SqlStoryRepository::new(pool.clone()));
     let task_repo = Arc::new(SqlTaskRepository::new(pool.clone()));
     let readiness_service = Arc::new(MockReadinessService::new());
-    let usecases = Arc::new(BacklogUsecases::new(
+    let _usecases = Arc::new(BacklogUsecases::new(
         story_repo,
         task_repo,
         readiness_service,
@@ -116,7 +114,7 @@ async fn test_story_lifecycle_integration(pool: PgPool) -> Result<(), Box<dyn st
     let body = axum::body::to_bytes(response.into_body(), usize::MAX).await?;
     let create_response: Value = serde_json::from_slice(&body)?;
     let story_id = create_response["story_id"].as_str().unwrap();
-    let story_uuid = Uuid::parse_str(story_id)?;
+    let _story_uuid = Uuid::parse_str(story_id)?;
 
     // 2. Get the story and verify it was created correctly
     let get_request = Request::builder()

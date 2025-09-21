@@ -1,5 +1,4 @@
 use backlog::domain::{Story, StoryStatus, Task, TaskStatus};
-use common::AppError;
 use uuid::Uuid;
 
 #[test]

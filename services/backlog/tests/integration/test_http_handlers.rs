@@ -310,7 +310,9 @@ async fn test_task_ownership_workflow_integration() {
         .unwrap();
 
     assert_eq!(story_response.status(), StatusCode::CREATED);
-    let story_body = to_bytes(story_response.into_body()).await.unwrap();
+    let story_body = to_bytes(story_response.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let story_result: serde_json::Value = serde_json::from_slice(&story_body).unwrap();
     let story_id = story_result["story_id"].as_str().unwrap();
 
@@ -339,7 +341,9 @@ async fn test_task_ownership_workflow_integration() {
         .unwrap();
 
     assert_eq!(task_response.status(), StatusCode::CREATED);
-    let task_body = to_bytes(task_response.into_body()).await.unwrap();
+    let task_body = to_bytes(task_response.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let task_result: serde_json::Value = serde_json::from_slice(&task_body).unwrap();
     let task_id = task_result["task_id"].as_str().unwrap();
 
@@ -380,7 +384,9 @@ async fn test_task_ownership_workflow_integration() {
         .unwrap();
 
     assert_eq!(ownership_response.status(), StatusCode::OK);
-    let ownership_body = to_bytes(ownership_response.into_body()).await.unwrap();
+    let ownership_body = to_bytes(ownership_response.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let ownership_result: serde_json::Value = serde_json::from_slice(&ownership_body).unwrap();
     assert_eq!(ownership_result["success"], true);
 
@@ -464,9 +470,11 @@ async fn test_task_ownership_workflow_integration() {
         .unwrap();
 
     assert_eq!(owned_tasks_response.status(), StatusCode::OK);
-    let owned_body = to_bytes(owned_tasks_response.into_body()).await.unwrap();
+    let owned_body = to_bytes(owned_tasks_response.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let owned_result: serde_json::Value = serde_json::from_slice(&owned_body).unwrap();
-    assert!(owned_result.as_array().unwrap().len() > 0);
+    assert!(!owned_result.as_array().unwrap().is_empty());
 }
 
 #[tokio::test]
@@ -498,7 +506,9 @@ async fn test_task_ownership_authorization() {
         .await
         .unwrap();
 
-    let story_body = to_bytes(story_response.into_body()).await.unwrap();
+    let story_body = to_bytes(story_response.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let story_result: serde_json::Value = serde_json::from_slice(&story_body).unwrap();
     let story_id = story_result["story_id"].as_str().unwrap();
 
@@ -524,7 +534,9 @@ async fn test_task_ownership_authorization() {
         .await
         .unwrap();
 
-    let task_body = to_bytes(task_response.into_body()).await.unwrap();
+    let task_body = to_bytes(task_response.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let task_result: serde_json::Value = serde_json::from_slice(&task_body).unwrap();
     let task_id = task_result["task_id"].as_str().unwrap();
 
@@ -583,7 +595,9 @@ async fn test_task_ownership_state_transitions() {
         .await
         .unwrap();
 
-    let story_body = to_bytes(story_response.into_body()).await.unwrap();
+    let story_body = to_bytes(story_response.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let story_result: serde_json::Value = serde_json::from_slice(&story_body).unwrap();
     let story_id = story_result["story_id"].as_str().unwrap();
 
@@ -609,7 +623,9 @@ async fn test_task_ownership_state_transitions() {
         .await
         .unwrap();
 
-    let task_body = to_bytes(task_response.into_body()).await.unwrap();
+    let task_body = to_bytes(task_response.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let task_result: serde_json::Value = serde_json::from_slice(&task_body).unwrap();
     let task_id = task_result["task_id"].as_str().unwrap();
 
@@ -690,7 +706,9 @@ async fn test_task_ownership_state_transitions() {
         .unwrap();
 
     assert_eq!(available_response.status(), StatusCode::OK);
-    let available_body = to_bytes(available_response.into_body()).await.unwrap();
+    let available_body = to_bytes(available_response.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let available_result: serde_json::Value = serde_json::from_slice(&available_body).unwrap();
 
     // Completed task should not be in available tasks
