@@ -697,10 +697,11 @@ jobs:
             if [ "${{ needs.deploy-staging-backend.result }}" == "success" ]; then
               echo "✅ **API Gateway deployment:** Successful (All services included)" >> $GITHUB_STEP_SUMMARY
               echo "   - Projects service: Available at /api/v1/projects" >> $GITHUB_STEP_SUMMARY
-              echo "   - Backlog service: Available at /api/v1/backlog" >> $GITHUB_STEP_SUMMARY
-              echo "   - Readiness service: Available at /api/v1/readiness" >> $GITHUB_STEP_SUMMARY
-              echo "   - Prompt Builder service: Available at /api/v1/prompt-builder" >> $GITHUB_STEP_SUMMARY
-              echo "   - Context Orchestrator service: Available at /api/v1/context-orchestrator" >> $GITHUB_STEP_SUMMARY
+              echo "   - Backlog service: Available at /api/v1/projects/{id}/stories and /api/v1/stories" >> $GITHUB_STEP_SUMMARY
+              echo "   - Readiness service: Available at /api/v1/readiness/{id}/evaluate and /api/v1/criteria" >> $GITHUB_STEP_SUMMARY
+              echo "   - Prompt Builder service: Available at /api/v1/plans and /api/v1/work-packets" >> $GITHUB_STEP_SUMMARY
+              echo "   - Context Orchestrator service: Available at /api/v1/context" >> $GITHUB_STEP_SUMMARY
+              echo "   - Auth service: Available at /auth" >> $GITHUB_STEP_SUMMARY
             else
               echo "❌ **API Gateway deployment:** Failed" >> $GITHUB_STEP_SUMMARY
             fi
