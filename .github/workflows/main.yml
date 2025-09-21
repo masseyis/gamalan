@@ -236,16 +236,16 @@ jobs:
           if-no-files-found: error
 
   # =============================================================================
-  # STAGING DEPLOYMENT
+  # ENVIRONMENT DEPLOYMENT (STAGING/PRODUCTION)
   # =============================================================================
 
-  deploy-staging-backend:
-    name: Deploy API Gateway to Staging
+  deploy-backend:
+    name: Deploy API Gateway to ${{ github.event.inputs.target_environment || 'staging' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: pre-deployment-checks
     if: needs.pre-deployment-checks.outputs.should_deploy == 'true' && needs.pre-deployment-checks.outputs.deploy_backend == 'true'
-    environment: staging
+    environment: ${{ github.event.inputs.target_environment || 'staging' }}
 
     steps:
       - name: Checkout code
@@ -288,33 +288,39 @@ jobs:
       #     EOF
       #     echo "Created Secrets.toml for staging deployment"
 
-      - name: Deploy to Shuttle staging
+      - name: Deploy to Shuttle ${{ github.event.inputs.target_environment || 'staging' }}
+        env:
+          TARGET_ENV: ${{ github.event.inputs.target_environment || 'staging' }}
         run: |
           cargo shuttle login --api-key ${{ secrets.SHUTTLE_API_KEY }}
 
-          # Deploy with staging suffix
-          PROJECT_NAME="salunga-ai-staging"
+          # Set project name based on environment
+          if [ "$TARGET_ENV" = "production" ]; then
+            PROJECT_NAME="salunga-ai"
+          else
+            PROJECT_NAME="salunga-ai-staging"
+          fi
 
-          # Check if staging project exists, create if not
+          # Check if project exists, create if not
           if ! cargo shuttle project status --name $PROJECT_NAME 2>/dev/null; then
-            echo "Creating staging project: $PROJECT_NAME"
+            echo "Creating $TARGET_ENV project: $PROJECT_NAME"
             cargo shuttle project new --name $PROJECT_NAME
           fi
 
-          # Deploy to staging - from api-gateway directory ensures correct service is deployed
+          # Deploy to target environment - from api-gateway directory ensures correct service is deployed
           export PATH="$HOME/.cargo/bin:$PATH"
           cd services/api-gateway
-          echo "🚀 Deploying to Shuttle staging..."
+          echo "🚀 Deploying to Shuttle $TARGET_ENV..."
           cargo shuttle deploy --name $PROJECT_NAME
           echo "✅ Deployment completed"
 
-  deploy-staging-frontend:
-    name: Deploy Frontend to Staging
+  deploy-frontend:
+    name: Deploy Frontend to ${{ github.event.inputs.target_environment || 'staging' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: build-frontend
     if: needs.pre-deployment-checks.outputs.should_deploy == 'true' && needs.pre-deployment-checks.outputs.deploy_frontend == 'true'
-    environment: staging
+    environment: ${{ github.event.inputs.target_environment || 'staging' }}
 
     steps:
       - name: Checkout code
@@ -349,8 +355,10 @@ jobs:
           fi
           echo "✅ All required Vercel secrets are present"
 
-      - name: Deploy to Vercel staging
+      - name: Deploy to Vercel ${{ github.event.inputs.target_environment || 'staging' }}
         id: vercel-deploy
+        env:
+          TARGET_ENV: ${{ github.event.inputs.target_environment || 'staging' }}
         uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
@@ -360,18 +368,18 @@ jobs:
           working-directory: apps/web
           github-comment: false
           alias-domains: |
-            staging-battra-ai.vercel.app
+            ${{ env.TARGET_ENV == 'production' && 'battra-ai.vercel.app' || 'staging-battra-ai.vercel.app' }}
 
   # =============================================================================
-  # REGRESSION TESTING ON STAGING
+  # REGRESSION TESTING ON TARGET ENVIRONMENT
   # =============================================================================
 
-  staging-regression-tests:
-    name: Staging Regression Tests
+  regression-tests:
+    name: ${{ github.event.inputs.target_environment || 'staging' }} Regression Tests
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    needs: [deploy-staging-backend, deploy-staging-frontend]
-    if: always() && (needs.deploy-staging-backend.result == 'success' || needs.deploy-staging-frontend.result == 'success')
+    needs: [deploy-backend, deploy-frontend]
+    if: always() && (needs.deploy-backend.result == 'success' || needs.deploy-frontend.result == 'success')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -390,16 +398,17 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm playwright install --with-deps
 
-      - name: Validate staging deployment readiness
+      - name: Validate ${{ github.event.inputs.target_environment || 'staging' }} deployment readiness
         env:
-          STAGING_API_URL: ${{ vars.STAGING_API_URL }}
-          STAGING_FRONTEND_URL: ${{ vars.STAGING_FRONTEND_URL }}
+          TARGET_ENV: ${{ github.event.inputs.target_environment || 'staging' }}
+          TARGET_API_URL: ${{ github.event.inputs.target_environment == 'production' && vars.PRODUCTION_API_URL || vars.STAGING_API_URL }}
+          TARGET_FRONTEND_URL: ${{ github.event.inputs.target_environment == 'production' && vars.PRODUCTION_FRONTEND_URL || vars.STAGING_FRONTEND_URL }}
         run: |
-          echo "Validating staging deployment readiness..."
+          echo "Validating $TARGET_ENV deployment readiness..."
 
-          echo "🔍 Staging URLs for testing (from vars):"
-          echo "  API URL: ${STAGING_API_URL:-'Not configured'}"
-          echo "  Frontend URL: ${STAGING_FRONTEND_URL:-'Not configured'}"
+          echo "🔍 $TARGET_ENV URLs for testing (from vars):"
+          echo "  API URL: ${TARGET_API_URL:-'Not configured'}"
+          echo "  Frontend URL: ${TARGET_FRONTEND_URL:-'Not configured'}"
 
           # Function to check endpoint with retries and detailed diagnostics
           check_endpoint() {
@@ -439,70 +448,77 @@ jobs:
             return 1
           }
 
-          # Check staging frontend (if configured)
-          if [ -n "$STAGING_FRONTEND_URL" ]; then
-            check_endpoint "$STAGING_FRONTEND_URL" "Staging Frontend"
+          # Check target environment frontend (if configured)
+          if [ -n "$TARGET_FRONTEND_URL" ]; then
+            check_endpoint "$TARGET_FRONTEND_URL" "$TARGET_ENV Frontend"
           else
-            echo "⚠️ STAGING_BASE_URL not configured, skipping frontend check"
+            echo "⚠️ ${TARGET_ENV}_FRONTEND_URL not configured, skipping frontend check"
           fi
 
-          # Check staging API (required)
-          if [ -n "$STAGING_API_URL" ]; then
-            check_endpoint "$STAGING_API_URL/health" "Staging API Health"
-            check_endpoint "$STAGING_API_URL/ready" "Staging API Ready"
+          # Check target environment API (required)
+          if [ -n "$TARGET_API_URL" ]; then
+            check_endpoint "$TARGET_API_URL/health" "$TARGET_ENV API Health"
+            check_endpoint "$TARGET_API_URL/ready" "$TARGET_ENV API Ready"
           else
-            echo "❌ STAGING_API_BASE_URL not configured in secrets"
+            echo "❌ ${TARGET_ENV}_API_URL not configured in repository variables"
             exit 1
           fi
 
-          echo "✅ All staging services are ready for testing"
+          echo "✅ All $TARGET_ENV services are ready for testing"
 
-      - name: Run comprehensive staging smoke tests
+      - name: Run comprehensive ${{ github.event.inputs.target_environment || 'staging' }} smoke tests
         working-directory: apps/web
         timeout-minutes: 20
         env:
-          STAGING_API_URL: ${{ vars.STAGING_API_URL }}
-          STAGING_FRONTEND_URL: ${{ vars.STAGING_FRONTEND_URL }}
-          PLAYWRIGHT_BASE_URL: ${{ vars.STAGING_FRONTEND_URL }}
-          STAGING_BASE_URL: ${{ vars.STAGING_FRONTEND_URL }}
-          STAGING_API_BASE_URL: ${{ vars.STAGING_API_URL }}
+          TARGET_ENV: ${{ github.event.inputs.target_environment || 'staging' }}
+          TARGET_API_URL: ${{ github.event.inputs.target_environment == 'production' && vars.PRODUCTION_API_URL || vars.STAGING_API_URL }}
+          TARGET_FRONTEND_URL: ${{ github.event.inputs.target_environment == 'production' && vars.PRODUCTION_FRONTEND_URL || vars.STAGING_FRONTEND_URL }}
+          PLAYWRIGHT_BASE_URL: ${{ github.event.inputs.target_environment == 'production' && vars.PRODUCTION_FRONTEND_URL || vars.STAGING_FRONTEND_URL }}
+          STAGING_BASE_URL: ${{ github.event.inputs.target_environment == 'production' && vars.PRODUCTION_FRONTEND_URL || vars.STAGING_FRONTEND_URL }}
+          STAGING_API_BASE_URL: ${{ github.event.inputs.target_environment == 'production' && vars.PRODUCTION_API_URL || vars.STAGING_API_URL }}
           CI: true
         run: |
-          echo "Running staging smoke tests..."
+          echo "Running $TARGET_ENV smoke tests..."
 
           echo "🔍 Test configuration with URLs from vars:"
-          echo "  Frontend URL: ${STAGING_FRONTEND_URL:-'Not configured'}"
-          echo "  API URL: ${STAGING_API_URL:-'Not configured'}"
+          echo "  Frontend URL: ${TARGET_FRONTEND_URL:-'Not configured'}"
+          echo "  API URL: ${TARGET_API_URL:-'Not configured'}"
           echo "  Test timeout: 20 minutes"
 
           # Validate test configuration
-          if [ -z "$STAGING_API_URL" ]; then
-            echo "❌ STAGING_API_URL not configured in repository variables"
+          if [ -z "$TARGET_API_URL" ]; then
+            echo "❌ ${TARGET_ENV}_API_URL not configured in repository variables"
             echo "Cannot run E2E tests without API endpoint"
             exit 1
           fi
 
-          # Run tests with retry on failure
-          if ! pnpm test:e2e:staging; then
+          # Run tests with retry on failure (use staging script for now, can be made dynamic later)
+          TEST_SCRIPT="test:e2e:staging"
+          if [ "$TARGET_ENV" = "production" ]; then
+            TEST_SCRIPT="test:e2e:production"
+          fi
+
+          if ! pnpm $TEST_SCRIPT; then
             echo "⚠️ First test run failed, retrying once..."
             sleep 30
-            pnpm test:e2e:staging
+            pnpm $TEST_SCRIPT
           fi
 
       - name: Run comprehensive API tests
         timeout-minutes: 10
         env:
-          STAGING_API_URL: ${{ vars.STAGING_API_URL }}
+          TARGET_ENV: ${{ github.event.inputs.target_environment || 'staging' }}
+          TARGET_API_URL: ${{ github.event.inputs.target_environment == 'production' && vars.PRODUCTION_API_URL || vars.STAGING_API_URL }}
         run: |
           echo "Running comprehensive API tests..."
 
-          # Get the staging API URL from configured variables
-          API_URL=$STAGING_API_URL
+          # Get the target environment API URL from configured variables
+          API_URL=$TARGET_API_URL
 
           echo "🔍 Testing API at: ${API_URL:-'Not configured'}"
 
           if [ -z "$API_URL" ]; then
-            echo "❌ STAGING_API_URL not configured in repository variables"
+            echo "❌ ${TARGET_ENV}_API_URL not configured in repository variables"
             exit 1
           fi
 
@@ -538,12 +554,13 @@ jobs:
       - name: Performance benchmarking
         timeout-minutes: 5
         env:
-          STAGING_API_URL: ${{ vars.STAGING_API_URL }}
+          TARGET_ENV: ${{ github.event.inputs.target_environment || 'staging' }}
+          TARGET_API_URL: ${{ github.event.inputs.target_environment == 'production' && vars.PRODUCTION_API_URL || vars.STAGING_API_URL }}
         run: |
           echo "Running performance benchmarks..."
 
-          # Get the staging API URL from configured variables
-          API_URL=$STAGING_API_URL
+          # Get the target environment API URL from configured variables
+          API_URL=$TARGET_API_URL
 
           echo "🔍 Benchmarking API at: ${API_URL:-'Not configured'}"
 
@@ -583,14 +600,15 @@ jobs:
       - name: Generate test results summary
         if: always()
         env:
-          STAGING_API_URL: ${{ vars.STAGING_API_URL }}
-          STAGING_FRONTEND_URL: ${{ vars.STAGING_FRONTEND_URL }}
+          TARGET_ENV: ${{ github.event.inputs.target_environment || 'staging' }}
+          TARGET_API_URL: ${{ github.event.inputs.target_environment == 'production' && vars.PRODUCTION_API_URL || vars.STAGING_API_URL }}
+          TARGET_FRONTEND_URL: ${{ github.event.inputs.target_environment == 'production' && vars.PRODUCTION_FRONTEND_URL || vars.STAGING_FRONTEND_URL }}
         run: |
-          echo "## 🧪 Staging Smoke Test Results" >> $GITHUB_STEP_SUMMARY
-          echo "**Environment:** Staging" >> $GITHUB_STEP_SUMMARY
-          echo "**Frontend URL:** ${STAGING_FRONTEND_URL}" >> $GITHUB_STEP_SUMMARY
-          echo "**API URL:** ${STAGING_API_URL}" >> $GITHUB_STEP_SUMMARY
-          echo "**Test Suite:** E2E Staging Smoke Tests" >> $GITHUB_STEP_SUMMARY
+          echo "## 🧪 $TARGET_ENV Smoke Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** $TARGET_ENV" >> $GITHUB_STEP_SUMMARY
+          echo "**Frontend URL:** ${TARGET_FRONTEND_URL}" >> $GITHUB_STEP_SUMMARY
+          echo "**API URL:** ${TARGET_API_URL}" >> $GITHUB_STEP_SUMMARY
+          echo "**Test Suite:** E2E $TARGET_ENV Smoke Tests" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ -f "apps/web/test-results/staging-results.json" ]; then
@@ -610,7 +628,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: staging-smoke-test-results
+          name: ${{ github.event.inputs.target_environment || 'staging' }}-smoke-test-results
           path: |
             apps/web/playwright-report/
             apps/web/test-results/
@@ -626,7 +644,7 @@ jobs:
   create-production-deployment:
     name: Create Production Deployment Request
     runs-on: ubuntu-latest
-    needs: [staging-regression-tests]
+    needs: [regression-tests]
     if: success() && github.ref == 'refs/heads/main'
 
     outputs:
@@ -670,18 +688,21 @@ jobs:
     needs:
       [
         pre-deployment-checks,
-        deploy-staging-backend,
-        deploy-staging-frontend,
-        staging-regression-tests,
+        deploy-backend,
+        deploy-frontend,
+        regression-tests,
         create-production-deployment,
       ]
 
     steps:
       - name: Generate deployment summary
+        env:
+          TARGET_ENV: ${{ github.event.inputs.target_environment || 'staging' }}
         run: |
-          echo "## 🚀 Staging Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## 🚀 $TARGET_ENV Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "**Triggered by:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Target Environment:** $TARGET_ENV" >> $GITHUB_STEP_SUMMARY
           echo "**Architecture:** Single API Gateway (Consolidated Services)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
@@ -694,7 +715,7 @@ jobs:
 
           # API Gateway deployment status (includes all services)
           if [ "${{ needs.pre-deployment-checks.outputs.backend_changed }}" == "true" ]; then
-            if [ "${{ needs.deploy-staging-backend.result }}" == "success" ]; then
+            if [ "${{ needs.deploy-backend.result }}" == "success" ]; then
               echo "✅ **API Gateway deployment:** Successful (All services included)" >> $GITHUB_STEP_SUMMARY
               echo "   - Projects service: Available at /api/v1/projects" >> $GITHUB_STEP_SUMMARY
               echo "   - Backlog service: Available at /api/v1/projects/{id}/stories and /api/v1/stories" >> $GITHUB_STEP_SUMMARY
@@ -709,7 +730,7 @@ jobs:
 
           # Frontend deployment status
           if [ "${{ needs.pre-deployment-checks.outputs.frontend_changed }}" == "true" ]; then
-            if [ "${{ needs.deploy-staging-frontend.result }}" == "success" ]; then
+            if [ "${{ needs.deploy-frontend.result }}" == "success" ]; then
               echo "✅ **Frontend deployment:** Successful" >> $GITHUB_STEP_SUMMARY
             else
               echo "❌ **Frontend deployment:** Failed" >> $GITHUB_STEP_SUMMARY
@@ -717,7 +738,7 @@ jobs:
           fi
 
           # Regression tests status
-          if [ "${{ needs.staging-regression-tests.result }}" == "success" ]; then
+          if [ "${{ needs.regression-tests.result }}" == "success" ]; then
             echo "✅ **Regression tests:** Passed" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ **Regression tests:** Failed" >> $GITHUB_STEP_SUMMARY
@@ -731,12 +752,16 @@ jobs:
 
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
-          echo "- Review staging environment" >> $GITHUB_STEP_SUMMARY
-          echo "- Approve production deployment when ready" >> $GITHUB_STEP_SUMMARY
+          echo "- Review $TARGET_ENV environment" >> $GITHUB_STEP_SUMMARY
+          if [ "$TARGET_ENV" = "staging" ]; then
+            echo "- Approve production deployment when ready" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "- Monitor deployment metrics" >> $GITHUB_STEP_SUMMARY
 
       - name: Notify team
         if: failure()
+        env:
+          TARGET_ENV: ${{ github.event.inputs.target_environment || 'staging' }}
         run: |
-          echo "🚨 Staging deployment failed for commit ${{ github.sha }}"
+          echo "🚨 $TARGET_ENV deployment failed for commit ${{ github.sha }}"
           echo "Check the workflow run for details: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
