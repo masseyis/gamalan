@@ -173,6 +173,8 @@ impl From<TeamMembership> for TeamMembershipResponse {
 #[derive(Deserialize)]
 pub struct CreateSprintDto {
     pub name: String,
+    pub goal: Option<String>,
+    pub capacity_points: Option<u32>,
     pub start_date: chrono::NaiveDate,
     pub end_date: chrono::NaiveDate,
 }
@@ -200,8 +202,8 @@ impl From<Sprint> for SprintResponse {
             name: sprint.name,
             goal: sprint.goal,
             status: sprint.status.to_string(),
-            committed_story_points: sprint.committed_story_points,
-            completed_story_points: sprint.completed_story_points,
+            committed_story_points: sprint.committed_points,
+            completed_story_points: sprint.completed_points,
             start_date: sprint.start_date.date_naive(),
             end_date: sprint.end_date.date_naive(),
             created_at: sprint.created_at,
@@ -414,7 +416,6 @@ pub async fn add_team_member(
         .ok_or_else(|| AppError::BadRequest("Invalid user role".to_string()))?;
 
     let request = AddTeamMemberRequest {
-        team_id,
         user_id: dto.user_id,
         role,
         specialty: dto.specialty,
@@ -467,11 +468,13 @@ pub async fn create_sprint(
     Path(team_id): Path<Uuid>,
     Json(dto): Json<CreateSprintDto>,
 ) -> Result<impl IntoResponse, AppError> {
-    use chrono::{DateTime, TimeZone, Utc};
+    use chrono::{TimeZone, Utc};
 
     let request = CreateSprintRequest {
         team_id,
         name: dto.name,
+        goal: dto.goal.unwrap_or_default(),
+        capacity_points: dto.capacity_points.unwrap_or(40),
         start_date: Utc.from_utc_datetime(&dto.start_date.and_hms_opt(0, 0, 0).unwrap()),
         end_date: Utc.from_utc_datetime(&dto.end_date.and_hms_opt(23, 59, 59).unwrap()),
     };

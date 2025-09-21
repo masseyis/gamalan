@@ -2,17 +2,14 @@ pub mod readiness_client;
 
 pub use readiness_client::*;
 
-#[cfg(test)]
 pub struct MockReadinessService;
 
-#[cfg(test)]
 impl MockReadinessService {
     pub fn new() -> Self {
         Self
     }
 }
 
-#[cfg(test)]
 #[async_trait::async_trait]
 impl crate::application::ports::ReadinessService for MockReadinessService {
     async fn validate_acceptance_criteria_refs(

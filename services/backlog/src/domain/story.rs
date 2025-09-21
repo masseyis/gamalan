@@ -180,6 +180,12 @@ impl Story {
             ));
         }
 
+        if title.trim().len() > 255 {
+            return Err(AppError::BadRequest(
+                "Story title cannot exceed 255 characters".to_string(),
+            ));
+        }
+
         let now = Utc::now();
         Ok(Self {
             id: Uuid::new_v4(),
@@ -385,6 +391,39 @@ impl Story {
     /// Get estimated effort
     pub fn estimated_effort(&self) -> u32 {
         self.story_points.unwrap_or(0)
+    }
+
+    /// Update story fields (for backwards compatibility with tests)
+    pub fn update(
+        &mut self,
+        title: Option<String>,
+        description: Option<Option<String>>,
+        labels: Option<Vec<String>>,
+    ) -> Result<(), AppError> {
+        if let Some(new_title) = title {
+            if new_title.trim().is_empty() {
+                return Err(AppError::BadRequest(
+                    "Story title cannot be empty".to_string(),
+                ));
+            }
+            if new_title.trim().len() > 255 {
+                return Err(AppError::BadRequest(
+                    "Story title cannot exceed 255 characters".to_string(),
+                ));
+            }
+            self.title = new_title.trim().to_string();
+        }
+
+        if let Some(new_description) = description {
+            self.description = new_description;
+        }
+
+        if let Some(new_labels) = labels {
+            self.labels = new_labels;
+        }
+
+        self.updated_at = Utc::now();
+        Ok(())
     }
 }
 

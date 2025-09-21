@@ -7,14 +7,16 @@ fn test_story_creation_with_valid_data() {
     let project_id = Uuid::new_v4();
     let org_id = Some(Uuid::new_v4());
 
-    let story = Story::new(
+    let mut story = Story::new(
         project_id,
         org_id,
         "User Authentication".to_string(),
         Some("Implement OAuth2 authentication system".to_string()),
-        vec!["feature".to_string(), "security".to_string()],
     )
     .unwrap();
+
+    story.add_label("feature".to_string());
+    story.add_label("security".to_string());
 
     assert_eq!(story.title, "User Authentication");
     assert_eq!(
@@ -37,7 +39,6 @@ fn test_story_creation_with_empty_title_fails() {
         org_id,
         "".to_string(),
         Some("Description".to_string()),
-        vec![],
     );
 
     assert!(result.is_err());
@@ -58,7 +59,6 @@ fn test_story_creation_with_title_too_long_fails() {
         org_id,
         long_title,
         Some("Description".to_string()),
-        vec![],
     );
 
     assert!(result.is_err());
@@ -78,9 +78,10 @@ fn test_story_update_valid_fields() {
         org_id,
         "Original Title".to_string(),
         Some("Original Description".to_string()),
-        vec!["original".to_string()],
     )
     .unwrap();
+
+    story.add_label("original".to_string());
 
     story
         .update(
@@ -100,14 +101,7 @@ fn test_story_update_empty_title_fails() {
     let project_id = Uuid::new_v4();
     let org_id = Some(Uuid::new_v4());
 
-    let mut story = Story::new(
-        project_id,
-        org_id,
-        "Original Title".to_string(),
-        None,
-        vec![],
-    )
-    .unwrap();
+    let mut story = Story::new(project_id, org_id, "Original Title".to_string(), None).unwrap();
 
     let result = story.update(Some("".to_string()), None, None);
 
@@ -123,7 +117,7 @@ fn test_story_status_transitions() {
     let project_id = Uuid::new_v4();
     let org_id = Some(Uuid::new_v4());
 
-    let mut story = Story::new(project_id, org_id, "Test Story".to_string(), None, vec![]).unwrap();
+    let mut story = Story::new(project_id, org_id, "Test Story".to_string(), None).unwrap();
 
     // Draft -> NeedsRefinement
     story.update_status(StoryStatus::NeedsRefinement).unwrap();
@@ -165,7 +159,7 @@ fn test_story_status_invalid_transitions() {
     let project_id = Uuid::new_v4();
     let org_id = Some(Uuid::new_v4());
 
-    let mut story = Story::new(project_id, org_id, "Test Story".to_string(), None, vec![]).unwrap();
+    let mut story = Story::new(project_id, org_id, "Test Story".to_string(), None).unwrap();
 
     // Can't go directly from Draft to Committed
     let result = story.update_status(StoryStatus::Committed);
@@ -189,7 +183,7 @@ fn test_story_status_can_go_back_to_draft() {
     let project_id = Uuid::new_v4();
     let org_id = Some(Uuid::new_v4());
 
-    let mut story = Story::new(project_id, org_id, "Test Story".to_string(), None, vec![]).unwrap();
+    let mut story = Story::new(project_id, org_id, "Test Story".to_string(), None).unwrap();
 
     // Go to NeedsRefinement then back to Draft
     story.update_status(StoryStatus::NeedsRefinement).unwrap();

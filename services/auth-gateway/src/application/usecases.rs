@@ -4,9 +4,9 @@ use crate::application::ports::{
 use crate::domain::organization::{
     AddMemberRequest, CreateOrganizationRequest, Organization, OrganizationMembership,
 };
-use crate::domain::sprint::{CreateSprintRequest, Sprint, SprintStatus};
+use crate::domain::sprint::{CreateSprintRequest, Sprint};
 use crate::domain::team::{AddTeamMemberRequest, CreateTeamRequest, Team, TeamMembership};
-use crate::domain::user::{User, UserRole};
+use crate::domain::user::User;
 use common::AppError;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -145,7 +145,7 @@ impl TeamUsecases {
             .await?
             .ok_or(AppError::NotFound("Organization not found".to_string()))?;
 
-        let team = Team::new(request.name.clone(), request.organization_id)?;
+        let _team = Team::new(request.name.clone(), request.organization_id)?;
         self.team_repo.create_team(request).await
     }
 
@@ -166,7 +166,7 @@ impl TeamUsecases {
         &self,
         team_id: &Uuid,
         request: &AddTeamMemberRequest,
-        requester_user_id: &Uuid,
+        _requester_user_id: &Uuid,
     ) -> Result<TeamMembership, AppError> {
         // Verify the team exists
         let _team = self
@@ -207,7 +207,7 @@ impl TeamUsecases {
         &self,
         team_id: &Uuid,
         user_id: &Uuid,
-        requester_user_id: &Uuid,
+        _requester_user_id: &Uuid,
     ) -> Result<(), AppError> {
         // Check permissions - only managing contributors or the user themselves can remove
         // For now, we'll trust the caller has validated permissions
@@ -244,7 +244,7 @@ impl SprintUsecases {
         }
 
         // Create the sprint
-        let sprint = Sprint::new(
+        let _sprint = Sprint::new(
             request.team_id,
             request.name.clone(),
             request.goal.clone(),

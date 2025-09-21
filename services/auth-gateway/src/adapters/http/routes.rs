@@ -44,9 +44,12 @@ pub async fn create_auth_router(
     let sprint_repo = Arc::new(SprintRepositoryImpl::new(pool.clone()));
 
     let user_usecases = Arc::new(UserUsecases::new(user_repo.clone()));
-    let org_usecases = Arc::new(OrganizationUsecases::new(org_repo, user_repo));
+    let org_usecases = Arc::new(OrganizationUsecases::new(
+        org_repo.clone(),
+        user_repo.clone(),
+    ));
     let team_usecases = Arc::new(TeamUsecases::new(
-        team_repo,
+        team_repo.clone(),
         user_repo.clone(),
         org_repo.clone(),
     ));

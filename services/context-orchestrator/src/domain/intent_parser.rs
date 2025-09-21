@@ -60,12 +60,6 @@ impl IntentParser {
             || utterance_lower.contains("no longer working")
         {
             IntentType::ReleaseOwnership
-        } else if utterance_lower.contains("starting")
-            || utterance_lower.contains("begin work")
-            || utterance_lower.contains("working on")
-            || (utterance_lower.contains("start") && utterance_lower.contains("task"))
-        {
-            IntentType::StartWork
         } else if utterance_lower.contains("completed")
             || utterance_lower.contains("finished")
             || utterance_lower.contains("done with")
@@ -73,6 +67,12 @@ impl IntentParser {
             || utterance_lower.contains("task is done")
         {
             IntentType::CompleteTask
+        } else if utterance_lower.contains("starting")
+            || utterance_lower.contains("begin work")
+            || utterance_lower.contains("working on")
+            || (utterance_lower.contains("start") && utterance_lower.contains("task"))
+        {
+            IntentType::StartWork
         } else if utterance_lower.contains("move") || utterance_lower.contains("change") {
             if utterance_lower.contains("ready") || utterance_lower.contains("status") {
                 IntentType::UpdateStatus

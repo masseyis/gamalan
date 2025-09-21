@@ -351,13 +351,15 @@ impl TeamRepository for TeamRepositoryImpl {
 
         sqlx::query(
             r#"
-            INSERT INTO teams (id, name, organization_id, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5)
+            INSERT INTO teams (id, name, organization_id, active_sprint_id, velocity_history, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
             "#,
         )
         .bind(team_id)
         .bind(&request.name)
         .bind(&request.organization_id)
+        .bind(None::<Uuid>)
+        .bind(&Vec::<i32>::new()) // Empty velocity history
         .bind(now)
         .bind(now)
         .execute(&self.pool)
@@ -368,53 +370,120 @@ impl TeamRepository for TeamRepositoryImpl {
             id: team_id,
             name: request.name.clone(),
             organization_id: request.organization_id,
+            active_sprint_id: None,
+            velocity_history: Vec::new(),
             created_at: now,
             updated_at: now,
         })
     }
 
     async fn get_team(&self, team_id: &Uuid) -> Result<Option<Team>, AppError> {
-        let team = sqlx::query_as!(
-            Team,
-            "SELECT id, name, organization_id, created_at, updated_at FROM teams WHERE id = $1",
-            team_id
+        #[derive(sqlx::FromRow)]
+        struct TeamRow {
+            id: Uuid,
+            name: String,
+            organization_id: Uuid,
+            active_sprint_id: Option<Uuid>,
+            velocity_history: Vec<i32>,
+            created_at: chrono::DateTime<chrono::Utc>,
+            updated_at: chrono::DateTime<chrono::Utc>,
+        }
+
+        let team_row = sqlx::query_as::<_, TeamRow>(
+            "SELECT id, name, organization_id, active_sprint_id, velocity_history, created_at, updated_at FROM teams WHERE id = $1"
         )
+        .bind(team_id)
         .fetch_optional(&self.pool)
         .await
         .map_err(|_| AppError::InternalServerError)?;
 
-        Ok(team)
+        if let Some(row) = team_row {
+            Ok(Some(Team {
+                id: row.id,
+                name: row.name,
+                organization_id: row.organization_id,
+                active_sprint_id: row.active_sprint_id,
+                velocity_history: row.velocity_history.into_iter().map(|v| v as u32).collect(),
+                created_at: row.created_at,
+                updated_at: row.updated_at,
+            }))
+        } else {
+            Ok(None)
+        }
     }
 
     async fn get_teams_by_organization(&self, org_id: &Uuid) -> Result<Vec<Team>, AppError> {
-        let teams = sqlx::query_as!(
-            Team,
-            "SELECT id, name, organization_id, created_at, updated_at FROM teams WHERE organization_id = $1 ORDER BY name",
-            org_id
+        #[derive(sqlx::FromRow)]
+        struct TeamRow {
+            id: Uuid,
+            name: String,
+            organization_id: Uuid,
+            active_sprint_id: Option<Uuid>,
+            velocity_history: Vec<i32>,
+            created_at: chrono::DateTime<chrono::Utc>,
+            updated_at: chrono::DateTime<chrono::Utc>,
+        }
+
+        let team_rows = sqlx::query_as::<_, TeamRow>(
+            "SELECT id, name, organization_id, active_sprint_id, velocity_history, created_at, updated_at FROM teams WHERE organization_id = $1 ORDER BY name"
         )
+        .bind(org_id)
         .fetch_all(&self.pool)
         .await
         .map_err(|_| AppError::InternalServerError)?;
+
+        let teams = team_rows
+            .into_iter()
+            .map(|row| Team {
+                id: row.id,
+                name: row.name,
+                organization_id: row.organization_id,
+                active_sprint_id: row.active_sprint_id,
+                velocity_history: row.velocity_history.into_iter().map(|v| v as u32).collect(),
+                created_at: row.created_at,
+                updated_at: row.updated_at,
+            })
+            .collect();
 
         Ok(teams)
     }
 
     async fn add_team_member(
         &self,
+        team_id: &Uuid,
         request: &AddTeamMemberRequest,
     ) -> Result<TeamMembership, AppError> {
         let membership_id = Uuid::new_v4();
         let now = Utc::now();
 
+        let role_str = match request.role {
+            crate::domain::user::UserRole::Sponsor => "sponsor",
+            crate::domain::user::UserRole::ProductOwner => "product_owner",
+            crate::domain::user::UserRole::ManagingContributor => "managing_contributor",
+            crate::domain::user::UserRole::Contributor => "contributor",
+        };
+
+        let specialty_str = request.specialty.as_ref().map(|s| match s {
+            crate::domain::user::ContributorSpecialty::Frontend => "frontend",
+            crate::domain::user::ContributorSpecialty::Backend => "backend",
+            crate::domain::user::ContributorSpecialty::Fullstack => "fullstack",
+            crate::domain::user::ContributorSpecialty::QA => "qa",
+            crate::domain::user::ContributorSpecialty::DevOps => "devops",
+            crate::domain::user::ContributorSpecialty::UXDesigner => "ux_designer",
+        });
+
         sqlx::query(
             r#"
-            INSERT INTO team_memberships (id, team_id, user_id, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5)
+            INSERT INTO team_memberships (id, team_id, user_id, role, specialty, is_active, joined_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             "#,
         )
         .bind(membership_id)
-        .bind(&request.team_id)
+        .bind(team_id)
         .bind(&request.user_id)
+        .bind(role_str)
+        .bind(specialty_str)
+        .bind(true)
         .bind(now)
         .bind(now)
         .execute(&self.pool)
@@ -423,43 +492,246 @@ impl TeamRepository for TeamRepositoryImpl {
 
         Ok(TeamMembership {
             id: membership_id,
-            team_id: request.team_id,
+            team_id: *team_id,
             user_id: request.user_id,
-            created_at: now,
+            role: request.role.clone(),
+            specialty: request.specialty.clone(),
+            is_active: true,
+            joined_at: now,
             updated_at: now,
         })
     }
 
-    async fn get_team_members(&self, team_id: &Uuid) -> Result<Vec<TeamMembership>, AppError> {
-        let memberships = sqlx::query_as!(
-            TeamMembership,
-            "SELECT id, team_id, user_id, created_at, updated_at FROM team_memberships WHERE team_id = $1",
-            team_id
+    async fn get_team_members(
+        &self,
+        team_id: &Uuid,
+    ) -> Result<Vec<(User, TeamMembership)>, AppError> {
+        // This would need a proper JOIN query to get both User and TeamMembership
+        // For now, implementing a simplified version
+        #[derive(sqlx::FromRow)]
+        struct TeamMembershipRow {
+            id: Uuid,
+            team_id: Uuid,
+            user_id: Uuid,
+            role: String,
+            specialty: Option<String>,
+            is_active: bool,
+            joined_at: chrono::DateTime<chrono::Utc>,
+            updated_at: chrono::DateTime<chrono::Utc>,
+        }
+
+        let membership_rows = sqlx::query_as::<_, TeamMembershipRow>(
+            "SELECT id, team_id, user_id, role, specialty, is_active, joined_at, updated_at FROM team_memberships WHERE team_id = $1"
         )
+        .bind(team_id)
         .fetch_all(&self.pool)
         .await
         .map_err(|_| AppError::InternalServerError)?;
 
-        Ok(memberships)
+        let mut memberships = Vec::new();
+        for row in membership_rows {
+            let role = match row.role.as_str() {
+                "sponsor" => crate::domain::user::UserRole::Sponsor,
+                "product_owner" => crate::domain::user::UserRole::ProductOwner,
+                "managing_contributor" => crate::domain::user::UserRole::ManagingContributor,
+                "contributor" => crate::domain::user::UserRole::Contributor,
+                _ => crate::domain::user::UserRole::Contributor,
+            };
+
+            let specialty = row.specialty.map(|s| match s.as_str() {
+                "frontend" => crate::domain::user::ContributorSpecialty::Frontend,
+                "backend" => crate::domain::user::ContributorSpecialty::Backend,
+                "fullstack" => crate::domain::user::ContributorSpecialty::Fullstack,
+                "qa" => crate::domain::user::ContributorSpecialty::QA,
+                "devops" => crate::domain::user::ContributorSpecialty::DevOps,
+                "ux_designer" => crate::domain::user::ContributorSpecialty::UXDesigner,
+                _ => crate::domain::user::ContributorSpecialty::Fullstack,
+            });
+
+            memberships.push(TeamMembership {
+                id: row.id,
+                team_id: row.team_id,
+                user_id: row.user_id,
+                role,
+                specialty,
+                is_active: row.is_active,
+                joined_at: row.joined_at,
+                updated_at: row.updated_at,
+            });
+        }
+
+        // For each membership, fetch the user
+        let mut results = Vec::new();
+        for membership in memberships {
+            // This is a simplified implementation - in practice you'd use a JOIN
+            let user = sqlx::query_as::<_, UserDb>(
+                "SELECT id, external_id, email, role, specialty, created_at, updated_at FROM users WHERE id = $1"
+            )
+            .bind(membership.user_id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|_| AppError::InternalServerError)?;
+
+            if let Some(user_db) = user {
+                results.push((user_db.into(), membership));
+            }
+        }
+
+        Ok(results)
     }
 
-    async fn get_user_teams(&self, user_id: &Uuid) -> Result<Vec<Team>, AppError> {
-        let teams = sqlx::query_as!(
-            Team,
-            r#"
-            SELECT t.id, t.name, t.organization_id, t.created_at, t.updated_at
-            FROM teams t
-            INNER JOIN team_memberships tm ON t.id = tm.team_id
-            WHERE tm.user_id = $1
-            ORDER BY t.name
-            "#,
-            user_id
+    async fn get_user_teams(
+        &self,
+        user_id: &Uuid,
+    ) -> Result<Vec<(Team, TeamMembership)>, AppError> {
+        // Get team memberships for user
+        #[derive(sqlx::FromRow)]
+        struct TeamMembershipRow {
+            id: Uuid,
+            team_id: Uuid,
+            user_id: Uuid,
+            role: String,
+            specialty: Option<String>,
+            is_active: bool,
+            joined_at: chrono::DateTime<chrono::Utc>,
+            updated_at: chrono::DateTime<chrono::Utc>,
+        }
+
+        let membership_rows = sqlx::query_as::<_, TeamMembershipRow>(
+            "SELECT id, team_id, user_id, role, specialty, is_active, joined_at, updated_at FROM team_memberships WHERE user_id = $1"
         )
+        .bind(user_id)
         .fetch_all(&self.pool)
         .await
         .map_err(|_| AppError::InternalServerError)?;
 
-        Ok(teams)
+        // For each membership, fetch the team
+        let mut results = Vec::new();
+        for membership_row in membership_rows {
+            #[derive(sqlx::FromRow)]
+            struct TeamRow {
+                id: Uuid,
+                name: String,
+                organization_id: Uuid,
+                active_sprint_id: Option<Uuid>,
+                velocity_history: Vec<i32>,
+                created_at: chrono::DateTime<chrono::Utc>,
+                updated_at: chrono::DateTime<chrono::Utc>,
+            }
+
+            let team_row = sqlx::query_as::<_, TeamRow>(
+                "SELECT id, name, organization_id, active_sprint_id, velocity_history, created_at, updated_at FROM teams WHERE id = $1"
+            )
+            .bind(membership_row.team_id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|_| AppError::InternalServerError)?;
+
+            if let Some(team_row) = team_row {
+                let team = Team {
+                    id: team_row.id,
+                    name: team_row.name,
+                    organization_id: team_row.organization_id,
+                    active_sprint_id: team_row.active_sprint_id,
+                    velocity_history: team_row
+                        .velocity_history
+                        .into_iter()
+                        .map(|v| v as u32)
+                        .collect(),
+                    created_at: team_row.created_at,
+                    updated_at: team_row.updated_at,
+                };
+
+                let role = match membership_row.role.as_str() {
+                    "sponsor" => crate::domain::user::UserRole::Sponsor,
+                    "product_owner" => crate::domain::user::UserRole::ProductOwner,
+                    "managing_contributor" => crate::domain::user::UserRole::ManagingContributor,
+                    "contributor" => crate::domain::user::UserRole::Contributor,
+                    _ => crate::domain::user::UserRole::Contributor,
+                };
+
+                let specialty = membership_row.specialty.map(|s| match s.as_str() {
+                    "frontend" => crate::domain::user::ContributorSpecialty::Frontend,
+                    "backend" => crate::domain::user::ContributorSpecialty::Backend,
+                    "fullstack" => crate::domain::user::ContributorSpecialty::Fullstack,
+                    "qa" => crate::domain::user::ContributorSpecialty::QA,
+                    "devops" => crate::domain::user::ContributorSpecialty::DevOps,
+                    "ux_designer" => crate::domain::user::ContributorSpecialty::UXDesigner,
+                    _ => crate::domain::user::ContributorSpecialty::Fullstack,
+                });
+
+                let membership = TeamMembership {
+                    id: membership_row.id,
+                    team_id: membership_row.team_id,
+                    user_id: membership_row.user_id,
+                    role,
+                    specialty,
+                    is_active: membership_row.is_active,
+                    joined_at: membership_row.joined_at,
+                    updated_at: membership_row.updated_at,
+                };
+
+                results.push((team, membership));
+            }
+        }
+
+        Ok(results)
+    }
+
+    async fn update_team(&self, team: &Team) -> Result<(), AppError> {
+        sqlx::query(
+            r#"
+            UPDATE teams
+            SET name = $2, updated_at = $3
+            WHERE id = $1
+            "#,
+        )
+        .bind(team.id)
+        .bind(&team.name)
+        .bind(team.updated_at)
+        .execute(&self.pool)
+        .await
+        .map_err(|_| AppError::InternalServerError)?;
+
+        Ok(())
+    }
+
+    async fn delete_team(&self, id: &Uuid) -> Result<(), AppError> {
+        sqlx::query("DELETE FROM teams WHERE id = $1")
+            .bind(id)
+            .execute(&self.pool)
+            .await
+            .map_err(|_| AppError::InternalServerError)?;
+
+        Ok(())
+    }
+
+    async fn remove_team_member(&self, team_id: &Uuid, user_id: &Uuid) -> Result<(), AppError> {
+        sqlx::query("DELETE FROM team_memberships WHERE team_id = $1 AND user_id = $2")
+            .bind(team_id)
+            .bind(user_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|_| AppError::InternalServerError)?;
+
+        Ok(())
+    }
+
+    async fn update_team_member(&self, membership: &TeamMembership) -> Result<(), AppError> {
+        sqlx::query(
+            r#"
+            UPDATE team_memberships
+            SET updated_at = $2
+            WHERE id = $1
+            "#,
+        )
+        .bind(membership.id)
+        .bind(membership.updated_at)
+        .execute(&self.pool)
+        .await
+        .map_err(|_| AppError::InternalServerError)?;
+
+        Ok(())
     }
 }
 
@@ -481,14 +753,16 @@ impl SprintRepository for SprintRepositoryImpl {
 
         sqlx::query(
             r#"
-            INSERT INTO sprints (id, name, team_id, start_date, end_date, status,
-                               committed_story_points, completed_story_points, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            INSERT INTO sprints (id, name, team_id, goal, capacity_points, start_date, end_date, status,
+                               committed_points, completed_points, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
             "#,
         )
         .bind(sprint_id)
         .bind(&request.name)
         .bind(&request.team_id)
+        .bind(&request.goal)
+        .bind(request.capacity_points as i32)
         .bind(&request.start_date)
         .bind(&request.end_date)
         .bind("planning")
@@ -504,12 +778,13 @@ impl SprintRepository for SprintRepositoryImpl {
             id: sprint_id,
             name: request.name.clone(),
             team_id: request.team_id,
-            goal: "".to_string(), // TODO: Add goal field to database
+            goal: request.goal.clone(),
+            capacity_points: request.capacity_points,
             start_date: request.start_date,
             end_date: request.end_date,
             status: crate::domain::sprint::SprintStatus::Planning,
-            committed_story_points: 0,
-            completed_story_points: 0,
+            committed_points: 0,
+            completed_points: 0,
             created_at: now,
             updated_at: now,
         })
@@ -521,17 +796,19 @@ impl SprintRepository for SprintRepositoryImpl {
             id: Uuid,
             name: String,
             team_id: Uuid,
+            goal: String,
+            capacity_points: i32,
             start_date: chrono::DateTime<chrono::Utc>,
             end_date: chrono::DateTime<chrono::Utc>,
             status: String,
-            committed_story_points: i32,
-            completed_story_points: i32,
+            committed_points: i32,
+            completed_points: i32,
             created_at: chrono::DateTime<chrono::Utc>,
             updated_at: chrono::DateTime<chrono::Utc>,
         }
 
         let sprint_row = sqlx::query_as::<_, SprintRow>(
-            "SELECT id, name, team_id, start_date, end_date, status, committed_story_points, completed_story_points, created_at, updated_at FROM sprints WHERE id = $1"
+            "SELECT id, name, team_id, goal, capacity_points, start_date, end_date, status, committed_points, completed_points, created_at, updated_at FROM sprints WHERE id = $1"
         )
         .bind(sprint_id)
         .fetch_optional(&self.pool)
@@ -551,12 +828,13 @@ impl SprintRepository for SprintRepositoryImpl {
                 id: row.id,
                 name: row.name,
                 team_id: row.team_id,
-                goal: "".to_string(), // TODO: Add goal field to database
+                goal: row.goal,
+                capacity_points: row.capacity_points as u32,
                 start_date: row.start_date,
                 end_date: row.end_date,
                 status,
-                committed_story_points: row.committed_story_points as u32,
-                completed_story_points: row.completed_story_points as u32,
+                committed_points: row.committed_points as u32,
+                completed_points: row.completed_points as u32,
                 created_at: row.created_at,
                 updated_at: row.updated_at,
             }))
@@ -571,17 +849,19 @@ impl SprintRepository for SprintRepositoryImpl {
             id: Uuid,
             name: String,
             team_id: Uuid,
+            goal: String,
+            capacity_points: i32,
             start_date: chrono::DateTime<chrono::Utc>,
             end_date: chrono::DateTime<chrono::Utc>,
             status: String,
-            committed_story_points: i32,
-            completed_story_points: i32,
+            committed_points: i32,
+            completed_points: i32,
             created_at: chrono::DateTime<chrono::Utc>,
             updated_at: chrono::DateTime<chrono::Utc>,
         }
 
         let sprint_rows = sqlx::query_as::<_, SprintRow>(
-            "SELECT id, name, team_id, start_date, end_date, status, committed_story_points, completed_story_points, created_at, updated_at FROM sprints WHERE team_id = $1 ORDER BY start_date DESC"
+            "SELECT id, name, team_id, goal, capacity_points, start_date, end_date, status, committed_points, completed_points, created_at, updated_at FROM sprints WHERE team_id = $1 ORDER BY start_date DESC"
         )
         .bind(team_id)
         .fetch_all(&self.pool)
@@ -603,12 +883,13 @@ impl SprintRepository for SprintRepositoryImpl {
                     id: row.id,
                     name: row.name,
                     team_id: row.team_id,
-                    goal: "".to_string(), // TODO: Add goal field to database
+                    goal: row.goal,
+                    capacity_points: row.capacity_points as u32,
                     start_date: row.start_date,
                     end_date: row.end_date,
                     status,
-                    committed_story_points: row.committed_story_points as u32,
-                    completed_story_points: row.completed_story_points as u32,
+                    committed_points: row.committed_points as u32,
+                    completed_points: row.completed_points as u32,
                     created_at: row.created_at,
                     updated_at: row.updated_at,
                 }
@@ -624,17 +905,19 @@ impl SprintRepository for SprintRepositoryImpl {
             id: Uuid,
             name: String,
             team_id: Uuid,
+            goal: String,
+            capacity_points: i32,
             start_date: chrono::DateTime<chrono::Utc>,
             end_date: chrono::DateTime<chrono::Utc>,
             status: String,
-            committed_story_points: i32,
-            completed_story_points: i32,
+            committed_points: i32,
+            completed_points: i32,
             created_at: chrono::DateTime<chrono::Utc>,
             updated_at: chrono::DateTime<chrono::Utc>,
         }
 
         let sprint_row = sqlx::query_as::<_, SprintRow>(
-            "SELECT id, name, team_id, start_date, end_date, status, committed_story_points, completed_story_points, created_at, updated_at FROM sprints WHERE team_id = $1 AND status = 'active' LIMIT 1"
+            "SELECT id, name, team_id, goal, capacity_points, start_date, end_date, status, committed_points, completed_points, created_at, updated_at FROM sprints WHERE team_id = $1 AND status = 'active' LIMIT 1"
         )
         .bind(team_id)
         .fetch_optional(&self.pool)
@@ -646,12 +929,13 @@ impl SprintRepository for SprintRepositoryImpl {
                 id: row.id,
                 name: row.name,
                 team_id: row.team_id,
-                goal: "".to_string(), // TODO: Add goal field to database
+                goal: row.goal,
+                capacity_points: row.capacity_points as u32,
                 start_date: row.start_date,
                 end_date: row.end_date,
                 status: crate::domain::sprint::SprintStatus::Active,
-                committed_story_points: row.committed_story_points as u32,
-                completed_story_points: row.completed_story_points as u32,
+                committed_points: row.committed_points as u32,
+                completed_points: row.completed_points as u32,
                 created_at: row.created_at,
                 updated_at: row.updated_at,
             }))
@@ -671,22 +955,34 @@ impl SprintRepository for SprintRepositoryImpl {
         sqlx::query(
             r#"
             UPDATE sprints
-            SET name = $2, start_date = $3, end_date = $4, status = $5,
-                committed_story_points = $6, completed_story_points = $7, updated_at = $8
+            SET name = $2, goal = $3, capacity_points = $4, start_date = $5, end_date = $6, status = $7,
+                committed_points = $8, completed_points = $9, updated_at = $10
             WHERE id = $1
             "#,
         )
         .bind(&sprint.id)
         .bind(&sprint.name)
+        .bind(&sprint.goal)
+        .bind(sprint.capacity_points as i32)
         .bind(&sprint.start_date)
         .bind(&sprint.end_date)
         .bind(status_str)
-        .bind(sprint.committed_story_points as i32)
-        .bind(sprint.completed_story_points as i32)
+        .bind(sprint.committed_points as i32)
+        .bind(sprint.completed_points as i32)
         .bind(Utc::now())
         .execute(&self.pool)
         .await
         .map_err(|_| AppError::InternalServerError)?;
+
+        Ok(())
+    }
+
+    async fn delete_sprint(&self, id: &Uuid) -> Result<(), AppError> {
+        sqlx::query("DELETE FROM sprints WHERE id = $1")
+            .bind(id)
+            .execute(&self.pool)
+            .await
+            .map_err(|_| AppError::InternalServerError)?;
 
         Ok(())
     }

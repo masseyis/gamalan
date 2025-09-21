@@ -30,8 +30,9 @@ pub struct Sprint {
     pub name: String,
     pub goal: String,
     pub status: SprintStatus,
-    pub committed_story_points: u32, // Story points committed to sprint
-    pub completed_story_points: u32, // Story points completed
+    pub capacity_points: u32,  // Total capacity for the sprint
+    pub committed_points: u32, // Story points committed to sprint
+    pub completed_points: u32, // Story points completed
     pub start_date: DateTime<Utc>,
     pub end_date: DateTime<Utc>,
     pub created_at: DateTime<Utc>,

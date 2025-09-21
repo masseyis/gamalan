@@ -28,7 +28,9 @@ async fn setup_test_app(pool: PgPool) -> axum::Router {
     ));
 
     let verifier = Arc::new(Mutex::new(JwtVerifier::new(
+        "https://example.clerk.com/.well-known/jwks.json".to_string(),
         "https://example.clerk.com".to_string(),
+        None,
     )));
 
     axum::Router::new().nest("/api", create_backlog_router(pool, verifier).await)
