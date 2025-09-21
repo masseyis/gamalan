@@ -54,10 +54,10 @@ export default function ProjectDetailPage() {
 
   const storyStats = {
     total: stories?.length || 0,
-    backlog: stories?.filter(s => s.status === 'backlog').length || 0,
-    ready: stories?.filter(s => s.status === 'backlog').length || 0,
-    inProgress: stories?.filter(s => s.status === 'in-progress').length || 0,
-    done: stories?.filter(s => s.status === 'done').length || 0,
+    draft: stories?.filter(s => ['draft', 'needsrefinement'].includes(s.status)).length || 0,
+    ready: stories?.filter(s => s.status === 'ready').length || 0,
+    inProgress: stories?.filter(s => ['committed', 'inprogress', 'taskscomplete', 'deployed'].includes(s.status)).length || 0,
+    done: stories?.filter(s => ['awaitingacceptance', 'accepted'].includes(s.status)).length || 0,
   }
 
   const totalPoints = stories?.reduce((sum, story) => sum + (story.storyPoints || 0), 0) || 0
@@ -164,9 +164,9 @@ export default function ProjectDetailPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       <div className="w-3 h-3 rounded-full bg-gray-400 mr-3"></div>
-                      <span>Backlog</span>
+                      <span>Draft</span>
                     </div>
-                    <Badge variant="secondary">{storyStats.backlog}</Badge>
+                    <Badge variant="secondary">{storyStats.draft}</Badge>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
@@ -209,11 +209,11 @@ export default function ProjectDetailPage() {
                   {stories.slice(0, 5).map((story) => (
                     <div key={story.id} className="flex items-start space-x-3 p-3 rounded-lg border">
                       <div className="flex-shrink-0 mt-1">
-                        {story.status === 'done' ? (
+                        {story.status === 'accepted' ? (
                           <CheckCircle className="h-4 w-4 text-green-500" />
-                        ) : story.status === 'in-progress' ? (
+                        ) : ['committed', 'inprogress', 'taskscomplete', 'deployed'].includes(story.status) ? (
                           <Clock className="h-4 w-4 text-salunga-accent" />
-                        ) : story.status === 'backlog' ? (
+                        ) : story.status === 'ready' ? (
                           <AlertCircle className="h-4 w-4 text-blue-500" />
                         ) : (
                           <div className="w-4 h-4 rounded-full bg-gray-400" />

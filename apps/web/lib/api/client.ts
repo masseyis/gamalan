@@ -95,6 +95,11 @@ class ApiClient {
     return response.data
   }
 
+  async put<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    const response: AxiosResponse<T> = await this.client.put(url, data, config)
+    return response.data
+  }
+
   async patch<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
     const response: AxiosResponse<T> = await this.client.patch(url, data, config)
     return response.data
@@ -136,6 +141,10 @@ export const orchestratorClient = new ApiClient({
   timeout: 15000, // Longer timeout for LLM processing
 })
 
+export const authGatewayClient = new ApiClient({
+  baseURL: process.env.NEXT_PUBLIC_AUTH_GATEWAY_API_URL || 'http://localhost:8000',
+})
+
 // Function to setup authenticated clients (non-hook version)
 export async function setupAuthenticatedClients() {
   if (typeof window === 'undefined') {
@@ -174,6 +183,7 @@ export function useApiClient() {
         readinessClient.setAuthToken(token)
         promptBuilderClient.setAuthToken(token)
         orchestratorClient.setAuthToken(token)
+        authGatewayClient.setAuthToken(token)
       }
     } catch (error) {
       console.error('Failed to get auth token:', error)

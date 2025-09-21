@@ -10,6 +10,8 @@ import { backlogApi } from '@/lib/api/backlog'
 import { useApiClient } from '@/lib/api/client'
 import { useEffect } from 'react'
 import { useUser } from '@clerk/nextjs'
+import { UserGuide, RoleExplanation } from '@/components/ui/user-guide'
+import { useRoles } from '@/components/providers/UserContextProvider'
 
 // Safe wrapper for user data - avoids conditional hook calls
 const getUserData = () => {
@@ -36,6 +38,7 @@ export default function DashboardPage() {
   const { user } = useUserSafe()
   const { isLoaded } = useUser()
   const { setupClients } = useApiClient()
+  const { user: contextUser } = useRoles()
 
   // Load projects
   const { data: projects, isLoading: projectsLoading } = useQuery({
@@ -81,8 +84,8 @@ export default function DashboardPage() {
   let storiesCompleted = 0
 
   if (allStories) {
-    storiesInProgress = allStories.filter(s => s.status === 'in-progress').length
-    storiesCompleted = allStories.filter(s => s.status === 'done').length
+    storiesInProgress = allStories.filter(s => s.status === 'inprogress').length
+    storiesCompleted = allStories.filter(s => s.status === 'accepted').length
   }
 
   const recentProjects = projects?.slice(0, 3) || []
@@ -314,6 +317,14 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* User Guidance Section */}
+        {contextUser && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+            <RoleExplanation role={contextUser.role} />
+            <UserGuide userRole={contextUser.role} context="dashboard" />
+          </div>
+        )}
       </div>
     </div>
   )

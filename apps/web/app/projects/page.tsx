@@ -9,10 +9,13 @@ import { projectsApi } from '@/lib/api/projects'
 import { useApiClient } from '@/lib/api/client'
 import { useEffect, useState } from 'react'
 import { useUser } from '@clerk/nextjs'
+import { useRoles } from '@/components/providers/UserContextProvider'
+import { UserGuide } from '@/components/ui/user-guide'
 
 export default function ProjectsPage() {
   const { isLoaded } = useUser()
   const { setupClients } = useApiClient()
+  const { user } = useRoles()
 
   // Setup authentication for API clients
   useEffect(() => {
@@ -196,6 +199,13 @@ export default function ProjectsPage() {
                 </CardContent>
               </Card>
             ))}
+          </div>
+        )}
+
+        {/* User Guidance Section */}
+        {user && (
+          <div className="mt-12">
+            <UserGuide userRole={user.role} context="projects" />
           </div>
         )}
       </div>
