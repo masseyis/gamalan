@@ -4,6 +4,12 @@ pub use readiness_client::*;
 
 pub struct MockReadinessService;
 
+impl Default for MockReadinessService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MockReadinessService {
     pub fn new() -> Self {
         Self

@@ -357,9 +357,9 @@ impl TeamRepository for TeamRepositoryImpl {
         )
         .bind(team_id)
         .bind(&request.name)
-        .bind(&request.organization_id)
+        .bind(request.organization_id)
         .bind(None::<Uuid>)
-        .bind(&Vec::<i32>::new()) // Empty velocity history
+        .bind(Vec::<i32>::new()) // Empty velocity history
         .bind(now)
         .bind(now)
         .execute(&self.pool)
@@ -480,7 +480,7 @@ impl TeamRepository for TeamRepositoryImpl {
         )
         .bind(membership_id)
         .bind(team_id)
-        .bind(&request.user_id)
+        .bind(request.user_id)
         .bind(role_str)
         .bind(specialty_str)
         .bind(true)
@@ -760,11 +760,11 @@ impl SprintRepository for SprintRepositoryImpl {
         )
         .bind(sprint_id)
         .bind(&request.name)
-        .bind(&request.team_id)
+        .bind(request.team_id)
         .bind(&request.goal)
         .bind(request.capacity_points as i32)
-        .bind(&request.start_date)
-        .bind(&request.end_date)
+        .bind(request.start_date)
+        .bind(request.end_date)
         .bind("planning")
         .bind(0i32)
         .bind(0i32)
@@ -800,6 +800,7 @@ impl SprintRepository for SprintRepositoryImpl {
             capacity_points: i32,
             start_date: chrono::DateTime<chrono::Utc>,
             end_date: chrono::DateTime<chrono::Utc>,
+            #[allow(dead_code)]
             status: String,
             committed_points: i32,
             completed_points: i32,
@@ -853,6 +854,7 @@ impl SprintRepository for SprintRepositoryImpl {
             capacity_points: i32,
             start_date: chrono::DateTime<chrono::Utc>,
             end_date: chrono::DateTime<chrono::Utc>,
+            #[allow(dead_code)]
             status: String,
             committed_points: i32,
             completed_points: i32,
@@ -909,6 +911,7 @@ impl SprintRepository for SprintRepositoryImpl {
             capacity_points: i32,
             start_date: chrono::DateTime<chrono::Utc>,
             end_date: chrono::DateTime<chrono::Utc>,
+            #[allow(dead_code)]
             status: String,
             committed_points: i32,
             completed_points: i32,
@@ -960,12 +963,12 @@ impl SprintRepository for SprintRepositoryImpl {
             WHERE id = $1
             "#,
         )
-        .bind(&sprint.id)
+        .bind(sprint.id)
         .bind(&sprint.name)
         .bind(&sprint.goal)
         .bind(sprint.capacity_points as i32)
-        .bind(&sprint.start_date)
-        .bind(&sprint.end_date)
+        .bind(sprint.start_date)
+        .bind(sprint.end_date)
         .bind(status_str)
         .bind(sprint.committed_points as i32)
         .bind(sprint.completed_points as i32)
