@@ -273,8 +273,9 @@ impl SqlTaskRepository {
 impl TaskRepository for SqlTaskRepository {
     async fn create_task(&self, task: &Task) -> Result<(), AppError> {
         sqlx::query(
-            "INSERT INTO tasks (id, story_id, organization_id, title, description, acceptance_criteria_refs)
-             VALUES ($1, $2, $3, $4, $5, $6)",
+            "INSERT INTO tasks (id, story_id, organization_id, title, description, acceptance_criteria_refs,
+                               status, owner_user_id, estimated_hours, created_at, updated_at, owned_at, completed_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)",
         )
         .bind(task.id)
         .bind(task.story_id)
@@ -282,6 +283,13 @@ impl TaskRepository for SqlTaskRepository {
         .bind(&task.title)
         .bind(&task.description)
         .bind(&task.acceptance_criteria_refs)
+        .bind(task.status.to_string())
+        .bind(task.owner_user_id)
+        .bind(task.estimated_hours.map(|h| h as i32))
+        .bind(task.created_at)
+        .bind(task.updated_at)
+        .bind(task.owned_at)
+        .bind(task.completed_at)
         .execute(&self.pool)
         .await
         .map_err(|_| AppError::InternalServerError)?;
@@ -295,7 +303,9 @@ impl TaskRepository for SqlTaskRepository {
         organization_id: Option<Uuid>,
     ) -> Result<Option<Task>, AppError> {
         let task_row = sqlx::query_as::<_, TaskRow>(
-            "SELECT id, story_id, organization_id, title, description, acceptance_criteria_refs FROM tasks
+            "SELECT id, story_id, organization_id, title, description, acceptance_criteria_refs,
+                    status, owner_user_id, estimated_hours, created_at, updated_at, owned_at, completed_at
+             FROM tasks
              WHERE id = $1 AND (organization_id = $2 OR ($2 IS NULL AND organization_id IS NULL))",
         )
         .bind(id)
@@ -313,7 +323,9 @@ impl TaskRepository for SqlTaskRepository {
         organization_id: Option<Uuid>,
     ) -> Result<Vec<Task>, AppError> {
         let task_rows = sqlx::query_as::<_, TaskRow>(
-            "SELECT id, story_id, organization_id, title, description, acceptance_criteria_refs FROM tasks
+            "SELECT id, story_id, organization_id, title, description, acceptance_criteria_refs,
+                    status, owner_user_id, estimated_hours, created_at, updated_at, owned_at, completed_at
+             FROM tasks
              WHERE story_id = $1 AND (organization_id = $2 OR ($2 IS NULL AND organization_id IS NULL))
              ORDER BY title",
         )
@@ -328,13 +340,21 @@ impl TaskRepository for SqlTaskRepository {
 
     async fn update_task(&self, task: &Task) -> Result<(), AppError> {
         sqlx::query(
-            "UPDATE tasks SET title = $2, description = $3, acceptance_criteria_refs = $4
-             WHERE id = $1 AND (organization_id = $5 OR ($5 IS NULL AND organization_id IS NULL))",
+            "UPDATE tasks SET title = $2, description = $3, acceptance_criteria_refs = $4,
+                             status = $5, owner_user_id = $6, estimated_hours = $7,
+                             updated_at = $8, owned_at = $9, completed_at = $10
+             WHERE id = $1 AND (organization_id = $11 OR ($11 IS NULL AND organization_id IS NULL))",
         )
         .bind(task.id)
         .bind(&task.title)
         .bind(&task.description)
         .bind(&task.acceptance_criteria_refs)
+        .bind(task.status.to_string())
+        .bind(task.owner_user_id)
+        .bind(task.estimated_hours.map(|h| h as i32))
+        .bind(task.updated_at)
+        .bind(task.owned_at)
+        .bind(task.completed_at)
         .bind(task.organization_id)
         .execute(&self.pool)
         .await
@@ -351,5 +371,26 @@ impl TaskRepository for SqlTaskRepository {
             .await
             .map_err(|_| AppError::InternalServerError)?;
         Ok(())
+    }
+
+    async fn get_tasks_by_owner(
+        &self,
+        user_id: Uuid,
+        organization_id: Option<Uuid>,
+    ) -> Result<Vec<Task>, AppError> {
+        let task_rows = sqlx::query_as::<_, TaskRow>(
+            "SELECT id, story_id, organization_id, title, description, acceptance_criteria_refs,
+                    status, owner_user_id, estimated_hours, created_at, updated_at, owned_at, completed_at
+             FROM tasks
+             WHERE owner_user_id = $1 AND (organization_id = $2 OR ($2 IS NULL AND organization_id IS NULL))
+             ORDER BY updated_at DESC",
+        )
+        .bind(user_id)
+        .bind(organization_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|_| AppError::InternalServerError)?;
+
+        Ok(task_rows.into_iter().map(Task::from).collect())
     }
 }

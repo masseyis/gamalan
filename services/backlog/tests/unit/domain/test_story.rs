@@ -19,7 +19,7 @@ mod tests {
         assert_eq!(story.title, "Test Story");
         assert_eq!(story.description, Some("Test description".to_string()));
         assert_eq!(story.project_id, project_id);
-        assert_eq!(story.status, StoryStatus::Ready);
+        assert_eq!(story.status, StoryStatus::Draft);
         assert!(story.labels.is_empty());
         assert!(!story.id.is_nil());
     }
@@ -29,11 +29,16 @@ mod tests {
         let project_id = Uuid::new_v4();
         let mut story = Story::new(project_id, None, "Test".to_string(), None).unwrap();
 
-        story.update_status(StoryStatus::InProgress);
-        assert_eq!(story.status, StoryStatus::InProgress);
+        // Valid transition: Draft -> NeedsRefinement
+        story.update_status(StoryStatus::NeedsRefinement).unwrap();
+        assert_eq!(story.status, StoryStatus::NeedsRefinement);
 
-        story.update_status(StoryStatus::Done);
-        assert_eq!(story.status, StoryStatus::Done);
+        // Valid transition: NeedsRefinement -> Draft
+        story.update_status(StoryStatus::Draft).unwrap();
+        assert_eq!(story.status, StoryStatus::Draft);
+
+        // Invalid transition should fail
+        assert!(story.update_status(StoryStatus::Accepted).is_err());
     }
 
     #[test]
@@ -65,9 +70,12 @@ mod tests {
 
     #[test]
     fn test_story_status_from_str() {
+        assert_eq!(StoryStatus::from_str("draft"), Some(StoryStatus::Draft));
+        assert_eq!(StoryStatus::from_str("Draft"), Some(StoryStatus::Draft));
+        assert_eq!(StoryStatus::from_str("DRAFT"), Some(StoryStatus::Draft));
+
         assert_eq!(StoryStatus::from_str("ready"), Some(StoryStatus::Ready));
         assert_eq!(StoryStatus::from_str("Ready"), Some(StoryStatus::Ready));
-        assert_eq!(StoryStatus::from_str("READY"), Some(StoryStatus::Ready));
 
         assert_eq!(
             StoryStatus::from_str("inprogress"),
@@ -79,10 +87,9 @@ mod tests {
         );
 
         assert_eq!(
-            StoryStatus::from_str("inreview"),
-            Some(StoryStatus::InReview)
+            StoryStatus::from_str("accepted"),
+            Some(StoryStatus::Accepted)
         );
-        assert_eq!(StoryStatus::from_str("done"), Some(StoryStatus::Done));
 
         assert_eq!(StoryStatus::from_str("invalid"), None);
         assert_eq!(StoryStatus::from_str(""), None);
@@ -90,10 +97,11 @@ mod tests {
 
     #[test]
     fn test_story_status_display() {
+        assert_eq!(StoryStatus::Draft.to_string(), "Draft");
         assert_eq!(StoryStatus::Ready.to_string(), "Ready");
         assert_eq!(StoryStatus::InProgress.to_string(), "InProgress");
-        assert_eq!(StoryStatus::InReview.to_string(), "InReview");
-        assert_eq!(StoryStatus::Done.to_string(), "Done");
+        assert_eq!(StoryStatus::Deployed.to_string(), "Deployed");
+        assert_eq!(StoryStatus::Accepted.to_string(), "Accepted");
     }
 
     #[test]

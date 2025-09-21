@@ -1,4 +1,5 @@
-use crate::domain::{Story, StoryStatus, Task};
+use crate::domain::{AcceptanceCriteria, Story, StoryStatus, Task, TaskStatus};
+use chrono::{DateTime, Utc};
 use sqlx::FromRow;
 use uuid::Uuid;
 
@@ -10,11 +11,16 @@ pub struct StoryRow {
     pub title: String,
     pub description: Option<String>,
     pub status: String,
+    pub story_points: Option<i32>, // Using i32 for PostgreSQL compatibility
+    pub sprint_id: Option<Uuid>,
+    pub assigned_to_user_id: Option<Uuid>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<StoryRow> for Story {
     fn from(row: StoryRow) -> Self {
-        let status = StoryStatus::from_str(&row.status).unwrap_or(StoryStatus::Ready);
+        let status = StoryStatus::from_str(&row.status).unwrap_or(StoryStatus::Draft);
         Story {
             id: row.id,
             project_id: row.project_id,
@@ -22,7 +28,13 @@ impl From<StoryRow> for Story {
             title: row.title,
             description: row.description,
             status,
-            labels: Vec::new(), // Labels loaded separately
+            labels: Vec::new(),              // Labels loaded separately
+            acceptance_criteria: Vec::new(), // ACs loaded separately
+            story_points: row.story_points.map(|p| p as u32),
+            sprint_id: row.sprint_id,
+            assigned_to_user_id: row.assigned_to_user_id,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
         }
     }
 }
@@ -35,10 +47,18 @@ pub struct TaskRow {
     pub title: String,
     pub description: Option<String>,
     pub acceptance_criteria_refs: Vec<String>,
+    pub status: String,
+    pub owner_user_id: Option<Uuid>,
+    pub estimated_hours: Option<i32>, // Using i32 for PostgreSQL compatibility
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub owned_at: Option<DateTime<Utc>>,
+    pub completed_at: Option<DateTime<Utc>>,
 }
 
 impl From<TaskRow> for Task {
     fn from(row: TaskRow) -> Self {
+        let status = TaskStatus::from_str(&row.status).unwrap_or(TaskStatus::Available);
         Task {
             id: row.id,
             story_id: row.story_id,
@@ -46,6 +66,35 @@ impl From<TaskRow> for Task {
             title: row.title,
             description: row.description,
             acceptance_criteria_refs: row.acceptance_criteria_refs,
+            status,
+            owner_user_id: row.owner_user_id,
+            estimated_hours: row.estimated_hours.map(|h| h as u32),
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+            owned_at: row.owned_at,
+            completed_at: row.completed_at,
+        }
+    }
+}
+
+#[derive(Debug, FromRow)]
+pub struct AcceptanceCriteriaRow {
+    pub id: Uuid,
+    pub story_id: Uuid,
+    pub description: String,
+    pub given: String,
+    pub when: String,
+    pub then: String,
+}
+
+impl From<AcceptanceCriteriaRow> for AcceptanceCriteria {
+    fn from(row: AcceptanceCriteriaRow) -> Self {
+        AcceptanceCriteria {
+            id: row.id,
+            description: row.description,
+            given: row.given,
+            when: row.when,
+            then: row.then,
         }
     }
 }

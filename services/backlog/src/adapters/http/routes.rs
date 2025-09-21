@@ -1,12 +1,14 @@
 use crate::adapters::http::handlers::{
-    create_story, create_task, delete_story, get_stories_by_project, get_story, get_tasks_by_story,
-    update_story, update_story_status,
+    complete_task_work, create_story, create_task, delete_story, get_available_tasks,
+    get_stories_by_project, get_story, get_tasks_by_story, get_user_owned_tasks,
+    release_task_ownership, set_task_estimate, start_task_work, take_task_ownership, update_story,
+    update_story_status,
 };
 use crate::adapters::integrations::HttpReadinessService;
 use crate::adapters::persistence::{SqlStoryRepository, SqlTaskRepository};
 use crate::application::BacklogUsecases;
 use auth_clerk::JwtVerifier;
-use shuttle_axum::axum::routing::{delete, get, patch, post};
+use shuttle_axum::axum::routing::{delete, get, patch, post, put};
 use sqlx::PgPool;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -43,7 +45,15 @@ pub async fn create_backlog_router(
         .route("/stories/{id}", delete(delete_story))
         .route("/stories/{id}/tasks", post(create_task))
         .route("/stories/{id}/tasks", get(get_tasks_by_story))
+        .route("/stories/{id}/tasks/available", get(get_available_tasks))
         .route("/stories/{id}/status", patch(update_story_status))
+        // Task ownership endpoints
+        .route("/tasks/owned", get(get_user_owned_tasks))
+        .route("/tasks/{task_id}/ownership", put(take_task_ownership))
+        .route("/tasks/{task_id}/ownership", delete(release_task_ownership))
+        .route("/tasks/{task_id}/work/start", post(start_task_work))
+        .route("/tasks/{task_id}/work/complete", post(complete_task_work))
+        .route("/tasks/{task_id}/estimate", patch(set_task_estimate))
         .with_state(usecases)
         .layer(shuttle_axum::axum::Extension(verifier))
 }

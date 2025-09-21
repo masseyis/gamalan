@@ -166,6 +166,9 @@ pub enum AppError {
         context: Box<ErrorContext>,
     },
 
+    #[error("forbidden: {0}")]
+    Forbidden(String),
+
     #[error("rate limit exceeded")]
     RateLimitExceeded,
 
@@ -375,6 +378,14 @@ impl IntoResponse for AppError {
                         debug_info,
                         is_debug,
                     ),
+                )
+            }
+            AppError::Forbidden(msg) => {
+                info!("Forbidden access: {}", msg);
+                (
+                    StatusCode::FORBIDDEN,
+                    "FORBIDDEN".to_string(),
+                    create_error_response("FORBIDDEN", msg, None, None, is_debug),
                 )
             }
             AppError::RateLimitExceeded => {

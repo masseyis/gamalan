@@ -39,6 +39,11 @@ pub trait TaskRepository: Send + Sync {
     async fn update_task(&self, task: &Task) -> Result<(), AppError>;
     #[allow(dead_code)]
     async fn delete_task(&self, id: Uuid, organization_id: Option<Uuid>) -> Result<(), AppError>;
+    async fn get_tasks_by_owner(
+        &self,
+        user_id: Uuid,
+        organization_id: Option<Uuid>,
+    ) -> Result<Vec<Task>, AppError>;
 }
 
 #[async_trait]

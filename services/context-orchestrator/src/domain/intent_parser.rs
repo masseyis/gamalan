@@ -44,8 +44,36 @@ impl IntentParser {
         let utterance_lower = utterance.to_lowercase();
 
         // Simple keyword-based intent detection
-        let intent_type = if utterance_lower.contains("move") || utterance_lower.contains("change")
+        let intent_type = if utterance_lower.contains("i'll take")
+            || utterance_lower.contains("i'm on it")
+            || utterance_lower.contains("i'll work on")
+            || utterance_lower.contains("i'll handle")
+            || utterance_lower.contains("taking this")
+            || utterance_lower.contains("picking up")
+            || (utterance_lower.contains("take") && utterance_lower.contains("ownership"))
         {
+            IntentType::TakeOwnership
+        } else if utterance_lower.contains("release")
+            || utterance_lower.contains("give up")
+            || utterance_lower.contains("drop this")
+            || utterance_lower.contains("can't work on")
+            || utterance_lower.contains("no longer working")
+        {
+            IntentType::ReleaseOwnership
+        } else if utterance_lower.contains("starting")
+            || utterance_lower.contains("begin work")
+            || utterance_lower.contains("working on")
+            || (utterance_lower.contains("start") && utterance_lower.contains("task"))
+        {
+            IntentType::StartWork
+        } else if utterance_lower.contains("completed")
+            || utterance_lower.contains("finished")
+            || utterance_lower.contains("done with")
+            || utterance_lower.contains("completed task")
+            || utterance_lower.contains("task is done")
+        {
+            IntentType::CompleteTask
+        } else if utterance_lower.contains("move") || utterance_lower.contains("change") {
             if utterance_lower.contains("ready") || utterance_lower.contains("status") {
                 IntentType::UpdateStatus
             } else if utterance_lower.contains("sprint") {
@@ -176,7 +204,8 @@ impl IntentParser {
         if let Some(intent) = parsed.get("intent_type").and_then(|v| v.as_str()) {
             match intent {
                 "update_status" | "create_entity" | "delete_entity" | "move_entity"
-                | "get_information" | "generate_pack" | "unknown" => {}
+                | "get_information" | "generate_pack" | "take_ownership" | "release_ownership"
+                | "start_work" | "complete_task" | "assign_task" | "unknown" => {}
                 _ => return Err(AppError::BadRequest("Invalid intent_type".to_string())),
             }
         } else {
@@ -211,6 +240,10 @@ impl IntentParser {
             "update_priority" => Ok(IntentType::UpdatePriority),
             "add_comment" => Ok(IntentType::AddComment),
             "assign_task" => Ok(IntentType::AssignTask),
+            "take_ownership" => Ok(IntentType::TakeOwnership),
+            "release_ownership" => Ok(IntentType::ReleaseOwnership),
+            "start_work" => Ok(IntentType::StartWork),
+            "complete_task" => Ok(IntentType::CompleteTask),
             "generate_report" => Ok(IntentType::GenerateReport),
             "unknown" => Ok(IntentType::Unknown),
             _ => Err(AppError::BadRequest("Invalid intent_type".to_string())),
@@ -317,6 +350,53 @@ mod tests {
             result.parameters.get("title").unwrap(),
             &json!("user login task")
         );
+    }
+
+    #[test]
+    fn test_fallback_heuristic_parse_take_ownership() {
+        let candidates = vec![];
+        let result = IntentParser::fallback_heuristic_parse("I'll take this task", &candidates);
+        assert_eq!(result.intent_type, IntentType::TakeOwnership);
+
+        let result = IntentParser::fallback_heuristic_parse("I'm on it", &candidates);
+        assert_eq!(result.intent_type, IntentType::TakeOwnership);
+
+        let result = IntentParser::fallback_heuristic_parse("taking this task", &candidates);
+        assert_eq!(result.intent_type, IntentType::TakeOwnership);
+    }
+
+    #[test]
+    fn test_fallback_heuristic_parse_release_ownership() {
+        let candidates = vec![];
+        let result =
+            IntentParser::fallback_heuristic_parse("I need to release this task", &candidates);
+        assert_eq!(result.intent_type, IntentType::ReleaseOwnership);
+
+        let result =
+            IntentParser::fallback_heuristic_parse("can't work on this anymore", &candidates);
+        assert_eq!(result.intent_type, IntentType::ReleaseOwnership);
+    }
+
+    #[test]
+    fn test_fallback_heuristic_parse_start_work() {
+        let candidates = vec![];
+        let result =
+            IntentParser::fallback_heuristic_parse("starting work on this task", &candidates);
+        assert_eq!(result.intent_type, IntentType::StartWork);
+
+        let result = IntentParser::fallback_heuristic_parse("begin work", &candidates);
+        assert_eq!(result.intent_type, IntentType::StartWork);
+    }
+
+    #[test]
+    fn test_fallback_heuristic_parse_complete_task() {
+        let candidates = vec![];
+        let result = IntentParser::fallback_heuristic_parse("task is completed", &candidates);
+        assert_eq!(result.intent_type, IntentType::CompleteTask);
+
+        let result =
+            IntentParser::fallback_heuristic_parse("finished working on this", &candidates);
+        assert_eq!(result.intent_type, IntentType::CompleteTask);
     }
 
     #[test]

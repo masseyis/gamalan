@@ -279,6 +279,447 @@ async fn test_invalid_uuid_in_path() {
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 }
 
+// Task ownership integration tests
+#[tokio::test]
+async fn test_task_ownership_workflow_integration() {
+    let app = setup_app().await;
+    let project_id = Uuid::new_v4();
+
+    // Create a story first
+    let story_request = json!({
+        "title": "Test Story for Task Ownership",
+        "description": "Integration test story",
+        "labels": ["integration-test"]
+    });
+
+    let story_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!("/projects/{}/stories", project_id))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer valid-test-token")
+                .header("x-organization-id", "test-org")
+                .header("x-user-id", "test-user")
+                .header("x-context-type", "organization")
+                .body(Body::from(story_request.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(story_response.status(), StatusCode::CREATED);
+    let story_body = hyper::body::to_bytes(story_response.into_body())
+        .await
+        .unwrap();
+    let story_result: serde_json::Value = serde_json::from_slice(&story_body).unwrap();
+    let story_id = story_result["story_id"].as_str().unwrap();
+
+    // Create a task
+    let task_request = json!({
+        "title": "Test Task for Ownership",
+        "description": "Task to test ownership workflow",
+        "acceptance_criteria_refs": ["AC1"]
+    });
+
+    let task_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!("/stories/{}/tasks", story_id))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer valid-test-token")
+                .header("x-organization-id", "test-org")
+                .header("x-user-id", "test-user")
+                .header("x-context-type", "organization")
+                .body(Body::from(task_request.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(task_response.status(), StatusCode::CREATED);
+    let task_body = hyper::body::to_bytes(task_response.into_body())
+        .await
+        .unwrap();
+    let task_result: serde_json::Value = serde_json::from_slice(&task_body).unwrap();
+    let task_id = task_result["task_id"].as_str().unwrap();
+
+    // Test 1: Get available tasks (should include our new task)
+    let available_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri(format!("/stories/{}/tasks/available", story_id))
+                .header("Authorization", "Bearer valid-test-token")
+                .header("x-organization-id", "test-org")
+                .header("x-user-id", "test-user")
+                .header("x-context-type", "organization")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(available_response.status(), StatusCode::OK);
+
+    // Test 2: Take task ownership ("I'm on it")
+    let ownership_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("PUT")
+                .uri(format!("/tasks/{}/ownership", task_id))
+                .header("Authorization", "Bearer valid-test-token")
+                .header("x-organization-id", "test-org")
+                .header("x-user-id", "test-user")
+                .header("x-context-type", "organization")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(ownership_response.status(), StatusCode::OK);
+    let ownership_body = hyper::body::to_bytes(ownership_response.into_body())
+        .await
+        .unwrap();
+    let ownership_result: serde_json::Value = serde_json::from_slice(&ownership_body).unwrap();
+    assert_eq!(ownership_result["success"], true);
+
+    // Test 3: Start work on the task
+    let start_work_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!("/tasks/{}/work/start", task_id))
+                .header("Authorization", "Bearer valid-test-token")
+                .header("x-organization-id", "test-org")
+                .header("x-user-id", "test-user")
+                .header("x-context-type", "organization")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(start_work_response.status(), StatusCode::OK);
+
+    // Test 4: Set task estimate (only owner can do this)
+    let estimate_request = json!({
+        "estimated_hours": 8
+    });
+
+    let estimate_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("PATCH")
+                .uri(format!("/tasks/{}/estimate", task_id))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer valid-test-token")
+                .header("x-organization-id", "test-org")
+                .header("x-user-id", "test-user")
+                .header("x-context-type", "organization")
+                .body(Body::from(estimate_request.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(estimate_response.status(), StatusCode::OK);
+
+    // Test 5: Complete work
+    let complete_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!("/tasks/{}/work/complete", task_id))
+                .header("Authorization", "Bearer valid-test-token")
+                .header("x-organization-id", "test-org")
+                .header("x-user-id", "test-user")
+                .header("x-context-type", "organization")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(complete_response.status(), StatusCode::OK);
+
+    // Test 6: Get user's owned tasks
+    let owned_tasks_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/tasks/owned")
+                .header("Authorization", "Bearer valid-test-token")
+                .header("x-organization-id", "test-org")
+                .header("x-user-id", "test-user")
+                .header("x-context-type", "organization")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(owned_tasks_response.status(), StatusCode::OK);
+    let owned_body = hyper::body::to_bytes(owned_tasks_response.into_body())
+        .await
+        .unwrap();
+    let owned_result: serde_json::Value = serde_json::from_slice(&owned_body).unwrap();
+    assert!(owned_result.as_array().unwrap().len() > 0);
+}
+
+#[tokio::test]
+async fn test_task_ownership_authorization() {
+    let app = setup_app().await;
+    let project_id = Uuid::new_v4();
+
+    // Create story and task as before
+    let story_request = json!({
+        "title": "Authorization Test Story",
+        "description": "Test authorization for task ownership",
+        "labels": ["auth-test"]
+    });
+
+    let story_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!("/projects/{}/stories", project_id))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer valid-test-token")
+                .header("x-organization-id", "test-org")
+                .header("x-user-id", "test-user")
+                .header("x-context-type", "organization")
+                .body(Body::from(story_request.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    let story_body = hyper::body::to_bytes(story_response.into_body())
+        .await
+        .unwrap();
+    let story_result: serde_json::Value = serde_json::from_slice(&story_body).unwrap();
+    let story_id = story_result["story_id"].as_str().unwrap();
+
+    let task_request = json!({
+        "title": "Authorization Test Task",
+        "acceptance_criteria_refs": ["AC1"]
+    });
+
+    let task_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!("/stories/{}/tasks", story_id))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer valid-test-token")
+                .header("x-organization-id", "test-org")
+                .header("x-user-id", "test-user")
+                .header("x-context-type", "organization")
+                .body(Body::from(task_request.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    let task_body = hyper::body::to_bytes(task_response.into_body())
+        .await
+        .unwrap();
+    let task_result: serde_json::Value = serde_json::from_slice(&task_body).unwrap();
+    let task_id = task_result["task_id"].as_str().unwrap();
+
+    // Test: Try to set estimate without owning the task (should fail)
+    let estimate_request = json!({
+        "estimated_hours": 16
+    });
+
+    let estimate_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("PATCH")
+                .uri(format!("/tasks/{}/estimate", task_id))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer valid-test-token")
+                .header("x-organization-id", "test-org")
+                .header("x-user-id", "test-user")
+                .header("x-context-type", "organization")
+                .body(Body::from(estimate_request.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    // Should fail with Forbidden since user doesn't own the task
+    assert_eq!(estimate_response.status(), StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn test_task_ownership_state_transitions() {
+    let app = setup_app().await;
+    let project_id = Uuid::new_v4();
+
+    // Create story and task
+    let story_request = json!({
+        "title": "State Transition Test",
+        "description": "Test task state transitions",
+        "labels": ["state-test"]
+    });
+
+    let story_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!("/projects/{}/stories", project_id))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer valid-test-token")
+                .header("x-organization-id", "test-org")
+                .header("x-user-id", "test-user")
+                .header("x-context-type", "organization")
+                .body(Body::from(story_request.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    let story_body = hyper::body::to_bytes(story_response.into_body())
+        .await
+        .unwrap();
+    let story_result: serde_json::Value = serde_json::from_slice(&story_body).unwrap();
+    let story_id = story_result["story_id"].as_str().unwrap();
+
+    let task_request = json!({
+        "title": "State Test Task",
+        "acceptance_criteria_refs": ["AC1"]
+    });
+
+    let task_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!("/stories/{}/tasks", story_id))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer valid-test-token")
+                .header("x-organization-id", "test-org")
+                .header("x-user-id", "test-user")
+                .header("x-context-type", "organization")
+                .body(Body::from(task_request.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    let task_body = hyper::body::to_bytes(task_response.into_body())
+        .await
+        .unwrap();
+    let task_result: serde_json::Value = serde_json::from_slice(&task_body).unwrap();
+    let task_id = task_result["task_id"].as_str().unwrap();
+
+    // Test ownership workflow: Available → Owned → InProgress → Completed
+
+    // 1. Take ownership
+    let take_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("PUT")
+                .uri(format!("/tasks/{}/ownership", task_id))
+                .header("Authorization", "Bearer valid-test-token")
+                .header("x-organization-id", "test-org")
+                .header("x-user-id", "test-user")
+                .header("x-context-type", "organization")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(take_response.status(), StatusCode::OK);
+
+    // 2. Start work (Owned → InProgress)
+    let start_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!("/tasks/{}/work/start", task_id))
+                .header("Authorization", "Bearer valid-test-token")
+                .header("x-organization-id", "test-org")
+                .header("x-user-id", "test-user")
+                .header("x-context-type", "organization")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(start_response.status(), StatusCode::OK);
+
+    // 3. Complete work (InProgress → Completed)
+    let complete_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!("/tasks/{}/work/complete", task_id))
+                .header("Authorization", "Bearer valid-test-token")
+                .header("x-organization-id", "test-org")
+                .header("x-user-id", "test-user")
+                .header("x-context-type", "organization")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(complete_response.status(), StatusCode::OK);
+
+    // 4. Test that task is no longer available
+    let available_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri(format!("/stories/{}/tasks/available", story_id))
+                .header("Authorization", "Bearer valid-test-token")
+                .header("x-organization-id", "test-org")
+                .header("x-user-id", "test-user")
+                .header("x-context-type", "organization")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(available_response.status(), StatusCode::OK);
+    let available_body = hyper::body::to_bytes(available_response.into_body())
+        .await
+        .unwrap();
+    let available_result: serde_json::Value = serde_json::from_slice(&available_body).unwrap();
+
+    // Completed task should not be in available tasks
+    let task_found = available_result
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|task| task["id"].as_str() == Some(task_id));
+    assert!(!task_found, "Completed task should not be available");
+}
+
 // Property-based test helper for generating valid story data
 use proptest::prelude::*;
 

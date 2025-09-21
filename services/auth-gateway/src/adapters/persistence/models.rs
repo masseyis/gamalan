@@ -1,5 +1,5 @@
 use crate::domain::organization::{MembershipRole, Organization, OrganizationMembership};
-use crate::domain::user::User;
+use crate::domain::user::{ContributorSpecialty, User, UserRole};
 use chrono::{DateTime, Utc};
 use sqlx::FromRow;
 use uuid::Uuid;
@@ -9,16 +9,38 @@ pub struct UserDb {
     pub id: Uuid,
     pub external_id: String,
     pub email: String,
+    pub role: String,
+    pub specialty: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
 
 impl From<UserDb> for User {
     fn from(user_db: UserDb) -> Self {
+        let role = match user_db.role.as_str() {
+            "sponsor" => UserRole::Sponsor,
+            "product_owner" => UserRole::ProductOwner,
+            "managing_contributor" => UserRole::ManagingContributor,
+            "contributor" => UserRole::Contributor,
+            _ => UserRole::Contributor, // default fallback
+        };
+
+        let specialty = user_db.specialty.and_then(|s| match s.as_str() {
+            "frontend" => Some(ContributorSpecialty::Frontend),
+            "backend" => Some(ContributorSpecialty::Backend),
+            "fullstack" => Some(ContributorSpecialty::Fullstack),
+            "qa" => Some(ContributorSpecialty::QA),
+            "devops" => Some(ContributorSpecialty::DevOps),
+            "ux_designer" => Some(ContributorSpecialty::UXDesigner),
+            _ => None,
+        });
+
         Self {
             id: user_db.id,
             external_id: user_db.external_id,
             email: user_db.email,
+            role,
+            specialty,
             created_at: user_db.created_at,
             updated_at: user_db.updated_at,
         }

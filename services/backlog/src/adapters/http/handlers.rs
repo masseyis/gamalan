@@ -49,6 +49,17 @@ pub struct CreateTaskResponse {
     pub task_id: Uuid,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct SetTaskEstimateRequest {
+    pub estimated_hours: Option<u32>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct TaskOwnershipResponse {
+    pub success: bool,
+    pub message: String,
+}
+
 #[derive(Debug, Serialize)]
 pub struct StoryResponse {
     pub id: Uuid,
@@ -79,6 +90,13 @@ pub struct TaskResponse {
     pub title: String,
     pub description: Option<String>,
     pub acceptance_criteria_refs: Vec<String>,
+    pub status: String,
+    pub owner_user_id: Option<Uuid>,
+    pub estimated_hours: Option<u32>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+    pub owned_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub completed_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 impl From<Task> for TaskResponse {
@@ -89,6 +107,13 @@ impl From<Task> for TaskResponse {
             title: task.title,
             description: task.description,
             acceptance_criteria_refs: task.acceptance_criteria_refs,
+            status: task.status.to_string(),
+            owner_user_id: task.owner_user_id,
+            estimated_hours: task.estimated_hours,
+            created_at: task.created_at,
+            updated_at: task.updated_at,
+            owned_at: task.owned_at,
+            completed_at: task.completed_at,
         }
     }
 }
@@ -173,6 +198,143 @@ pub async fn get_tasks_by_story(
         .await?;
     let task_responses: Vec<TaskResponse> = tasks.into_iter().map(TaskResponse::from).collect();
     Ok(Json(task_responses))
+}
+
+pub async fn get_available_tasks(
+    AuthenticatedWithOrg { org_context, .. }: AuthenticatedWithOrg,
+    Path(story_id): Path<Uuid>,
+    State(usecases): State<Arc<BacklogUsecases>>,
+) -> Result<impl IntoResponse, AppError> {
+    let tasks = usecases
+        .get_available_tasks(story_id, org_context.effective_organization_uuid())
+        .await?;
+    let task_responses: Vec<TaskResponse> = tasks.into_iter().map(TaskResponse::from).collect();
+    Ok(Json(task_responses))
+}
+
+pub async fn get_user_owned_tasks(
+    AuthenticatedWithOrg { org_context, auth }: AuthenticatedWithOrg,
+    State(usecases): State<Arc<BacklogUsecases>>,
+) -> Result<impl IntoResponse, AppError> {
+    let user_id = uuid::Uuid::parse_str(&auth.sub)
+        .map_err(|_| AppError::BadRequest("Invalid user ID format".to_string()))?;
+
+    let tasks = usecases
+        .get_user_owned_tasks(user_id, org_context.effective_organization_uuid())
+        .await?;
+    let task_responses: Vec<TaskResponse> = tasks.into_iter().map(TaskResponse::from).collect();
+    Ok(Json(task_responses))
+}
+
+pub async fn take_task_ownership(
+    AuthenticatedWithOrg { org_context, auth }: AuthenticatedWithOrg,
+    Path(task_id): Path<Uuid>,
+    State(usecases): State<Arc<BacklogUsecases>>,
+) -> Result<impl IntoResponse, AppError> {
+    let user_id = uuid::Uuid::parse_str(&auth.sub)
+        .map_err(|_| AppError::BadRequest("Invalid user ID format".to_string()))?;
+
+    usecases
+        .take_task_ownership(task_id, org_context.effective_organization_uuid(), user_id)
+        .await?;
+
+    Ok((
+        StatusCode::OK,
+        Json(TaskOwnershipResponse {
+            success: true,
+            message: "Task ownership taken successfully".to_string(),
+        }),
+    ))
+}
+
+pub async fn release_task_ownership(
+    AuthenticatedWithOrg { org_context, auth }: AuthenticatedWithOrg,
+    Path(task_id): Path<Uuid>,
+    State(usecases): State<Arc<BacklogUsecases>>,
+) -> Result<impl IntoResponse, AppError> {
+    let user_id = uuid::Uuid::parse_str(&auth.sub)
+        .map_err(|_| AppError::BadRequest("Invalid user ID format".to_string()))?;
+
+    usecases
+        .release_task_ownership(task_id, org_context.effective_organization_uuid(), user_id)
+        .await?;
+
+    Ok((
+        StatusCode::OK,
+        Json(TaskOwnershipResponse {
+            success: true,
+            message: "Task ownership released successfully".to_string(),
+        }),
+    ))
+}
+
+pub async fn start_task_work(
+    AuthenticatedWithOrg { org_context, auth }: AuthenticatedWithOrg,
+    Path(task_id): Path<Uuid>,
+    State(usecases): State<Arc<BacklogUsecases>>,
+) -> Result<impl IntoResponse, AppError> {
+    let user_id = uuid::Uuid::parse_str(&auth.sub)
+        .map_err(|_| AppError::BadRequest("Invalid user ID format".to_string()))?;
+
+    usecases
+        .start_task_work(task_id, org_context.effective_organization_uuid(), user_id)
+        .await?;
+
+    Ok((
+        StatusCode::OK,
+        Json(TaskOwnershipResponse {
+            success: true,
+            message: "Task work started successfully".to_string(),
+        }),
+    ))
+}
+
+pub async fn complete_task_work(
+    AuthenticatedWithOrg { org_context, auth }: AuthenticatedWithOrg,
+    Path(task_id): Path<Uuid>,
+    State(usecases): State<Arc<BacklogUsecases>>,
+) -> Result<impl IntoResponse, AppError> {
+    let user_id = uuid::Uuid::parse_str(&auth.sub)
+        .map_err(|_| AppError::BadRequest("Invalid user ID format".to_string()))?;
+
+    usecases
+        .complete_task_work(task_id, org_context.effective_organization_uuid(), user_id)
+        .await?;
+
+    Ok((
+        StatusCode::OK,
+        Json(TaskOwnershipResponse {
+            success: true,
+            message: "Task work completed successfully".to_string(),
+        }),
+    ))
+}
+
+pub async fn set_task_estimate(
+    AuthenticatedWithOrg { org_context, auth }: AuthenticatedWithOrg,
+    Path(task_id): Path<Uuid>,
+    State(usecases): State<Arc<BacklogUsecases>>,
+    Json(payload): Json<SetTaskEstimateRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    let user_id = uuid::Uuid::parse_str(&auth.sub)
+        .map_err(|_| AppError::BadRequest("Invalid user ID format".to_string()))?;
+
+    usecases
+        .set_task_estimate(
+            task_id,
+            org_context.effective_organization_uuid(),
+            user_id,
+            payload.estimated_hours,
+        )
+        .await?;
+
+    Ok((
+        StatusCode::OK,
+        Json(TaskOwnershipResponse {
+            success: true,
+            message: "Task estimate updated successfully".to_string(),
+        }),
+    ))
 }
 
 pub async fn update_story_status(
