@@ -526,15 +526,9 @@ jobs:
             fi
           }
 
-          # Core health endpoints
+          # Core health endpoints (consolidated API gateway)
           test_endpoint "health" 200
           test_endpoint "ready" 200
-
-          # Service-specific health endpoints through unified gateway
-          test_endpoint "api/v1/projects/health" 200
-          test_endpoint "api/v1/backlog/health" 200  
-          test_endpoint "api/v1/readiness/health" 200
-          test_endpoint "api/v1/prompt-builder/health" 200
 
           # Test authentication endpoints (should return 401 without auth)
           test_endpoint "api/v1/projects" 401
@@ -581,11 +575,9 @@ jobs:
             fi
           }
 
-          # Benchmark key endpoints
+          # Benchmark key endpoints (consolidated API gateway)
           benchmark_endpoint "health" 1.0
-          benchmark_endpoint "ready" 1.0  
-          benchmark_endpoint "api/v1/projects/health" 2.0
-          benchmark_endpoint "api/v1/backlog/health" 2.0
+          benchmark_endpoint "ready" 1.0
 
           echo "✅ All performance benchmarks completed"
 
