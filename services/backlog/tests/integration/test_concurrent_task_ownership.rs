@@ -16,6 +16,9 @@ use backlog::adapters::persistence::{SqlStoryRepository, SqlTaskRepository};
 use backlog::application::BacklogUsecases;
 use tokio::sync::Mutex;
 
+// Import the common test setup
+use crate::common::setup_test_db;
+
 async fn setup_test_app(pool: PgPool) -> axum::Router {
     let story_repo = Arc::new(SqlStoryRepository::new(pool.clone()));
     let task_repo = Arc::new(SqlTaskRepository::new(pool.clone()));
@@ -26,11 +29,7 @@ async fn setup_test_app(pool: PgPool) -> axum::Router {
         readiness_service,
     ));
 
-    let verifier = Arc::new(Mutex::new(JwtVerifier::new(
-        "https://example.clerk.com/.well-known/jwks.json".to_string(),
-        "https://example.clerk.com".to_string(),
-        None,
-    )));
+    let verifier = Arc::new(Mutex::new(JwtVerifier::new_test_verifier()));
 
     axum::Router::new().nest("/api", create_backlog_router(pool, verifier).await)
 }
@@ -98,10 +97,9 @@ async fn create_test_task(pool: &PgPool) -> (Uuid, Uuid, Uuid) {
     (org_id, story_id, task_id)
 }
 
-#[sqlx::test]
-async fn test_concurrent_task_ownership_race_condition(
-    pool: PgPool,
-) -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::test]
+async fn test_concurrent_task_ownership_race_condition() -> Result<(), Box<dyn std::error::Error>> {
+    let pool = setup_test_db().await;
     let app = Arc::new(setup_test_app(pool.clone()).await);
     let (org_id, _story_id, task_id) = create_test_task(&pool).await;
 
@@ -120,7 +118,7 @@ async fn test_concurrent_task_ownership_race_condition(
                 .method(Method::PUT)
                 .uri(format!("/api/tasks/{}/ownership", task_id_clone))
                 .header("content-type", "application/json")
-                .header("authorization", format!("Bearer mock-jwt-token-{}", i))
+                .header("authorization", "Bearer valid-test-token")
                 .header("x-organization-id", org_id_clone.to_string())
                 .header("x-user-id", user_id.to_string()) // Mock user ID in header for testing
                 .body(Body::empty())
@@ -169,7 +167,7 @@ async fn test_concurrent_task_ownership_race_condition(
     let get_request = Request::builder()
         .method(Method::GET)
         .uri("/api/tasks/owned")
-        .header("authorization", "Bearer mock-jwt-token")
+        .header("authorization", "Bearer valid-test-token")
         .header("x-organization-id", org_id.to_string())
         .header("x-user-id", winning_user_id.unwrap().to_string())
         .body(Body::empty())?;
@@ -186,10 +184,9 @@ async fn test_concurrent_task_ownership_race_condition(
     Ok(())
 }
 
-#[sqlx::test]
-async fn test_concurrent_task_workflow_operations(
-    pool: PgPool,
-) -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::test]
+async fn test_concurrent_task_workflow_operations() -> Result<(), Box<dyn std::error::Error>> {
+    let pool = setup_test_db().await;
     let app = Arc::new(setup_test_app(pool.clone()).await);
     let (org_id, _story_id, task_id) = create_test_task(&pool).await;
     let user_id = Uuid::new_v4();
@@ -199,7 +196,7 @@ async fn test_concurrent_task_workflow_operations(
         .method(Method::PUT)
         .uri(format!("/api/tasks/{}/ownership", task_id))
         .header("content-type", "application/json")
-        .header("authorization", "Bearer mock-jwt-token")
+        .header("authorization", "Bearer valid-test-token")
         .header("x-organization-id", org_id.to_string())
         .header("x-user-id", user_id.to_string())
         .body(Body::empty())?;
@@ -219,7 +216,7 @@ async fn test_concurrent_task_workflow_operations(
         let request = Request::builder()
             .method(Method::POST)
             .uri(format!("/api/tasks/{}/work/start", task_id_clone))
-            .header("authorization", "Bearer mock-jwt-token")
+            .header("authorization", "Bearer valid-test-token")
             .header("x-organization-id", org_id_clone.to_string())
             .header("x-user-id", user_id_clone.to_string())
             .body(Body::empty())
@@ -239,7 +236,7 @@ async fn test_concurrent_task_workflow_operations(
             .method(Method::PATCH)
             .uri(format!("/api/tasks/{}/estimate", task_id_clone))
             .header("content-type", "application/json")
-            .header("authorization", "Bearer mock-jwt-token")
+            .header("authorization", "Bearer valid-test-token")
             .header("x-organization-id", org_id_clone.to_string())
             .header("x-user-id", user_id_clone.to_string())
             .body(Body::from(
@@ -263,7 +260,7 @@ async fn test_concurrent_task_workflow_operations(
         let request = Request::builder()
             .method(Method::POST)
             .uri(format!("/api/tasks/{}/work/start", task_id_clone))
-            .header("authorization", "Bearer mock-jwt-token")
+            .header("authorization", "Bearer valid-test-token")
             .header("x-organization-id", org_id_clone.to_string())
             .header("x-user-id", other_user_id.to_string())
             .body(Body::empty())
@@ -299,10 +296,9 @@ async fn test_concurrent_task_workflow_operations(
     Ok(())
 }
 
-#[sqlx::test]
-async fn test_high_load_task_creation_and_ownership(
-    pool: PgPool,
-) -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::test]
+async fn test_high_load_task_creation_and_ownership() -> Result<(), Box<dyn std::error::Error>> {
+    let pool = setup_test_db().await;
     let app = Arc::new(setup_test_app(pool.clone()).await);
     let project_id = Uuid::new_v4();
     let org_id = Uuid::new_v4();
@@ -350,7 +346,7 @@ async fn test_high_load_task_creation_and_ownership(
                 .method(Method::POST)
                 .uri(format!("/api/stories/{}/tasks", story_id_clone))
                 .header("content-type", "application/json")
-                .header("authorization", "Bearer mock-jwt-token")
+                .header("authorization", "Bearer valid-test-token")
                 .header("x-organization-id", org_id_clone.to_string())
                 .body(Body::from(
                     json!({
@@ -395,7 +391,7 @@ async fn test_high_load_task_creation_and_ownership(
     let get_available_request = Request::builder()
         .method(Method::GET)
         .uri(format!("/api/stories/{}/tasks/available", story_id))
-        .header("authorization", "Bearer mock-jwt-token")
+        .header("authorization", "Bearer valid-test-token")
         .header("x-organization-id", org_id.to_string())
         .body(Body::empty())?;
 

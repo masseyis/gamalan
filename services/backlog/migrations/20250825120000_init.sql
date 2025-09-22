@@ -1,0 +1,2 @@
+-- Initial setup for backlog service database schema
+-- This is the initial migration required by sqlx

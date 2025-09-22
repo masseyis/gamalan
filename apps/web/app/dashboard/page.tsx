@@ -9,7 +9,17 @@ import { projectsApi } from '@/lib/api/projects'
 import { backlogApi } from '@/lib/api/backlog'
 import { useApiClient } from '@/lib/api/client'
 import { useEffect } from 'react'
-import { useUser } from '@clerk/nextjs'
+// Conditional import for Clerk
+let useUser: any = () => ({ user: null, isLoaded: true })
+
+if (process.env.NEXT_PUBLIC_ENABLE_MOCK_AUTH !== 'true') {
+  try {
+    const clerkNextjs = require('@clerk/nextjs')
+    useUser = clerkNextjs.useUser
+  } catch (error) {
+    console.warn('Clerk not available, using mock authentication')
+  }
+}
 import { UserGuide, RoleExplanation } from '@/components/ui/user-guide'
 import { useRoles } from '@/components/providers/UserContextProvider'
 

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@clerk/nextjs'
 import { usersApi, roleHelpers } from '@/lib/api/users'
 import { teamsApi } from '@/lib/api/teams'
@@ -63,7 +63,7 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
   const isManagingContributor = user?.role === 'managing_contributor'
 
   // Fetch user context data
-  const fetchUserContext = async () => {
+  const fetchUserContext = useCallback(async () => {
     if (!isSignedIn || !isLoaded) {
       setUser(null)
       setTeamMemberships([])
@@ -106,7 +106,7 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [isSignedIn, isLoaded])
 
   // Update user role
   const updateUserRole = async (role: UserRole, specialty?: ContributorSpecialty) => {
@@ -140,7 +140,7 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
   // Fetch context on auth state changes
   useEffect(() => {
     fetchUserContext()
-  }, [isSignedIn, isLoaded])
+  }, [isSignedIn, isLoaded, fetchUserContext])
 
   const contextValue: ExtendedUserContext = {
     user,

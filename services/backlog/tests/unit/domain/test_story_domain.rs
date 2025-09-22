@@ -116,15 +116,41 @@ fn test_story_status_transitions() {
     let project_id = Uuid::new_v4();
     let org_id = Some(Uuid::new_v4());
 
-    let mut story = Story::new(project_id, org_id, "Test Story".to_string(), None).unwrap();
+    let mut story = Story::new(
+        project_id,
+        org_id,
+        "Test Story".to_string(),
+        Some("Test description".to_string()),
+    )
+    .unwrap();
 
     // Draft -> NeedsRefinement
     story.update_status(StoryStatus::NeedsRefinement).unwrap();
     assert_eq!(story.status, StoryStatus::NeedsRefinement);
 
+    // Set up story to meet Ready requirements
+    story.set_story_points(3).unwrap();
+
+    // Add required acceptance criteria (need at least 3)
+    use backlog::domain::AcceptanceCriteria;
+    for i in 1..=3 {
+        let ac = AcceptanceCriteria::new(
+            format!("AC {}", i),
+            format!("given {}", i),
+            format!("when {}", i),
+            format!("then {}", i),
+        )
+        .unwrap();
+        story.add_acceptance_criteria(ac);
+    }
+
     // NeedsRefinement -> Ready
     story.update_status(StoryStatus::Ready).unwrap();
     assert_eq!(story.status, StoryStatus::Ready);
+
+    // Assign to sprint before committing
+    let sprint_id = Uuid::new_v4();
+    story.assign_to_sprint(sprint_id).unwrap();
 
     // Ready -> Committed
     story.update_status(StoryStatus::Committed).unwrap();
@@ -166,7 +192,7 @@ fn test_story_status_invalid_transitions() {
     assert!(result
         .unwrap_err()
         .to_string()
-        .contains("Invalid status transition"));
+        .contains("Cannot transition from"));
 
     // Can't go from Draft to Accepted
     let result = story.update_status(StoryStatus::Accepted);
@@ -174,7 +200,7 @@ fn test_story_status_invalid_transitions() {
     assert!(result
         .unwrap_err()
         .to_string()
-        .contains("Invalid status transition"));
+        .contains("Cannot transition from"));
 }
 
 #[test]
@@ -182,12 +208,34 @@ fn test_story_status_can_go_back_to_draft() {
     let project_id = Uuid::new_v4();
     let org_id = Some(Uuid::new_v4());
 
-    let mut story = Story::new(project_id, org_id, "Test Story".to_string(), None).unwrap();
+    let mut story = Story::new(
+        project_id,
+        org_id,
+        "Test Story".to_string(),
+        Some("Test description".to_string()),
+    )
+    .unwrap();
 
     // Go to NeedsRefinement then back to Draft
     story.update_status(StoryStatus::NeedsRefinement).unwrap();
     story.update_status(StoryStatus::Draft).unwrap();
     assert_eq!(story.status, StoryStatus::Draft);
+
+    // Set up story to meet Ready requirements
+    story.set_story_points(3).unwrap();
+
+    // Add required acceptance criteria (need at least 3)
+    use backlog::domain::AcceptanceCriteria;
+    for i in 1..=3 {
+        let ac = AcceptanceCriteria::new(
+            format!("AC {}", i),
+            format!("given {}", i),
+            format!("when {}", i),
+            format!("then {}", i),
+        )
+        .unwrap();
+        story.add_acceptance_criteria(ac);
+    }
 
     // Go to Ready then back to NeedsRefinement
     story.update_status(StoryStatus::NeedsRefinement).unwrap();
@@ -228,7 +276,13 @@ fn test_task_creation_with_empty_title_fails() {
     let story_id = Uuid::new_v4();
     let org_id = Some(Uuid::new_v4());
 
-    let result = Task::new(story_id, org_id, "".to_string(), None, vec![]);
+    let result = Task::new(
+        story_id,
+        org_id,
+        "".to_string(),
+        None,
+        vec!["AC1".to_string()],
+    );
 
     assert!(result.is_err());
     assert!(result
@@ -243,7 +297,14 @@ fn test_task_ownership_workflow() {
     let org_id = Some(Uuid::new_v4());
     let user_id = Uuid::new_v4();
 
-    let mut task = Task::new(story_id, org_id, "Test Task".to_string(), None, vec![]).unwrap();
+    let mut task = Task::new(
+        story_id,
+        org_id,
+        "Test Task".to_string(),
+        None,
+        vec!["AC1".to_string()],
+    )
+    .unwrap();
 
     // Take ownership
     task.take_ownership(user_id).unwrap();
@@ -268,7 +329,14 @@ fn test_task_ownership_authorization() {
     let user_id = Uuid::new_v4();
     let other_user_id = Uuid::new_v4();
 
-    let mut task = Task::new(story_id, org_id, "Test Task".to_string(), None, vec![]).unwrap();
+    let mut task = Task::new(
+        story_id,
+        org_id,
+        "Test Task".to_string(),
+        None,
+        vec!["AC1".to_string()],
+    )
+    .unwrap();
 
     task.take_ownership(user_id).unwrap();
 
@@ -287,7 +355,7 @@ fn test_task_ownership_authorization() {
     assert!(result
         .unwrap_err()
         .to_string()
-        .contains("Only the task owner can complete work"));
+        .contains("Only the task owner can complete the task"));
 }
 
 #[test]
@@ -296,7 +364,14 @@ fn test_task_estimation_validation() {
     let org_id = Some(Uuid::new_v4());
     let user_id = Uuid::new_v4();
 
-    let mut task = Task::new(story_id, org_id, "Test Task".to_string(), None, vec![]).unwrap();
+    let mut task = Task::new(
+        story_id,
+        org_id,
+        "Test Task".to_string(),
+        None,
+        vec!["AC1".to_string()],
+    )
+    .unwrap();
 
     task.take_ownership(user_id).unwrap();
 
@@ -329,7 +404,14 @@ fn test_task_release_ownership() {
     let org_id = Some(Uuid::new_v4());
     let user_id = Uuid::new_v4();
 
-    let mut task = Task::new(story_id, org_id, "Test Task".to_string(), None, vec![]).unwrap();
+    let mut task = Task::new(
+        story_id,
+        org_id,
+        "Test Task".to_string(),
+        None,
+        vec!["AC1".to_string()],
+    )
+    .unwrap();
 
     task.take_ownership(user_id).unwrap();
     task.set_estimated_hours(Some(8)).unwrap();
@@ -357,7 +439,14 @@ fn test_task_status_transitions() {
     let org_id = Some(Uuid::new_v4());
     let user_id = Uuid::new_v4();
 
-    let mut task = Task::new(story_id, org_id, "Test Task".to_string(), None, vec![]).unwrap();
+    let mut task = Task::new(
+        story_id,
+        org_id,
+        "Test Task".to_string(),
+        None,
+        vec!["AC1".to_string()],
+    )
+    .unwrap();
 
     // Available -> Owned
     task.take_ownership(user_id).unwrap();
@@ -378,7 +467,14 @@ fn test_task_invalid_status_transitions() {
     let org_id = Some(Uuid::new_v4());
     let user_id = Uuid::new_v4();
 
-    let mut task = Task::new(story_id, org_id, "Test Task".to_string(), None, vec![]).unwrap();
+    let mut task = Task::new(
+        story_id,
+        org_id,
+        "Test Task".to_string(),
+        None,
+        vec!["AC1".to_string()],
+    )
+    .unwrap();
 
     // Cannot start work without ownership
     let result = task.start_work(user_id);
@@ -386,7 +482,7 @@ fn test_task_invalid_status_transitions() {
     assert!(result
         .unwrap_err()
         .to_string()
-        .contains("Cannot start work on unowned task"));
+        .contains("Only the task owner can start work"));
 
     // Cannot complete without being in progress
     task.take_ownership(user_id).unwrap();
@@ -395,7 +491,7 @@ fn test_task_invalid_status_transitions() {
     assert!(result
         .unwrap_err()
         .to_string()
-        .contains("Cannot complete task that is not in progress"));
+        .contains("Cannot complete task. Current status: Owned"));
 
     // Cannot take ownership of already owned task
     let other_user_id = Uuid::new_v4();
@@ -404,27 +500,27 @@ fn test_task_invalid_status_transitions() {
     assert!(result
         .unwrap_err()
         .to_string()
-        .contains("Task is already owned"));
+        .contains("Task is not available for ownership. Current status: Owned"));
 }
 
 #[test]
 fn test_story_status_string_conversion() {
-    assert_eq!(StoryStatus::Draft.to_string(), "draft");
-    assert_eq!(StoryStatus::NeedsRefinement.to_string(), "needs_refinement");
-    assert_eq!(StoryStatus::Ready.to_string(), "ready");
-    assert_eq!(StoryStatus::Committed.to_string(), "committed");
-    assert_eq!(StoryStatus::InProgress.to_string(), "in_progress");
-    assert_eq!(StoryStatus::TasksComplete.to_string(), "tasks_complete");
-    assert_eq!(StoryStatus::Deployed.to_string(), "deployed");
+    assert_eq!(StoryStatus::Draft.to_string(), "Draft");
+    assert_eq!(StoryStatus::NeedsRefinement.to_string(), "NeedsRefinement");
+    assert_eq!(StoryStatus::Ready.to_string(), "Ready");
+    assert_eq!(StoryStatus::Committed.to_string(), "Committed");
+    assert_eq!(StoryStatus::InProgress.to_string(), "InProgress");
+    assert_eq!(StoryStatus::TasksComplete.to_string(), "TasksComplete");
+    assert_eq!(StoryStatus::Deployed.to_string(), "Deployed");
     assert_eq!(
         StoryStatus::AwaitingAcceptance.to_string(),
-        "awaiting_acceptance"
+        "AwaitingAcceptance"
     );
-    assert_eq!(StoryStatus::Accepted.to_string(), "accepted");
+    assert_eq!(StoryStatus::Accepted.to_string(), "Accepted");
 
     assert_eq!(StoryStatus::from_str("draft"), Some(StoryStatus::Draft));
     assert_eq!(
-        StoryStatus::from_str("needs_refinement"),
+        StoryStatus::from_str("needsrefinement"),
         Some(StoryStatus::NeedsRefinement)
     );
     assert_eq!(StoryStatus::from_str("ready"), Some(StoryStatus::Ready));
@@ -433,11 +529,11 @@ fn test_story_status_string_conversion() {
         Some(StoryStatus::Committed)
     );
     assert_eq!(
-        StoryStatus::from_str("in_progress"),
+        StoryStatus::from_str("inprogress"),
         Some(StoryStatus::InProgress)
     );
     assert_eq!(
-        StoryStatus::from_str("tasks_complete"),
+        StoryStatus::from_str("taskscomplete"),
         Some(StoryStatus::TasksComplete)
     );
     assert_eq!(
@@ -445,7 +541,7 @@ fn test_story_status_string_conversion() {
         Some(StoryStatus::Deployed)
     );
     assert_eq!(
-        StoryStatus::from_str("awaiting_acceptance"),
+        StoryStatus::from_str("awaitingacceptance"),
         Some(StoryStatus::AwaitingAcceptance)
     );
     assert_eq!(
@@ -457,10 +553,10 @@ fn test_story_status_string_conversion() {
 
 #[test]
 fn test_task_status_string_conversion() {
-    assert_eq!(TaskStatus::Available.to_string(), "available");
-    assert_eq!(TaskStatus::Owned.to_string(), "owned");
-    assert_eq!(TaskStatus::InProgress.to_string(), "in_progress");
-    assert_eq!(TaskStatus::Completed.to_string(), "completed");
+    assert_eq!(TaskStatus::Available.to_string(), "Available");
+    assert_eq!(TaskStatus::Owned.to_string(), "Owned");
+    assert_eq!(TaskStatus::InProgress.to_string(), "InProgress");
+    assert_eq!(TaskStatus::Completed.to_string(), "Completed");
 
     assert_eq!(
         TaskStatus::from_str("available"),
@@ -468,7 +564,7 @@ fn test_task_status_string_conversion() {
     );
     assert_eq!(TaskStatus::from_str("owned"), Some(TaskStatus::Owned));
     assert_eq!(
-        TaskStatus::from_str("in_progress"),
+        TaskStatus::from_str("inprogress"),
         Some(TaskStatus::InProgress)
     );
     assert_eq!(

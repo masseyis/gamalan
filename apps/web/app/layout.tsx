@@ -27,8 +27,24 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  // Fixed middleware configuration
   const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+  const isTestMode = process.env.NEXT_PUBLIC_ENABLE_MOCK_AUTH === 'true'
+
+  // In test mode, don't use ClerkProvider to avoid validation errors
+  if (isTestMode) {
+    return (
+      <html lang="en">
+        <body className={`${inter.variable} ${spaceGrotesk.variable} font-sans`}>
+          <Providers>
+            <Navigation />
+            <main className="min-h-screen">
+              {children}
+            </main>
+          </Providers>
+        </body>
+      </html>
+    )
+  }
 
   return (
     <ClerkProvider

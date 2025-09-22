@@ -106,13 +106,18 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: 'NEXT_PUBLIC_ENABLE_MOCK_AUTH=true pnpm dev',
+    command: 'pnpm dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 300 * 1000, // 5 minutes timeout for server startup in CI
     stderr: 'pipe',
     stdout: 'pipe',
     env: {
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'pk_test_ZXhhbXBsZS5jbGVyay5kZXYK$',
+      CLERK_PUBLISHABLE_KEY: 'pk_test_ZXhhbXBsZS5jbGVyay5kZXYK$',
+      CLERK_SECRET_KEY: 'sk_test_mock_key_for_e2e_testing_purposes_only',
+      E2E_CLERK_USER_USERNAME: 'test@example.com',
+      E2E_CLERK_USER_PASSWORD: 'testpassword123',
       NEXT_PUBLIC_ENABLE_MOCK_AUTH: 'true',
     },
   },

@@ -13,29 +13,8 @@ use uuid::Uuid;
 
 use auth_clerk::JwtVerifier;
 
-async fn setup_test_db() -> PgPool {
-    // For integration tests, use test database
-    let database_url = std::env::var("TEST_DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://postgres:password@localhost:5432/gamalan_test".to_string());
-
-    let pool = PgPool::connect(&database_url)
-        .await
-        .expect("Failed to connect to test database");
-
-    // Run migrations to ensure schema is up to date
-    // sqlx::migrate!("./migrations")
-    //     .run(&pool)
-    //     .await
-    //     .expect("Failed to run migrations");
-    //
-    // // Clean up any existing test data
-    sqlx::query("TRUNCATE TABLE stories, tasks CASCADE")
-        .execute(&pool)
-        .await
-        .ok(); // Ignore errors if tables don't exist
-
-    pool
-}
+// Import the common test setup
+use crate::common::setup_test_db;
 
 async fn setup_app() -> Router {
     let pool = setup_test_db().await;

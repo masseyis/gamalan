@@ -18,19 +18,53 @@ import {
   Zap
 } from 'lucide-react'
 
-import { useUser, useClerk } from '@clerk/nextjs'
-import { OrganizationSwitcher } from '@/components/organization/organization-switcher'
+// Conditional imports for Clerk - only import when not in test mode
+let useUser: any = () => ({ user: null, isSignedIn: false, isLoaded: true })
+let useClerk: any = () => ({ signOut: () => {} })
+let OrganizationSwitcher: any = () => null
+
+// Only import Clerk in non-test environments to avoid validation errors
+if (process.env.NEXT_PUBLIC_ENABLE_MOCK_AUTH !== 'true') {
+  try {
+    const clerkNextjs = require('@clerk/nextjs')
+    useUser = clerkNextjs.useUser
+    useClerk = clerkNextjs.useClerk
+
+    const orgSwitcher = require('@/components/organization/organization-switcher')
+    OrganizationSwitcher = orgSwitcher.OrganizationSwitcher
+  } catch (error) {
+    console.warn('Clerk not available, using mock authentication')
+  }
+}
 
 function ClerkAuthWrapper({ children }: { children: (authData: any) => React.ReactNode }) {
+  const isTestMode = process.env.NEXT_PUBLIC_ENABLE_MOCK_AUTH === 'true'
+
+  // Always call hooks at the top level, but use conditional logic after
   const { user, isSignedIn, isLoaded } = useUser()
   const { signOut } = useClerk()
-  
-  // Wait for Clerk to load
-  if (!isLoaded) {
-    return children({ isSignedIn: false, user: null, signOut: () => {}, loading: true })
+
+  // In test mode, return mock user data
+  if (isTestMode) {
+    const mockUser = {
+      firstName: 'Test',
+      lastName: 'User',
+      emailAddresses: [{ emailAddress: 'test@example.com' }]
+    }
+    return children({ isSignedIn: true, user: mockUser, signOut: () => {}, loading: false })
   }
-  
-  return children({ isSignedIn, user, signOut, loading: false })
+
+  try {
+    // Wait for Clerk to load
+    if (!isLoaded) {
+      return children({ isSignedIn: false, user: null, signOut: () => {}, loading: true })
+    }
+
+    return children({ isSignedIn, user, signOut, loading: false })
+  } catch (error) {
+    // Fallback for when Clerk is not available
+    return children({ isSignedIn: false, user: null, signOut: () => {}, loading: false })
+  }
 }
 
 export function Navigation() {

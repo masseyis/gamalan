@@ -15,6 +15,9 @@ use backlog::adapters::persistence::{SqlStoryRepository, SqlTaskRepository};
 use backlog::application::BacklogUsecases;
 use tokio::sync::Mutex;
 
+// Import the common test setup
+use crate::common::setup_test_db;
+
 async fn setup_test_app(pool: PgPool) -> axum::Router {
     let story_repo = Arc::new(SqlStoryRepository::new(pool.clone()));
     let task_repo = Arc::new(SqlTaskRepository::new(pool.clone()));
@@ -26,11 +29,7 @@ async fn setup_test_app(pool: PgPool) -> axum::Router {
     ));
 
     // Create a mock JWT verifier for testing
-    let verifier = Arc::new(Mutex::new(JwtVerifier::new(
-        "https://example.clerk.com/.well-known/jwks.json".to_string(),
-        "https://example.clerk.com".to_string(),
-        None,
-    )));
+    let verifier = Arc::new(Mutex::new(JwtVerifier::new_test_verifier()));
 
     axum::Router::new().nest("/api", create_backlog_router(pool, verifier).await)
 }
@@ -74,8 +73,9 @@ async fn create_test_project_and_story(pool: &PgPool) -> (Uuid, Uuid) {
     (project_id, story_id)
 }
 
-#[sqlx::test]
-async fn test_story_lifecycle_integration(pool: PgPool) -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::test]
+async fn test_story_lifecycle_integration() -> Result<(), Box<dyn std::error::Error>> {
+    let pool = setup_test_db().await;
     let app = setup_test_app(pool.clone()).await;
     let project_id = Uuid::new_v4();
     let org_id = Uuid::new_v4();
@@ -97,7 +97,7 @@ async fn test_story_lifecycle_integration(pool: PgPool) -> Result<(), Box<dyn st
         .method(Method::POST)
         .uri(format!("/api/projects/{}/stories", project_id))
         .header("content-type", "application/json")
-        .header("authorization", "Bearer mock-jwt-token")
+        .header("authorization", "Bearer valid-test-token")
         .header("x-organization-id", org_id.to_string())
         .body(Body::from(
             json!({
@@ -120,7 +120,7 @@ async fn test_story_lifecycle_integration(pool: PgPool) -> Result<(), Box<dyn st
     let get_request = Request::builder()
         .method(Method::GET)
         .uri(format!("/api/stories/{}", story_id))
-        .header("authorization", "Bearer mock-jwt-token")
+        .header("authorization", "Bearer valid-test-token")
         .header("x-organization-id", org_id.to_string())
         .body(Body::empty())?;
 
@@ -140,7 +140,7 @@ async fn test_story_lifecycle_integration(pool: PgPool) -> Result<(), Box<dyn st
         .method(Method::PATCH)
         .uri(format!("/api/stories/{}/status", story_id))
         .header("content-type", "application/json")
-        .header("authorization", "Bearer mock-jwt-token")
+        .header("authorization", "Bearer valid-test-token")
         .header("x-organization-id", org_id.to_string())
         .body(Body::from(
             json!({
@@ -157,7 +157,7 @@ async fn test_story_lifecycle_integration(pool: PgPool) -> Result<(), Box<dyn st
         .method(Method::PATCH)
         .uri(format!("/api/stories/{}", story_id))
         .header("content-type", "application/json")
-        .header("authorization", "Bearer mock-jwt-token")
+        .header("authorization", "Bearer valid-test-token")
         .header("x-organization-id", org_id.to_string())
         .body(Body::from(
             json!({
@@ -175,7 +175,7 @@ async fn test_story_lifecycle_integration(pool: PgPool) -> Result<(), Box<dyn st
     let get_updated_request = Request::builder()
         .method(Method::GET)
         .uri(format!("/api/stories/{}", story_id))
-        .header("authorization", "Bearer mock-jwt-token")
+        .header("authorization", "Bearer valid-test-token")
         .header("x-organization-id", org_id.to_string())
         .body(Body::empty())?;
 
@@ -200,7 +200,7 @@ async fn test_story_lifecycle_integration(pool: PgPool) -> Result<(), Box<dyn st
     let get_project_stories_request = Request::builder()
         .method(Method::GET)
         .uri(format!("/api/projects/{}/stories", project_id))
-        .header("authorization", "Bearer mock-jwt-token")
+        .header("authorization", "Bearer valid-test-token")
         .header("x-organization-id", org_id.to_string())
         .body(Body::empty())?;
 
@@ -217,7 +217,7 @@ async fn test_story_lifecycle_integration(pool: PgPool) -> Result<(), Box<dyn st
     let delete_request = Request::builder()
         .method(Method::DELETE)
         .uri(format!("/api/stories/{}", story_id))
-        .header("authorization", "Bearer mock-jwt-token")
+        .header("authorization", "Bearer valid-test-token")
         .header("x-organization-id", org_id.to_string())
         .body(Body::empty())?;
 
@@ -228,7 +228,7 @@ async fn test_story_lifecycle_integration(pool: PgPool) -> Result<(), Box<dyn st
     let get_deleted_request = Request::builder()
         .method(Method::GET)
         .uri(format!("/api/stories/{}", story_id))
-        .header("authorization", "Bearer mock-jwt-token")
+        .header("authorization", "Bearer valid-test-token")
         .header("x-organization-id", org_id.to_string())
         .body(Body::empty())?;
 
@@ -238,8 +238,9 @@ async fn test_story_lifecycle_integration(pool: PgPool) -> Result<(), Box<dyn st
     Ok(())
 }
 
-#[sqlx::test]
-async fn test_story_validation_rules(pool: PgPool) -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::test]
+async fn test_story_validation_rules() -> Result<(), Box<dyn std::error::Error>> {
+    let pool = setup_test_db().await;
     let app = setup_test_app(pool.clone()).await;
     let project_id = Uuid::new_v4();
     let org_id = Uuid::new_v4();
@@ -261,7 +262,7 @@ async fn test_story_validation_rules(pool: PgPool) -> Result<(), Box<dyn std::er
         .method(Method::POST)
         .uri(format!("/api/projects/{}/stories", project_id))
         .header("content-type", "application/json")
-        .header("authorization", "Bearer mock-jwt-token")
+        .header("authorization", "Bearer valid-test-token")
         .header("x-organization-id", org_id.to_string())
         .body(Body::from(
             json!({
@@ -280,7 +281,7 @@ async fn test_story_validation_rules(pool: PgPool) -> Result<(), Box<dyn std::er
         .method(Method::POST)
         .uri(format!("/api/projects/{}/stories", project_id))
         .header("content-type", "application/json")
-        .header("authorization", "Bearer mock-jwt-token")
+        .header("authorization", "Bearer valid-test-token")
         .header("x-organization-id", org_id.to_string())
         .body(Body::from(
             json!({
@@ -300,7 +301,7 @@ async fn test_story_validation_rules(pool: PgPool) -> Result<(), Box<dyn std::er
         .method(Method::PATCH)
         .uri(format!("/api/stories/{}/status", story_id))
         .header("content-type", "application/json")
-        .header("authorization", "Bearer mock-jwt-token")
+        .header("authorization", "Bearer valid-test-token")
         .header("x-organization-id", org_id.to_string())
         .body(Body::from(
             json!({
@@ -315,8 +316,9 @@ async fn test_story_validation_rules(pool: PgPool) -> Result<(), Box<dyn std::er
     Ok(())
 }
 
-#[sqlx::test]
-async fn test_story_authorization(pool: PgPool) -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::test]
+async fn test_story_authorization() -> Result<(), Box<dyn std::error::Error>> {
+    let pool = setup_test_db().await;
     let app = setup_test_app(pool.clone()).await;
     let project_id = Uuid::new_v4();
     let org_id = Uuid::new_v4();
@@ -339,7 +341,7 @@ async fn test_story_authorization(pool: PgPool) -> Result<(), Box<dyn std::error
         .method(Method::POST)
         .uri(format!("/api/projects/{}/stories", project_id))
         .header("content-type", "application/json")
-        .header("authorization", "Bearer mock-jwt-token")
+        .header("authorization", "Bearer valid-test-token")
         .header("x-organization-id", org_id.to_string())
         .body(Body::from(
             json!({
@@ -360,7 +362,7 @@ async fn test_story_authorization(pool: PgPool) -> Result<(), Box<dyn std::error
     let unauthorized_request = Request::builder()
         .method(Method::GET)
         .uri(format!("/api/stories/{}", story_id))
-        .header("authorization", "Bearer mock-jwt-token")
+        .header("authorization", "Bearer valid-test-token")
         .header("x-organization-id", other_org_id.to_string())
         .body(Body::empty())?;
 
@@ -372,7 +374,7 @@ async fn test_story_authorization(pool: PgPool) -> Result<(), Box<dyn std::error
         .method(Method::PATCH)
         .uri(format!("/api/stories/{}", story_id))
         .header("content-type", "application/json")
-        .header("authorization", "Bearer mock-jwt-token")
+        .header("authorization", "Bearer valid-test-token")
         .header("x-organization-id", other_org_id.to_string())
         .body(Body::from(
             json!({

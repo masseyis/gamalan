@@ -118,9 +118,9 @@ export const getMockStories = () => [
   {
     id: 'story-1',
     projectId: 'project-1',
-    title: 'User Authentication',
-    description: 'As a user, I want to log in to access the application',
-    status: 'todo',
+    title: 'User Authentication System',
+    description: 'As a user, I want to log in to access the application securely',
+    status: 'Backlog',
     priority: 'high',
     acceptanceCriteria: [
       {
@@ -137,8 +137,8 @@ export const getMockStories = () => [
     id: 'story-2',
     projectId: 'project-1',
     title: 'Project Creation',
-    description: 'As a user, I want to create new projects',
-    status: 'in-progress',
+    description: 'As a user, I want to create new projects to organize my work',
+    status: 'In Progress',
     priority: 'medium',
     acceptanceCriteria: [
       {
@@ -146,6 +146,24 @@ export const getMockStories = () => [
         given: 'I am on the projects page',
         when: 'I click create project',
         then: 'I should see a project creation form'
+      }
+    ],
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z'
+  },
+  {
+    id: 'story-3',
+    projectId: 'project-1',
+    title: 'Story Estimation',
+    description: 'As a product owner, I want to estimate story complexity',
+    status: 'Defined',
+    priority: 'low',
+    acceptanceCriteria: [
+      {
+        id: 'ac-3',
+        given: 'I have a story with acceptance criteria',
+        when: 'I assign story points',
+        then: 'The estimation should be saved'
       }
     ],
     createdAt: '2024-01-01T00:00:00Z',

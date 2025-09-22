@@ -171,6 +171,7 @@ impl Task {
         self.status = TaskStatus::Available;
         self.owner_user_id = None;
         self.owned_at = None;
+        self.estimated_hours = None; // Clear estimate when releasing ownership
         self.updated_at = Utc::now();
         Ok(())
     }

@@ -14,9 +14,9 @@ UPDATE tasks SET
 WHERE created_at IS NULL OR updated_at IS NULL OR status IS NULL;
 
 -- Create indexes for better query performance on frequently accessed patterns
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_stories_status_organization ON stories(status, organization_id);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_tasks_story_owner ON tasks(story_id, owner_user_id) WHERE owner_user_id IS NOT NULL;
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_acceptance_criteria_refs ON tasks USING GIN(acceptance_criteria_refs);
+CREATE INDEX IF NOT EXISTS idx_stories_status_organization ON stories(status, organization_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_story_owner ON tasks(story_id, owner_user_id) WHERE owner_user_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_acceptance_criteria_refs ON tasks USING GIN(acceptance_criteria_refs);
 
 -- Add helpful comments to tables
 COMMENT ON TABLE stories IS 'User stories with opinionated agile workflow - Draft to Accepted progression';
