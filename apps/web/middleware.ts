@@ -1,7 +1,4 @@
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
-import { NextResponse } from 'next/server'
-
-const isPublicRoute = createRouteMatcher(['/'])
+import { NextResponse, NextRequest } from 'next/server'
 
 // Check if we're in test mode
 const isTestMode = () => {
@@ -9,16 +6,26 @@ const isTestMode = () => {
          process.env.NEXT_PUBLIC_ENABLE_MOCK_AUTH === 'true'
 }
 
-export default clerkMiddleware(async (auth, request) => {
-  // In test mode, bypass Clerk authentication
-  if (isTestMode()) {
+// Test mode: simple middleware that bypasses all authentication
+if (isTestMode()) {
+  // Export a simple pass-through middleware for test mode
+  const middleware = (request: NextRequest) => {
     return NextResponse.next()
   }
+  export default middleware
+} else {
+  // Production mode: use Clerk middleware
+  const { clerkMiddleware, createRouteMatcher } = require('@clerk/nextjs/server')
+  const isPublicRoute = createRouteMatcher(['/'])
 
-  if (!isPublicRoute(request)) {
-    await auth.protect()
-  }
-})
+  const middleware = clerkMiddleware(async (auth: any, request: NextRequest) => {
+    if (!isPublicRoute(request)) {
+      await auth.protect()
+    }
+  })
+
+  export default middleware
+}
 
 export const config = {
   matcher: ['/((?!.+\\.[\\w]+$|_next).*)', '/', '/(api|trpc)(.*)'],
