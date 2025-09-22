@@ -10,6 +10,8 @@ use tower_http::{
     trace::TraceLayer,
 };
 
+mod migrations;
+
 use auth_clerk::JwtVerifier;
 use common::init_tracing;
 
@@ -24,6 +26,11 @@ async fn main(
     let pool = PgPool::connect(&db_uri)
         .await
         .context("Failed to connect to database")?;
+
+    // Run all service migrations
+    migrations::run_all_migrations(&pool)
+        .await
+        .context("Failed to run database migrations")?;
 
     // Initialize shared JWT verifier - Use secrets directly
     let clerk_jwks_url = secrets
