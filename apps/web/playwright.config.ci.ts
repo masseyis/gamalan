@@ -47,7 +47,7 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: 'pnpm dev',
+    command: 'NODE_ENV=test pnpm dev',
     url: 'http://localhost:3000',
     reuseExistingServer: false, // Always start fresh in CI
     timeout: 480 * 1000, // 8 minutes timeout for server startup (CI can be slow)
