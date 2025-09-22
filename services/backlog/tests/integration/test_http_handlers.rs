@@ -5,7 +5,6 @@ use axum::{
 };
 use backlog::create_backlog_router;
 use serde_json::json;
-use sqlx::PgPool; // Intentional unused import to test clippy blocking
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tower::util::ServiceExt;

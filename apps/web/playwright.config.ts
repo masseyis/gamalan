@@ -4,20 +4,9 @@ import { defineConfig, devices } from '@playwright/test'
  * @see https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({
-  testDir: './tests',
-  /* Exclude staging tests from default runs (use staging config for those) */
+  testDir: './tests/e2e',
+  /* Run all E2E tests in the e2e directory (staging tests are in separate directory) */
   testMatch: '**/*.spec.ts',
-  testIgnore: [
-    '**/staging-*.spec.ts',
-    '**/production-*.spec.ts',
-    // Skip tests that require full implementation
-    '**/ai-features.spec.ts',
-    '**/backlog-management.spec.ts',
-    '**/story-detail.spec.ts',
-    '**/sprint-board.spec.ts',
-    '**/responsive-design.spec.ts',
-    '**/brand/bran.spec.ts',
-  ],
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -113,12 +102,19 @@ export default defineConfig({
     stderr: 'pipe',
     stdout: 'pipe',
     env: {
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'pk_test_ZXhhbXBsZS5jbGVyay5kZXYK$',
-      CLERK_PUBLISHABLE_KEY: 'pk_test_ZXhhbXBsZS5jbGVyay5kZXYK$',
-      CLERK_SECRET_KEY: 'sk_test_mock_key_for_e2e_testing_purposes_only',
+      ...process.env,
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'pk_test_bW9jay1rZXktZm9yLXRlc3RpbmctcHVycG9zZXMtb25seQ==',
+      CLERK_PUBLISHABLE_KEY: 'pk_test_bW9jay1rZXktZm9yLXRlc3RpbmctcHVycG9zZXMtb25seQ==',
+      CLERK_SECRET_KEY: 'sk_test_bW9jay1rZXktZm9yLXRlc3RpbmctcHVycG9zZXMtb25seQ==',
       E2E_CLERK_USER_USERNAME: 'test@example.com',
       E2E_CLERK_USER_PASSWORD: 'testpassword123',
       NEXT_PUBLIC_ENABLE_MOCK_AUTH: 'true',
+      NEXT_PUBLIC_ENABLE_MOCK_DATA: 'true',
+      NEXT_PUBLIC_PROJECTS_API_URL: 'http://localhost:8001',
+      NEXT_PUBLIC_BACKLOG_API_URL: 'http://localhost:8002',
+      NEXT_PUBLIC_READINESS_API_URL: 'http://localhost:8003',
+      NEXT_PUBLIC_PROMPT_BUILDER_API_URL: 'http://localhost:8004',
+      NEXT_PUBLIC_ENABLE_AI_FEATURES: 'true',
     },
   },
 })

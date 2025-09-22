@@ -56,8 +56,8 @@ export default defineConfig({
     env: {
       ...process.env,
       // Ensure E2E environment variables are passed to dev server
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || '',
-      CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY || '',
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_bW9jay1rZXktZm9yLXRlc3RpbmctcHVycG9zZXMtb25seQ==',
+      CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY || 'sk_test_bW9jay1rZXktZm9yLXRlc3RpbmctcHVycG9zZXMtb25seQ==',
       NEXT_PUBLIC_ENABLE_MOCK_DATA: process.env.NEXT_PUBLIC_ENABLE_MOCK_DATA || 'true',
       NEXT_PUBLIC_ENABLE_MOCK_AUTH: process.env.NEXT_PUBLIC_ENABLE_MOCK_AUTH || 'true',
       NEXT_PUBLIC_PROJECTS_API_URL: process.env.NEXT_PUBLIC_PROJECTS_API_URL || 'http://localhost:8001',
