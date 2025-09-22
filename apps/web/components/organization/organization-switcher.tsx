@@ -1,7 +1,23 @@
 'use client'
 
 import { useState } from 'react'
-import { useOrganization, useOrganizationList, useUser } from '@clerk/nextjs'
+
+// Conditional imports for Clerk - only import when not in test mode
+let useOrganization: any = () => ({ organization: null })
+let useOrganizationList: any = () => ({ userMemberships: null, setActive: null })
+let useUser: any = () => ({ user: null })
+
+// Only import Clerk in non-test environments
+if (process.env.NEXT_PUBLIC_ENABLE_MOCK_AUTH !== 'true') {
+  try {
+    const clerkNextjs = require('@clerk/nextjs')
+    useOrganization = clerkNextjs.useOrganization
+    useOrganizationList = clerkNextjs.useOrganizationList
+    useUser = clerkNextjs.useUser
+  } catch (error) {
+    console.warn('Clerk not available in OrganizationSwitcher, using mock')
+  }
+}
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -24,10 +40,62 @@ import {
 import { CreateOrganizationModal } from './create-organization-modal'
 
 export function OrganizationSwitcher() {
+  const isTestMode = process.env.NEXT_PUBLIC_ENABLE_MOCK_AUTH === 'true'
   const { user } = useUser()
   const { organization } = useOrganization()
   const { userMemberships, setActive } = useOrganizationList()
   const [showCreateModal, setShowCreateModal] = useState(false)
+
+  // In test mode, provide mock data
+  if (isTestMode) {
+    const mockUser = {
+      firstName: 'Test',
+      lastName: 'User',
+      fullName: 'Test User',
+      primaryEmailAddress: { emailAddress: 'test@example.com' },
+      imageUrl: null
+    }
+    const mockOrg = {
+      id: 'mock-org',
+      name: 'Test Organization',
+      membersCount: 5,
+      imageUrl: null
+    }
+
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            className="h-10 justify-between min-w-[200px] bg-white/95 backdrop-blur-sm border-gray-200 hover:bg-gray-50"
+          >
+            <div className="flex items-center gap-3">
+              <Avatar className="h-6 w-6">
+                <AvatarFallback className="text-xs bg-primary text-primary-foreground">
+                  TO
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col items-start">
+                <span className="text-sm font-medium truncate max-w-32">
+                  {mockOrg.name}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {mockOrg.membersCount} members
+                </span>
+              </div>
+            </div>
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-[280px] p-2">
+          <DropdownMenuLabel className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Building2 className="h-4 w-4" />
+            Organizations (Test Mode)
+          </DropdownMenuLabel>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    )
+  }
 
   if (!user) return null
 
