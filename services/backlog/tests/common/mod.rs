@@ -53,16 +53,23 @@ async fn create_test_schema_isolated(pool: &PgPool, schema_name: &str) -> Result
         .execute(pool)
         .await?;
 
-    // Create projects table in the isolated schema
+    // Set search path to our schema for running migrations
+    sqlx::query(&format!("SET search_path TO {}, public", schema_name))
+        .execute(pool)
+        .await?;
+
+    // Use proper migrations instead of manual schema creation
+    // First run projects service migration - create projects table
     sqlx::query(&format!(
         r#"
         CREATE TABLE {}.projects (
             id UUID PRIMARY KEY,
-            organization_id UUID NOT NULL,
             name TEXT NOT NULL,
+            team_id UUID,
+            organization_id UUID,
             description TEXT,
-            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
         );
     "#,
         schema_name
@@ -70,7 +77,22 @@ async fn create_test_schema_isolated(pool: &PgPool, schema_name: &str) -> Result
     .execute(pool)
     .await?;
 
-    // Create stories table
+    // Create project_settings table
+    sqlx::query(&format!(
+        r#"
+        CREATE TABLE {}.project_settings (
+            id UUID PRIMARY KEY,
+            project_id UUID NOT NULL REFERENCES {}.projects(id),
+            estimation_scale TEXT NOT NULL,
+            dor_template JSONB NOT NULL
+        );
+    "#,
+        schema_name, schema_name
+    ))
+    .execute(pool)
+    .await?;
+
+    // Create backlog tables exactly as in the migration
     sqlx::query(&format!(r#"
         CREATE TABLE {}.stories (
             id UUID PRIMARY KEY,
@@ -130,7 +152,33 @@ async fn create_test_schema_isolated(pool: &PgPool, schema_name: &str) -> Result
     .execute(pool)
     .await?;
 
-    // Add constraints (since we start with clean tables, we can add the constraint directly)
+    // Create labels and story_labels tables if needed (from migration)
+    sqlx::query(&format!(
+        r#"
+        CREATE TABLE {}.labels (
+            id UUID PRIMARY KEY,
+            name TEXT NOT NULL UNIQUE
+        );
+    "#,
+        schema_name
+    ))
+    .execute(pool)
+    .await?;
+
+    sqlx::query(&format!(
+        r#"
+        CREATE TABLE {}.story_labels (
+            story_id UUID NOT NULL REFERENCES {}.stories(id),
+            label_id UUID NOT NULL REFERENCES {}.labels(id),
+            PRIMARY KEY (story_id, label_id)
+        );
+    "#,
+        schema_name, schema_name, schema_name
+    ))
+    .execute(pool)
+    .await?;
+
+    // Add constraints
     sqlx::query(&format!(r#"
         ALTER TABLE {}.stories ADD CONSTRAINT stories_status_check
             CHECK (status IN ('draft', 'needsrefinement', 'ready', 'committed', 'inprogress', 'taskscomplete', 'deployed', 'awaitingacceptance', 'accepted'))

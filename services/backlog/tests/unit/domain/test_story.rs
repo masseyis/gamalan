@@ -97,11 +97,11 @@ mod tests {
 
     #[test]
     fn test_story_status_display() {
-        assert_eq!(StoryStatus::Draft.to_string(), "Draft");
-        assert_eq!(StoryStatus::Ready.to_string(), "Ready");
-        assert_eq!(StoryStatus::InProgress.to_string(), "InProgress");
-        assert_eq!(StoryStatus::Deployed.to_string(), "Deployed");
-        assert_eq!(StoryStatus::Accepted.to_string(), "Accepted");
+        assert_eq!(StoryStatus::Draft.to_string(), "draft");
+        assert_eq!(StoryStatus::Ready.to_string(), "ready");
+        assert_eq!(StoryStatus::InProgress.to_string(), "inprogress");
+        assert_eq!(StoryStatus::Deployed.to_string(), "deployed");
+        assert_eq!(StoryStatus::Accepted.to_string(), "accepted");
     }
 
     #[test]

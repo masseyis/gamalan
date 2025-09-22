@@ -505,18 +505,18 @@ fn test_task_invalid_status_transitions() {
 
 #[test]
 fn test_story_status_string_conversion() {
-    assert_eq!(StoryStatus::Draft.to_string(), "Draft");
-    assert_eq!(StoryStatus::NeedsRefinement.to_string(), "NeedsRefinement");
-    assert_eq!(StoryStatus::Ready.to_string(), "Ready");
-    assert_eq!(StoryStatus::Committed.to_string(), "Committed");
-    assert_eq!(StoryStatus::InProgress.to_string(), "InProgress");
-    assert_eq!(StoryStatus::TasksComplete.to_string(), "TasksComplete");
-    assert_eq!(StoryStatus::Deployed.to_string(), "Deployed");
+    assert_eq!(StoryStatus::Draft.to_string(), "draft");
+    assert_eq!(StoryStatus::NeedsRefinement.to_string(), "needsrefinement");
+    assert_eq!(StoryStatus::Ready.to_string(), "ready");
+    assert_eq!(StoryStatus::Committed.to_string(), "committed");
+    assert_eq!(StoryStatus::InProgress.to_string(), "inprogress");
+    assert_eq!(StoryStatus::TasksComplete.to_string(), "taskscomplete");
+    assert_eq!(StoryStatus::Deployed.to_string(), "deployed");
     assert_eq!(
         StoryStatus::AwaitingAcceptance.to_string(),
-        "AwaitingAcceptance"
+        "awaitingacceptance"
     );
-    assert_eq!(StoryStatus::Accepted.to_string(), "Accepted");
+    assert_eq!(StoryStatus::Accepted.to_string(), "accepted");
 
     assert_eq!(StoryStatus::from_str("draft"), Some(StoryStatus::Draft));
     assert_eq!(

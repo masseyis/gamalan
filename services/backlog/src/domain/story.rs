@@ -29,7 +29,7 @@ pub enum StoryStatus {
 impl StoryStatus {
     #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<Self> {
-        match s.to_lowercase().as_str() {
+        match s.to_lowercase().replace('_', "").as_str() {
             "draft" => Some(Self::Draft),
             "needsrefinement" => Some(Self::NeedsRefinement),
             "ready" => Some(Self::Ready),
@@ -90,15 +90,15 @@ impl StoryStatus {
 impl std::fmt::Display for StoryStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Draft => write!(f, "Draft"),
-            Self::NeedsRefinement => write!(f, "NeedsRefinement"),
-            Self::Ready => write!(f, "Ready"),
-            Self::Committed => write!(f, "Committed"),
-            Self::InProgress => write!(f, "InProgress"),
-            Self::TasksComplete => write!(f, "TasksComplete"),
-            Self::Deployed => write!(f, "Deployed"),
-            Self::AwaitingAcceptance => write!(f, "AwaitingAcceptance"),
-            Self::Accepted => write!(f, "Accepted"),
+            Self::Draft => write!(f, "draft"),
+            Self::NeedsRefinement => write!(f, "needsrefinement"),
+            Self::Ready => write!(f, "ready"),
+            Self::Committed => write!(f, "committed"),
+            Self::InProgress => write!(f, "inprogress"),
+            Self::TasksComplete => write!(f, "taskscomplete"),
+            Self::Deployed => write!(f, "deployed"),
+            Self::AwaitingAcceptance => write!(f, "awaitingacceptance"),
+            Self::Accepted => write!(f, "accepted"),
         }
     }
 }

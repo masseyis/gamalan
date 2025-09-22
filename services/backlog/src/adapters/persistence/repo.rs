@@ -1,4 +1,4 @@
-use crate::adapters::persistence::models::{LabelRow, StoryRow, TaskRow};
+use crate::adapters::persistence::models::{StoryRow, TaskRow};
 use crate::application::ports::{StoryRepository, TaskRepository};
 use crate::domain::{Story, Task};
 use async_trait::async_trait;
@@ -15,95 +15,7 @@ impl SqlStoryRepository {
         Self { pool }
     }
 
-    async fn load_labels(&self, story_id: Uuid) -> Result<Vec<String>, sqlx::Error> {
-        let labels: Vec<LabelRow> = sqlx::query_as::<_, LabelRow>(
-            "SELECT l.id, l.name FROM labels l 
-             JOIN story_labels sl ON l.id = sl.label_id 
-             WHERE sl.story_id = $1",
-        )
-        .bind(story_id)
-        .fetch_all(&self.pool)
-        .await?;
-
-        Ok(labels.into_iter().map(|l| l.name).collect())
-    }
-
-    async fn get_or_create_label_id(
-        &self,
-        tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
-        label: &str,
-    ) -> Result<Uuid, AppError> {
-        // First try to get existing label
-        if let Ok(id) = sqlx::query_scalar::<_, Uuid>("SELECT id FROM labels WHERE name = $1")
-            .bind(label)
-            .fetch_one(&mut **tx)
-            .await
-        {
-            return Ok(id);
-        }
-
-        // If not found, create new label
-        let new_id = Uuid::new_v4();
-        sqlx::query("INSERT INTO labels (id, name) VALUES ($1, $2)")
-            .bind(new_id)
-            .bind(label)
-            .execute(&mut **tx)
-            .await
-            .map_err(|_| AppError::InternalServerError)?;
-
-        Ok(new_id)
-    }
-
-    #[allow(dead_code)]
-    async fn get_or_create_label_id_pool(&self, label: &str) -> Result<Uuid, AppError> {
-        // First try to get existing label
-        if let Ok(id) = sqlx::query_scalar::<_, Uuid>("SELECT id FROM labels WHERE name = $1")
-            .bind(label)
-            .fetch_one(&self.pool)
-            .await
-        {
-            return Ok(id);
-        }
-
-        // If not found, create new label
-        let new_id = Uuid::new_v4();
-        sqlx::query("INSERT INTO labels (id, name) VALUES ($1, $2)")
-            .bind(new_id)
-            .bind(label)
-            .execute(&self.pool)
-            .await
-            .map_err(|_| AppError::InternalServerError)?;
-
-        Ok(new_id)
-    }
-
-    #[allow(dead_code)]
-    async fn save_labels(&self, story_id: Uuid, labels: &[String]) -> Result<(), AppError> {
-        // First, clear existing labels
-        sqlx::query("DELETE FROM story_labels WHERE story_id = $1")
-            .bind(story_id)
-            .execute(&self.pool)
-            .await
-            .map_err(|_| AppError::InternalServerError)?;
-
-        // Then insert new labels
-        for label in labels {
-            let label_id = self.get_or_create_label_id_pool(label).await?;
-
-            // Link label to story
-            sqlx::query(
-                "INSERT INTO story_labels (story_id, label_id) VALUES ($1, $2) 
-                 ON CONFLICT DO NOTHING",
-            )
-            .bind(story_id)
-            .bind(label_id)
-            .execute(&self.pool)
-            .await
-            .map_err(|_| AppError::InternalServerError)?;
-        }
-
-        Ok(())
-    }
+    // Labels are now stored as an array in the stories table
 }
 
 #[async_trait]
@@ -116,8 +28,8 @@ impl StoryRepository for SqlStoryRepository {
             .map_err(|_| AppError::InternalServerError)?;
 
         sqlx::query(
-            "INSERT INTO stories (id, project_id, organization_id, title, description, status)
-             VALUES ($1, $2, $3, $4, $5, $6)",
+            "INSERT INTO stories (id, project_id, organization_id, title, description, status, labels, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())",
         )
         .bind(story.id)
         .bind(story.project_id)
@@ -125,21 +37,15 @@ impl StoryRepository for SqlStoryRepository {
         .bind(&story.title)
         .bind(&story.description)
         .bind(story.status.to_string())
+        .bind(&story.labels)
         .execute(&mut *tx)
         .await
-        .map_err(|_| AppError::InternalServerError)?;
+        .map_err(|e| {
+            eprintln!("SQL Error in create_story: {}", e);
+            AppError::InternalServerError
+        })?;
 
-        // Save labels
-        for label in &story.labels {
-            let label_id = self.get_or_create_label_id(&mut tx, label).await?;
-
-            sqlx::query("INSERT INTO story_labels (story_id, label_id) VALUES ($1, $2)")
-                .bind(story.id)
-                .bind(label_id)
-                .execute(&mut *tx)
-                .await
-                .map_err(|_| AppError::InternalServerError)?;
-        }
+        // Labels are now stored as an array in the stories table, no separate handling needed
 
         tx.commit()
             .await
@@ -153,22 +59,21 @@ impl StoryRepository for SqlStoryRepository {
         organization_id: Option<Uuid>,
     ) -> Result<Option<Story>, AppError> {
         let story_row = sqlx::query_as::<_, StoryRow>(
-            "SELECT id, project_id, organization_id, title, description, status FROM stories
+            "SELECT id, project_id, organization_id, title, description, status, labels, story_points, sprint_id, assigned_to_user_id, created_at, updated_at FROM stories
              WHERE id = $1 AND (organization_id = $2 OR ($2 IS NULL AND organization_id IS NULL)) AND deleted_at IS NULL",
         )
         .bind(id)
         .bind(organization_id)
         .fetch_optional(&self.pool)
         .await
-        .map_err(|_| AppError::InternalServerError)?;
+        .map_err(|e| {
+            eprintln!("SQL Error in get_story: {}", e);
+            AppError::InternalServerError
+        })?;
 
         match story_row {
             Some(row) => {
-                let mut story = Story::from(row);
-                story.labels = self
-                    .load_labels(id)
-                    .await
-                    .map_err(|_| AppError::InternalServerError)?;
+                let story = Story::from(row);
                 Ok(Some(story))
             }
             None => Ok(None),
@@ -183,35 +88,18 @@ impl StoryRepository for SqlStoryRepository {
             .map_err(|_| AppError::InternalServerError)?;
 
         sqlx::query(
-            "UPDATE stories SET title = $2, description = $3, status = $4
-             WHERE id = $1 AND (organization_id = $5 OR ($5 IS NULL AND organization_id IS NULL))",
+            "UPDATE stories SET title = $2, description = $3, status = $4, labels = $5, updated_at = NOW()
+             WHERE id = $1 AND (organization_id = $6 OR ($6 IS NULL AND organization_id IS NULL))",
         )
         .bind(story.id)
         .bind(&story.title)
         .bind(&story.description)
         .bind(story.status.to_string())
+        .bind(&story.labels)
         .bind(story.organization_id)
         .execute(&mut *tx)
         .await
         .map_err(|_| AppError::InternalServerError)?;
-
-        // Update labels
-        sqlx::query("DELETE FROM story_labels WHERE story_id = $1")
-            .bind(story.id)
-            .execute(&mut *tx)
-            .await
-            .map_err(|_| AppError::InternalServerError)?;
-
-        for label in &story.labels {
-            let label_id = self.get_or_create_label_id(&mut tx, label).await?;
-
-            sqlx::query("INSERT INTO story_labels (story_id, label_id) VALUES ($1, $2)")
-                .bind(story.id)
-                .bind(label_id)
-                .execute(&mut *tx)
-                .await
-                .map_err(|_| AppError::InternalServerError)?;
-        }
 
         tx.commit()
             .await
@@ -235,7 +123,7 @@ impl StoryRepository for SqlStoryRepository {
         organization_id: Option<Uuid>,
     ) -> Result<Vec<Story>, AppError> {
         let story_rows = sqlx::query_as::<_, StoryRow>(
-            "SELECT id, project_id, organization_id, title, description, status FROM stories
+            "SELECT id, project_id, organization_id, title, description, status, labels, story_points, sprint_id, assigned_to_user_id, created_at, updated_at FROM stories
              WHERE project_id = $1 AND (organization_id = $2 OR ($2 IS NULL AND organization_id IS NULL)) AND deleted_at IS NULL
              ORDER BY title",
         )
@@ -245,16 +133,7 @@ impl StoryRepository for SqlStoryRepository {
         .await
         .map_err(|_| AppError::InternalServerError)?;
 
-        let mut stories = Vec::new();
-        for row in story_rows {
-            let mut story = Story::from(row);
-            story.labels = self
-                .load_labels(story.id)
-                .await
-                .map_err(|_| AppError::InternalServerError)?;
-            stories.push(story);
-        }
-
+        let stories = story_rows.into_iter().map(Story::from).collect();
         Ok(stories)
     }
 }

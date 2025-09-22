@@ -11,6 +11,7 @@ pub struct StoryRow {
     pub title: String,
     pub description: Option<String>,
     pub status: String,
+    pub labels: Vec<String>,
     pub story_points: Option<i32>, // Using i32 for PostgreSQL compatibility
     pub sprint_id: Option<Uuid>,
     pub assigned_to_user_id: Option<Uuid>,
@@ -28,7 +29,7 @@ impl From<StoryRow> for Story {
             title: row.title,
             description: row.description,
             status,
-            labels: Vec::new(),              // Labels loaded separately
+            labels: row.labels,
             acceptance_criteria: Vec::new(), // ACs loaded separately
             story_points: row.story_points.map(|p| p as u32),
             sprint_id: row.sprint_id,
