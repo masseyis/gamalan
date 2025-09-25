@@ -56,15 +56,16 @@ test.describe('Projects', () => {
   test('should show empty state when no projects exist', async ({ page }) => {
     await page.goto('/projects');
 
-    // Wait for page to load
+    // Wait for page to load completely
     await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(2000); // Allow time for API response
 
-    // Look for empty state indicators (more specific text matching)
+    // Look for empty state indicators (exact text from the UI)
     const emptyStateIndicators = [
-      page.locator('text=No projects yet'),
+      page.locator('h3:has-text("No projects yet")'),
       page.locator('text=Create your first project'),
       page.locator('text=Create Your First Project'),
-      page.locator('[data-testid="empty-projects"]')
+      page.locator('button:has-text("Create Your First Project")')
     ];
 
     // Check if any empty state indicator is visible
@@ -81,7 +82,7 @@ test.describe('Projects', () => {
       await expect(page.locator('[data-testid="project-card"]')).toBeVisible();
     } else {
       // Verify we can see the empty state
-      await expect(page.locator('text=No projects yet')).toBeVisible();
+      await expect(page.locator('h3:has-text("No projects yet")')).toBeVisible();
     }
   });
 });

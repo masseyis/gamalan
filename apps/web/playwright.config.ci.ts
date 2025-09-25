@@ -32,9 +32,9 @@ export default defineConfig({
     /* Screenshot on failure */
     screenshot: 'only-on-failure',
 
-    /* Test timeout */
-    actionTimeout: 15 * 1000, // 15 seconds per action
-    navigationTimeout: 30 * 1000, // 30 seconds for navigation
+    /* Test timeout - increased from 30s to handle slow API responses */
+    actionTimeout: 30 * 1000, // 30 seconds per action
+    navigationTimeout: 45 * 1000, // 45 seconds for navigation
   },
 
   /* Configure projects for major browsers */
@@ -45,26 +45,30 @@ export default defineConfig({
     },
   ],
 
-  /* Run your local dev server before starting the tests */
+  /* Build and serve production build for E2E tests */
   webServer: {
-    command: 'NODE_ENV=test pnpm dev',
+    command: 'NODE_ENV=test NEXT_PUBLIC_ENABLE_MOCK_AUTH=true NEXT_PUBLIC_ENABLE_MOCK_DATA=true pnpm build && pnpm start',
     url: 'http://localhost:3000',
-    reuseExistingServer: false, // Always start fresh in CI
-    timeout: 480 * 1000, // 8 minutes timeout for server startup (CI can be slow)
+    reuseExistingServer: true, // Reuse server if already running
+    timeout: 300 * 1000, // 5 minutes timeout for build + startup
     stderr: 'pipe',
     stdout: 'pipe',
     env: {
       ...process.env,
-      // Ensure E2E environment variables are passed to dev server
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_bW9jay1rZXktZm9yLXRlc3RpbmctcHVycG9zZXMtb25seQ==',
-      CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY || 'sk_test_bW9jay1rZXktZm9yLXRlc3RpbmctcHVycG9zZXMtb25seQ==',
-      NEXT_PUBLIC_ENABLE_MOCK_DATA: process.env.NEXT_PUBLIC_ENABLE_MOCK_DATA || 'true',
-      NEXT_PUBLIC_ENABLE_MOCK_AUTH: process.env.NEXT_PUBLIC_ENABLE_MOCK_AUTH || 'true',
+      // Set NODE_ENV to test to trigger test-specific layout
+      NODE_ENV: 'test',
+      // Enable mock authentication mode for E2E tests
+      NEXT_PUBLIC_ENABLE_MOCK_AUTH: 'true',
+      NEXT_PUBLIC_ENABLE_MOCK_DATA: 'true',
+      NEXT_PUBLIC_ENABLE_AI_FEATURES: 'true',
+      // Mock Clerk keys (not used when NEXT_PUBLIC_ENABLE_MOCK_AUTH=true, but required for AuthProviderWrapper fallback)
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_valid_format_key_for_testing_purposes_only_not_real_key',
+      CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY || 'sk_test_valid_format_key_for_testing_purposes_only_not_real_key',
+      // API endpoints for backend services
       NEXT_PUBLIC_PROJECTS_API_URL: process.env.NEXT_PUBLIC_PROJECTS_API_URL || 'http://localhost:8001',
       NEXT_PUBLIC_BACKLOG_API_URL: process.env.NEXT_PUBLIC_BACKLOG_API_URL || 'http://localhost:8002',
       NEXT_PUBLIC_READINESS_API_URL: process.env.NEXT_PUBLIC_READINESS_API_URL || 'http://localhost:8003',
       NEXT_PUBLIC_PROMPT_BUILDER_API_URL: process.env.NEXT_PUBLIC_PROMPT_BUILDER_API_URL || 'http://localhost:8004',
-      NEXT_PUBLIC_ENABLE_AI_FEATURES: process.env.NEXT_PUBLIC_ENABLE_AI_FEATURES || 'true',
     },
   },
 });

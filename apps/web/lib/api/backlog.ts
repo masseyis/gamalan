@@ -1,4 +1,5 @@
 import { backlogClient } from './client'
+import { isTestEnvironment } from '@/lib/auth/test-utils'
 import {
   Story,
   Task,
@@ -16,7 +17,7 @@ import {
 
 // Mock data for demonstration
 const mockStories: Record<string, Story[]> = {
-  'proj-1': [
+  'project-1': [
     {
       id: 'story-1',
       title: 'User Authentication System',
@@ -24,7 +25,7 @@ const mockStories: Record<string, Story[]> = {
       status: 'ready',
       priority: 'high',
       storyPoints: 8,
-      projectId: 'proj-1',
+      projectId: 'project-1',
       labels: ['authentication', 'security'],
       createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
       updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
@@ -36,7 +37,7 @@ const mockStories: Record<string, Story[]> = {
       status: 'inprogress',
       priority: 'high',
       storyPoints: 5,
-      projectId: 'proj-1',
+      projectId: 'project-1',
       labels: ['dashboard', 'metrics'],
       createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
       updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
@@ -48,7 +49,7 @@ const mockStories: Record<string, Story[]> = {
       status: 'accepted',
       priority: 'medium',
       storyPoints: 13,
-      projectId: 'proj-1',
+      projectId: 'project-1',
       labels: ['sprint', 'ui'],
       createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
       updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
@@ -60,13 +61,13 @@ const mockStories: Record<string, Story[]> = {
       status: 'ready',
       priority: 'medium',
       storyPoints: 8,
-      projectId: 'proj-1',
+      projectId: 'project-1',
       labels: ['ai', 'assessment'],
       createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
       updatedAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
     }
   ],
-  'proj-2': [
+  'project-2': [
     {
       id: 'story-5',
       title: 'Mobile App Setup',
@@ -74,7 +75,7 @@ const mockStories: Record<string, Story[]> = {
       status: 'ready',
       priority: 'critical',
       storyPoints: 5,
-      projectId: 'proj-2',
+      projectId: 'project-2',
       labels: ['mobile', 'setup'],
       createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
       updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
@@ -107,12 +108,10 @@ const mockAcceptanceCriteria: Record<string, AcceptanceCriterion[]> = {
   ]
 }
 
-const useMockData = process.env.NEXT_PUBLIC_ENABLE_MOCK_DATA === 'true'
-
 export const backlogApi = {
   // Stories
   async getStories(projectId: string): Promise<Story[]> {
-    if (useMockData) {
+    if (isTestEnvironment()) {
       await new Promise(resolve => setTimeout(resolve, 400))
       return mockStories[projectId] || []
     }
@@ -126,7 +125,7 @@ export const backlogApi = {
   },
 
   async getStory(projectId: string, storyId: string): Promise<Story> {
-    if (useMockData) {
+    if (isTestEnvironment()) {
       await new Promise(resolve => setTimeout(resolve, 300))
       const stories = mockStories[projectId] || []
       const story = stories.find(s => s.id === storyId)
@@ -137,7 +136,7 @@ export const backlogApi = {
   },
 
   async createStory(projectId: string, data: CreateStoryRequest): Promise<Story> {
-    if (useMockData) {
+    if (isTestEnvironment()) {
       await new Promise(resolve => setTimeout(resolve, 600))
       const newStory: Story = {
         id: `story-${Date.now()}`,
@@ -159,7 +158,7 @@ export const backlogApi = {
   },
 
   async updateStory(projectId: string, storyId: string, data: UpdateStoryRequest): Promise<Story> {
-    if (useMockData) {
+    if (isTestEnvironment()) {
       await new Promise(resolve => setTimeout(resolve, 400))
       const stories = mockStories[projectId] || []
       const storyIndex = stories.findIndex(s => s.id === storyId)
@@ -177,7 +176,7 @@ export const backlogApi = {
   },
 
   async updateStoryStatus(projectId: string, storyId: string, status: StoryStatus): Promise<Story> {
-    if (useMockData) {
+    if (isTestEnvironment()) {
       await new Promise(resolve => setTimeout(resolve, 300))
       const stories = mockStories[projectId] || []
       const storyIndex = stories.findIndex(s => s.id === storyId)
@@ -225,7 +224,7 @@ export const backlogApi = {
 
   // Acceptance Criteria
   async getAcceptanceCriteria(projectId: string, storyId: string): Promise<AcceptanceCriterion[]> {
-    if (useMockData) {
+    if (isTestEnvironment()) {
       await new Promise(resolve => setTimeout(resolve, 200))
       return mockAcceptanceCriteria[storyId] || []
     }

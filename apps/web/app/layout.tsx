@@ -1,9 +1,10 @@
 import type { Metadata } from 'next'
 import { Inter, Space_Grotesk } from 'next/font/google'
-import { ClerkProvider } from '@clerk/nextjs'
 import './globals.css'
 import { Providers } from './providers'
 import { Navigation } from '@/components/navigation'
+import { NavigationTest } from '@/components/navigation-test'
+import { AuthProviderWrapper } from './auth-provider-wrapper'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -27,41 +28,22 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-  const isTestMode = process.env.NEXT_PUBLIC_ENABLE_MOCK_AUTH === 'true'
-
-  // In test mode, don't use ClerkProvider to avoid validation errors
-  if (isTestMode) {
-    return (
-      <html lang="en">
-        <body className={`${inter.variable} ${spaceGrotesk.variable} font-sans`}>
-          <Providers>
-            <Navigation />
-            <main className="min-h-screen">
-              {children}
-            </main>
-          </Providers>
-        </body>
-      </html>
-    )
-  }
+  // Always use regular Navigation now that we have ClerkProvider available
+  const NavigationComponent = Navigation
 
   return (
-    <ClerkProvider
-      publishableKey={publishableKey}
-      domain={undefined}
-    >
+    <AuthProviderWrapper>
       <html lang="en">
         <body className={`${inter.variable} ${spaceGrotesk.variable} font-sans`}>
           <Providers>
-            <Navigation />
+            <NavigationComponent />
             <main className="min-h-screen">
               {children}
             </main>
           </Providers>
         </body>
       </html>
-    </ClerkProvider>
+    </AuthProviderWrapper>
   )
 }
 

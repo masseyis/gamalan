@@ -9,44 +9,12 @@ import { projectsApi } from '@/lib/api/projects'
 import { backlogApi } from '@/lib/api/backlog'
 import { useApiClient } from '@/lib/api/client'
 import { useEffect } from 'react'
-// Conditional import for Clerk
-let useUser: any = () => ({ user: null, isLoaded: true })
-
-if (process.env.NEXT_PUBLIC_ENABLE_MOCK_AUTH !== 'true') {
-  try {
-    const clerkNextjs = require('@clerk/nextjs')
-    useUser = clerkNextjs.useUser
-  } catch (error) {
-    console.warn('Clerk not available, using mock authentication')
-  }
-}
+import { useConditionalAuth } from '@/app/auth-provider-wrapper'
 import { UserGuide, RoleExplanation } from '@/components/ui/user-guide'
 import { useRoles } from '@/components/providers/UserContextProvider'
 
-// Safe wrapper for user data - avoids conditional hook calls
-const getUserData = () => {
-  try {
-    if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
-      const { useUser } = require('@clerk/nextjs')
-      // This would work in a component context, but for now return mock data
-      return { user: { firstName: 'Demo User' } }
-    }
-  } catch {
-    // Clerk not available
-  }
-  return { user: { firstName: 'Demo User' } }
-}
-
-// Simple hook that always returns demo data to avoid conditional hook calls
-function useUserSafe() {
-  // For now, always return demo data to avoid React Hooks violations
-  // In a real app, this would use React Context or a different state management approach
-  return { user: { firstName: 'Demo User' } }
-}
-
 export default function DashboardPage() {
-  const { user } = useUserSafe()
-  const { isLoaded } = useUser()
+  const { user, isLoaded } = useConditionalAuth()
   const { setupClients } = useApiClient()
   const { user: contextUser } = useRoles()
 

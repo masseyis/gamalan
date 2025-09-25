@@ -15,8 +15,8 @@ UPDATE users SET role = 'contributor' WHERE role IS NULL;
 -- );
 
 -- Create indexes for better query performance on frequently accessed patterns
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_users_external_id_role ON users(external_id, role);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_team_memberships_role_active ON team_memberships(role, is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_users_external_id_role ON users(external_id, role);
+CREATE INDEX IF NOT EXISTS idx_team_memberships_role_active ON team_memberships(role, is_active) WHERE is_active = true;
 
 -- Add helpful comments to tables
 COMMENT ON TABLE teams IS 'Agile teams within organizations - each team works on one sprint at a time';

@@ -13,10 +13,18 @@ export interface MockUser {
 }
 
 export const isTestEnvironment = (): boolean => {
+  // Check browser-side flags first (most reliable in test environment)
+  if (typeof window !== 'undefined') {
+    if (window.__MOCK_AUTH__ || window.__MOCK_DATA__) {
+      return true
+    }
+  }
+
+  // Check environment variables (works during build and server-side)
   return (
     process.env.NODE_ENV === 'test' ||
     process.env.NEXT_PUBLIC_ENABLE_MOCK_AUTH === 'true' ||
-    (typeof window !== 'undefined' && !!window.__MOCK_AUTH__)
+    process.env.NEXT_PUBLIC_ENABLE_MOCK_DATA === 'true'
   )
 }
 
@@ -57,14 +65,16 @@ export const setupMockAuth = async (page: any) => {
         value: {
           env: {
             ...window.process?.env,
-            NEXT_PUBLIC_ENABLE_MOCK_AUTH: 'true'
+            NEXT_PUBLIC_ENABLE_MOCK_AUTH: 'true',
+            NEXT_PUBLIC_ENABLE_MOCK_DATA: 'true'
           }
         }
       })
     }
 
-    // Set global flag for mock auth
+    // Set global flags for mock auth and data
     window.__MOCK_AUTH__ = true
+    window.__MOCK_DATA__ = true
     window.__TEST_USER__ = {
       id: 'test-user-123',
       email: 'testuser@example.com',
@@ -80,12 +90,52 @@ export const setupMockAuth = async (page: any) => {
 
     // Mock sessionStorage if needed
     window.sessionStorage.setItem('clerk-session', 'mock-session-123')
+
+    // Mock any direct Clerk hook calls that might happen
+    // Create global mock functions that can be used if Clerk hooks are called
+    ;(window as any).__MOCK_CLERK_HOOKS__ = {
+      useAuth: () => ({
+        userId: 'test-user-123',
+        isSignedIn: true,
+        isLoaded: true,
+        getToken: () => Promise.resolve('mock-jwt-token-for-testing')
+      }),
+      useUser: () => ({
+        user: window.__TEST_USER__,
+        isSignedIn: true,
+        isLoaded: true
+      }),
+      useOrganization: () => ({
+        organization: {
+          id: 'test-org-123',
+          name: 'Test Organization'
+        },
+        isLoaded: true
+      }),
+      useOrganizationList: () => ({
+        userMemberships: {
+          data: [{
+            organization: {
+              id: 'test-org-123',
+              name: 'Test Organization',
+              membersCount: 5
+            }
+          }]
+        },
+        setActive: () => Promise.resolve(),
+        isLoaded: true
+      })
+    }
+
+    // Log when we're in test mode for debugging
+    console.log('Mock auth setup completed - test environment enabled')
   })
 
   // Also set the environment variable at the page level
   await page.context().addInitScript(() => {
     window.process = window.process || { env: {} }
     window.process.env.NEXT_PUBLIC_ENABLE_MOCK_AUTH = 'true'
+    window.process.env.NEXT_PUBLIC_ENABLE_MOCK_DATA = 'true'
   })
 }
 
@@ -120,8 +170,9 @@ export const getMockStories = () => [
     projectId: 'project-1',
     title: 'User Authentication System',
     description: 'As a user, I want to log in to access the application securely',
-    status: 'Backlog',
+    status: 'inprogress',
     priority: 'high',
+    points: 8,
     acceptanceCriteria: [
       {
         id: 'ac-1',
@@ -136,10 +187,11 @@ export const getMockStories = () => [
   {
     id: 'story-2',
     projectId: 'project-1',
-    title: 'Project Creation',
+    title: 'Project Dashboard',
     description: 'As a user, I want to create new projects to organize my work',
-    status: 'In Progress',
+    status: 'inprogress',
     priority: 'medium',
+    points: 5,
     acceptanceCriteria: [
       {
         id: 'ac-2',
@@ -154,10 +206,11 @@ export const getMockStories = () => [
   {
     id: 'story-3',
     projectId: 'project-1',
-    title: 'Story Estimation',
+    title: 'Drag-and-Drop Sprint Board',
     description: 'As a product owner, I want to estimate story complexity',
-    status: 'Defined',
+    status: 'accepted',
     priority: 'low',
+    points: 3,
     acceptanceCriteria: [
       {
         id: 'ac-3',
@@ -175,6 +228,7 @@ export const getMockStories = () => [
 declare global {
   interface Window {
     __MOCK_AUTH__?: boolean
+    __MOCK_DATA__?: boolean
     __TEST_USER__?: MockUser
   }
 }

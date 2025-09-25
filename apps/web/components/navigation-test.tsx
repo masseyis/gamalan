@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-// import Image from 'next/image' - using regular img for SVG logos
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
@@ -11,42 +10,29 @@ import {
   Users,
   Settings,
   Bell,
-  Search,
   Plus,
   Sparkles,
   Command,
   Zap
 } from 'lucide-react'
 
-import { useUserContext } from '@/components/providers/UserContextProvider'
-import { isTestEnvironment } from '@/lib/auth/test-utils'
-import { OrganizationSwitcher } from '@/components/organization/organization-switcher'
-
-export function Navigation() {
+// Static test navigation component for E2E tests
+// Provides same UI as production but with mock data
+export function NavigationTest() {
   const pathname = usePathname()
-  const { user, isLoading } = useUserContext()
-
-  // Mock the auth state for compatibility
-  const isSignedIn = !!user || isTestEnvironment()
-  const isLoaded = !isLoading || isTestEnvironment()
-
-  // Mock signOut function
-  const signOut = () => {
-    if (isTestEnvironment()) {
-      console.debug('Mock signOut called')
-      return
-    }
-    // In production, redirect to sign-out
-    window.location.href = '/sign-out'
-  }
 
   return (
     <NavigationContent
       pathname={pathname}
-      isSignedIn={isSignedIn}
-      user={user}
-      signOut={signOut}
-      loading={!isLoaded}
+      isSignedIn={true}
+      user={{
+        id: '01234567-89ab-cdef-0123-456789abcdef',
+        firstName: 'Test',
+        lastName: 'User',
+        emailAddresses: [{ emailAddress: 'test@example.com' }]
+      }}
+      signOut={() => Promise.resolve()}
+      loading={false}
     />
   )
 }
@@ -86,30 +72,15 @@ function NavigationContent({ pathname, isSignedIn, user, signOut, loading }: any
     }
   ]
 
-  // Helper function to get display name and initials from mock user or User type
-  const getDisplayName = () => {
-    if (isTestEnvironment()) {
-      const mockUser = require('@/lib/auth/test-utils').getMockUser()
-      return `${mockUser.firstName} ${mockUser.lastName}`
-    }
-    return user?.email?.split('@')[0] || 'User'
-  }
-
-  const getInitials = () => {
-    if (isTestEnvironment()) {
-      const mockUser = require('@/lib/auth/test-utils').getMockUser()
-      return `${mockUser.firstName[0]}${mockUser.lastName[0]}`
-    }
-    return user?.email?.[0]?.toUpperCase() || 'U'
-  }
-
-  const userInitials = getInitials()
+  const userInitials = user?.firstName && user?.lastName
+    ? `${user.firstName[0]}${user.lastName[0]}`
+    : user?.emailAddresses?.[0]?.emailAddress?.[0]?.toUpperCase() || 'U'
 
   return (
     <nav className="border-b border-border bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/50 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          {/* Left side: Logo + Organization Switcher */}
+          {/* Left side: Logo */}
           <div className="flex items-center gap-6">
             <Link href="/assistant" className="flex items-center gap-3 group" prefetch={false} data-testid="battra-logo">
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center group-hover:glow-yellow transition-all duration-200">
@@ -119,11 +90,6 @@ function NavigationContent({ pathname, isSignedIn, user, signOut, loading }: any
                 Battra AI
               </span>
             </Link>
-
-            {/* Organization Switcher (only show when signed in) */}
-            {isSignedIn && !loading && (
-              <OrganizationSwitcher />
-            )}
           </div>
 
           {/* Navigation Menu */}
@@ -136,8 +102,8 @@ function NavigationContent({ pathname, isSignedIn, user, signOut, loading }: any
                     variant={item.current ? "default" : "ghost"}
                     className={`
                       gap-2 transition-all duration-200
-                      ${item.current 
-                        ? "bg-primary text-primary-foreground shadow-soft" 
+                      ${item.current
+                        ? "bg-primary text-primary-foreground shadow-soft"
                         : "hover:bg-primary/10 hover:text-primary"
                       }
                       ${item.isPrimary ? "font-semibold" : ""}
@@ -156,9 +122,9 @@ function NavigationContent({ pathname, isSignedIn, user, signOut, loading }: any
 
           {/* Right side actions */}
           <div className="flex items-center gap-3">
-            {/* Assistant Trigger - replaces search */}
-            <Button 
-              variant="ghost" 
+            {/* Assistant Trigger */}
+            <Button
+              variant="ghost"
               className="hidden sm:flex hover:bg-primary/10 hover:text-primary gap-2 text-sm"
               onClick={() => {
                 if (pathname !== '/assistant') {
@@ -194,13 +160,13 @@ function NavigationContent({ pathname, isSignedIn, user, signOut, loading }: any
               <div className="flex items-center gap-3 pl-3 border-l border-border/50">
                 <div className="hidden sm:block text-right">
                   <div className="text-sm font-medium text-foreground">
-                    {getDisplayName()}
+                    {user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : 'Test User'}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {user?.email || 'user@example.com'}
+                    {user?.emailAddresses?.[0]?.emailAddress || 'test@example.com'}
                   </div>
                 </div>
-                <Avatar 
+                <Avatar
                   className="h-8 w-8 ring-2 ring-primary/20 hover:ring-primary/40 transition-all cursor-pointer"
                   onClick={() => signOut()}
                   title="Click to sign out"

@@ -1,37 +1,42 @@
 const { chromium } = require('playwright');
 
 (async () => {
-  console.log('Starting browser...');
   const browser = await chromium.launch();
-  const page = await browser.newPage();
-  
-  // Listen for all console messages
+  const context = await browser.newContext();
+  const page = await context.newPage();
+
+  // Listen to console errors
   page.on('console', msg => {
-    console.log(`CONSOLE [${msg.type()}]:`, msg.text());
+    if (msg.type() === 'error') {
+      console.log('CONSOLE ERROR:', msg.text());
+    }
   });
-  
-  // Listen for page errors
+
+  // Listen to page errors
   page.on('pageerror', error => {
     console.log('PAGE ERROR:', error.message);
   });
-  
-  try {
-    console.log('Navigating to page...');
-    const response = await page.goto('https://salunga-mv0loo49v-james-3002s-projects.vercel.app/', {
-      timeout: 30000,
-      waitUntil: 'load'
-    });
-    
-    console.log('Response status:', response.status());
-    console.log('Page title:', await page.title());
-    
-    // Wait a bit to see if any errors occur
-    await page.waitForTimeout(5000);
-    
-    console.log('Test completed successfully');
-  } catch (error) {
-    console.log('ERROR:', error.message);
-  } finally {
-    await browser.close();
+
+  console.log('Navigating to homepage...');
+  await page.goto('http://localhost:3000', { waitUntil: 'networkidle' });
+
+  console.log('Page title:', await page.title());
+  console.log('Page URL:', page.url());
+
+  // Check what's actually on the page
+  const body = await page.locator('body').textContent();
+  console.log('Body content preview:', body.substring(0, 500));
+
+  // Check for h1 elements
+  const h1Elements = await page.locator('h1').count();
+  console.log('Number of h1 elements:', h1Elements);
+
+  if (h1Elements > 0) {
+    for (let i = 0; i < h1Elements; i++) {
+      const h1Text = await page.locator('h1').nth(i).textContent();
+      console.log(`H1 ${i + 1}:`, h1Text);
+    }
   }
-})();
+
+  await browser.close();
+})().catch(console.error);

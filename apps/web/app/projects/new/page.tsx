@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
@@ -11,7 +11,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { ArrowLeft, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { projectsApi } from '@/lib/api/projects'
+import { useApiClient } from '@/lib/api/client'
 import { useToast } from '@/hooks/use-toast'
+import { useConditionalAuth } from '@/app/auth-provider-wrapper'
 
 interface CreateProjectForm {
   name: string
@@ -22,11 +24,20 @@ export default function NewProjectPage() {
   const router = useRouter()
   const { toast } = useToast()
   const queryClient = useQueryClient()
-  
+  const { isLoaded } = useConditionalAuth()
+  const { setupClients } = useApiClient()
+
   const [form, setForm] = useState<CreateProjectForm>({
     name: '',
     description: ''
   })
+
+  // Setup authentication for API clients
+  useEffect(() => {
+    if (isLoaded) {
+      setupClients()
+    }
+  }, [setupClients, isLoaded])
 
   const createProjectMutation = useMutation({
     mutationFn: projectsApi.createProject,
@@ -71,6 +82,20 @@ export default function NewProjectPage() {
       ...prev,
       [field]: value
     }))
+  }
+
+  // Show loading until auth is ready
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto py-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold">Create New Project</h1>
+            <p className="text-muted-foreground mt-2">Loading...</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

@@ -103,9 +103,9 @@ export default defineConfig({
     stdout: 'pipe',
     env: {
       ...process.env,
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'pk_test_bW9jay1rZXktZm9yLXRlc3RpbmctcHVycG9zZXMtb25seQ==',
-      CLERK_PUBLISHABLE_KEY: 'pk_test_bW9jay1rZXktZm9yLXRlc3RpbmctcHVycG9zZXMtb25seQ==',
-      CLERK_SECRET_KEY: 'sk_test_bW9jay1rZXktZm9yLXRlc3RpbmctcHVycG9zZXMtb25seQ==',
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'pk_test_Y2xlcmtfdGVzdF9wdWJsaXNoYWJsZV9rZXkxMjM0NTY3ODkwYWJjZGVm',
+      CLERK_PUBLISHABLE_KEY: 'pk_test_Y2xlcmtfdGVzdF9wdWJsaXNoYWJsZV9rZXkxMjM0NTY3ODkwYWJjZGVm',
+      CLERK_SECRET_KEY: 'sk_test_Y2xlcmtfdGVzdF9zZWNyZXRfa2V5MTIzNDU2Nzg5MGFiY2RlZg==',
       E2E_CLERK_USER_USERNAME: 'test@example.com',
       E2E_CLERK_USER_PASSWORD: 'testpassword123',
       NEXT_PUBLIC_ENABLE_MOCK_AUTH: 'true',

@@ -1,35 +1,30 @@
 import '@testing-library/jest-dom'
 import { expect, afterEach, beforeAll, afterAll, vi } from 'vitest'
 import { cleanup } from '@testing-library/react'
+import React from 'react'
 import { server } from './mocks/server'
 
-// Mock Clerk
-vi.mock('@clerk/nextjs', () => ({
-  useUser: () => ({ 
-    user: { 
-      id: 'test-user-id',
-      firstName: 'Test',
-      lastName: 'User',
-      emailAddresses: [{ emailAddress: 'test@example.com' }]
-    },
-    isLoaded: true,
-    isSignedIn: true
-  }),
-  useAuth: () => ({
-    userId: 'test-user-id',
-    getToken: vi.fn().mockResolvedValue('test-token'),
-    isLoaded: true,
-    isSignedIn: true
-  }),
-  auth: () => ({
-    userId: 'test-user-id',
-    getToken: vi.fn().mockResolvedValue('test-token')
-  }),
-  ClerkProvider: ({ children }: { children: React.ReactNode }) => children,
-  SignIn: () => 'Sign In',
-  SignUp: () => 'Sign Up',
-  authMiddleware: (config: any) => (req: any, res: any, next: any) => next?.(),
-}))
+// Mock Clerk module to use our test wrapper hooks
+vi.mock('@clerk/nextjs', () => {
+  const { useMockUser, useMockAuth, useMockClerk, useMockOrganization } = require('@/app/auth-provider-wrapper')
+
+  return {
+    ClerkProvider: ({ children }: { children: React.ReactNode }) => children,
+    useUser: useMockUser,
+    useAuth: useMockAuth,
+    useClerk: useMockClerk,
+    useOrganization: useMockOrganization,
+    auth: () => ({
+      userId: '01234567-89ab-cdef-0123-456789abcdef',
+      getToken: vi.fn().mockResolvedValue('valid-test-token')
+    }),
+    SignIn: () => React.createElement('div', { 'data-testid': 'mock-sign-in' }, 'Mock Sign In Component'),
+    SignUp: () => React.createElement('div', { 'data-testid': 'mock-sign-up' }, 'Mock Sign Up Component'),
+    OrganizationSwitcher: () => React.createElement('div', { 'data-testid': 'mock-org-switcher' }, 'Mock Organization Switcher'),
+    UserButton: () => React.createElement('div', { 'data-testid': 'mock-user-button' }, 'Mock User Button'),
+    authMiddleware: (config: any) => (req: any, res: any, next: any) => next?.(),
+  }
+})
 
 // Mock Next.js router
 vi.mock('next/navigation', () => ({
