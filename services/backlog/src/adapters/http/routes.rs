@@ -6,6 +6,7 @@ use crate::adapters::http::handlers::{
 };
 use crate::adapters::integrations::HttpReadinessService;
 use crate::adapters::persistence::{SqlStoryRepository, SqlTaskRepository};
+use crate::application::ports::ReadinessService;
 use crate::application::BacklogUsecases;
 use auth_clerk::JwtVerifier;
 use shuttle_axum::axum::routing::{delete, get, patch, post, put};
@@ -17,14 +18,27 @@ pub async fn create_backlog_router(
     pool: PgPool,
     verifier: Arc<Mutex<JwtVerifier>>,
 ) -> shuttle_axum::axum::Router {
+    create_backlog_router_with_readiness(pool, verifier, None).await
+}
+
+pub async fn create_backlog_router_with_readiness(
+    pool: PgPool,
+    verifier: Arc<Mutex<JwtVerifier>>,
+    readiness_service: Option<Arc<dyn ReadinessService>>,
+) -> shuttle_axum::axum::Router {
     // Initialize repositories
     let story_repo = Arc::new(SqlStoryRepository::new(pool.clone()));
     let task_repo = Arc::new(SqlTaskRepository::new(pool.clone()));
 
-    // Initialize readiness service client
-    let readiness_base_url = std::env::var("READINESS_SERVICE_URL")
-        .unwrap_or_else(|_| "http://localhost:8002".to_string());
-    let readiness_service = Arc::new(HttpReadinessService::new(readiness_base_url));
+    // Initialize readiness service client (use provided service or default to HTTP)
+    let readiness_service = match readiness_service {
+        Some(service) => service,
+        None => {
+            let readiness_base_url = std::env::var("READINESS_SERVICE_URL")
+                .unwrap_or_else(|_| "http://localhost:8002".to_string());
+            Arc::new(HttpReadinessService::new(readiness_base_url))
+        }
+    };
 
     // Initialize use cases
     let usecases = Arc::new(BacklogUsecases::new(

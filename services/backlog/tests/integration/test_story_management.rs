@@ -9,29 +9,24 @@ use tower::ServiceExt;
 use uuid::Uuid;
 
 use auth_clerk::JwtVerifier;
-use backlog::adapters::http::routes::create_backlog_router;
+use backlog::adapters::http::routes::create_backlog_router_with_readiness;
 use backlog::adapters::integrations::MockReadinessService;
-use backlog::adapters::persistence::{SqlStoryRepository, SqlTaskRepository};
-use backlog::application::BacklogUsecases;
 use tokio::sync::Mutex;
 
 // Import the common test setup
 use crate::common::setup_test_db;
 
 async fn setup_test_app(pool: PgPool) -> axum::Router {
-    let story_repo = Arc::new(SqlStoryRepository::new(pool.clone()));
-    let task_repo = Arc::new(SqlTaskRepository::new(pool.clone()));
-    let readiness_service = Arc::new(MockReadinessService::new());
-    let _usecases = Arc::new(BacklogUsecases::new(
-        story_repo,
-        task_repo,
-        readiness_service,
-    ));
-
     // Create a mock JWT verifier for testing
     let verifier = Arc::new(Mutex::new(JwtVerifier::new_test_verifier()));
 
-    axum::Router::new().nest("/api", create_backlog_router(pool, verifier).await)
+    // Use MockReadinessService for tests
+    let readiness_service = Arc::new(MockReadinessService::new());
+
+    axum::Router::new().nest(
+        "/api/v1",
+        create_backlog_router_with_readiness(pool, verifier, Some(readiness_service)).await,
+    )
 }
 
 async fn create_test_project_and_story(pool: &PgPool) -> (Uuid, Uuid) {
@@ -95,7 +90,7 @@ async fn test_story_lifecycle_integration() -> Result<(), Box<dyn std::error::Er
     // 1. Create a story
     let create_request = Request::builder()
         .method(Method::POST)
-        .uri(format!("/api/projects/{}/stories", project_id))
+        .uri(format!("/api/v1/projects/{}/stories", project_id))
         .header("content-type", "application/json")
         .header("authorization", "Bearer valid-test-token")
         .header("x-organization-id", org_id.to_string())
@@ -129,7 +124,7 @@ async fn test_story_lifecycle_integration() -> Result<(), Box<dyn std::error::Er
     // 2. Get the story and verify it was created correctly
     let get_request = Request::builder()
         .method(Method::GET)
-        .uri(format!("/api/stories/{}", story_id))
+        .uri(format!("/api/v1/stories/{}", story_id))
         .header("authorization", "Bearer valid-test-token")
         .header("x-organization-id", org_id.to_string())
         .body(Body::empty())?;
@@ -147,7 +142,7 @@ async fn test_story_lifecycle_integration() -> Result<(), Box<dyn std::error::Er
     // 3. Update story status to NeedsRefinement
     let update_status_request = Request::builder()
         .method(Method::PATCH)
-        .uri(format!("/api/stories/{}/status", story_id))
+        .uri(format!("/api/v1/stories/{}/status", story_id))
         .header("content-type", "application/json")
         .header("authorization", "Bearer valid-test-token")
         .header("x-organization-id", org_id.to_string())
@@ -164,7 +159,7 @@ async fn test_story_lifecycle_integration() -> Result<(), Box<dyn std::error::Er
     // 4. Update the story content
     let update_request = Request::builder()
         .method(Method::PATCH)
-        .uri(format!("/api/stories/{}", story_id))
+        .uri(format!("/api/v1/stories/{}", story_id))
         .header("content-type", "application/json")
         .header("authorization", "Bearer valid-test-token")
         .header("x-organization-id", org_id.to_string())
@@ -183,7 +178,7 @@ async fn test_story_lifecycle_integration() -> Result<(), Box<dyn std::error::Er
     // 5. Verify the story was updated
     let get_updated_request = Request::builder()
         .method(Method::GET)
-        .uri(format!("/api/stories/{}", story_id))
+        .uri(format!("/api/v1/stories/{}", story_id))
         .header("authorization", "Bearer valid-test-token")
         .header("x-organization-id", org_id.to_string())
         .body(Body::empty())?;
@@ -208,7 +203,7 @@ async fn test_story_lifecycle_integration() -> Result<(), Box<dyn std::error::Er
     // 6. Get stories by project
     let get_project_stories_request = Request::builder()
         .method(Method::GET)
-        .uri(format!("/api/projects/{}/stories", project_id))
+        .uri(format!("/api/v1/projects/{}/stories", project_id))
         .header("authorization", "Bearer valid-test-token")
         .header("x-organization-id", org_id.to_string())
         .body(Body::empty())?;
@@ -225,7 +220,7 @@ async fn test_story_lifecycle_integration() -> Result<(), Box<dyn std::error::Er
     // 7. Delete the story
     let delete_request = Request::builder()
         .method(Method::DELETE)
-        .uri(format!("/api/stories/{}", story_id))
+        .uri(format!("/api/v1/stories/{}", story_id))
         .header("authorization", "Bearer valid-test-token")
         .header("x-organization-id", org_id.to_string())
         .body(Body::empty())?;
@@ -236,7 +231,7 @@ async fn test_story_lifecycle_integration() -> Result<(), Box<dyn std::error::Er
     // 8. Verify story is deleted
     let get_deleted_request = Request::builder()
         .method(Method::GET)
-        .uri(format!("/api/stories/{}", story_id))
+        .uri(format!("/api/v1/stories/{}", story_id))
         .header("authorization", "Bearer valid-test-token")
         .header("x-organization-id", org_id.to_string())
         .body(Body::empty())?;
@@ -269,7 +264,7 @@ async fn test_story_validation_rules() -> Result<(), Box<dyn std::error::Error>>
     // Test 1: Empty title should fail
     let empty_title_request = Request::builder()
         .method(Method::POST)
-        .uri(format!("/api/projects/{}/stories", project_id))
+        .uri(format!("/api/v1/projects/{}/stories", project_id))
         .header("content-type", "application/json")
         .header("authorization", "Bearer valid-test-token")
         .header("x-organization-id", org_id.to_string())
@@ -288,7 +283,7 @@ async fn test_story_validation_rules() -> Result<(), Box<dyn std::error::Error>>
     let long_title = "a".repeat(256);
     let long_title_request = Request::builder()
         .method(Method::POST)
-        .uri(format!("/api/projects/{}/stories", project_id))
+        .uri(format!("/api/v1/projects/{}/stories", project_id))
         .header("content-type", "application/json")
         .header("authorization", "Bearer valid-test-token")
         .header("x-organization-id", org_id.to_string())
@@ -308,7 +303,7 @@ async fn test_story_validation_rules() -> Result<(), Box<dyn std::error::Error>>
 
     let invalid_status_request = Request::builder()
         .method(Method::PATCH)
-        .uri(format!("/api/stories/{}/status", story_id))
+        .uri(format!("/api/v1/stories/{}/status", story_id))
         .header("content-type", "application/json")
         .header("authorization", "Bearer valid-test-token")
         .header("x-organization-id", org_id.to_string())
@@ -348,10 +343,11 @@ async fn test_story_authorization() -> Result<(), Box<dyn std::error::Error>> {
     // Create a story
     let create_request = Request::builder()
         .method(Method::POST)
-        .uri(format!("/api/projects/{}/stories", project_id))
+        .uri(format!("/api/v1/projects/{}/stories", project_id))
         .header("content-type", "application/json")
         .header("authorization", "Bearer valid-test-token")
         .header("x-organization-id", org_id.to_string())
+        .header("x-context-type", "organization")
         .body(Body::from(
             json!({
                 "title": "Test Story",
@@ -370,9 +366,10 @@ async fn test_story_authorization() -> Result<(), Box<dyn std::error::Error>> {
     // Try to access the story from a different organization - should fail
     let unauthorized_request = Request::builder()
         .method(Method::GET)
-        .uri(format!("/api/stories/{}", story_id))
+        .uri(format!("/api/v1/stories/{}", story_id))
         .header("authorization", "Bearer valid-test-token")
         .header("x-organization-id", other_org_id.to_string())
+        .header("x-context-type", "organization")
         .body(Body::empty())?;
 
     let response = app.clone().oneshot(unauthorized_request).await?;
@@ -381,10 +378,11 @@ async fn test_story_authorization() -> Result<(), Box<dyn std::error::Error>> {
     // Try to update the story from a different organization - should fail
     let unauthorized_update_request = Request::builder()
         .method(Method::PATCH)
-        .uri(format!("/api/stories/{}", story_id))
+        .uri(format!("/api/v1/stories/{}", story_id))
         .header("content-type", "application/json")
         .header("authorization", "Bearer valid-test-token")
         .header("x-organization-id", other_org_id.to_string())
+        .header("x-context-type", "organization")
         .body(Body::from(
             json!({
                 "title": "Hacked Story"

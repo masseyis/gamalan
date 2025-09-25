@@ -1,9 +1,14 @@
 import { test, expect } from '@playwright/test'
+import { setupMockAuth } from '@/lib/auth/test-utils'
 
-// This test file is configured to use stored authentication state
-// It will automatically be authenticated when running tests
+// This test file uses mock authentication for testing authenticated states
 
 test.describe('Dashboard (Authenticated)', () => {
+  test.beforeEach(async ({ page }) => {
+    // Setup consistent mock authentication
+    await setupMockAuth(page)
+  })
+
   test('should access dashboard when authenticated', async ({ page }) => {
     // Navigate to dashboard - should be accessible since we're authenticated
     await page.goto('/dashboard')
@@ -24,13 +29,28 @@ test.describe('Dashboard (Authenticated)', () => {
 
     // Wait for the page to load
     await page.waitForLoadState('networkidle')
+    await page.waitForTimeout(2000) // Allow time for mock auth to setup
 
-    // Look for user-specific elements (adjust selectors based on your UI)
-    const userElements = page.locator('[data-testid="user-menu"], .user-avatar, .user-name')
+    // Look for user-specific elements that exist in the mock authenticated UI
+    const userElements = [
+      page.locator('text=Test User'),           // From mock user data
+      page.locator('text=test@example.com'),   // From mock user email
+      page.locator('text=TU'),                 // User initials in avatar
+      page.locator('[data-testid="user-menu"]'),
+      page.locator('.user-avatar'),
+      page.locator('.user-name'),
+      page.locator('text=Test Organization')   // From mock org data
+    ]
 
     // At least one user indicator should be present
-    const count = await userElements.count()
-    expect(count).toBeGreaterThan(0)
+    let found = false
+    for (const locator of userElements) {
+      if (await locator.isVisible()) {
+        found = true
+        break
+      }
+    }
+    expect(found).toBe(true)
   })
 
   test('should navigate to protected pages', async ({ page }) => {

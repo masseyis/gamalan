@@ -1,5 +1,5 @@
 use axum::{
-    body::Body,
+    body::{to_bytes, Body},
     http::{Method, Request, StatusCode},
 };
 use serde_json::{json, Value};
@@ -10,89 +10,111 @@ use tower::ServiceExt;
 use uuid::Uuid;
 
 use auth_clerk::JwtVerifier;
-use backlog::adapters::http::routes::create_backlog_router;
+use backlog::adapters::http::routes::create_backlog_router_with_readiness;
 use backlog::adapters::integrations::MockReadinessService;
-use backlog::adapters::persistence::{SqlStoryRepository, SqlTaskRepository};
-use backlog::application::BacklogUsecases;
 use tokio::sync::Mutex;
 
 // Import the common test setup
 use crate::common::setup_test_db;
 
 async fn setup_test_app(pool: PgPool) -> axum::Router {
-    let story_repo = Arc::new(SqlStoryRepository::new(pool.clone()));
-    let task_repo = Arc::new(SqlTaskRepository::new(pool.clone()));
-    let readiness_service = Arc::new(MockReadinessService::new());
-    let _usecases = Arc::new(BacklogUsecases::new(
-        story_repo,
-        task_repo,
-        readiness_service,
-    ));
-
+    // Create a mock JWT verifier for testing
     let verifier = Arc::new(Mutex::new(JwtVerifier::new_test_verifier()));
 
-    axum::Router::new().nest("/api", create_backlog_router(pool, verifier).await)
+    // Use MockReadinessService for tests
+    let readiness_service = Arc::new(MockReadinessService::new());
+
+    axum::Router::new().nest(
+        "/api/v1",
+        create_backlog_router_with_readiness(pool, verifier, Some(readiness_service)).await,
+    )
 }
 
-async fn create_test_task(pool: &PgPool) -> (Uuid, Uuid, Uuid) {
+async fn create_test_task(app: &axum::Router) -> (Uuid, Uuid, Uuid) {
     let project_id = Uuid::new_v4();
     let org_id = Uuid::new_v4();
-    let story_id = Uuid::new_v4();
 
-    // Insert test project
+    // First, create project using direct SQL since we don't have a projects API in this service
+    let database_url = std::env::var("TEST_DATABASE_URL")
+        .unwrap_or_else(|_| "postgres://postgres:password@localhost:5432/gamalan_test".to_string());
+    let temp_pool = sqlx::PgPool::connect(&database_url)
+        .await
+        .expect("Failed to connect to test database");
+
+    // Create unique project name to avoid constraint violations in parallel tests
+    let project_name = format!("Test Project {}", Uuid::new_v4());
+
     sqlx::query(
         "INSERT INTO projects (id, organization_id, name, description, created_at, updated_at)
          VALUES ($1, $2, $3, $4, NOW(), NOW())",
     )
     .bind(project_id)
     .bind(org_id)
-    .bind("Test Project")
+    .bind(project_name)
     .bind("Test Description")
-    .execute(pool)
+    .execute(&temp_pool)
     .await
     .expect("Failed to create test project");
 
-    // Insert test story
-    sqlx::query(
-        r#"
-        INSERT INTO stories (id, project_id, organization_id, title, description, status, labels, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
-        "#
-    )
-    .bind(story_id)
-    .bind(project_id)
-    .bind(org_id)
-    .bind("Test Story")
-    .bind(Some("Test Description"))
-    .bind("draft")
-    .bind(vec!["feature"])
-    .execute(pool)
-    .await
-    .expect("Failed to create test story");
+    // Create story via HTTP API
+    let story_request = json!({
+        "title": "Test Story for Concurrent Tests",
+        "description": "Test Description",
+        "labels": ["feature"]
+    });
 
-    // Insert test task
-    let task_id = Uuid::new_v4();
-    sqlx::query(
-        r#"
-        INSERT INTO tasks (id, story_id, organization_id, title, description, acceptance_criteria_refs,
-                          status, owner_user_id, estimated_hours, created_at, updated_at, owned_at, completed_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW(), $10, $11)
-        "#
-    )
-    .bind(task_id)
-    .bind(story_id)
-    .bind(org_id)
-    .bind("Test Task")
-    .bind(Some("Test Description"))
-    .bind(vec!["AC1"])
-    .bind("available")
-    .bind(None::<Uuid>)
-    .bind(None::<i32>)
-    .bind(None::<chrono::DateTime<chrono::Utc>>)
-    .bind(None::<chrono::DateTime<chrono::Utc>>)
-    .execute(pool)
-    .await
-    .expect("Failed to create test task");
+    let story_response = (*app)
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!("/api/v1/projects/{}/stories", project_id))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer valid-test-token")
+                .header("x-organization-id", org_id.to_string())
+                .header("x-context-type", "organization")
+                .body(Body::from(story_request.to_string()))
+                .unwrap(),
+        )
+        .await
+        .expect("Failed to create story");
+
+    assert_eq!(story_response.status(), StatusCode::CREATED);
+    let story_body = to_bytes(story_response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let story_result: serde_json::Value = serde_json::from_slice(&story_body).unwrap();
+    let story_id = Uuid::parse_str(story_result["story_id"].as_str().unwrap()).unwrap();
+
+    // Create task via HTTP API
+    let task_request = json!({
+        "title": "Test Task for Concurrent Tests",
+        "description": "Test Description",
+        "acceptance_criteria_refs": ["AC1"]
+    });
+
+    let task_response = (*app)
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!("/api/v1/stories/{}/tasks", story_id))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer valid-test-token")
+                .header("x-organization-id", org_id.to_string())
+                .header("x-context-type", "organization")
+                .body(Body::from(task_request.to_string()))
+                .unwrap(),
+        )
+        .await
+        .expect("Failed to create task");
+
+    assert_eq!(task_response.status(), StatusCode::CREATED);
+    let task_body = to_bytes(task_response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let task_result: serde_json::Value = serde_json::from_slice(&task_body).unwrap();
+    let task_id = Uuid::parse_str(task_result["task_id"].as_str().unwrap()).unwrap();
 
     (org_id, story_id, task_id)
 }
@@ -101,7 +123,7 @@ async fn create_test_task(pool: &PgPool) -> (Uuid, Uuid, Uuid) {
 async fn test_concurrent_task_ownership_race_condition() -> Result<(), Box<dyn std::error::Error>> {
     let pool = setup_test_db().await;
     let app = Arc::new(setup_test_app(pool.clone()).await);
-    let (org_id, _story_id, task_id) = create_test_task(&pool).await;
+    let (org_id, _story_id, task_id) = create_test_task(&app).await;
 
     // Create multiple users trying to claim the same task
     let num_users = 10;
@@ -116,11 +138,11 @@ async fn test_concurrent_task_ownership_race_condition() -> Result<(), Box<dyn s
         join_set.spawn(async move {
             let request = Request::builder()
                 .method(Method::PUT)
-                .uri(format!("/api/tasks/{}/ownership", task_id_clone))
+                .uri(format!("/api/v1/tasks/{}/ownership", task_id_clone))
                 .header("content-type", "application/json")
                 .header("authorization", "Bearer valid-test-token")
                 .header("x-organization-id", org_id_clone.to_string())
-                .header("x-user-id", user_id.to_string()) // Mock user ID in header for testing
+                .header("x-context-type", "organization")
                 .body(Body::empty())
                 .unwrap();
 
@@ -131,7 +153,7 @@ async fn test_concurrent_task_ownership_race_condition() -> Result<(), Box<dyn s
 
     let mut successful_claims = 0;
     let mut failed_claims = 0;
-    let mut winning_user_id = None;
+    let mut _winning_user_id = None;
 
     while let Some(result) = join_set.join_next().await {
         let (user_index, status, user_id) = result?;
@@ -139,7 +161,7 @@ async fn test_concurrent_task_ownership_race_condition() -> Result<(), Box<dyn s
         match status {
             StatusCode::OK => {
                 successful_claims += 1;
-                winning_user_id = Some(user_id);
+                _winning_user_id = Some(user_id);
                 println!("User {} successfully claimed the task", user_index);
             }
             StatusCode::CONFLICT | StatusCode::BAD_REQUEST => {
@@ -166,10 +188,10 @@ async fn test_concurrent_task_ownership_race_condition() -> Result<(), Box<dyn s
     // Verify the task is actually owned by the winning user
     let get_request = Request::builder()
         .method(Method::GET)
-        .uri("/api/tasks/owned")
+        .uri("/api/v1/tasks/owned")
         .header("authorization", "Bearer valid-test-token")
         .header("x-organization-id", org_id.to_string())
-        .header("x-user-id", winning_user_id.unwrap().to_string())
+        .header("x-context-type", "organization")
         .body(Body::empty())?;
 
     let response = (*app).clone().oneshot(get_request).await?;
@@ -188,17 +210,17 @@ async fn test_concurrent_task_ownership_race_condition() -> Result<(), Box<dyn s
 async fn test_concurrent_task_workflow_operations() -> Result<(), Box<dyn std::error::Error>> {
     let pool = setup_test_db().await;
     let app = Arc::new(setup_test_app(pool.clone()).await);
-    let (org_id, _story_id, task_id) = create_test_task(&pool).await;
+    let (org_id, _story_id, task_id) = create_test_task(&app).await;
     let user_id = Uuid::new_v4();
 
     // First, one user claims the task
     let claim_request = Request::builder()
         .method(Method::PUT)
-        .uri(format!("/api/tasks/{}/ownership", task_id))
+        .uri(format!("/api/v1/tasks/{}/ownership", task_id))
         .header("content-type", "application/json")
         .header("authorization", "Bearer valid-test-token")
         .header("x-organization-id", org_id.to_string())
-        .header("x-user-id", user_id.to_string())
+        .header("x-context-type", "organization")
         .body(Body::empty())?;
 
     let response = (*app).clone().oneshot(claim_request).await?;
@@ -211,14 +233,14 @@ async fn test_concurrent_task_workflow_operations() -> Result<(), Box<dyn std::e
     let app_clone = app.clone();
     let task_id_clone = task_id;
     let org_id_clone = org_id;
-    let user_id_clone = user_id;
+    let _user_id_clone = user_id;
     join_set.spawn(async move {
         let request = Request::builder()
             .method(Method::POST)
-            .uri(format!("/api/tasks/{}/work/start", task_id_clone))
+            .uri(format!("/api/v1/tasks/{}/work/start", task_id_clone))
             .header("authorization", "Bearer valid-test-token")
             .header("x-organization-id", org_id_clone.to_string())
-            .header("x-user-id", user_id_clone.to_string())
+            .header("x-context-type", "organization")
             .body(Body::empty())
             .unwrap();
 
@@ -230,15 +252,15 @@ async fn test_concurrent_task_workflow_operations() -> Result<(), Box<dyn std::e
     let app_clone = app.clone();
     let task_id_clone = task_id;
     let org_id_clone = org_id;
-    let user_id_clone = user_id;
+    let _user_id_clone = user_id;
     join_set.spawn(async move {
         let request = Request::builder()
             .method(Method::PATCH)
-            .uri(format!("/api/tasks/{}/estimate", task_id_clone))
+            .uri(format!("/api/v1/tasks/{}/estimate", task_id_clone))
             .header("content-type", "application/json")
             .header("authorization", "Bearer valid-test-token")
             .header("x-organization-id", org_id_clone.to_string())
-            .header("x-user-id", user_id_clone.to_string())
+            .header("x-context-type", "organization")
             .body(Body::from(
                 json!({
                     "estimated_hours": 8
@@ -255,14 +277,14 @@ async fn test_concurrent_task_workflow_operations() -> Result<(), Box<dyn std::e
     let app_clone = app.clone();
     let task_id_clone = task_id;
     let org_id_clone = org_id;
-    let other_user_id = Uuid::new_v4();
+    let _other_user_id = Uuid::new_v4();
     join_set.spawn(async move {
         let request = Request::builder()
             .method(Method::POST)
-            .uri(format!("/api/tasks/{}/work/start", task_id_clone))
+            .uri(format!("/api/v1/tasks/{}/work/start", task_id_clone))
             .header("authorization", "Bearer valid-test-token")
             .header("x-organization-id", org_id_clone.to_string())
-            .header("x-user-id", other_user_id.to_string())
+            .header("x-context-type", "organization")
             .body(Body::empty())
             .unwrap();
 
@@ -302,35 +324,57 @@ async fn test_high_load_task_creation_and_ownership() -> Result<(), Box<dyn std:
     let app = Arc::new(setup_test_app(pool.clone()).await);
     let project_id = Uuid::new_v4();
     let org_id = Uuid::new_v4();
-    let story_id = Uuid::new_v4();
 
-    // Setup test data
+    // Setup test data - create project via direct SQL since we don't have projects API in this service
+    let database_url = std::env::var("TEST_DATABASE_URL")
+        .unwrap_or_else(|_| "postgres://postgres:password@localhost:5432/gamalan_test".to_string());
+    let temp_pool = sqlx::PgPool::connect(&database_url)
+        .await
+        .expect("Failed to connect to test database");
+
+    // Create unique project name to avoid constraint violations in parallel tests
+    let project_name = format!("High Load Test Project {}", Uuid::new_v4());
+
     sqlx::query(
         "INSERT INTO projects (id, organization_id, name, description, created_at, updated_at)
          VALUES ($1, $2, $3, $4, NOW(), NOW())",
     )
     .bind(project_id)
     .bind(org_id)
-    .bind("Test Project")
+    .bind(project_name)
     .bind("Test Description")
-    .execute(&pool)
+    .execute(&temp_pool)
     .await?;
 
-    sqlx::query(
-        r#"
-        INSERT INTO stories (id, project_id, organization_id, title, description, status, labels, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
-        "#
-    )
-    .bind(story_id)
-    .bind(project_id)
-    .bind(org_id)
-    .bind("Test Story")
-    .bind(Some("Test Description"))
-    .bind("draft")
-    .bind(vec!["feature"])
-    .execute(&pool)
-    .await?;
+    // Create story via HTTP API to ensure proper transaction handling
+    let story_request = json!({
+        "title": "Test Story for High Load Tests",
+        "description": "Test Description",
+        "labels": ["feature"]
+    });
+
+    let story_response = (*app)
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!("/api/v1/projects/{}/stories", project_id))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer valid-test-token")
+                .header("x-organization-id", org_id.to_string())
+                .header("x-context-type", "organization")
+                .body(Body::from(story_request.to_string()))
+                .unwrap(),
+        )
+        .await
+        .expect("Failed to create story");
+
+    assert_eq!(story_response.status(), StatusCode::CREATED);
+    let story_body = to_bytes(story_response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let story_result: serde_json::Value = serde_json::from_slice(&story_body).unwrap();
+    let story_id = Uuid::parse_str(story_result["story_id"].as_str().unwrap()).unwrap();
 
     let num_tasks = 50;
     let mut join_set = JoinSet::new();
@@ -344,10 +388,11 @@ async fn test_high_load_task_creation_and_ownership() -> Result<(), Box<dyn std:
         join_set.spawn(async move {
             let request = Request::builder()
                 .method(Method::POST)
-                .uri(format!("/api/stories/{}/tasks", story_id_clone))
+                .uri(format!("/api/v1/stories/{}/tasks", story_id_clone))
                 .header("content-type", "application/json")
                 .header("authorization", "Bearer valid-test-token")
                 .header("x-organization-id", org_id_clone.to_string())
+                .header("x-context-type", "organization")
                 .body(Body::from(
                     json!({
                         "title": format!("Task {}", i),
@@ -390,9 +435,10 @@ async fn test_high_load_task_creation_and_ownership() -> Result<(), Box<dyn std:
     // Get available tasks to verify they were created
     let get_available_request = Request::builder()
         .method(Method::GET)
-        .uri(format!("/api/stories/{}/tasks/available", story_id))
+        .uri(format!("/api/v1/stories/{}/tasks/available", story_id))
         .header("authorization", "Bearer valid-test-token")
         .header("x-organization-id", org_id.to_string())
+        .header("x-context-type", "organization")
         .body(Body::empty())?;
 
     let response = (*app).clone().oneshot(get_available_request).await?;

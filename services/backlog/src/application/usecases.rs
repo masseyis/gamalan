@@ -149,6 +149,7 @@ impl BacklogUsecases {
             description,
             acceptance_criteria_refs,
         )?;
+
         self.task_repo.create_task(&task).await?;
         Ok(task.id)
     }
@@ -220,14 +221,18 @@ impl BacklogUsecases {
         organization_id: Option<Uuid>,
         user_id: Uuid,
     ) -> Result<(), AppError> {
-        let mut task = self
+        let success = self
             .task_repo
-            .get_task(task_id, organization_id)
-            .await?
-            .ok_or_else(|| AppError::NotFound(format!("Task with id {} not found", task_id)))?;
+            .take_task_ownership_atomic(task_id, organization_id, user_id)
+            .await?;
 
-        task.take_ownership(user_id)?;
-        self.task_repo.update_task(&task).await
+        if !success {
+            return Err(AppError::Conflict(
+                "Task is already owned by another user".to_string(),
+            ));
+        }
+
+        Ok(())
     }
 
     pub async fn release_task_ownership(
@@ -450,6 +455,25 @@ mod tests {
                 .filter(|t| t.owner_user_id == Some(user_id))
                 .cloned()
                 .collect())
+        }
+
+        async fn take_task_ownership_atomic(
+            &self,
+            task_id: Uuid,
+            _organization_id: Option<Uuid>,
+            user_id: Uuid,
+        ) -> Result<bool, AppError> {
+            let mut tasks = self.tasks.lock().unwrap();
+            if let Some(task) = tasks.get_mut(&task_id) {
+                if task.status == crate::domain::TaskStatus::Available {
+                    task.status = crate::domain::TaskStatus::Owned;
+                    task.owner_user_id = Some(user_id);
+                    task.owned_at = Some(chrono::Utc::now());
+                    task.updated_at = chrono::Utc::now();
+                    return Ok(true);
+                }
+            }
+            Ok(false)
         }
     }
 

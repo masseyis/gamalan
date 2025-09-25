@@ -62,10 +62,10 @@ impl TaskStatus {
 impl std::fmt::Display for TaskStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Available => write!(f, "Available"),
-            Self::Owned => write!(f, "Owned"),
-            Self::InProgress => write!(f, "InProgress"),
-            Self::Completed => write!(f, "Completed"),
+            Self::Available => write!(f, "available"),
+            Self::Owned => write!(f, "owned"),
+            Self::InProgress => write!(f, "inprogress"),
+            Self::Completed => write!(f, "completed"),
         }
     }
 }
@@ -614,10 +614,10 @@ mod tests {
 
     #[test]
     fn test_task_status_display() {
-        assert_eq!(TaskStatus::Available.to_string(), "Available");
-        assert_eq!(TaskStatus::Owned.to_string(), "Owned");
-        assert_eq!(TaskStatus::InProgress.to_string(), "InProgress");
-        assert_eq!(TaskStatus::Completed.to_string(), "Completed");
+        assert_eq!(TaskStatus::Available.to_string(), "available");
+        assert_eq!(TaskStatus::Owned.to_string(), "owned");
+        assert_eq!(TaskStatus::InProgress.to_string(), "inprogress");
+        assert_eq!(TaskStatus::Completed.to_string(), "completed");
     }
 
     #[test]

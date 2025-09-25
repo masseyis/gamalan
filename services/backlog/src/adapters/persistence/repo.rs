@@ -60,7 +60,10 @@ impl StoryRepository for SqlStoryRepository {
     ) -> Result<Option<Story>, AppError> {
         let story_row = sqlx::query_as::<_, StoryRow>(
             "SELECT id, project_id, organization_id, title, description, status, labels, story_points, sprint_id, assigned_to_user_id, created_at, updated_at FROM stories
-             WHERE id = $1 AND (organization_id = $2 OR ($2 IS NULL AND organization_id IS NULL)) AND deleted_at IS NULL",
+             WHERE id = $1 AND (
+                 (organization_id IS NOT NULL AND organization_id = $2) OR
+                 (organization_id IS NULL AND $2 IS NULL)
+             ) AND deleted_at IS NULL",
         )
         .bind(id)
         .bind(organization_id)
@@ -89,7 +92,10 @@ impl StoryRepository for SqlStoryRepository {
 
         sqlx::query(
             "UPDATE stories SET title = $2, description = $3, status = $4, labels = $5, updated_at = NOW()
-             WHERE id = $1 AND (organization_id = $6 OR ($6 IS NULL AND organization_id IS NULL))",
+             WHERE id = $1 AND (
+                 (organization_id IS NOT NULL AND organization_id = $6) OR
+                 (organization_id IS NULL AND $6 IS NULL)
+             )",
         )
         .bind(story.id)
         .bind(&story.title)
@@ -108,12 +114,17 @@ impl StoryRepository for SqlStoryRepository {
     }
 
     async fn delete_story(&self, id: Uuid, organization_id: Option<Uuid>) -> Result<(), AppError> {
-        sqlx::query("UPDATE stories SET deleted_at = NOW() WHERE id = $1 AND (organization_id = $2 OR ($2 IS NULL AND organization_id IS NULL))")
-            .bind(id)
-            .bind(organization_id)
-            .execute(&self.pool)
-            .await
-            .map_err(|_| AppError::InternalServerError)?;
+        sqlx::query(
+            "UPDATE stories SET deleted_at = NOW() WHERE id = $1 AND (
+            (organization_id IS NOT NULL AND organization_id = $2) OR
+            (organization_id IS NULL AND $2 IS NULL)
+        )",
+        )
+        .bind(id)
+        .bind(organization_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|_| AppError::InternalServerError)?;
         Ok(())
     }
 
@@ -185,7 +196,10 @@ impl TaskRepository for SqlTaskRepository {
             "SELECT id, story_id, organization_id, title, description, acceptance_criteria_refs,
                     status, owner_user_id, estimated_hours, created_at, updated_at, owned_at, completed_at
              FROM tasks
-             WHERE id = $1 AND (organization_id = $2 OR ($2 IS NULL AND organization_id IS NULL))",
+             WHERE id = $1 AND (
+                 (organization_id IS NOT NULL AND organization_id = $2) OR
+                 (organization_id IS NULL AND $2 IS NULL)
+             )",
         )
         .bind(id)
         .bind(organization_id)
@@ -271,5 +285,32 @@ impl TaskRepository for SqlTaskRepository {
         .map_err(|_| AppError::InternalServerError)?;
 
         Ok(task_rows.into_iter().map(Task::from).collect())
+    }
+
+    async fn take_task_ownership_atomic(
+        &self,
+        task_id: Uuid,
+        organization_id: Option<Uuid>,
+        user_id: Uuid,
+    ) -> Result<bool, AppError> {
+        let now = chrono::Utc::now();
+        let result = sqlx::query(
+            "UPDATE tasks
+             SET status = $2, owner_user_id = $3, owned_at = $4, updated_at = $5
+             WHERE id = $1
+             AND status = 'available'
+             AND (organization_id = $6 OR ($6 IS NULL AND organization_id IS NULL))",
+        )
+        .bind(task_id)
+        .bind("owned")
+        .bind(user_id)
+        .bind(now)
+        .bind(now)
+        .bind(organization_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|_| AppError::InternalServerError)?;
+
+        Ok(result.rows_affected() > 0)
     }
 }

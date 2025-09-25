@@ -23,7 +23,13 @@ impl crate::application::ports::ReadinessService for MockReadinessService {
         _story_id: uuid::Uuid,
         ac_refs: &[String],
     ) -> Result<Vec<String>, common::AppError> {
-        // Return all refs as valid for testing
-        Ok(ac_refs.to_vec())
+        // For testing, assume AC1, AC2, AC3 are valid - return empty vector for invalid refs
+        let valid_refs = ["AC1", "AC2", "AC3"];
+        let invalid = ac_refs
+            .iter()
+            .filter(|r| !valid_refs.contains(&r.as_str()))
+            .cloned()
+            .collect();
+        Ok(invalid)
     }
 }

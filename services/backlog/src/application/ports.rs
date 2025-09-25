@@ -44,6 +44,14 @@ pub trait TaskRepository: Send + Sync {
         user_id: Uuid,
         organization_id: Option<Uuid>,
     ) -> Result<Vec<Task>, AppError>;
+    /// Atomically take ownership of a task if it's available
+    /// Returns true if successful, false if task was already taken
+    async fn take_task_ownership_atomic(
+        &self,
+        task_id: Uuid,
+        organization_id: Option<Uuid>,
+        user_id: Uuid,
+    ) -> Result<bool, AppError>;
 }
 
 #[async_trait]

@@ -491,7 +491,7 @@ fn test_task_invalid_status_transitions() {
     assert!(result
         .unwrap_err()
         .to_string()
-        .contains("Cannot complete task. Current status: Owned"));
+        .contains("Cannot complete task. Current status: owned"));
 
     // Cannot take ownership of already owned task
     let other_user_id = Uuid::new_v4();
@@ -500,7 +500,7 @@ fn test_task_invalid_status_transitions() {
     assert!(result
         .unwrap_err()
         .to_string()
-        .contains("Task is not available for ownership. Current status: Owned"));
+        .contains("Task is not available for ownership. Current status: owned"));
 }
 
 #[test]
@@ -553,10 +553,10 @@ fn test_story_status_string_conversion() {
 
 #[test]
 fn test_task_status_string_conversion() {
-    assert_eq!(TaskStatus::Available.to_string(), "Available");
-    assert_eq!(TaskStatus::Owned.to_string(), "Owned");
-    assert_eq!(TaskStatus::InProgress.to_string(), "InProgress");
-    assert_eq!(TaskStatus::Completed.to_string(), "Completed");
+    assert_eq!(TaskStatus::Available.to_string(), "available");
+    assert_eq!(TaskStatus::Owned.to_string(), "owned");
+    assert_eq!(TaskStatus::InProgress.to_string(), "inprogress");
+    assert_eq!(TaskStatus::Completed.to_string(), "completed");
 
     assert_eq!(
         TaskStatus::from_str("available"),
