@@ -102,7 +102,7 @@ async fn test_create_story_unauthorized() {
         .oneshot(
             Request::builder()
                 .method("POST")
-                .uri("/api/v1/projects/550e8400-e29b-41d4-a716-446655440000/stories")
+                .uri(format!("/api/v1/projects/{}/stories", Uuid::new_v4()))
                 .header("content-type", "application/json")
                 .body(Body::from(new_story.to_string()))
                 .unwrap(),
@@ -121,7 +121,7 @@ async fn test_get_stories_by_project_unauthorized() {
         .oneshot(
             Request::builder()
                 .method("GET")
-                .uri("/api/v1/projects/550e8400-e29b-41d4-a716-446655440000/stories")
+                .uri(format!("/api/v1/projects/{}/stories", Uuid::new_v4()))
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -144,7 +144,7 @@ async fn test_create_story_bad_request() {
         .oneshot(
             Request::builder()
                 .method("POST")
-                .uri("/api/v1/projects/550e8400-e29b-41d4-a716-446655440000/stories")
+                .uri(format!("/api/v1/projects/{}/stories", Uuid::new_v4()))
                 .header("content-type", "application/json")
                 .header("authorization", "Bearer valid-test-token")
                 .header("x-context-type", "personal")
@@ -268,7 +268,7 @@ async fn test_malformed_json_request() {
         .oneshot(
             Request::builder()
                 .method("POST")
-                .uri("/api/v1/projects/550e8400-e29b-41d4-a716-446655440000/stories")
+                .uri(format!("/api/v1/projects/{}/stories", Uuid::new_v4()))
                 .header("content-type", "application/json")
                 .header("authorization", "Bearer valid-test-token")
                 .header("x-context-type", "personal")
@@ -521,8 +521,7 @@ async fn test_task_ownership_workflow_integration() {
 #[tokio::test]
 async fn test_task_ownership_authorization() {
     let (app, pool) = setup_app_with_pool().await;
-    let org_id =
-        Uuid::parse_str("550e8400-e29b-41d4-a716-446655440000").unwrap_or_else(|_| Uuid::new_v4());
+    let org_id = Uuid::new_v4(); // Generate unique org_id for each test
     let project_id = create_test_project(&pool, org_id).await;
 
     // Create story and task as before
@@ -633,8 +632,7 @@ async fn test_task_ownership_authorization() {
 #[tokio::test]
 async fn test_task_ownership_state_transitions() {
     let (app, pool) = setup_app_with_pool().await;
-    let org_id =
-        Uuid::parse_str("550e8400-e29b-41d4-a716-446655440000").unwrap_or_else(|_| Uuid::new_v4());
+    let org_id = Uuid::new_v4(); // Generate unique org_id for each test
     let project_id = create_test_project(&pool, org_id).await;
 
     // Create story and task

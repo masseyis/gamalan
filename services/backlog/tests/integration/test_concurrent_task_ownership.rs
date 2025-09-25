@@ -32,7 +32,7 @@ async fn setup_test_app(pool: PgPool) -> axum::Router {
 
 async fn create_test_task(app: &axum::Router) -> (Uuid, Uuid, Uuid) {
     let project_id = Uuid::new_v4();
-    let org_id = Uuid::new_v4();
+    let org_id = Uuid::new_v4(); // Generate unique org_id for each test
 
     // First, create project using direct SQL since we don't have a projects API in this service
     let database_url = std::env::var("TEST_DATABASE_URL")
@@ -42,7 +42,7 @@ async fn create_test_task(app: &axum::Router) -> (Uuid, Uuid, Uuid) {
         .expect("Failed to connect to test database");
 
     // Create unique project name to avoid constraint violations in parallel tests
-    let project_name = format!("Test Project {}", Uuid::new_v4());
+    let project_name = format!("Concurrent Test Project {}", Uuid::new_v4());
 
     sqlx::query(
         "INSERT INTO projects (id, organization_id, name, description, created_at, updated_at)
