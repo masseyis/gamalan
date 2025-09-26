@@ -350,7 +350,15 @@ async fn test_high_load_task_creation_and_ownership() -> Result<(), Box<dyn std:
     let story_request = json!({
         "title": "Test Story for High Load Tests",
         "description": "Test Description",
-        "labels": ["feature"]
+        "labels": ["feature"],
+        "acceptance_criteria": [
+            {
+                "id": "AC1",
+                "given": "A user has valid credentials",
+                "when": "They attempt to log in",
+                "then": "They should be authenticated successfully"
+            }
+        ]
     });
 
     let story_response = (*app)
@@ -397,7 +405,7 @@ async fn test_high_load_task_creation_and_ownership() -> Result<(), Box<dyn std:
                     json!({
                         "title": format!("Task {}", i),
                         "description": format!("Description for task {}", i),
-                        "acceptance_criteria_refs": [format!("AC{}", i)]
+                        "acceptance_criteria_refs": ["AC1"]
                     })
                     .to_string(),
                 ))

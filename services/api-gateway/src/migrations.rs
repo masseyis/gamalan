@@ -32,9 +32,11 @@ async fn run_auth_gateway_migrations(pool: &PgPool) -> Result<()> {
         }
         Err(e) => {
             warn!("Auth-gateway migrations failed: {}", e);
-            // Don't fail if migrations already applied
-            if e.to_string().contains("already applied") {
-                info!("Auth-gateway migrations already applied, continuing...");
+            // Don't fail if migrations already applied or missing
+            if e.to_string().contains("already applied")
+                || e.to_string().contains("missing in the resolved migrations")
+            {
+                info!("Auth-gateway migrations already applied or have missing resolved migrations, continuing...");
                 Ok(())
             } else {
                 Err(e.into())
@@ -56,8 +58,10 @@ async fn run_projects_migrations(pool: &PgPool) -> Result<()> {
         }
         Err(e) => {
             warn!("Projects migrations failed: {}", e);
-            if e.to_string().contains("already applied") {
-                info!("Projects migrations already applied, continuing...");
+            if e.to_string().contains("already applied")
+                || e.to_string().contains("missing in the resolved migrations")
+            {
+                info!("Projects migrations already applied or have missing resolved migrations, continuing...");
                 Ok(())
             } else {
                 Err(e.into())
@@ -79,8 +83,10 @@ async fn run_backlog_migrations(pool: &PgPool) -> Result<()> {
         }
         Err(e) => {
             warn!("Backlog migrations failed: {}", e);
-            if e.to_string().contains("already applied") {
-                info!("Backlog migrations already applied, continuing...");
+            if e.to_string().contains("already applied")
+                || e.to_string().contains("missing in the resolved migrations")
+            {
+                info!("Backlog migrations already applied or have missing resolved migrations, continuing...");
                 Ok(())
             } else {
                 Err(e.into())
@@ -102,8 +108,10 @@ async fn run_readiness_migrations(pool: &PgPool) -> Result<()> {
         }
         Err(e) => {
             warn!("Readiness migrations failed: {}", e);
-            if e.to_string().contains("already applied") {
-                info!("Readiness migrations already applied, continuing...");
+            if e.to_string().contains("already applied")
+                || e.to_string().contains("missing in the resolved migrations")
+            {
+                info!("Readiness migrations already applied or have missing resolved migrations, continuing...");
                 Ok(())
             } else {
                 Err(e.into())
@@ -125,8 +133,10 @@ async fn run_prompt_builder_migrations(pool: &PgPool) -> Result<()> {
         }
         Err(e) => {
             warn!("Prompt-builder migrations failed: {}", e);
-            if e.to_string().contains("already applied") {
-                info!("Prompt-builder migrations already applied, continuing...");
+            if e.to_string().contains("already applied")
+                || e.to_string().contains("missing in the resolved migrations")
+            {
+                info!("Prompt-builder migrations already applied or have missing resolved migrations, continuing...");
                 Ok(())
             } else {
                 Err(e.into())
@@ -148,8 +158,10 @@ async fn run_context_orchestrator_migrations(pool: &PgPool) -> Result<()> {
         }
         Err(e) => {
             warn!("Context-orchestrator migrations failed: {}", e);
-            if e.to_string().contains("already applied") {
-                info!("Context-orchestrator migrations already applied, continuing...");
+            if e.to_string().contains("already applied")
+                || e.to_string().contains("missing in the resolved migrations")
+            {
+                info!("Context-orchestrator migrations already applied or have missing resolved migrations, continuing...");
                 Ok(())
             } else {
                 Err(e.into())
