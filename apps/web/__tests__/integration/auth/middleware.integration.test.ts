@@ -10,7 +10,7 @@ const mockAuth = {
 
 vi.mock('@clerk/nextjs/server', () => ({
   clerkMiddleware: vi.fn((callback) => {
-    return async (request: NextRequest) => {
+    return async (request: NextRequest, event?: any) => {
       // Call the callback with mock auth and request
       return await callback(mockAuth, request)
     }
@@ -38,7 +38,7 @@ describe('Middleware Integration with Clerk Authentication', () => {
     it('should allow access to public routes', async () => {
       const request = new NextRequest('http://localhost:3000/')
 
-      await middleware(request)
+      await middleware(request, {} as any)
 
       // Should not call protect for public routes
       expect(mockAuth.protect).not.toHaveBeenCalled()
@@ -47,7 +47,7 @@ describe('Middleware Integration with Clerk Authentication', () => {
     it('should protect private routes', async () => {
       const request = new NextRequest('http://localhost:3000/dashboard')
 
-      await middleware(request)
+      await middleware(request, {} as any)
 
       // Should call protect for private routes
       expect(mockAuth.protect).toHaveBeenCalled()
@@ -56,7 +56,7 @@ describe('Middleware Integration with Clerk Authentication', () => {
     it('should protect projects routes', async () => {
       const request = new NextRequest('http://localhost:3000/projects')
 
-      await middleware(request)
+      await middleware(request, {} as any)
 
       expect(mockAuth.protect).toHaveBeenCalled()
     })
@@ -64,7 +64,7 @@ describe('Middleware Integration with Clerk Authentication', () => {
     it('should protect team routes', async () => {
       const request = new NextRequest('http://localhost:3000/team')
 
-      await middleware(request)
+      await middleware(request, {} as any)
 
       expect(mockAuth.protect).toHaveBeenCalled()
     })
@@ -72,7 +72,7 @@ describe('Middleware Integration with Clerk Authentication', () => {
     it('should protect assistant routes', async () => {
       const request = new NextRequest('http://localhost:3000/assistant')
 
-      await middleware(request)
+      await middleware(request, {} as any)
 
       expect(mockAuth.protect).toHaveBeenCalled()
     })
@@ -80,7 +80,7 @@ describe('Middleware Integration with Clerk Authentication', () => {
     it('should protect API routes', async () => {
       const request = new NextRequest('http://localhost:3000/api/projects')
 
-      await middleware(request)
+      await middleware(request, {} as any)
 
       expect(mockAuth.protect).toHaveBeenCalled()
     })
@@ -92,7 +92,7 @@ describe('Middleware Integration with Clerk Authentication', () => {
 
       const request = new NextRequest('http://localhost:3000/dashboard')
 
-      const result = await middleware(request)
+      const result = await middleware(request, {} as any)
 
       expect(mockAuth.protect).toHaveBeenCalled()
       expect(result).toBeUndefined() // Successful auth allows request to continue
@@ -104,7 +104,7 @@ describe('Middleware Integration with Clerk Authentication', () => {
 
       const request = new NextRequest('http://localhost:3000/dashboard')
 
-      await expect(middleware(request)).rejects.toThrow('Authentication failed')
+      await expect(middleware(request, {} as any)).rejects.toThrow('Authentication failed')
     })
 
     it('should handle missing authentication', async () => {
@@ -112,7 +112,7 @@ describe('Middleware Integration with Clerk Authentication', () => {
 
       const request = new NextRequest('http://localhost:3000/projects')
 
-      await expect(middleware(request)).rejects.toThrow('No session')
+      await expect(middleware(request, {} as any)).rejects.toThrow('No session')
     })
   })
 
@@ -122,7 +122,7 @@ describe('Middleware Integration with Clerk Authentication', () => {
 
       const request = new NextRequest('http://localhost:3000/teams/org_123/projects')
 
-      await middleware(request)
+      await middleware(request, {} as any)
 
       expect(mockAuth.protect).toHaveBeenCalled()
     })
@@ -136,7 +136,7 @@ describe('Middleware Integration with Clerk Authentication', () => {
         }
       })
 
-      await middleware(request)
+      await middleware(request, {} as any)
 
       expect(mockAuth.protect).toHaveBeenCalled()
     })
@@ -152,7 +152,7 @@ describe('Middleware Integration with Clerk Authentication', () => {
         }
       })
 
-      await middleware(request)
+      await middleware(request, {} as any)
 
       expect(mockAuth.protect).toHaveBeenCalled()
     })
@@ -166,7 +166,7 @@ describe('Middleware Integration with Clerk Authentication', () => {
         }
       })
 
-      await expect(middleware(request)).rejects.toThrow('Invalid token')
+      await expect(middleware(request, {} as any)).rejects.toThrow('Invalid token')
     })
 
     it('should handle expired session tokens', async () => {
@@ -178,7 +178,7 @@ describe('Middleware Integration with Clerk Authentication', () => {
         }
       })
 
-      await expect(middleware(request)).rejects.toThrow('Token expired')
+      await expect(middleware(request, {} as any)).rejects.toThrow('Token expired')
     })
   })
 
@@ -233,33 +233,33 @@ describe('Middleware Integration with Clerk Authentication', () => {
     it('should handle test environment authentication', async () => {
       mockAuth.protect.mockResolvedValue(undefined)
       // Mock test environment
-      process.env.NODE_ENV = 'test'
+      vi.stubEnv('NODE_ENV', 'test')
 
       const request = new NextRequest('http://localhost:3000/dashboard')
 
-      await middleware(request)
+      await middleware(request, {} as any)
 
       expect(mockAuth.protect).toHaveBeenCalled()
     })
 
     it('should handle development environment', async () => {
       mockAuth.protect.mockResolvedValue(undefined)
-      process.env.NODE_ENV = 'development'
+      vi.stubEnv('NODE_ENV', 'development')
 
       const request = new NextRequest('http://localhost:3000/dashboard')
 
-      await middleware(request)
+      await middleware(request, {} as any)
 
       expect(mockAuth.protect).toHaveBeenCalled()
     })
 
     it('should handle production environment', async () => {
       mockAuth.protect.mockResolvedValue(undefined)
-      process.env.NODE_ENV = 'production'
+      vi.stubEnv('NODE_ENV', 'production')
 
       const request = new NextRequest('http://localhost:3000/dashboard')
 
-      await middleware(request)
+      await middleware(request, {} as any)
 
       expect(mockAuth.protect).toHaveBeenCalled()
     })
@@ -271,7 +271,7 @@ describe('Middleware Integration with Clerk Authentication', () => {
       // Create a request with malformed URL
       const request = new NextRequest('http://localhost:3000/dashboard?param=invalid%')
 
-      await middleware(request)
+      await middleware(request, {} as any)
 
       expect(mockAuth.protect).toHaveBeenCalled()
     })
@@ -280,7 +280,7 @@ describe('Middleware Integration with Clerk Authentication', () => {
       mockAuth.protect.mockResolvedValue(undefined)
       const request = new NextRequest('http://localhost:3000/dashboard')
 
-      await middleware(request)
+      await middleware(request, {} as any)
 
       expect(mockAuth.protect).toHaveBeenCalled()
     })
@@ -293,7 +293,7 @@ describe('Middleware Integration with Clerk Authentication', () => {
         new NextRequest('http://localhost:3000/team')
       ]
 
-      const promises = requests.map(request => middleware(request))
+      const promises = requests.map(request => middleware(request, {} as any))
 
       await Promise.all(promises)
 
@@ -306,7 +306,7 @@ describe('Middleware Integration with Clerk Authentication', () => {
       mockAuth.protect.mockResolvedValue(undefined)
       const request = new NextRequest('http://localhost:3000/dashboard')
 
-      await middleware(request)
+      await middleware(request, {} as any)
 
       expect(mockAuth.protect).toHaveBeenCalledTimes(1)
     })
@@ -319,7 +319,7 @@ describe('Middleware Integration with Clerk Authentication', () => {
         new NextRequest('http://localhost:3000/dashboard')
       )
 
-      await Promise.all(requests.map(request => middleware(request)))
+      await Promise.all(requests.map(request => middleware(request, {} as any)))
 
       const endTime = Date.now()
       const duration = endTime - startTime

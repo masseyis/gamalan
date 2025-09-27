@@ -23,7 +23,7 @@ test.describe('Error Handling and Edge Cases', () => {
       await projectsPage.gotoProjects()
 
       // Simulate complete network failure
-      await page.setOfflineMode(true)
+      await page.context().setOffline(true)
 
       // Try to create a project
       await projectsPage.newProjectButton.click()
@@ -40,7 +40,7 @@ test.describe('Error Handling and Edge Cases', () => {
       }
 
       // Restore network
-      await page.setOfflineMode(false)
+      await page.context().setOffline(false)
     })
 
     test('should handle API timeout scenarios', async ({ page }) => {
