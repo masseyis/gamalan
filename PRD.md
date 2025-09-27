@@ -121,8 +121,42 @@ Battra AI replaces the **board as the center** with an **assistant prompt + sugg
 ### 6.4 Architecture pattern
 
 - Microservices, Rust-first, Shuttle/Fly.io deployable.
-- Event-sourcing + projections where fast reads are needed (e.g., “My Todo list”).
+- Event-sourcing + projections where fast reads are needed (e.g., "My Todo list").
 - Strong CI/CD gates: `cargo test`, `cargo clippy`, `cargo fmt`, coverage enforced.
+
+### 6.5 Opinionated Agile Workflow (Core Domain)
+
+**User Roles & Hierarchy:**
+- **Sponsor**: View progress, demos, forecasts (read-only)
+- **Product Owner**: Manage backlog, prioritize stories, accept completed work
+- **Managing Contributor**: Technical leadership + mentorship (same capabilities as Contributor)
+- **Contributor**: Self-organize work, take task ownership, implement solutions
+  - Specialties: Frontend, Backend, Fullstack, QA, DevOps, UX Designer
+
+**Team Structure:**
+- Contributors belong to teams (no individual work)
+- Teams work on one sprint at a time (no overlapping sprints)
+- Team velocity tracked for capacity planning
+
+**Story Workflow (Enforced Statuses):**
+```
+Draft → NeedsRefinement → Ready → Committed → InProgress →
+TasksComplete → Deployed → AwaitingAcceptance → Accepted
+```
+
+**Non-Negotiable Constraints:**
+1. **WIP Limits**: Team works on 1 story at a time, contributors own 1 incomplete task
+2. **Story Size**: Maximum 8 points (larger stories must be split)
+3. **Readiness Gates**: Minimum 3 acceptance criteria, test prompts, demo script
+4. **Task Ownership**: Contributors self-select tasks ("I'm on it"), no manager assignment
+5. **Acceptance**: Only Product Owner can accept completed stories
+6. **Sprint Integrity**: Fixed duration, goal required, no mid-sprint additions
+
+**Database Schema Extensions:**
+- `teams`, `team_memberships`, `sprints`, `sprint_stories`
+- Enhanced `users` with roles and specialties
+- Task ownership tracking with self-selection model
+- Story acceptance audit trail
 
 ---
 

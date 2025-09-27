@@ -132,7 +132,7 @@ mod action_validator_tests {
         assert!(result
             .unwrap_err()
             .to_string()
-            .contains("Can only assign users to tasks"));
+            .contains("Can only perform task operations on tasks"));
     }
 
     #[test]

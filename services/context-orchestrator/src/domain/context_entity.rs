@@ -63,7 +63,11 @@ pub struct ParsedIntent {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum IntentType {
     UpdateStatus,
-    AssignTask,
+    AssignTask, // Legacy - kept for backward compatibility
+    TakeOwnership,
+    ReleaseOwnership,
+    StartWork,
+    CompleteTask,
     CreateItem,
     QueryStatus,
     SearchItems,
@@ -110,7 +114,11 @@ pub struct ActionCommand {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum ActionType {
     UpdateStatus,
-    AssignUser,
+    AssignUser, // Legacy - kept for backward compatibility
+    TakeOwnership,
+    ReleaseOwnership,
+    StartWork,
+    CompleteTask,
     UpdatePriority,
     AddComment,
     CreateTask,
@@ -124,6 +132,10 @@ impl std::fmt::Display for ActionType {
         match self {
             Self::UpdateStatus => write!(f, "update_status"),
             Self::AssignUser => write!(f, "assign_user"),
+            Self::TakeOwnership => write!(f, "take_ownership"),
+            Self::ReleaseOwnership => write!(f, "release_ownership"),
+            Self::StartWork => write!(f, "start_work"),
+            Self::CompleteTask => write!(f, "complete_task"),
             Self::UpdatePriority => write!(f, "update_priority"),
             Self::AddComment => write!(f, "add_comment"),
             Self::CreateTask => write!(f, "create_task"),
@@ -139,6 +151,10 @@ impl ActionType {
         match s {
             "update_status" => Ok(Self::UpdateStatus),
             "assign_user" => Ok(Self::AssignUser),
+            "take_ownership" => Ok(Self::TakeOwnership),
+            "release_ownership" => Ok(Self::ReleaseOwnership),
+            "start_work" => Ok(Self::StartWork),
+            "complete_task" => Ok(Self::CompleteTask),
             "update_priority" => Ok(Self::UpdatePriority),
             "add_comment" => Ok(Self::AddComment),
             "create_task" => Ok(Self::CreateTask),
@@ -294,6 +310,10 @@ impl std::fmt::Display for IntentType {
         match self {
             IntentType::UpdateStatus => write!(f, "update_status"),
             IntentType::AssignTask => write!(f, "assign_task"),
+            IntentType::TakeOwnership => write!(f, "take_ownership"),
+            IntentType::ReleaseOwnership => write!(f, "release_ownership"),
+            IntentType::StartWork => write!(f, "start_work"),
+            IntentType::CompleteTask => write!(f, "complete_task"),
             IntentType::CreateItem => write!(f, "create_item"),
             IntentType::QueryStatus => write!(f, "query_status"),
             IntentType::SearchItems => write!(f, "search_items"),

@@ -9,33 +9,15 @@ import { projectsApi } from '@/lib/api/projects'
 import { backlogApi } from '@/lib/api/backlog'
 import { useApiClient } from '@/lib/api/client'
 import { useEffect } from 'react'
-import { useUser } from '@clerk/nextjs'
-
-// Safe wrapper for user data - avoids conditional hook calls
-const getUserData = () => {
-  try {
-    if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
-      const { useUser } = require('@clerk/nextjs')
-      // This would work in a component context, but for now return mock data
-      return { user: { firstName: 'Demo User' } }
-    }
-  } catch {
-    // Clerk not available
-  }
-  return { user: { firstName: 'Demo User' } }
-}
-
-// Simple hook that always returns demo data to avoid conditional hook calls
-function useUserSafe() {
-  // For now, always return demo data to avoid React Hooks violations
-  // In a real app, this would use React Context or a different state management approach
-  return { user: { firstName: 'Demo User' } }
-}
+import { useAuth, useUser } from '@clerk/nextjs'
+import { UserGuide, RoleExplanation } from '@/components/ui/user-guide'
+import { useRoles } from '@/components/providers/UserContextProvider'
 
 export default function DashboardPage() {
-  const { user } = useUserSafe()
-  const { isLoaded } = useUser()
+  const { isLoaded } = useAuth()
+  const { user } = useUser()
   const { setupClients } = useApiClient()
+  const { user: contextUser } = useRoles()
 
   // Load projects
   const { data: projects, isLoading: projectsLoading } = useQuery({
@@ -81,8 +63,8 @@ export default function DashboardPage() {
   let storiesCompleted = 0
 
   if (allStories) {
-    storiesInProgress = allStories.filter(s => s.status === 'in-progress').length
-    storiesCompleted = allStories.filter(s => s.status === 'done').length
+    storiesInProgress = allStories.filter(s => s.status === 'inprogress').length
+    storiesCompleted = allStories.filter(s => s.status === 'accepted').length
   }
 
   const recentProjects = projects?.slice(0, 3) || []
@@ -314,6 +296,14 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* User Guidance Section */}
+        {contextUser && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+            <RoleExplanation role={contextUser.role} />
+            <UserGuide userRole={contextUser.role} context="dashboard" />
+          </div>
+        )}
       </div>
     </div>
   )

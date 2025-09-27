@@ -82,7 +82,7 @@ impl JwtVerifier {
     ) -> Result<Claims, AppError> {
         if self.test_mode && token == "valid-test-token" {
             return Ok(Claims {
-                sub: "test-user".to_string(),
+                sub: "01234567-89ab-cdef-0123-456789abcdef".to_string(),
                 iss: "test-issuer".to_string(),
                 aud: None,
                 exp: 9999999999,

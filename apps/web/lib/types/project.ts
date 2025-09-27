@@ -2,6 +2,7 @@ export interface Project {
   id: string
   name: string
   teamId?: string
+  organizationId?: string
   description?: string
   createdAt: string
   updatedAt: string

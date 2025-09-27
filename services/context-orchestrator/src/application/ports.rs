@@ -134,7 +134,37 @@ pub trait BacklogServiceClient: ServiceClient + Send + Sync {
         task_data: CreateTaskRequest,
     ) -> Result<ServiceResult, AppError>;
 
+    // Legacy method - kept for backward compatibility
     async fn assign_task(
+        &self,
+        tenant_id: Uuid,
+        task_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<ServiceResult, AppError>;
+
+    // New ownership methods
+    async fn take_task_ownership(
+        &self,
+        tenant_id: Uuid,
+        task_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<ServiceResult, AppError>;
+
+    async fn release_task_ownership(
+        &self,
+        tenant_id: Uuid,
+        task_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<ServiceResult, AppError>;
+
+    async fn start_task_work(
+        &self,
+        tenant_id: Uuid,
+        task_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<ServiceResult, AppError>;
+
+    async fn complete_task_work(
         &self,
         tenant_id: Uuid,
         task_id: Uuid,

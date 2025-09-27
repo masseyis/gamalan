@@ -1,5 +1,4 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
-import { useAuth } from '@clerk/nextjs'
 
 export interface ApiClientOptions {
   baseURL: string
@@ -25,27 +24,36 @@ class ApiClient {
     // Request interceptor to add auth token and organization context
     this.client.interceptors.request.use(
       async (config) => {
-        // Try to get auth token from Clerk if available
+        // Check if we're in test mode with mock auth
+        const isTestMode = process.env.NEXT_PUBLIC_ENABLE_MOCK_AUTH === 'true'
+
         if (typeof window !== 'undefined') {
           try {
-            // Access Clerk instance directly without hooks
-            const Clerk = (window as any).Clerk
-            if (Clerk && Clerk.session) {
-              const token = await Clerk.session.getToken()
-              if (token) {
-                config.headers.Authorization = `Bearer ${token}`
-              }
+            if (isTestMode) {
+              // Use mock authentication for tests
+              config.headers.Authorization = 'Bearer mock-test-token'
+              config.headers['X-User-Id'] = 'test-user-id'
+              config.headers['X-Context-Type'] = 'personal'
+            } else {
+              // Use real Clerk authentication for production
+              const Clerk = (window as any).Clerk
+              if (Clerk && Clerk.session) {
+                const token = await Clerk.session.getToken()
+                if (token) {
+                  config.headers.Authorization = `Bearer ${token}`
+                }
 
-              // Add organization context headers
-              const user = Clerk.user
-              const organization = Clerk.organization
+                // Add organization context headers
+                const user = Clerk.user
+                const organization = Clerk.organization
 
-              if (organization) {
-                config.headers['X-Organization-Id'] = organization.id
-                config.headers['X-Context-Type'] = 'organization'
-              } else if (user) {
-                config.headers['X-User-Id'] = user.id
-                config.headers['X-Context-Type'] = 'personal'
+                if (organization) {
+                  config.headers['X-Organization-Id'] = organization.id
+                  config.headers['X-Context-Type'] = 'organization'
+                } else if (user) {
+                  config.headers['X-User-Id'] = user.id
+                  config.headers['X-Context-Type'] = 'personal'
+                }
               }
             }
           } catch (error) {
@@ -62,24 +70,30 @@ class ApiClient {
 
     // Response interceptor for error handling
     this.client.interceptors.response.use(
-      (response) => response,
+      (response) => {
+        // Handle 204 No Content responses for void operations
+        if (response.status === 204) {
+          response.data = undefined
+        }
+        return response
+      },
       (error) => {
         // Log the error for debugging but don't break the UI
         console.warn('API request failed:', error.message, 'URL:', error.config?.url)
-        
+
         if (error.response?.status === 401) {
           console.warn('Unauthorized API request - this is expected if backend is not configured')
           // Don't redirect in production for demo purposes
           // window.location.href = '/sign-in'
         }
-        
+
         // Check if this is a connection error (likely due to localhost URLs)
         if (error.code === 'ERR_NETWORK' || error.message.includes('localhost')) {
           console.warn('Network error - likely localhost API URLs not available in production')
           // Return empty data instead of throwing
           return Promise.resolve({ data: null, status: 404, statusText: 'Service Unavailable' })
         }
-        
+
         return Promise.reject(error)
       }
     )
@@ -92,6 +106,11 @@ class ApiClient {
 
   async post<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
     const response: AxiosResponse<T> = await this.client.post(url, data, config)
+    return response.data
+  }
+
+  async put<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    const response: AxiosResponse<T> = await this.client.put(url, data, config)
     return response.data
   }
 
@@ -136,6 +155,10 @@ export const orchestratorClient = new ApiClient({
   timeout: 15000, // Longer timeout for LLM processing
 })
 
+export const authGatewayClient = new ApiClient({
+  baseURL: process.env.NEXT_PUBLIC_AUTH_GATEWAY_API_URL || 'http://localhost:8000',
+})
+
 // Function to setup authenticated clients (non-hook version)
 export async function setupAuthenticatedClients() {
   if (typeof window === 'undefined') {
@@ -144,12 +167,8 @@ export async function setupAuthenticatedClients() {
   }
 
   try {
-    // Dynamically import Clerk to avoid SSR issues
-    const { useAuth } = await import('@clerk/nextjs')
-    
-    // This won't work because useAuth is a hook
-    // We need a different approach
-    console.log('Auth setup skipped - needs to be called from within a component')
+    // Auth setup is handled by the API client interceptors
+    console.log('Auth setup skipped - handled by interceptors')
   } catch (error) {
     console.error('Failed to setup auth:', error)
   }
@@ -157,26 +176,32 @@ export async function setupAuthenticatedClients() {
 
 // Hook to setup authenticated clients (client-side only)
 export function useApiClient() {
-  // Always call useAuth to satisfy Rules of Hooks
-  const auth = useAuth()
-
   const setupClients = async () => {
     if (typeof window === 'undefined') {
       // Server side, skip
       return
     }
-    
+
     try {
-      const token = await auth.getToken()
-      if (token) {
-        projectsClient.setAuthToken(token)
-        backlogClient.setAuthToken(token)
-        readinessClient.setAuthToken(token)
-        promptBuilderClient.setAuthToken(token)
-        orchestratorClient.setAuthToken(token)
+      // Check if we're in test mode
+      const isTestMode = process.env.NEXT_PUBLIC_ENABLE_MOCK_AUTH === 'true'
+
+      if (isTestMode) {
+        // In test mode, set mock token
+        const mockToken = 'mock-test-token'
+        projectsClient.setAuthToken(mockToken)
+        backlogClient.setAuthToken(mockToken)
+        readinessClient.setAuthToken(mockToken)
+        promptBuilderClient.setAuthToken(mockToken)
+        orchestratorClient.setAuthToken(mockToken)
+        authGatewayClient.setAuthToken(mockToken)
+      } else {
+        // In production, use Clerk via interceptors
+        // The interceptor will handle auth automatically
+        console.debug('Authentication will be handled by API client interceptors')
       }
     } catch (error) {
-      console.error('Failed to get auth token:', error)
+      console.error('Failed to setup auth:', error)
     }
   }
 

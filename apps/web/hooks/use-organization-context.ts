@@ -1,12 +1,13 @@
-import { useOrganization, useUser } from '@clerk/nextjs'
+import { useUser, useOrganization } from '@clerk/nextjs'
 
 /**
  * Hook to get the current organization context for API calls
  * Returns the current organization ID or user ID for personal workspace
  */
 export function useOrganizationContext() {
-  const { organization } = useOrganization()
+  // Use standard Clerk hooks
   const { user } = useUser()
+  const { organization } = useOrganization()
 
   // For API calls, we need to determine the context:
   // - If in an organization, use the organization ID

@@ -31,10 +31,10 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 
 const statusColumns = [
-  { id: 'backlog', title: 'To Do', status: 'backlog' as StoryStatus },
-  { id: 'in-progress', title: 'In Progress', status: 'in-progress' as StoryStatus },
-  { id: 'in-review', title: 'In Review', status: 'in-review' as StoryStatus },
-  { id: 'done', title: 'Done', status: 'done' as StoryStatus },
+  { id: 'ready', title: 'Ready', status: 'ready' as StoryStatus },
+  { id: 'committed', title: 'Committed', status: 'committed' as StoryStatus },
+  { id: 'inprogress', title: 'In Progress', status: 'inprogress' as StoryStatus },
+  { id: 'accepted', title: 'Accepted', status: 'accepted' as StoryStatus },
 ]
 
 interface DraggableStoryCardProps {
@@ -314,7 +314,7 @@ export default function ProjectBoardPage() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-2xl">
-                {stories.filter(s => s.status === 'in-progress').length}
+                {stories.filter(s => s.status === 'inprogress').length}
               </CardTitle>
               <CardDescription>In Progress</CardDescription>
             </CardHeader>
@@ -322,7 +322,7 @@ export default function ProjectBoardPage() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-2xl">
-                {stories.filter(s => s.status === 'in-review').length}
+                {stories.filter(s => ['deployed', 'awaitingacceptance'].includes(s.status)).length}
               </CardTitle>
               <CardDescription>In Review</CardDescription>
             </CardHeader>
@@ -330,7 +330,7 @@ export default function ProjectBoardPage() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-2xl">
-                {stories.filter(s => s.status === 'done').length}
+                {stories.filter(s => s.status === 'accepted').length}
               </CardTitle>
               <CardDescription>Completed</CardDescription>
             </CardHeader>

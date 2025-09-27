@@ -18,36 +18,30 @@ import {
   Zap
 } from 'lucide-react'
 
-import { useUser, useClerk } from '@clerk/nextjs'
+import { useUserContext } from '@/components/providers/UserContextProvider'
 import { OrganizationSwitcher } from '@/components/organization/organization-switcher'
-
-function ClerkAuthWrapper({ children }: { children: (authData: any) => React.ReactNode }) {
-  const { user, isSignedIn, isLoaded } = useUser()
-  const { signOut } = useClerk()
-  
-  // Wait for Clerk to load
-  if (!isLoaded) {
-    return children({ isSignedIn: false, user: null, signOut: () => {}, loading: true })
-  }
-  
-  return children({ isSignedIn, user, signOut, loading: false })
-}
 
 export function Navigation() {
   const pathname = usePathname()
+  const { user, isLoading } = useUserContext()
+
+  // Auth state
+  const isSignedIn = !!user
+  const isLoaded = !isLoading
+
+  // SignOut function
+  const signOut = () => {
+    window.location.href = '/sign-out'
+  }
 
   return (
-    <ClerkAuthWrapper>
-      {({ isSignedIn, user, signOut, loading }) => (
-        <NavigationContent 
-          pathname={pathname}
-          isSignedIn={isSignedIn}
-          user={user}
-          signOut={signOut}
-          loading={loading}
-        />
-      )}
-    </ClerkAuthWrapper>
+    <NavigationContent
+      pathname={pathname}
+      isSignedIn={isSignedIn}
+      user={user}
+      signOut={signOut}
+      loading={!isLoaded}
+    />
   )
 }
 
@@ -86,9 +80,16 @@ function NavigationContent({ pathname, isSignedIn, user, signOut, loading }: any
     }
   ]
 
-  const userInitials = user?.firstName && user?.lastName 
-    ? `${user.firstName[0]}${user.lastName[0]}`
-    : user?.emailAddresses?.[0]?.emailAddress?.[0]?.toUpperCase() || 'U'
+  // Helper function to get display name and initials from User type
+  const getDisplayName = () => {
+    return user?.email?.split('@')[0] || 'User'
+  }
+
+  const getInitials = () => {
+    return user?.email?.[0]?.toUpperCase() || 'U'
+  }
+
+  const userInitials = getInitials()
 
   return (
     <nav className="border-b border-border bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/50 sticky top-0 z-50">
@@ -179,10 +180,10 @@ function NavigationContent({ pathname, isSignedIn, user, signOut, loading }: any
               <div className="flex items-center gap-3 pl-3 border-l border-border/50">
                 <div className="hidden sm:block text-right">
                   <div className="text-sm font-medium text-foreground">
-                    {user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : 'User'}
+                    {getDisplayName()}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {user?.emailAddresses?.[0]?.emailAddress || 'user@example.com'}
+                    {user?.email || 'user@example.com'}
                   </div>
                 </div>
                 <Avatar 

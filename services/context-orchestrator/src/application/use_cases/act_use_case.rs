@@ -92,6 +92,34 @@ impl ActUseCase {
                 overall_success = result.success;
                 results.push(result);
             }
+            ActionType::TakeOwnership => {
+                let result = self
+                    .execute_take_ownership(user_id, tenant_id, &action_command)
+                    .await?;
+                overall_success = result.success;
+                results.push(result);
+            }
+            ActionType::ReleaseOwnership => {
+                let result = self
+                    .execute_release_ownership(user_id, tenant_id, &action_command)
+                    .await?;
+                overall_success = result.success;
+                results.push(result);
+            }
+            ActionType::StartWork => {
+                let result = self
+                    .execute_start_work(user_id, tenant_id, &action_command)
+                    .await?;
+                overall_success = result.success;
+                results.push(result);
+            }
+            ActionType::CompleteTask => {
+                let result = self
+                    .execute_complete_task(user_id, tenant_id, &action_command)
+                    .await?;
+                overall_success = result.success;
+                results.push(result);
+            }
             ActionType::CreateTask => {
                 let result = self.execute_create_task(tenant_id, &action_command).await?;
                 overall_success = result.success;
@@ -174,13 +202,29 @@ impl ActUseCase {
 
     async fn get_candidates_for_entities(
         &self,
-        _tenant_id: Uuid,
-        _entity_ids: &[Uuid],
+        tenant_id: Uuid,
+        entity_ids: &[Uuid],
     ) -> Result<Vec<crate::domain::CandidateEntity>, AppError> {
         // For validation purposes, we need to fetch the entities
-        // In a real implementation, this might use a different query
-        // For now, we'll return empty since validation is mostly structural
-        Ok(Vec::new())
+        // Use vector search to get candidate entities
+        let candidates = self
+            .vector_repo
+            .search_similar(
+                vec![0.0; 512], // Mock embedding for testing
+                tenant_id,
+                None,      // No entity type filter
+                100,       // Large limit to ensure we get all candidates
+                Some(0.0), // Very low threshold to include all candidates
+            )
+            .await?;
+
+        // Filter to only the entities we're interested in
+        let filtered_candidates: Vec<_> = candidates
+            .into_iter()
+            .filter(|c| entity_ids.contains(&c.id))
+            .collect();
+
+        Ok(filtered_candidates)
     }
 
     async fn execute_update_status(
@@ -478,6 +522,149 @@ impl ActUseCase {
             // This would call the backlog service to add the comment
             messages.push(format!("Added comment to {}: {}", entity_id, comment));
             affected_entities.push(entity_id);
+        }
+
+        Ok(ActionResult {
+            service: "backlog".to_string(),
+            success,
+            message: messages.join("; "),
+            affected_entities,
+        })
+    }
+
+    async fn execute_take_ownership(
+        &self,
+        user_id: Uuid,
+        tenant_id: Uuid,
+        action: &ActionCommand,
+    ) -> Result<ActionResult, AppError> {
+        let mut affected_entities = Vec::new();
+        let mut success = true;
+        let mut messages = Vec::new();
+
+        for &entity_id in &action.target_entities {
+            match self
+                .backlog_client
+                .take_task_ownership(tenant_id, entity_id, user_id)
+                .await
+            {
+                Ok(result) => {
+                    affected_entities.extend(result.affected_entities);
+                    messages.push(result.message);
+                }
+                Err(e) => {
+                    success = false;
+                    messages.push(format!("Failed to take ownership of {}: {}", entity_id, e));
+                }
+            }
+        }
+
+        Ok(ActionResult {
+            service: "backlog".to_string(),
+            success,
+            message: messages.join("; "),
+            affected_entities,
+        })
+    }
+
+    async fn execute_release_ownership(
+        &self,
+        user_id: Uuid,
+        tenant_id: Uuid,
+        action: &ActionCommand,
+    ) -> Result<ActionResult, AppError> {
+        let mut affected_entities = Vec::new();
+        let mut success = true;
+        let mut messages = Vec::new();
+
+        for &entity_id in &action.target_entities {
+            match self
+                .backlog_client
+                .release_task_ownership(tenant_id, entity_id, user_id)
+                .await
+            {
+                Ok(result) => {
+                    affected_entities.extend(result.affected_entities);
+                    messages.push(result.message);
+                }
+                Err(e) => {
+                    success = false;
+                    messages.push(format!(
+                        "Failed to release ownership of {}: {}",
+                        entity_id, e
+                    ));
+                }
+            }
+        }
+
+        Ok(ActionResult {
+            service: "backlog".to_string(),
+            success,
+            message: messages.join("; "),
+            affected_entities,
+        })
+    }
+
+    async fn execute_start_work(
+        &self,
+        user_id: Uuid,
+        tenant_id: Uuid,
+        action: &ActionCommand,
+    ) -> Result<ActionResult, AppError> {
+        let mut affected_entities = Vec::new();
+        let mut success = true;
+        let mut messages = Vec::new();
+
+        for &entity_id in &action.target_entities {
+            match self
+                .backlog_client
+                .start_task_work(tenant_id, entity_id, user_id)
+                .await
+            {
+                Ok(result) => {
+                    affected_entities.extend(result.affected_entities);
+                    messages.push(result.message);
+                }
+                Err(e) => {
+                    success = false;
+                    messages.push(format!("Failed to start work on {}: {}", entity_id, e));
+                }
+            }
+        }
+
+        Ok(ActionResult {
+            service: "backlog".to_string(),
+            success,
+            message: messages.join("; "),
+            affected_entities,
+        })
+    }
+
+    async fn execute_complete_task(
+        &self,
+        user_id: Uuid,
+        tenant_id: Uuid,
+        action: &ActionCommand,
+    ) -> Result<ActionResult, AppError> {
+        let mut affected_entities = Vec::new();
+        let mut success = true;
+        let mut messages = Vec::new();
+
+        for &entity_id in &action.target_entities {
+            match self
+                .backlog_client
+                .complete_task_work(tenant_id, entity_id, user_id)
+                .await
+            {
+                Ok(result) => {
+                    affected_entities.extend(result.affected_entities);
+                    messages.push(result.message);
+                }
+                Err(e) => {
+                    success = false;
+                    messages.push(format!("Failed to complete task {}: {}", entity_id, e));
+                }
+            }
         }
 
         Ok(ActionResult {

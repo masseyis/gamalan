@@ -28,7 +28,7 @@ shuttle-runtime = "0.56.0"
 shuttle-axum = "0.56.0"
 shuttle-shared-db = { version = "0.56.0", features = ["postgres"] }
 shuttle-qdrant = "0.56.0"
-sqlx = { version = "0.8.6", features = ["postgres", "uuid", "chrono", "runtime-tokio-rustls"] }
+sqlx = { version = "0.8.6", features = ["postgres", "uuid", "chrono", "runtime-tokio-rustls", "migrate"] }
 utoipa = { version = "4.2.3", features = ["axum_extras"] }
 utoipa-swagger-ui = { version = "9.0.2", features = ["axum"] }
 tower-http = { version = "0.6.2", features = ["trace", "cors"] }

@@ -1,27 +1,30 @@
 import { backlogClient } from './client'
-import { 
-  Story, 
-  Task, 
-  AcceptanceCriterion, 
-  CreateStoryRequest, 
+import {
+  Story,
+  Task,
+  AcceptanceCriterion,
+  CreateStoryRequest,
   UpdateStoryRequest,
   CreateTaskRequest,
   UpdateTaskRequest,
   StoryStatus,
-  TaskStatus 
+  TaskStatus,
+  TaskOwnershipResponse,
+  SetTaskEstimateRequest,
+  UpdateStoryStatusRequest
 } from '@/lib/types/story'
 
 // Mock data for demonstration
 const mockStories: Record<string, Story[]> = {
-  'proj-1': [
+  'project-1': [
     {
       id: 'story-1',
       title: 'User Authentication System',
       description: 'As a user, I want to securely authenticate using Clerk so that I can access my personal projects and data',
-      status: 'backlog',
+      status: 'ready',
       priority: 'high',
       storyPoints: 8,
-      projectId: 'proj-1',
+      projectId: 'project-1',
       labels: ['authentication', 'security'],
       createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
       updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
@@ -30,10 +33,10 @@ const mockStories: Record<string, Story[]> = {
       id: 'story-2',
       title: 'Project Dashboard',
       description: 'As a project manager, I want to see an overview of all my projects with key metrics so that I can quickly assess project health',
-      status: 'in-progress',
+      status: 'inprogress',
       priority: 'high',
       storyPoints: 5,
-      projectId: 'proj-1',
+      projectId: 'project-1',
       labels: ['dashboard', 'metrics'],
       createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
       updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
@@ -42,10 +45,10 @@ const mockStories: Record<string, Story[]> = {
       id: 'story-3',
       title: 'Drag-and-Drop Sprint Board',
       description: 'As a scrum master, I want to drag stories between sprint board columns so that I can easily update story status during standups',
-      status: 'done',
+      status: 'accepted',
       priority: 'medium',
       storyPoints: 13,
-      projectId: 'proj-1',
+      projectId: 'project-1',
       labels: ['sprint', 'ui'],
       createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
       updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
@@ -54,24 +57,24 @@ const mockStories: Record<string, Story[]> = {
       id: 'story-4',
       title: 'AI Story Readiness Assessment',
       description: 'As a product owner, I want AI to analyze my stories and provide readiness feedback so that I know which stories are ready for development',
-      status: 'backlog',
+      status: 'ready',
       priority: 'medium',
       storyPoints: 8,
-      projectId: 'proj-1',
+      projectId: 'project-1',
       labels: ['ai', 'assessment'],
       createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
       updatedAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
     }
   ],
-  'proj-2': [
+  'project-2': [
     {
       id: 'story-5',
       title: 'Mobile App Setup',
       description: 'As a developer, I want to set up the React Native project structure so that we can begin mobile development',
-      status: 'backlog',
+      status: 'ready',
       priority: 'critical',
       storyPoints: 5,
-      projectId: 'proj-2',
+      projectId: 'project-2',
       labels: ['mobile', 'setup'],
       createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
       updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
@@ -84,33 +87,29 @@ const mockAcceptanceCriteria: Record<string, AcceptanceCriterion[]> = {
     {
       id: 'ac-1',
       acId: 'ac-1',
+      description: 'User registration form visibility',
       given: 'I am an unregistered user',
-      when: 'I visit the sign-up page',
-      then: 'I should see a form to create a new account',
+      whenClause: 'I visit the sign-up page',
+      thenClause: 'I should see a form to create a new account',
       storyId: 'story-1',
       createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
     },
     {
       id: 'ac-2',
       acId: 'ac-2',
+      description: 'User authentication success flow',
       given: 'I am a registered user with valid credentials',
-      when: 'I attempt to sign in',
-      then: 'I should be authenticated and redirected to the dashboard',
+      whenClause: 'I attempt to sign in',
+      thenClause: 'I should be authenticated and redirected to the dashboard',
       storyId: 'story-1',
       createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
     }
   ]
 }
 
-const useMockData = process.env.NEXT_PUBLIC_ENABLE_MOCK_DATA === 'true'
-
 export const backlogApi = {
   // Stories
   async getStories(projectId: string): Promise<Story[]> {
-    if (useMockData) {
-      await new Promise(resolve => setTimeout(resolve, 400))
-      return mockStories[projectId] || []
-    }
     try {
       const result = await backlogClient.get<Story[]>(`/projects/${projectId}/stories`)
       return result || []
@@ -121,71 +120,18 @@ export const backlogApi = {
   },
 
   async getStory(projectId: string, storyId: string): Promise<Story> {
-    if (useMockData) {
-      await new Promise(resolve => setTimeout(resolve, 300))
-      const stories = mockStories[projectId] || []
-      const story = stories.find(s => s.id === storyId)
-      if (!story) throw new Error('Story not found')
-      return story
-    }
     return backlogClient.get<Story>(`/projects/${projectId}/stories/${storyId}`)
   },
 
   async createStory(projectId: string, data: CreateStoryRequest): Promise<Story> {
-    if (useMockData) {
-      await new Promise(resolve => setTimeout(resolve, 600))
-      const newStory: Story = {
-        id: `story-${Date.now()}`,
-        title: data.title,
-        description: data.description || '',
-        status: 'backlog',
-        priority: data.priority || 'medium',
-        storyPoints: data.storyPoints,
-        projectId,
-        labels: data.labels || [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }
-      if (!mockStories[projectId]) mockStories[projectId] = []
-      mockStories[projectId].push(newStory)
-      return newStory
-    }
     return backlogClient.post<Story>(`/projects/${projectId}/stories`, data)
   },
 
   async updateStory(projectId: string, storyId: string, data: UpdateStoryRequest): Promise<Story> {
-    if (useMockData) {
-      await new Promise(resolve => setTimeout(resolve, 400))
-      const stories = mockStories[projectId] || []
-      const storyIndex = stories.findIndex(s => s.id === storyId)
-      if (storyIndex >= 0) {
-        stories[storyIndex] = {
-          ...stories[storyIndex],
-          ...data,
-          updatedAt: new Date().toISOString(),
-        }
-        return stories[storyIndex]
-      }
-      throw new Error('Story not found')
-    }
     return backlogClient.patch<Story>(`/projects/${projectId}/stories/${storyId}`, data)
   },
 
   async updateStoryStatus(projectId: string, storyId: string, status: StoryStatus): Promise<Story> {
-    if (useMockData) {
-      await new Promise(resolve => setTimeout(resolve, 300))
-      const stories = mockStories[projectId] || []
-      const storyIndex = stories.findIndex(s => s.id === storyId)
-      if (storyIndex >= 0) {
-        stories[storyIndex] = {
-          ...stories[storyIndex],
-          status,
-          updatedAt: new Date().toISOString(),
-        }
-        return stories[storyIndex]
-      }
-      throw new Error('Story not found')
-    }
     return backlogClient.patch<Story>(`/projects/${projectId}/stories/${storyId}/status`, { status })
   },
 
@@ -220,17 +166,13 @@ export const backlogApi = {
 
   // Acceptance Criteria
   async getAcceptanceCriteria(projectId: string, storyId: string): Promise<AcceptanceCriterion[]> {
-    if (useMockData) {
-      await new Promise(resolve => setTimeout(resolve, 200))
-      return mockAcceptanceCriteria[storyId] || []
-    }
     return backlogClient.get<AcceptanceCriterion[]>(`/projects/${projectId}/stories/${storyId}/acceptance-criteria`)
   },
 
-  async createAcceptanceCriterion(projectId: string, storyId: string, data: { 
+  async createAcceptanceCriterion(projectId: string, storyId: string, data: {
     given: string
     when: string
-    then: string 
+    then: string
   }): Promise<AcceptanceCriterion> {
     return backlogClient.post<AcceptanceCriterion>(`/projects/${projectId}/stories/${storyId}/acceptance-criteria`, data)
   },
@@ -254,5 +196,39 @@ export const backlogApi = {
 
   async reorderTasks(projectId: string, storyId: string, taskIds: string[]): Promise<void> {
     return backlogClient.patch<void>(`/projects/${projectId}/stories/${storyId}/tasks/reorder`, { taskIds })
+  },
+
+  // Task Ownership API (Self-Selection "I'm on it" workflow)
+  async getAvailableTasks(storyId: string): Promise<Task[]> {
+    return backlogClient.get<Task[]>(`/stories/${storyId}/tasks/available`)
+  },
+
+  async getUserOwnedTasks(): Promise<Task[]> {
+    return backlogClient.get<Task[]>('/tasks/owned')
+  },
+
+  async takeTaskOwnership(taskId: string): Promise<TaskOwnershipResponse> {
+    return backlogClient.put<TaskOwnershipResponse>(`/tasks/${taskId}/ownership`)
+  },
+
+  async releaseTaskOwnership(taskId: string): Promise<TaskOwnershipResponse> {
+    return backlogClient.delete<TaskOwnershipResponse>(`/tasks/${taskId}/ownership`)
+  },
+
+  async startTaskWork(taskId: string): Promise<TaskOwnershipResponse> {
+    return backlogClient.post<TaskOwnershipResponse>(`/tasks/${taskId}/work/start`)
+  },
+
+  async completeTaskWork(taskId: string): Promise<TaskOwnershipResponse> {
+    return backlogClient.post<TaskOwnershipResponse>(`/tasks/${taskId}/work/complete`)
+  },
+
+  async setTaskEstimate(taskId: string, request: SetTaskEstimateRequest): Promise<TaskOwnershipResponse> {
+    return backlogClient.patch<TaskOwnershipResponse>(`/tasks/${taskId}/estimate`, request)
+  },
+
+  // Enhanced story status updates
+  async updateStoryStatusEnhanced(storyId: string, request: UpdateStoryStatusRequest): Promise<Story> {
+    return backlogClient.patch<Story>(`/stories/${storyId}/status`, request)
   },
 }

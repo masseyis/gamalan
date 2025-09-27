@@ -1,0 +1,1989 @@
+{
+  "config": {
+    "configFile": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/playwright.config.ts",
+    "rootDir": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e",
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 600000,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 5
+    },
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 5
+        },
+        "id": "global setup",
+        "name": "global setup",
+        "testDir": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "/global\\.setup\\.ts/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 5
+        },
+        "id": "authenticated tests",
+        "name": "authenticated tests",
+        "testDir": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "/.*authenticated\\.spec\\.ts|.*cross-browser\\.spec\\.ts|.*error-handling\\.spec\\.ts|.*performance-stress\\.spec\\.ts/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 5
+        },
+        "id": "auth flow tests",
+        "name": "auth flow tests",
+        "testDir": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "/.*auth\\.spec\\.ts/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 5
+        },
+        "id": "public tests",
+        "name": "public tests",
+        "testDir": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "/.*public\\.spec\\.ts|.*basic-smoke\\.spec\\.ts/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 5
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e",
+        "testIgnore": [
+          "/.*authenticated\\.spec\\.ts/",
+          "/.*auth\\.spec\\.ts/",
+          "/.*cross-browser\\.spec\\.ts/",
+          "/.*error-handling\\.spec\\.ts/",
+          "/.*performance-stress\\.spec\\.ts/",
+          "/.*public\\.spec\\.ts/",
+          "/.*staging.*spec\\.ts/",
+          "/global\\.setup\\.ts/"
+        ],
+        "testMatch": [
+          "**/*.spec.ts"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "shard": null,
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.55.0",
+    "workers": 5,
+    "webServer": {
+      "command": "NODE_ENV=test pnpm dev",
+      "url": "http://localhost:3000",
+      "reuseExistingServer": true,
+      "timeout": 300000,
+      "stderr": "pipe",
+      "stdout": "pipe",
+      "env": {
+        "NVM_INC": "/Users/jamesmassey/.nvm/versions/node/v23.11.0/include/node",
+        "MANPATH": ":/usr/share/man:/usr/local/share/man:/Users/jamesmassey/.nvm/versions/node/v23.11.0/share/man:/Applications/kitty.app/Contents/Resources/man:",
+        "NoDefaultCurrentDirectoryInExePath": "1",
+        "CLAUDE_CODE_ENTRYPOINT": "cli",
+        "NODE": "/Users/jamesmassey/.nvm/versions/node/v23.11.0/bin/node",
+        "NVM_CD_FLAGS": "-q",
+        "INIT_CWD": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web",
+        "SHELL": "/bin/zsh",
+        "TERM": "xterm-kitty",
+        "TMPDIR": "/var/folders/ps/gs8mk8fs5t5fntr08590_w080000gn/T/",
+        "HOMEBREW_REPOSITORY": "/opt/homebrew",
+        "npm_config_global_prefix": "/Users/jamesmassey/.nvm/versions/node/v23.11.0",
+        "WINDOWID": "216",
+        "VIPSHOME": "/Users/runner/work/sharp-libvips/sharp-libvips/target",
+        "COLOR": "0",
+        "npm_config_noproxy": "",
+        "npm_config_local_prefix": "/Users/jamesmassey/ai-dev/gamalan/ai-agile",
+        "GIT_EDITOR": "true",
+        "USER": "jamesmassey",
+        "NVM_DIR": "/Users/jamesmassey/.nvm",
+        "COMMAND_MODE": "unix2003",
+        "npm_config_globalconfig": "/Users/jamesmassey/.nvm/versions/node/v23.11.0/etc/npmrc",
+        "SSH_AUTH_SOCK": "/private/tmp/com.apple.launchd.9a6rv7E2Hv/Listeners",
+        "__CF_USER_TEXT_ENCODING": "0x1F5:0x0:0x2",
+        "npm_execpath": "/Users/jamesmassey/.nvm/versions/node/v23.11.0/lib/node_modules/npm/bin/npm-cli.js",
+        "PATH": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/node_modules/.bin:/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/node_modules/.bin:/Users/jamesmassey/ai-dev/gamalan/ai-agile/node_modules/.bin:/Users/jamesmassey/ai-dev/gamalan/node_modules/.bin:/Users/jamesmassey/ai-dev/node_modules/.bin:/Users/jamesmassey/node_modules/.bin:/Users/node_modules/.bin:/node_modules/.bin:/Users/jamesmassey/.nvm/versions/node/v23.11.0/lib/node_modules/npm/node_modules/@npmcli/run-script/lib/node-gyp-bin:/Users/jamesmassey/.local/bin:/Users/jamesmassey/.nvm/versions/node/v23.11.0/bin:/Users/jamesmassey/.local/share/bob/nvim-bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/Library/Apple/usr/bin:/Users/jamesmassey/.cargo/bin:/Applications/kitty.app/Contents/MacOS",
+        "npm_package_json": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/package.json",
+        "__CFBundleIdentifier": "net.kovidgoyal.kitty",
+        "npm_config_init_module": "/Users/jamesmassey/.npm-init.js",
+        "npm_config_userconfig": "/Users/jamesmassey/.npmrc",
+        "PWD": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web",
+        "npm_command": "exec",
+        "KITTY_PID": "3163",
+        "OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE": "delta",
+        "EDITOR": "vi",
+        "npm_lifecycle_event": "npx",
+        "LANG": "en_GB.UTF-8",
+        "npm_package_name": "@salunga/root",
+        "NODE_PATH": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/node_modules/.pnpm/playwright@1.55.0/node_modules/playwright/node_modules:/Users/jamesmassey/ai-dev/gamalan/ai-agile/node_modules/.pnpm/playwright@1.55.0/node_modules:/Users/jamesmassey/ai-dev/gamalan/ai-agile/node_modules/.pnpm/node_modules",
+        "XPC_FLAGS": "0x0",
+        "npm_config_npm_version": "10.9.2",
+        "npm_config_node_gyp": "/Users/jamesmassey/.nvm/versions/node/v23.11.0/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js",
+        "XPC_SERVICE_NAME": "0",
+        "HOME": "/Users/jamesmassey",
+        "SHLVL": "3",
+        "TERMINFO": "/Applications/kitty.app/Contents/Resources/kitty/terminfo",
+        "HOMEBREW_PREFIX": "/opt/homebrew",
+        "LOGNAME": "jamesmassey",
+        "npm_config_cache": "/Users/jamesmassey/.npm",
+        "npm_lifecycle_script": "playwright",
+        "COREPACK_ENABLE_AUTO_PIN": "0",
+        "NVM_BIN": "/Users/jamesmassey/.nvm/versions/node/v23.11.0/bin",
+        "KITTY_INSTALLATION_DIR": "/Applications/kitty.app/Contents/Resources/kitty",
+        "KITTY_WINDOW_ID": "4",
+        "npm_config_user_agent": "npm/10.9.2 node/v23.11.0 darwin arm64 workspaces/true",
+        "HOMEBREW_CELLAR": "/opt/homebrew/Cellar",
+        "INFOPATH": "/opt/homebrew/share/info:/opt/homebrew/share/info:",
+        "OSLogRateLimit": "64",
+        "CLAUDECODE": "1",
+        "KITTY_PUBLIC_KEY": "1:-0}9Sm6=vU>p)4E1p{e9eq!k2=^)hEY`O%Q#W`#&",
+        "COLORTERM": "truecolor",
+        "npm_config_prefix": "/Users/jamesmassey/.nvm/versions/node/v23.11.0",
+        "npm_node_execpath": "/Users/jamesmassey/.nvm/versions/node/v23.11.0/bin/node",
+        "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_bWFqb3Itc25ha2UtNzkuY2xlcmsuYWNjb3VudHMuZGV2JA",
+        "CLERK_SECRET_KEY": "sk_test_nEqFdsNLenuDU5zq2FV4Ni1DRzmOLzNnrFQjBs7Edx",
+        "E2E_CLERK_USER_USERNAME": "dummy+clerk_test@mock.com",
+        "E2E_CLERK_USER_PASSWORD": "punvyx-ceczIf-3remza",
+        "NEXT_PUBLIC_CLERK_SIGN_IN_URL": "/sign-in",
+        "NEXT_PUBLIC_CLERK_SIGN_UP_URL": "/sign-up",
+        "NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL": "/dashboard",
+        "NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL": "/dashboard",
+        "NEXT_PUBLIC_PROJECTS_API_URL": "http://localhost:8001",
+        "NEXT_PUBLIC_BACKLOG_API_URL": "http://localhost:8002",
+        "NEXT_PUBLIC_READINESS_API_URL": "http://localhost:8003",
+        "NEXT_PUBLIC_PROMPT_BUILDER_API_URL": "http://localhost:8004",
+        "NEXT_PUBLIC_ENABLE_AI_FEATURES": "true"
+      }
+    }
+  },
+  "suites": [
+    {
+      "title": "global.setup.ts",
+      "file": "global.setup.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "authenticate",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "global setup",
+              "projectName": "global setup",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4913,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "Using real Clerk authentication mode\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2025-09-26T19:33:41.288Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e4eb4d1272d956fb120f-bcb808510d5c5acf1f3f",
+          "file": "global.setup.ts",
+          "line": 6,
+          "column": 6
+        }
+      ]
+    },
+    {
+      "title": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+      "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Browser Compatibility Tests",
+          "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+          "line": 4,
+          "column": 6,
+          "specs": [],
+          "suites": [
+            {
+              "title": "Core Authentication Flows",
+              "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+              "line": 22,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should be authenticated and access protected routes",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [
+                        {
+                          "type": "browser",
+                          "description": "chromium"
+                        }
+                      ],
+                      "expectedStatus": "passed",
+                      "projectId": "authenticated tests",
+                      "projectName": "authenticated tests",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 3823,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-26T19:33:46.915Z",
+                          "annotations": [
+                            {
+                              "type": "browser",
+                              "description": "chromium"
+                            }
+                          ],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "0f2aaa82bcda2132176c-ade563c449ed7e977439",
+                  "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+                  "line": 23,
+                  "column": 9
+                },
+                {
+                  "title": "should handle sign out correctly",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [
+                        {
+                          "type": "browser",
+                          "description": "chromium"
+                        }
+                      ],
+                      "expectedStatus": "passed",
+                      "projectId": "authenticated tests",
+                      "projectName": "authenticated tests",
+                      "results": [
+                        {
+                          "workerIndex": 2,
+                          "parallelIndex": 1,
+                          "status": "passed",
+                          "duration": 8196,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-26T19:33:46.915Z",
+                          "annotations": [
+                            {
+                              "type": "browser",
+                              "description": "chromium"
+                            }
+                          ],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "0f2aaa82bcda2132176c-bf5db0929ceea8b14447",
+                  "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+                  "line": 33,
+                  "column": 9
+                },
+                {
+                  "title": "should maintain session across page navigation",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [
+                        {
+                          "type": "browser",
+                          "description": "chromium"
+                        }
+                      ],
+                      "expectedStatus": "passed",
+                      "projectId": "authenticated tests",
+                      "projectName": "authenticated tests",
+                      "results": [
+                        {
+                          "workerIndex": 3,
+                          "parallelIndex": 2,
+                          "status": "passed",
+                          "duration": 4985,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-26T19:33:46.918Z",
+                          "annotations": [
+                            {
+                              "type": "browser",
+                              "description": "chromium"
+                            }
+                          ],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "0f2aaa82bcda2132176c-84c07d320eff1f4f762a",
+                  "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+                  "line": 41,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "JavaScript and CSS Compatibility",
+              "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+              "line": 54,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should load all required stylesheets",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [
+                        {
+                          "type": "browser",
+                          "description": "chromium"
+                        }
+                      ],
+                      "expectedStatus": "passed",
+                      "projectId": "authenticated tests",
+                      "projectName": "authenticated tests",
+                      "results": [
+                        {
+                          "workerIndex": 4,
+                          "parallelIndex": 3,
+                          "status": "failed",
+                          "duration": 298,
+                          "error": {
+                            "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mnot\u001b[2m.\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: not \u001b[32m\"rgba(0, 0, 0, 0)\"\u001b[39m",
+                            "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mnot\u001b[2m.\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: not \u001b[32m\"rgba(0, 0, 0, 0)\"\u001b[39m\n    at /Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts:65:35",
+                            "location": {
+                              "file": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts",
+                              "column": 35,
+                              "line": 65
+                            },
+                            "snippet": "  63 |\n  64 |       // Should have some background color (not transparent)\n> 65 |       expect(backgroundColor).not.toBe('rgba(0, 0, 0, 0)')\n     |                                   ^\n  66 |       expect(backgroundColor).not.toBe('transparent')\n  67 |\n  68 |       // Check that fonts are loaded"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts",
+                                "column": 35,
+                                "line": 65
+                              },
+                              "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mnot\u001b[2m.\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: not \u001b[32m\"rgba(0, 0, 0, 0)\"\u001b[39m\n\n  63 |\n  64 |       // Should have some background color (not transparent)\n> 65 |       expect(backgroundColor).not.toBe('rgba(0, 0, 0, 0)')\n     |                                   ^\n  66 |       expect(backgroundColor).not.toBe('transparent')\n  67 |\n  68 |       // Check that fonts are loaded\n    at /Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts:65:35"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-26T19:33:46.928Z",
+                          "annotations": [
+                            {
+                              "type": "browser",
+                              "description": "chromium"
+                            }
+                          ],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/test-results/cross-browser-browser-comp-348b0-ad-all-required-stylesheets-authenticated-tests/test-failed-1.png"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts",
+                            "column": 35,
+                            "line": 65
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "0f2aaa82bcda2132176c-63d8adde35421ba0e52d",
+                  "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+                  "line": 55,
+                  "column": 9
+                },
+                {
+                  "title": "should execute JavaScript correctly",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [
+                        {
+                          "type": "browser",
+                          "description": "chromium"
+                        }
+                      ],
+                      "expectedStatus": "passed",
+                      "projectId": "authenticated tests",
+                      "projectName": "authenticated tests",
+                      "results": [
+                        {
+                          "workerIndex": 5,
+                          "parallelIndex": 4,
+                          "status": "failed",
+                          "duration": 11498,
+                          "error": {
+                            "message": "TimeoutError: locator.waitFor: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=Sign in to Gamalan') to be visible\u001b[22m\n",
+                            "stack": "TimeoutError: locator.waitFor: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=Sign in to Gamalan') to be visible\u001b[22m\n\n    at AuthPage.gotoSignIn (/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/page-objects/auth-page.ts:28:32)\n    at /Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts:80:7",
+                            "location": {
+                              "file": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/page-objects/auth-page.ts",
+                              "column": 32,
+                              "line": 28
+                            },
+                            "snippet": "\u001b[90m   at \u001b[39mpage-objects/auth-page.ts:28\n\n  26 |   async gotoSignIn() {\n  27 |     await this.goto('/sign-in')\n> 28 |     await this.clerkSignInForm.waitFor({ state: 'visible', timeout: 10000 })\n     |                                ^\n  29 |   }\n  30 |\n  31 |   async gotoSignUp() {"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/page-objects/auth-page.ts",
+                                "column": 32,
+                                "line": 28
+                              },
+                              "message": "TimeoutError: locator.waitFor: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=Sign in to Gamalan') to be visible\u001b[22m\n\n\n   at page-objects/auth-page.ts:28\n\n  26 |   async gotoSignIn() {\n  27 |     await this.goto('/sign-in')\n> 28 |     await this.clerkSignInForm.waitFor({ state: 'visible', timeout: 10000 })\n     |                                ^\n  29 |   }\n  30 |\n  31 |   async gotoSignUp() {\n    at AuthPage.gotoSignIn (/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/page-objects/auth-page.ts:28:32)\n    at /Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts:80:7"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-26T19:33:46.934Z",
+                          "annotations": [
+                            {
+                              "type": "browser",
+                              "description": "chromium"
+                            }
+                          ],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/test-results/cross-browser-browser-comp-4675c-xecute-JavaScript-correctly-authenticated-tests/test-failed-1.png"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/test-results/cross-browser-browser-comp-4675c-xecute-JavaScript-correctly-authenticated-tests/error-context.md"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/page-objects/auth-page.ts",
+                            "column": 32,
+                            "line": 28
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "0f2aaa82bcda2132176c-7ecdc08417199ee3a595",
+                  "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+                  "line": 79,
+                  "column": 9
+                },
+                {
+                  "title": "should handle modern JavaScript features",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [
+                        {
+                          "type": "browser",
+                          "description": "chromium"
+                        }
+                      ],
+                      "expectedStatus": "passed",
+                      "projectId": "authenticated tests",
+                      "projectName": "authenticated tests",
+                      "results": [
+                        {
+                          "workerIndex": 6,
+                          "parallelIndex": 3,
+                          "status": "timedOut",
+                          "duration": 30114,
+                          "error": {
+                            "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                            "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                          },
+                          "errors": [
+                            {
+                              "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                            },
+                            {
+                              "location": {
+                                "file": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/page-objects/assistant-page.ts",
+                                "column": 26,
+                                "line": 30
+                              },
+                              "message": "Error: locator.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('textarea[placeholder*=\"Ask\"], textarea[placeholder*=\"message\"]')\u001b[22m\n\n\n   at page-objects/assistant-page.ts:30\n\n  28 |\n  29 |   async sendMessage(message: string) {\n> 30 |     await this.chatInput.fill(message)\n     |                          ^\n  31 |     await this.sendButton.click()\n  32 |\n  33 |     // Wait for AI response\n    at AssistantPage.sendMessage (/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/page-objects/assistant-page.ts:30:26)\n    at /Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts:99:27"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-26T19:33:48.191Z",
+                          "annotations": [
+                            {
+                              "type": "browser",
+                              "description": "chromium"
+                            }
+                          ],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/test-results/cross-browser-browser-comp-a5e4c--modern-JavaScript-features-authenticated-tests/test-failed-1.png"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/test-results/cross-browser-browser-comp-a5e4c--modern-JavaScript-features-authenticated-tests/error-context.md"
+                            }
+                          ]
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "0f2aaa82bcda2132176c-ba3575b729feea905af9",
+                  "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+                  "line": 94,
+                  "column": 9
+                },
+                {
+                  "title": "should support CSS Grid and Flexbox layouts",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [
+                        {
+                          "type": "browser",
+                          "description": "chromium"
+                        }
+                      ],
+                      "expectedStatus": "passed",
+                      "projectId": "authenticated tests",
+                      "projectName": "authenticated tests",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 1565,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-26T19:33:50.901Z",
+                          "annotations": [
+                            {
+                              "type": "browser",
+                              "description": "chromium"
+                            }
+                          ],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "0f2aaa82bcda2132176c-41fe09b43f8d0c6a364e",
+                  "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+                  "line": 105,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Form Handling and Input Validation",
+              "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+              "line": 122,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should handle form submissions correctly",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [
+                        {
+                          "type": "browser",
+                          "description": "chromium"
+                        }
+                      ],
+                      "expectedStatus": "passed",
+                      "projectId": "authenticated tests",
+                      "projectName": "authenticated tests",
+                      "results": [
+                        {
+                          "workerIndex": 3,
+                          "parallelIndex": 2,
+                          "status": "failed",
+                          "duration": 6900,
+                          "error": {
+                            "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m()\u001b[22m failed\n\nLocator:  locator('[role=\"alert\"]:has-text(\"Project created successfully\")')\nExpected: visible\nReceived: <element(s) not found>\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('[role=\"alert\"]:has-text(\"Project created successfully\")')\u001b[22m\n",
+                            "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m()\u001b[22m failed\n\nLocator:  locator('[role=\"alert\"]:has-text(\"Project created successfully\")')\nExpected: visible\nReceived: <element(s) not found>\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('[role=\"alert\"]:has-text(\"Project created successfully\")')\u001b[22m\n\n    at ProjectsPage.expectToastMessage (/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/page-objects/base-page.ts:79:25)\n    at ProjectsPage.createProject (/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/page-objects/projects-page.ts:45:16)\n    at /Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts:128:7",
+                            "location": {
+                              "file": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/page-objects/base-page.ts",
+                              "column": 25,
+                              "line": 79
+                            },
+                            "snippet": "\u001b[90m   at \u001b[39mpage-objects/base-page.ts:79\n\n  77 |   async expectToastMessage(message: string) {\n  78 |     const toast = this.page.locator(`[role=\"alert\"]:has-text(\"${message}\")`)\n> 79 |     await expect(toast).toBeVisible({ timeout: 5000 })\n     |                         ^\n  80 |   }\n  81 |\n  82 |   async expectError(message: string) {"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/page-objects/base-page.ts",
+                                "column": 25,
+                                "line": 79
+                              },
+                              "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m()\u001b[22m failed\n\nLocator:  locator('[role=\"alert\"]:has-text(\"Project created successfully\")')\nExpected: visible\nReceived: <element(s) not found>\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('[role=\"alert\"]:has-text(\"Project created successfully\")')\u001b[22m\n\n\n   at page-objects/base-page.ts:79\n\n  77 |   async expectToastMessage(message: string) {\n  78 |     const toast = this.page.locator(`[role=\"alert\"]:has-text(\"${message}\")`)\n> 79 |     await expect(toast).toBeVisible({ timeout: 5000 })\n     |                         ^\n  80 |   }\n  81 |\n  82 |   async expectError(message: string) {\n    at ProjectsPage.expectToastMessage (/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/page-objects/base-page.ts:79:25)\n    at ProjectsPage.createProject (/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/page-objects/projects-page.ts:45:16)\n    at /Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts:128:7"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-26T19:33:52.063Z",
+                          "annotations": [
+                            {
+                              "type": "browser",
+                              "description": "chromium"
+                            }
+                          ],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/test-results/cross-browser-browser-comp-c7569--form-submissions-correctly-authenticated-tests/test-failed-1.png"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/test-results/cross-browser-browser-comp-c7569--form-submissions-correctly-authenticated-tests/error-context.md"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/page-objects/base-page.ts",
+                            "column": 25,
+                            "line": 79
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "0f2aaa82bcda2132176c-32530fc810836c0fb294",
+                  "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+                  "line": 123,
+                  "column": 9
+                },
+                {
+                  "title": "should validate form inputs properly",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [
+                        {
+                          "type": "browser",
+                          "description": "chromium"
+                        }
+                      ],
+                      "expectedStatus": "passed",
+                      "projectId": "authenticated tests",
+                      "projectName": "authenticated tests",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 0,
+                          "status": "failed",
+                          "duration": 10868,
+                          "error": {
+                            "message": "TimeoutError: locator.waitFor: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=Sign in to Gamalan') to be visible\u001b[22m\n",
+                            "stack": "TimeoutError: locator.waitFor: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=Sign in to Gamalan') to be visible\u001b[22m\n\n    at AuthPage.gotoSignIn (/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/page-objects/auth-page.ts:28:32)\n    at /Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts:139:7",
+                            "location": {
+                              "file": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/page-objects/auth-page.ts",
+                              "column": 32,
+                              "line": 28
+                            },
+                            "snippet": "\u001b[90m   at \u001b[39mpage-objects/auth-page.ts:28\n\n  26 |   async gotoSignIn() {\n  27 |     await this.goto('/sign-in')\n> 28 |     await this.clerkSignInForm.waitFor({ state: 'visible', timeout: 10000 })\n     |                                ^\n  29 |   }\n  30 |\n  31 |   async gotoSignUp() {"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/page-objects/auth-page.ts",
+                                "column": 32,
+                                "line": 28
+                              },
+                              "message": "TimeoutError: locator.waitFor: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=Sign in to Gamalan') to be visible\u001b[22m\n\n\n   at page-objects/auth-page.ts:28\n\n  26 |   async gotoSignIn() {\n  27 |     await this.goto('/sign-in')\n> 28 |     await this.clerkSignInForm.waitFor({ state: 'visible', timeout: 10000 })\n     |                                ^\n  29 |   }\n  30 |\n  31 |   async gotoSignUp() {\n    at AuthPage.gotoSignIn (/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/page-objects/auth-page.ts:28:32)\n    at /Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts:139:7"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-26T19:33:52.477Z",
+                          "annotations": [
+                            {
+                              "type": "browser",
+                              "description": "chromium"
+                            }
+                          ],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/test-results/cross-browser-browser-comp-6b295-lidate-form-inputs-properly-authenticated-tests/test-failed-1.png"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/test-results/cross-browser-browser-comp-6b295-lidate-form-inputs-properly-authenticated-tests/error-context.md"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/page-objects/auth-page.ts",
+                            "column": 32,
+                            "line": 28
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "0f2aaa82bcda2132176c-91a4c1c37af57e52c5ee",
+                  "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+                  "line": 138,
+                  "column": 9
+                },
+                {
+                  "title": "should handle file uploads if present",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [
+                        {
+                          "type": "browser",
+                          "description": "chromium"
+                        }
+                      ],
+                      "expectedStatus": "passed",
+                      "projectId": "authenticated tests",
+                      "projectName": "authenticated tests",
+                      "results": [
+                        {
+                          "workerIndex": 2,
+                          "parallelIndex": 1,
+                          "status": "passed",
+                          "duration": 155,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-26T19:33:55.270Z",
+                          "annotations": [
+                            {
+                              "type": "browser",
+                              "description": "chromium"
+                            }
+                          ],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "0f2aaa82bcda2132176c-1cd04843bf7fa11ec0ea",
+                  "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+                  "line": 152,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Interactive Elements and Events",
+              "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+              "line": 180,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should handle click events correctly",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [
+                        {
+                          "type": "browser",
+                          "description": "chromium"
+                        }
+                      ],
+                      "expectedStatus": "passed",
+                      "projectId": "authenticated tests",
+                      "projectName": "authenticated tests",
+                      "results": [
+                        {
+                          "workerIndex": 2,
+                          "parallelIndex": 1,
+                          "status": "failed",
+                          "duration": 1598,
+                          "error": {
+                            "message": "Error: locator.isVisible: Error: strict mode violation: locator('button:has-text(\"New\")') resolved to 2 elements:\n    1) <button class=\"inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-9 rounded-md px-3 gap-2 shadow-soft hover:shadow-elevated transition-all duration-200\">…</button> aka getByRole('button', { name: 'New', exact: true })\n    2) <button class=\"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 shadow-soft hover:shadow-elevated transition-all duration-200\">…</button> aka getByRole('button', { name: 'New Project' })\n\nCall log:\n\u001b[2m    - checking visibility of locator('button:has-text(\"New\")')\u001b[22m\n",
+                            "stack": "Error: locator.isVisible: Error: strict mode violation: locator('button:has-text(\"New\")') resolved to 2 elements:\n    1) <button class=\"inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-9 rounded-md px-3 gap-2 shadow-soft hover:shadow-elevated transition-all duration-200\">…</button> aka getByRole('button', { name: 'New', exact: true })\n    2) <button class=\"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 shadow-soft hover:shadow-elevated transition-all duration-200\">…</button> aka getByRole('button', { name: 'New Project' })\n\nCall log:\n\u001b[2m    - checking visibility of locator('button:has-text(\"New\")')\u001b[22m\n\n    at /Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts:187:27",
+                            "location": {
+                              "file": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts",
+                              "column": 27,
+                              "line": 187
+                            },
+                            "snippet": "  185 |       // Test various click events\n  186 |       const newButton = page.locator('button:has-text(\"New\")')\n> 187 |       if (await newButton.isVisible({ timeout: 5000 })) {\n      |                           ^\n  188 |         await newButton.click()\n  189 |\n  190 |         // Should trigger some action (modal, navigation, etc.)"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts",
+                                "column": 27,
+                                "line": 187
+                              },
+                              "message": "Error: locator.isVisible: Error: strict mode violation: locator('button:has-text(\"New\")') resolved to 2 elements:\n    1) <button class=\"inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-9 rounded-md px-3 gap-2 shadow-soft hover:shadow-elevated transition-all duration-200\">…</button> aka getByRole('button', { name: 'New', exact: true })\n    2) <button class=\"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 shadow-soft hover:shadow-elevated transition-all duration-200\">…</button> aka getByRole('button', { name: 'New Project' })\n\nCall log:\n\u001b[2m    - checking visibility of locator('button:has-text(\"New\")')\u001b[22m\n\n\n  185 |       // Test various click events\n  186 |       const newButton = page.locator('button:has-text(\"New\")')\n> 187 |       if (await newButton.isVisible({ timeout: 5000 })) {\n      |                           ^\n  188 |         await newButton.click()\n  189 |\n  190 |         // Should trigger some action (modal, navigation, etc.)\n    at /Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts:187:27"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-26T19:33:55.433Z",
+                          "annotations": [
+                            {
+                              "type": "browser",
+                              "description": "chromium"
+                            }
+                          ],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/test-results/cross-browser-browser-comp-f1ccc-ndle-click-events-correctly-authenticated-tests/test-failed-1.png"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/test-results/cross-browser-browser-comp-f1ccc-ndle-click-events-correctly-authenticated-tests/error-context.md"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts",
+                            "column": 27,
+                            "line": 187
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "0f2aaa82bcda2132176c-ce50c2555fea4df012a5",
+                  "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+                  "line": 181,
+                  "column": 9
+                },
+                {
+                  "title": "should handle keyboard events",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [
+                        {
+                          "type": "browser",
+                          "description": "chromium"
+                        }
+                      ],
+                      "expectedStatus": "passed",
+                      "projectId": "authenticated tests",
+                      "projectName": "authenticated tests",
+                      "results": [
+                        {
+                          "workerIndex": 7,
+                          "parallelIndex": 1,
+                          "status": "timedOut",
+                          "duration": 30110,
+                          "error": {
+                            "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                            "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                          },
+                          "errors": [
+                            {
+                              "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                            },
+                            {
+                              "location": {
+                                "file": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts",
+                                "column": 41,
+                                "line": 210
+                              },
+                              "message": "Error: locator.evaluate: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('textarea[placeholder*=\"Ask\"], textarea[placeholder*=\"message\"]')\u001b[22m\n\n\n  208 |\n  209 |       const chatInput = assistantPage.chatInput\n> 210 |       const isFocused = await chatInput.evaluate(el => el === document.activeElement)\n      |                                         ^\n  211 |       expect(isFocused).toBeTruthy()\n  212 |\n  213 |       // Test Enter key submission\n    at /Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts:210:41"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-26T19:33:57.482Z",
+                          "annotations": [
+                            {
+                              "type": "browser",
+                              "description": "chromium"
+                            }
+                          ],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/test-results/cross-browser-browser-comp-c0c7f-ould-handle-keyboard-events-authenticated-tests/test-failed-1.png"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/test-results/cross-browser-browser-comp-c0c7f-ould-handle-keyboard-events-authenticated-tests/error-context.md"
+                            }
+                          ]
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "0f2aaa82bcda2132176c-0a1b7553643f219246c0",
+                  "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+                  "line": 202,
+                  "column": 9
+                },
+                {
+                  "title": "should handle hover states and tooltips",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [
+                        {
+                          "type": "browser",
+                          "description": "chromium"
+                        }
+                      ],
+                      "expectedStatus": "passed",
+                      "projectId": "authenticated tests",
+                      "projectName": "authenticated tests",
+                      "results": [
+                        {
+                          "workerIndex": 8,
+                          "parallelIndex": 4,
+                          "status": "timedOut",
+                          "duration": 30062,
+                          "error": {
+                            "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                            "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                          },
+                          "errors": [
+                            {
+                              "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                            },
+                            {
+                              "location": {
+                                "file": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts",
+                                "column": 21,
+                                "line": 225
+                              },
+                              "message": "Error: locator.hover: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('a:has-text(\"Projects\")').first()\u001b[22m\n\n\n  223 |       // Test hover on navigation items\n  224 |       const navItem = page.locator('a:has-text(\"Projects\")').first()\n> 225 |       await navItem.hover()\n      |                     ^\n  226 |\n  227 |       // Check if hover styles are applied\n  228 |       const color = await navItem.evaluate(el => {\n    at /Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts:225:21"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-26T19:33:59.045Z",
+                          "annotations": [
+                            {
+                              "type": "browser",
+                              "description": "chromium"
+                            }
+                          ],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/test-results/cross-browser-browser-comp-7b4c0-e-hover-states-and-tooltips-authenticated-tests/test-failed-1.png"
+                            }
+                          ]
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "0f2aaa82bcda2132176c-a55fe0b46143a6b3cd64",
+                  "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+                  "line": 220,
+                  "column": 9
+                },
+                {
+                  "title": "should handle focus states for accessibility",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [
+                        {
+                          "type": "browser",
+                          "description": "chromium"
+                        }
+                      ],
+                      "expectedStatus": "passed",
+                      "projectId": "authenticated tests",
+                      "projectName": "authenticated tests",
+                      "results": [
+                        {
+                          "workerIndex": 9,
+                          "parallelIndex": 2,
+                          "status": "failed",
+                          "duration": 5150,
+                          "error": {
+                            "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m()\u001b[22m failed\n\nLocator:  locator(':focus')\nExpected: visible\nReceived: <element(s) not found>\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator(':focus')\u001b[22m\n",
+                            "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m()\u001b[22m failed\n\nLocator:  locator(':focus')\nExpected: visible\nReceived: <element(s) not found>\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator(':focus')\u001b[22m\n\n    at /Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts:247:36",
+                            "location": {
+                              "file": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts",
+                              "column": 36,
+                              "line": 247
+                            },
+                            "snippet": "  245 |\n  246 |       const focusedElement = page.locator(':focus')\n> 247 |       await expect(focusedElement).toBeVisible()\n      |                                    ^\n  248 |\n  249 |       // Check focus indicator\n  250 |       const outline = await focusedElement.evaluate(el => {"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts",
+                                "column": 36,
+                                "line": 247
+                              },
+                              "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m()\u001b[22m failed\n\nLocator:  locator(':focus')\nExpected: visible\nReceived: <element(s) not found>\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator(':focus')\u001b[22m\n\n\n  245 |\n  246 |       const focusedElement = page.locator(':focus')\n> 247 |       await expect(focusedElement).toBeVisible()\n      |                                    ^\n  248 |\n  249 |       // Check focus indicator\n  250 |       const outline = await focusedElement.evaluate(el => {\n    at /Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts:247:36"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-26T19:33:59.427Z",
+                          "annotations": [
+                            {
+                              "type": "browser",
+                              "description": "chromium"
+                            }
+                          ],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/test-results/cross-browser-browser-comp-67fb6-us-states-for-accessibility-authenticated-tests/test-failed-1.png"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts",
+                            "column": 36,
+                            "line": 247
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "0f2aaa82bcda2132176c-f2df21563f939ad7d1f9",
+                  "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+                  "line": 240,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "AJAX and API Communication",
+              "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+              "line": 258,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should handle API requests correctly",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [
+                        {
+                          "type": "browser",
+                          "description": "chromium"
+                        }
+                      ],
+                      "expectedStatus": "passed",
+                      "projectId": "authenticated tests",
+                      "projectName": "authenticated tests",
+                      "results": [
+                        {
+                          "workerIndex": 10,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 1906,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-26T19:34:03.775Z",
+                          "annotations": [
+                            {
+                              "type": "browser",
+                              "description": "chromium"
+                            }
+                          ],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "0f2aaa82bcda2132176c-99d16099a50c721e5980",
+                  "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+                  "line": 259,
+                  "column": 9
+                },
+                {
+                  "title": "should handle failed API requests gracefully",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [
+                        {
+                          "type": "browser",
+                          "description": "chromium"
+                        }
+                      ],
+                      "expectedStatus": "passed",
+                      "projectId": "authenticated tests",
+                      "projectName": "authenticated tests",
+                      "results": [
+                        {
+                          "workerIndex": 11,
+                          "parallelIndex": 2,
+                          "status": "failed",
+                          "duration": 1949,
+                          "error": {
+                            "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m",
+                            "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m\n    at /Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts:294:32",
+                            "location": {
+                              "file": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts",
+                              "column": 32,
+                              "line": 294
+                            },
+                            "snippet": "  292 |\n  293 |       // Either should show error message or graceful fallback\n> 294 |       expect(hasErrorHandling).toBeTruthy()\n      |                                ^\n  295 |     })\n  296 |\n  297 |     test('should handle concurrent API requests', async ({ page, browserName }) => {"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts",
+                                "column": 32,
+                                "line": 294
+                              },
+                              "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m\n\n  292 |\n  293 |       // Either should show error message or graceful fallback\n> 294 |       expect(hasErrorHandling).toBeTruthy()\n      |                                ^\n  295 |     })\n  296 |\n  297 |     test('should handle concurrent API requests', async ({ page, browserName }) => {\n    at /Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts:294:32"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-26T19:34:05.116Z",
+                          "annotations": [
+                            {
+                              "type": "browser",
+                              "description": "chromium"
+                            }
+                          ],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/test-results/cross-browser-browser-comp-46ff1-led-API-requests-gracefully-authenticated-tests/test-failed-1.png"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/test-results/cross-browser-browser-comp-46ff1-led-API-requests-gracefully-authenticated-tests/error-context.md"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts",
+                            "column": 32,
+                            "line": 294
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "0f2aaa82bcda2132176c-2300da0fe5d65c35d556",
+                  "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+                  "line": 276,
+                  "column": 9
+                },
+                {
+                  "title": "should handle concurrent API requests",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [
+                        {
+                          "type": "browser",
+                          "description": "chromium"
+                        }
+                      ],
+                      "expectedStatus": "passed",
+                      "projectId": "authenticated tests",
+                      "projectName": "authenticated tests",
+                      "results": [
+                        {
+                          "workerIndex": 10,
+                          "parallelIndex": 0,
+                          "status": "failed",
+                          "duration": 620,
+                          "error": {
+                            "message": "Error: page.goto: net::ERR_ABORTED at http://localhost:3000/projects\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/projects\", waiting until \"load\"\u001b[22m\n",
+                            "stack": "Error: page.goto: net::ERR_ABORTED at http://localhost:3000/projects\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/projects\", waiting until \"load\"\u001b[22m\n\n    at ProjectsPage.goto (/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/page-objects/base-page.ts:19:21)\n    at ProjectsPage.gotoProjects (/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/page-objects/projects-page.ts:21:16)\n    at /Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts:302:22",
+                            "location": {
+                              "file": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/page-objects/base-page.ts",
+                              "column": 21,
+                              "line": 19
+                            },
+                            "snippet": "\u001b[90m   at \u001b[39mpage-objects/base-page.ts:19\n\n  17 |\n  18 |   async goto(path: string) {\n> 19 |     await this.page.goto(path)\n     |                     ^\n  20 |   }\n  21 |\n  22 |   async waitForLoad() {"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/page-objects/base-page.ts",
+                                "column": 21,
+                                "line": 19
+                              },
+                              "message": "Error: page.goto: net::ERR_ABORTED at http://localhost:3000/projects\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/projects\", waiting until \"load\"\u001b[22m\n\n\n   at page-objects/base-page.ts:19\n\n  17 |\n  18 |   async goto(path: string) {\n> 19 |     await this.page.goto(path)\n     |                     ^\n  20 |   }\n  21 |\n  22 |   async waitForLoad() {\n    at ProjectsPage.goto (/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/page-objects/base-page.ts:19:21)\n    at ProjectsPage.gotoProjects (/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/page-objects/projects-page.ts:21:16)\n    at /Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts:302:22"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-26T19:34:05.777Z",
+                          "annotations": [
+                            {
+                              "type": "browser",
+                              "description": "chromium"
+                            }
+                          ],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/test-results/cross-browser-browser-comp-d0371-dle-concurrent-API-requests-authenticated-tests/test-failed-1.png"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/test-results/cross-browser-browser-comp-d0371-dle-concurrent-API-requests-authenticated-tests/error-context.md"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/page-objects/base-page.ts",
+                            "column": 21,
+                            "line": 19
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "0f2aaa82bcda2132176c-3a0c272d1a9104f809ef",
+                  "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+                  "line": 297,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Local Storage and Session Management",
+              "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+              "line": 312,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should persist data in localStorage",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [
+                        {
+                          "type": "browser",
+                          "description": "chromium"
+                        }
+                      ],
+                      "expectedStatus": "passed",
+                      "projectId": "authenticated tests",
+                      "projectName": "authenticated tests",
+                      "results": [
+                        {
+                          "workerIndex": 12,
+                          "parallelIndex": 0,
+                          "status": "failed",
+                          "duration": 171,
+                          "error": {
+                            "message": "Error: page.evaluate: SecurityError: Failed to read the 'localStorage' property from 'Window': Access is denied for this document.\n    at UtilityScript.evaluate (<anonymous>:293:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)",
+                            "stack": "Error: page.evaluate: SecurityError: Failed to read the 'localStorage' property from 'Window': Access is denied for this document.\n    at UtilityScript.evaluate (<anonymous>:293:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at UtilityScript.evaluate (<anonymous>:293:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at /Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts:317:35",
+                            "location": {
+                              "file": "<anonymous>",
+                              "column": 16,
+                              "line": 293
+                            }
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "<anonymous>",
+                                "column": 16,
+                                "line": 293
+                              },
+                              "message": "Error: page.evaluate: SecurityError: Failed to read the 'localStorage' property from 'Window': Access is denied for this document.\n    at UtilityScript.evaluate (<anonymous>:293:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at UtilityScript.evaluate (<anonymous>:293:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at /Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts:317:35"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-26T19:34:06.839Z",
+                          "annotations": [
+                            {
+                              "type": "browser",
+                              "description": "chromium"
+                            }
+                          ],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/test-results/cross-browser-browser-comp-cfe4e-ersist-data-in-localStorage-authenticated-tests/test-failed-1.png"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "<anonymous>",
+                            "column": 16,
+                            "line": 293
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "0f2aaa82bcda2132176c-df7428ee341d90286ac9",
+                  "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+                  "line": 313,
+                  "column": 9
+                },
+                {
+                  "title": "should handle sessionStorage correctly",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [
+                        {
+                          "type": "browser",
+                          "description": "chromium"
+                        }
+                      ],
+                      "expectedStatus": "passed",
+                      "projectId": "authenticated tests",
+                      "projectName": "authenticated tests",
+                      "results": [
+                        {
+                          "workerIndex": 13,
+                          "parallelIndex": 0,
+                          "status": "failed",
+                          "duration": 213,
+                          "error": {
+                            "message": "Error: page.evaluate: SecurityError: Failed to read the 'sessionStorage' property from 'Window': Access is denied for this document.\n    at UtilityScript.evaluate (<anonymous>:293:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)",
+                            "stack": "Error: page.evaluate: SecurityError: Failed to read the 'sessionStorage' property from 'Window': Access is denied for this document.\n    at UtilityScript.evaluate (<anonymous>:293:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at UtilityScript.evaluate (<anonymous>:293:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at /Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts:330:18",
+                            "location": {
+                              "file": "<anonymous>",
+                              "column": 16,
+                              "line": 293
+                            }
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "<anonymous>",
+                                "column": 16,
+                                "line": 293
+                              },
+                              "message": "Error: page.evaluate: SecurityError: Failed to read the 'sessionStorage' property from 'Window': Access is denied for this document.\n    at UtilityScript.evaluate (<anonymous>:293:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at UtilityScript.evaluate (<anonymous>:293:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at /Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts:330:18"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-26T19:34:07.547Z",
+                          "annotations": [
+                            {
+                              "type": "browser",
+                              "description": "chromium"
+                            }
+                          ],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/test-results/cross-browser-browser-comp-dac58-le-sessionStorage-correctly-authenticated-tests/test-failed-1.png"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "<anonymous>",
+                            "column": 16,
+                            "line": 293
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "0f2aaa82bcda2132176c-65a4bc772bc33961ad70",
+                  "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+                  "line": 326,
+                  "column": 9
+                },
+                {
+                  "title": "should handle cookies properly",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [
+                        {
+                          "type": "browser",
+                          "description": "chromium"
+                        }
+                      ],
+                      "expectedStatus": "passed",
+                      "projectId": "authenticated tests",
+                      "projectName": "authenticated tests",
+                      "results": [
+                        {
+                          "workerIndex": 14,
+                          "parallelIndex": 2,
+                          "status": "passed",
+                          "duration": 182,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-26T19:34:07.601Z",
+                          "annotations": [
+                            {
+                              "type": "browser",
+                              "description": "chromium"
+                            }
+                          ],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "0f2aaa82bcda2132176c-1facd483b0b67a945081",
+                  "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+                  "line": 344,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Error Boundaries and Recovery",
+              "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+              "line": 360,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should handle JavaScript errors gracefully",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [
+                        {
+                          "type": "browser",
+                          "description": "chromium"
+                        }
+                      ],
+                      "expectedStatus": "passed",
+                      "projectId": "authenticated tests",
+                      "projectName": "authenticated tests",
+                      "results": [
+                        {
+                          "workerIndex": 15,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 1957,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-26T19:34:08.345Z",
+                          "annotations": [
+                            {
+                              "type": "browser",
+                              "description": "chromium"
+                            }
+                          ],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "0f2aaa82bcda2132176c-5b07344484d1ce5eb9fd",
+                  "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+                  "line": 361,
+                  "column": 9
+                },
+                {
+                  "title": "should recover from network errors",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [
+                        {
+                          "type": "browser",
+                          "description": "chromium"
+                        }
+                      ],
+                      "expectedStatus": "passed",
+                      "projectId": "authenticated tests",
+                      "projectName": "authenticated tests",
+                      "results": [
+                        {
+                          "workerIndex": 14,
+                          "parallelIndex": 2,
+                          "status": "failed",
+                          "duration": 157,
+                          "error": {
+                            "message": "TypeError: page.setOfflineMode is not a function",
+                            "stack": "TypeError: page.setOfflineMode is not a function\n    at /Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts:385:18",
+                            "location": {
+                              "file": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts",
+                              "column": 18,
+                              "line": 385
+                            },
+                            "snippet": "  383 |\n  384 |       // Simulate network interruption\n> 385 |       await page.setOfflineMode(true)\n      |                  ^\n  386 |       await page.waitForTimeout(1000)\n  387 |\n  388 |       // Restore network"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts",
+                                "column": 18,
+                                "line": 385
+                              },
+                              "message": "TypeError: page.setOfflineMode is not a function\n\n  383 |\n  384 |       // Simulate network interruption\n> 385 |       await page.setOfflineMode(true)\n      |                  ^\n  386 |       await page.waitForTimeout(1000)\n  387 |\n  388 |       // Restore network\n    at /Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts:385:18"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-26T19:34:07.952Z",
+                          "annotations": [
+                            {
+                              "type": "browser",
+                              "description": "chromium"
+                            }
+                          ],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/test-results/cross-browser-browser-comp-39211-recover-from-network-errors-authenticated-tests/test-failed-1.png"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts",
+                            "column": 18,
+                            "line": 385
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "0f2aaa82bcda2132176c-bb28bb9982cfc0896a2e",
+                  "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+                  "line": 381,
+                  "column": 9
+                },
+                {
+                  "title": "should handle page refresh correctly",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [
+                        {
+                          "type": "browser",
+                          "description": "chromium"
+                        }
+                      ],
+                      "expectedStatus": "passed",
+                      "projectId": "authenticated tests",
+                      "projectName": "authenticated tests",
+                      "results": [
+                        {
+                          "workerIndex": 16,
+                          "parallelIndex": 2,
+                          "status": "timedOut",
+                          "duration": 30073,
+                          "error": {
+                            "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                            "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                          },
+                          "errors": [
+                            {
+                              "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                            },
+                            {
+                              "location": {
+                                "file": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/page-objects/projects-page.ts",
+                                "column": 25,
+                                "line": 98
+                              },
+                              "message": "Error: locator.waitFor: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-testid=\"projects-list\"]') to be visible\u001b[22m\n\n\n   at page-objects/projects-page.ts:98\n\n   96 |     // Wait for either projects list or empty state\n   97 |     await Promise.race([\n>  98 |       this.projectsList.waitFor({ state: 'visible' }),\n      |                         ^\n   99 |       this.page.locator('[data-testid=\"empty-projects\"]').waitFor({ state: 'visible' })\n  100 |     ])\n  101 |   }\n    at ProjectsPage.expectProjectsLoaded (/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/page-objects/projects-page.ts:98:25)\n    at /Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts:405:26"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-26T19:34:08.556Z",
+                          "annotations": [
+                            {
+                              "type": "browser",
+                              "description": "chromium"
+                            }
+                          ],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/test-results/cross-browser-browser-comp-03171-ndle-page-refresh-correctly-authenticated-tests/test-failed-1.png"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/test-results/cross-browser-browser-comp-03171-ndle-page-refresh-correctly-authenticated-tests/error-context.md"
+                            }
+                          ]
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "0f2aaa82bcda2132176c-216483da6d5529bf6e92",
+                  "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+                  "line": 396,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Browser-Specific Features",
+              "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+              "line": 409,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should handle browser back/forward navigation",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [
+                        {
+                          "type": "browser",
+                          "description": "chromium"
+                        }
+                      ],
+                      "expectedStatus": "passed",
+                      "projectId": "authenticated tests",
+                      "projectName": "authenticated tests",
+                      "results": [
+                        {
+                          "workerIndex": 15,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 3541,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-26T19:34:10.394Z",
+                          "annotations": [
+                            {
+                              "type": "browser",
+                              "description": "chromium"
+                            }
+                          ],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "0f2aaa82bcda2132176c-6e6d1935d582a666bd05",
+                  "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+                  "line": 410,
+                  "column": 9
+                },
+                {
+                  "title": "should handle browser zoom levels",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [
+                        {
+                          "type": "browser",
+                          "description": "chromium"
+                        }
+                      ],
+                      "expectedStatus": "passed",
+                      "projectId": "authenticated tests",
+                      "projectName": "authenticated tests",
+                      "results": [
+                        {
+                          "workerIndex": 15,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 4046,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-26T19:34:13.943Z",
+                          "annotations": [
+                            {
+                              "type": "browser",
+                              "description": "chromium"
+                            }
+                          ],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "0f2aaa82bcda2132176c-e14680848961a3d26729",
+                  "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+                  "line": 424,
+                  "column": 9
+                },
+                {
+                  "title": "should work with browser developer tools open",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [
+                        {
+                          "type": "browser",
+                          "description": "chromium"
+                        }
+                      ],
+                      "expectedStatus": "passed",
+                      "projectId": "authenticated tests",
+                      "projectName": "authenticated tests",
+                      "results": [
+                        {
+                          "workerIndex": 15,
+                          "parallelIndex": 0,
+                          "status": "failed",
+                          "duration": 7863,
+                          "error": {
+                            "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m()\u001b[22m failed\n\nLocator:  locator('textarea[placeholder*=\"Ask\"], textarea[placeholder*=\"message\"]')\nExpected: visible\nReceived: <element(s) not found>\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('textarea[placeholder*=\"Ask\"], textarea[placeholder*=\"message\"]')\u001b[22m\n",
+                            "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m()\u001b[22m failed\n\nLocator:  locator('textarea[placeholder*=\"Ask\"], textarea[placeholder*=\"message\"]')\nExpected: visible\nReceived: <element(s) not found>\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('textarea[placeholder*=\"Ask\"], textarea[placeholder*=\"message\"]')\u001b[22m\n\n    at AssistantPage.expectAssistantLoaded (/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/page-objects/assistant-page.ts:154:34)\n    at /Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts:461:27",
+                            "location": {
+                              "file": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/page-objects/assistant-page.ts",
+                              "column": 34,
+                              "line": 154
+                            },
+                            "snippet": "\u001b[90m   at \u001b[39mpage-objects/assistant-page.ts:154\n\n  152 |\n  153 |   async expectAssistantLoaded() {\n> 154 |     await expect(this.chatInput).toBeVisible()\n      |                                  ^\n  155 |     await expect(this.sendButton).toBeVisible()\n  156 |   }\n  157 |"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/page-objects/assistant-page.ts",
+                                "column": 34,
+                                "line": 154
+                              },
+                              "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m()\u001b[22m failed\n\nLocator:  locator('textarea[placeholder*=\"Ask\"], textarea[placeholder*=\"message\"]')\nExpected: visible\nReceived: <element(s) not found>\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('textarea[placeholder*=\"Ask\"], textarea[placeholder*=\"message\"]')\u001b[22m\n\n\n   at page-objects/assistant-page.ts:154\n\n  152 |\n  153 |   async expectAssistantLoaded() {\n> 154 |     await expect(this.chatInput).toBeVisible()\n      |                                  ^\n  155 |     await expect(this.sendButton).toBeVisible()\n  156 |   }\n  157 |\n    at AssistantPage.expectAssistantLoaded (/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/page-objects/assistant-page.ts:154:34)\n    at /Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/cross-browser/browser-compatibility.cross-browser.spec.ts:461:27"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-26T19:34:17.995Z",
+                          "annotations": [
+                            {
+                              "type": "browser",
+                              "description": "chromium"
+                            }
+                          ],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/test-results/cross-browser-browser-comp-74e94-rowser-developer-tools-open-authenticated-tests/test-failed-1.png"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/test-results/cross-browser-browser-comp-74e94-rowser-developer-tools-open-authenticated-tests/error-context.md"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/Users/jamesmassey/ai-dev/gamalan/ai-agile/apps/web/tests/e2e/page-objects/assistant-page.ts",
+                            "column": 34,
+                            "line": 154
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "0f2aaa82bcda2132176c-19fd4df56f73e12835b1",
+                  "file": "cross-browser/browser-compatibility.cross-browser.spec.ts",
+                  "line": 445,
+                  "column": 9
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2025-09-26T19:33:40.666Z",
+    "duration": 58094.579999999994,
+    "expected": 11,
+    "skipped": 0,
+    "unexpected": 16,
+    "flaky": 0
+  }
+}

@@ -1,6 +1,21 @@
-export type StoryStatus = 'backlog' | 'in-progress' | 'in-review' | 'done'
+// Updated to match backend enum StoryStatus
+export type StoryStatus =
+  | 'draft'
+  | 'needsrefinement'
+  | 'ready'
+  | 'committed'
+  | 'inprogress'
+  | 'taskscomplete'
+  | 'deployed'
+  | 'awaitingacceptance'
+  | 'accepted'
 
-export type TaskStatus = 'todo' | 'in-progress' | 'done' | 'blocked'
+// Updated to match backend enum TaskStatus
+export type TaskStatus =
+  | 'available'  // Task is created and available for contributors to take ownership
+  | 'owned'      // Task is owned by a contributor ("I'm on it")
+  | 'inprogress' // Task work is in progress
+  | 'completed'  // Task is completed
 
 export type StoryPriority = 'low' | 'medium' | 'high' | 'critical'
 
@@ -11,8 +26,10 @@ export interface Story {
   description?: string
   status: StoryStatus
   priority?: StoryPriority
-  storyPoints?: number
+  storyPoints?: number  // Max 8 points
   labels: string[]
+  sprintId?: string
+  assignedToUserId?: string
   createdAt: string
   updatedAt: string
   tasks?: Task[]
@@ -25,17 +42,23 @@ export interface Task {
   title: string
   description?: string
   acceptanceCriteriaRefs: string[]
+  status: TaskStatus
+  ownerUserId?: string
+  estimatedHours?: number
   createdAt: string
   updatedAt: string
+  ownedAt?: string
+  completedAt?: string
 }
 
 export interface AcceptanceCriterion {
   id: string
   storyId: string
-  acId: string
+  acId?: string  // Optional for plan pack integration
+  description: string
   given: string
-  when: string
-  then: string
+  whenClause: string  // Backend uses when_clause to avoid SQL keyword
+  thenClause: string  // Backend uses then_clause to avoid SQL keyword
   createdAt: string
 }
 
@@ -66,4 +89,19 @@ export interface UpdateTaskRequest {
   title?: string
   description?: string
   acceptanceCriteriaRefs?: string[]
+}
+
+// Task ownership interfaces
+export interface TaskOwnershipResponse {
+  success: boolean
+  message: string
+}
+
+export interface SetTaskEstimateRequest {
+  estimatedHours?: number
+}
+
+// Story status update interface
+export interface UpdateStoryStatusRequest {
+  status: StoryStatus
 }

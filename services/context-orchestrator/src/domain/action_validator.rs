@@ -35,6 +35,10 @@ impl ActionValidator {
             ActionType::CreateTask => false, // Creation is less risky
             ActionType::CreateStory => false,
             ActionType::AssignUser => false,
+            ActionType::TakeOwnership => false, // Self-selection is low risk
+            ActionType::ReleaseOwnership => false,
+            ActionType::StartWork => false,
+            ActionType::CompleteTask => false,
             ActionType::UpdatePriority => false,
             ActionType::AddComment => false,
         }
@@ -48,6 +52,10 @@ impl ActionValidator {
             ActionType::CreateTask => RiskLevel::Low,
             ActionType::CreateStory => RiskLevel::Low,
             ActionType::AssignUser => RiskLevel::Low,
+            ActionType::TakeOwnership => RiskLevel::Low,
+            ActionType::ReleaseOwnership => RiskLevel::Low,
+            ActionType::StartWork => RiskLevel::Low,
+            ActionType::CompleteTask => RiskLevel::Low,
             ActionType::UpdatePriority => RiskLevel::Low,
             ActionType::AddComment => RiskLevel::Low,
         }
@@ -87,6 +95,10 @@ impl ActionValidator {
                 }
             }
             ActionType::AssignUser
+            | ActionType::TakeOwnership
+            | ActionType::ReleaseOwnership
+            | ActionType::StartWork
+            | ActionType::CompleteTask
             | ActionType::UpdatePriority
             | ActionType::AddComment
             | ActionType::CreateStory => {
@@ -221,14 +233,18 @@ impl ActionValidator {
                     }
                 }
             }
-            ActionType::AssignUser => {
-                // Can only assign users to tasks
+            ActionType::AssignUser
+            | ActionType::TakeOwnership
+            | ActionType::ReleaseOwnership
+            | ActionType::StartWork
+            | ActionType::CompleteTask => {
+                // Can only perform task operations on tasks
                 for entity_id in &action.target_entities {
                     let candidate = candidates.iter().find(|c| c.id == *entity_id).unwrap(); // Safe because we validated existence above
 
                     if candidate.entity_type != "task" {
                         return Err(AppError::BadRequest(
-                            "Can only assign users to tasks".to_string(),
+                            "Can only perform task operations on tasks".to_string(),
                         ));
                     }
                 }
@@ -312,6 +328,13 @@ impl ActionValidator {
                     ));
                 }
 
+                Ok(())
+            }
+            ActionType::TakeOwnership
+            | ActionType::ReleaseOwnership
+            | ActionType::StartWork
+            | ActionType::CompleteTask => {
+                // No additional parameters needed for ownership actions
                 Ok(())
             }
             ActionType::Archive => {
