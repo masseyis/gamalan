@@ -32,3 +32,4 @@ http-body-util = { workspace = true }
 proptest = "1.4"
 testcontainers = "0.15"
 testcontainers-modules = { version = "0.3", features = ["postgres"] }
+serial_test = "3.0"
