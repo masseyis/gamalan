@@ -37,8 +37,8 @@ jobs:
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "rust-workspace"
-          cache-all-crates: "true"
+          shared-key: "rust-workspace-v2"
+          cache-all-crates: false
           
       - name: Check Rust formatting
         run: cargo fmt --all -- --check
@@ -150,8 +150,8 @@ jobs:
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "rust-workspace"
-          cache-all-crates: "true"
+          shared-key: "rust-workspace-v2"
+          cache-all-crates: false
           
       - name: Install jq for smart test runner
         run: sudo apt-get update && sudo apt-get install -y jq
@@ -358,8 +358,8 @@ jobs:
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "rust-workspace"
-          cache-all-crates: "true"
+          shared-key: "rust-workspace-v2"
+          cache-all-crates: false
           
       - name: Run database migrations
         run: |
@@ -421,8 +421,8 @@ jobs:
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "rust-workspace"
-          cache-all-crates: "true"
+          shared-key: "rust-workspace-v2"
+          cache-all-crates: false
           
       - name: Setup Node.js for OpenAPI tools
         uses: actions/setup-node@v4
@@ -667,8 +667,8 @@ jobs:
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "rust-workspace"
-          cache-all-crates: "true"
+          shared-key: "rust-workspace-v2"
+          cache-all-crates: false
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
