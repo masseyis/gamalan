@@ -1,5 +1,4 @@
 import { backlogClient } from './client'
-import { isTestEnvironment } from '@/lib/auth/test-utils'
 import {
   Story,
   Task,
@@ -111,10 +110,6 @@ const mockAcceptanceCriteria: Record<string, AcceptanceCriterion[]> = {
 export const backlogApi = {
   // Stories
   async getStories(projectId: string): Promise<Story[]> {
-    if (isTestEnvironment()) {
-      await new Promise(resolve => setTimeout(resolve, 400))
-      return mockStories[projectId] || []
-    }
     try {
       const result = await backlogClient.get<Story[]>(`/projects/${projectId}/stories`)
       return result || []
@@ -125,71 +120,18 @@ export const backlogApi = {
   },
 
   async getStory(projectId: string, storyId: string): Promise<Story> {
-    if (isTestEnvironment()) {
-      await new Promise(resolve => setTimeout(resolve, 300))
-      const stories = mockStories[projectId] || []
-      const story = stories.find(s => s.id === storyId)
-      if (!story) throw new Error('Story not found')
-      return story
-    }
     return backlogClient.get<Story>(`/projects/${projectId}/stories/${storyId}`)
   },
 
   async createStory(projectId: string, data: CreateStoryRequest): Promise<Story> {
-    if (isTestEnvironment()) {
-      await new Promise(resolve => setTimeout(resolve, 600))
-      const newStory: Story = {
-        id: `story-${Date.now()}`,
-        title: data.title,
-        description: data.description || '',
-        status: 'ready',
-        priority: data.priority || 'medium',
-        storyPoints: data.storyPoints,
-        projectId,
-        labels: data.labels || [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }
-      if (!mockStories[projectId]) mockStories[projectId] = []
-      mockStories[projectId].push(newStory)
-      return newStory
-    }
     return backlogClient.post<Story>(`/projects/${projectId}/stories`, data)
   },
 
   async updateStory(projectId: string, storyId: string, data: UpdateStoryRequest): Promise<Story> {
-    if (isTestEnvironment()) {
-      await new Promise(resolve => setTimeout(resolve, 400))
-      const stories = mockStories[projectId] || []
-      const storyIndex = stories.findIndex(s => s.id === storyId)
-      if (storyIndex >= 0) {
-        stories[storyIndex] = {
-          ...stories[storyIndex],
-          ...data,
-          updatedAt: new Date().toISOString(),
-        }
-        return stories[storyIndex]
-      }
-      throw new Error('Story not found')
-    }
     return backlogClient.patch<Story>(`/projects/${projectId}/stories/${storyId}`, data)
   },
 
   async updateStoryStatus(projectId: string, storyId: string, status: StoryStatus): Promise<Story> {
-    if (isTestEnvironment()) {
-      await new Promise(resolve => setTimeout(resolve, 300))
-      const stories = mockStories[projectId] || []
-      const storyIndex = stories.findIndex(s => s.id === storyId)
-      if (storyIndex >= 0) {
-        stories[storyIndex] = {
-          ...stories[storyIndex],
-          status,
-          updatedAt: new Date().toISOString(),
-        }
-        return stories[storyIndex]
-      }
-      throw new Error('Story not found')
-    }
     return backlogClient.patch<Story>(`/projects/${projectId}/stories/${storyId}/status`, { status })
   },
 
@@ -224,17 +166,13 @@ export const backlogApi = {
 
   // Acceptance Criteria
   async getAcceptanceCriteria(projectId: string, storyId: string): Promise<AcceptanceCriterion[]> {
-    if (isTestEnvironment()) {
-      await new Promise(resolve => setTimeout(resolve, 200))
-      return mockAcceptanceCriteria[storyId] || []
-    }
     return backlogClient.get<AcceptanceCriterion[]>(`/projects/${projectId}/stories/${storyId}/acceptance-criteria`)
   },
 
-  async createAcceptanceCriterion(projectId: string, storyId: string, data: { 
+  async createAcceptanceCriterion(projectId: string, storyId: string, data: {
     given: string
     when: string
-    then: string 
+    then: string
   }): Promise<AcceptanceCriterion> {
     return backlogClient.post<AcceptanceCriterion>(`/projects/${projectId}/stories/${storyId}/acceptance-criteria`, data)
   },

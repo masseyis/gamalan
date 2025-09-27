@@ -3,6 +3,7 @@ use axum::{
     http::{Method, Request, StatusCode},
 };
 use serde_json::{json, Value};
+use serial_test::serial;
 use sqlx::PgPool;
 use std::sync::Arc;
 use tower::ServiceExt;
@@ -69,6 +70,7 @@ async fn create_test_project_and_story(pool: &PgPool) -> (Uuid, Uuid) {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_story_lifecycle_integration() -> Result<(), Box<dyn std::error::Error>> {
     let pool = setup_test_db().await;
     let app = setup_test_app(pool.clone()).await;
@@ -243,6 +245,7 @@ async fn test_story_lifecycle_integration() -> Result<(), Box<dyn std::error::Er
 }
 
 #[tokio::test]
+#[serial]
 async fn test_story_validation_rules() -> Result<(), Box<dyn std::error::Error>> {
     let pool = setup_test_db().await;
     let app = setup_test_app(pool.clone()).await;
@@ -321,6 +324,7 @@ async fn test_story_validation_rules() -> Result<(), Box<dyn std::error::Error>>
 }
 
 #[tokio::test]
+#[serial]
 async fn test_story_authorization() -> Result<(), Box<dyn std::error::Error>> {
     let pool = setup_test_db().await;
     let app = setup_test_app(pool.clone()).await;

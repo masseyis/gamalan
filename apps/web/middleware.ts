@@ -1,28 +1,12 @@
-import { NextResponse, NextRequest } from 'next/server'
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 
-// Check if we're in test mode
-const isTestMode = process.env.NODE_ENV === 'test' || process.env.NEXT_PUBLIC_ENABLE_MOCK_AUTH === 'true'
+const isPublicRoute = createRouteMatcher(['/', '/sign-in(.*)', '/sign-up(.*)'])
 
-let middleware: (request: NextRequest) => Promise<Response> | Response
-
-if (isTestMode) {
-  // Test mode: simple middleware that bypasses all authentication
-  middleware = (request: NextRequest) => {
-    return NextResponse.next()
+export default clerkMiddleware(async (auth, request) => {
+  if (!isPublicRoute(request)) {
+    await auth.protect()
   }
-} else {
-  // Production mode: use Clerk middleware
-  const { clerkMiddleware, createRouteMatcher } = require('@clerk/nextjs/server')
-  const isPublicRoute = createRouteMatcher(['/'])
-
-  middleware = clerkMiddleware(async (auth: any, request: NextRequest) => {
-    if (!isPublicRoute(request)) {
-      await auth.protect()
-    }
-  })
-}
-
-export default middleware
+})
 
 export const config = {
   matcher: ['/((?!.+\\.[\\w]+$|_next).*)', '/', '/(api|trpc)(.*)'],

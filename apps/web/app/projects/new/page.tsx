@@ -13,7 +13,7 @@ import Link from 'next/link'
 import { projectsApi } from '@/lib/api/projects'
 import { useApiClient } from '@/lib/api/client'
 import { useToast } from '@/hooks/use-toast'
-import { useConditionalAuth } from '@/app/auth-provider-wrapper'
+import { useAuth } from '@clerk/nextjs'
 
 interface CreateProjectForm {
   name: string
@@ -24,7 +24,7 @@ export default function NewProjectPage() {
   const router = useRouter()
   const { toast } = useToast()
   const queryClient = useQueryClient()
-  const { isLoaded } = useConditionalAuth()
+  const { isLoaded } = useAuth()
   const { setupClients } = useApiClient()
 
   const [form, setForm] = useState<CreateProjectForm>({

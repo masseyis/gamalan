@@ -70,24 +70,30 @@ class ApiClient {
 
     // Response interceptor for error handling
     this.client.interceptors.response.use(
-      (response) => response,
+      (response) => {
+        // Handle 204 No Content responses for void operations
+        if (response.status === 204) {
+          response.data = undefined
+        }
+        return response
+      },
       (error) => {
         // Log the error for debugging but don't break the UI
         console.warn('API request failed:', error.message, 'URL:', error.config?.url)
-        
+
         if (error.response?.status === 401) {
           console.warn('Unauthorized API request - this is expected if backend is not configured')
           // Don't redirect in production for demo purposes
           // window.location.href = '/sign-in'
         }
-        
+
         // Check if this is a connection error (likely due to localhost URLs)
         if (error.code === 'ERR_NETWORK' || error.message.includes('localhost')) {
           console.warn('Network error - likely localhost API URLs not available in production')
           // Return empty data instead of throwing
           return Promise.resolve({ data: null, status: 404, statusText: 'Service Unavailable' })
         }
-        
+
         return Promise.reject(error)
       }
     )

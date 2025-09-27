@@ -9,12 +9,13 @@ import { projectsApi } from '@/lib/api/projects'
 import { backlogApi } from '@/lib/api/backlog'
 import { useApiClient } from '@/lib/api/client'
 import { useEffect } from 'react'
-import { useConditionalAuth } from '@/app/auth-provider-wrapper'
+import { useAuth, useUser } from '@clerk/nextjs'
 import { UserGuide, RoleExplanation } from '@/components/ui/user-guide'
 import { useRoles } from '@/components/providers/UserContextProvider'
 
 export default function DashboardPage() {
-  const { user, isLoaded } = useConditionalAuth()
+  const { isLoaded } = useAuth()
+  const { user } = useUser()
   const { setupClients } = useApiClient()
   const { user: contextUser } = useRoles()
 

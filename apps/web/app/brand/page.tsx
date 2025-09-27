@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -64,7 +65,7 @@ export default function BrandPreviewPage() {
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-center h-24 mb-4">
-                  <img src="/logo-full.png" alt="Salunga logo" className="h-12" />
+                  <Image src="/logo-full.png" alt="Salunga logo" width={128} height={48} className="h-12" />
                 </div>
                 <p className="text-sm text-muted-foreground">Primary logo with wordmark and icon</p>
               </CardContent>
@@ -76,7 +77,7 @@ export default function BrandPreviewPage() {
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-center h-24 mb-4">
-                  <img src="/logo-icon.png" alt="Salunga icon" className="h-12 w-12" />
+                  <Image src="/logo-icon.png" alt="Salunga icon" width={48} height={48} className="h-12 w-12" />
                 </div>
                 <p className="text-sm text-muted-foreground">Icon for square spaces and favicons</p>
               </CardContent>
@@ -89,9 +90,9 @@ export default function BrandPreviewPage() {
               <CardContent>
                 <div className="flex items-center justify-center h-24 mb-4">
                   <div className="flex gap-2">
-                    <img src="/favicon-16.png" alt="16x16 favicon" className="w-4 h-4" />
-                    <img src="/favicon-32.png" alt="32x32 favicon" className="w-8 h-8" />
-                    <img src="/favicon-48.png" alt="48x48 favicon" className="w-12 h-12" />
+                    <Image src="/favicon-16.png" alt="16x16 favicon" width={16} height={16} className="w-4 h-4" />
+                    <Image src="/favicon-32.png" alt="32x32 favicon" width={32} height={32} className="w-8 h-8" />
+                    <Image src="/favicon-48.png" alt="48x48 favicon" width={48} height={48} className="w-12 h-12" />
                   </div>
                 </div>
                 <p className="text-sm text-muted-foreground">Favicon sizes: 16px, 32px, 48px</p>

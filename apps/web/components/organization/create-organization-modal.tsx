@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { isTestEnvironment } from '@/lib/auth/test-utils'
 import {
   Dialog,
   DialogContent,
@@ -29,15 +28,10 @@ export function CreateOrganizationModal({ open, onClose }: CreateOrganizationMod
   const [isCreating, setIsCreating] = useState(false)
   const { toast } = useToast()
 
-  // Mock createOrganization function for test environment
+  // createOrganization function
   const createOrganization = async (options: { name: string, slug: string }) => {
-    if (isTestEnvironment()) {
-      // Mock implementation for tests
-      return Promise.resolve({ id: 'test-org', name: options.name, slug: options.slug })
-    } else {
-      // Production implementation should use proper Clerk organization management
-      throw new Error('Organization creation requires Clerk to be properly configured')
-    }
+    // Production implementation should use proper Clerk organization management
+    throw new Error('Organization creation requires Clerk to be properly configured')
   }
 
   const handleNameChange = (value: string) => {
@@ -76,25 +70,24 @@ export function CreateOrganizationModal({ open, onClose }: CreateOrganizationMod
     setIsCreating(true)
 
     try {
-      const organization = await createOrganization?.({
+      await createOrganization?.({
         name: name.trim(),
         slug: slug.trim(),
         // Note: Clerk doesn't support custom descriptions in basic plan
         // We'll store this in our own database later
       })
 
-      if (organization) {
-        toast({
-          title: 'Organization created',
-          description: `${organization.name} has been created successfully.`,
-        })
+      // This won't be reached due to the error thrown above
+      toast({
+        title: 'Organization created',
+        description: `${name} has been created successfully.`,
+      })
 
-        // Reset form
-        setName('')
-        setSlug('')
-        setDescription('')
-        onClose()
-      }
+      // Reset form
+      setName('')
+      setSlug('')
+      setDescription('')
+      onClose()
     } catch (error: any) {
       toast({
         title: 'Failed to create organization',

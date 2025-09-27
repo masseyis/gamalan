@@ -9,10 +9,10 @@ import { RecentActions } from '@/components/assistant/recent-actions'
 import { QuickActions } from '@/components/assistant/quick-actions'
 import { useApiClient } from '@/lib/api/client'
 import { useEffect } from 'react'
-import { useConditionalAuth } from '@/app/auth-provider-wrapper'
+import { useAuth } from '@clerk/nextjs'
 
 export default function AssistantPage() {
-  const { isLoaded } = useConditionalAuth()
+  const { isLoaded } = useAuth()
   const { setupClients } = useApiClient()
   const suggestions = useAssistantStore(state => state.suggestions)
   const recentActions = useAssistantStore(state => state.recentActions)

@@ -5,6 +5,7 @@ use axum::{
 };
 use backlog::create_backlog_router_with_readiness;
 use serde_json::json;
+use serial_test::serial;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tower::util::ServiceExt;
@@ -71,6 +72,7 @@ async fn create_test_project(pool: &sqlx::PgPool, org_id: Uuid) -> Uuid {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_health_endpoint() {
     let app = setup_app().await;
 
@@ -89,6 +91,7 @@ async fn test_health_endpoint() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_create_story_unauthorized() {
     let app = setup_app().await;
 
@@ -114,6 +117,7 @@ async fn test_create_story_unauthorized() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_get_stories_by_project_unauthorized() {
     let app = setup_app().await;
 
@@ -132,6 +136,7 @@ async fn test_get_stories_by_project_unauthorized() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_create_story_bad_request() {
     let app = setup_app().await;
 
@@ -160,6 +165,7 @@ async fn test_create_story_bad_request() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_get_story_not_found() {
     let app = setup_app().await;
 
@@ -183,6 +189,7 @@ async fn test_get_story_not_found() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_update_story_not_found() {
     let app = setup_app().await;
 
@@ -210,6 +217,7 @@ async fn test_update_story_not_found() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_delete_story_not_found() {
     let app = setup_app().await;
 
@@ -233,6 +241,7 @@ async fn test_delete_story_not_found() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_create_task_unauthorized() {
     let app = setup_app().await;
 
@@ -259,6 +268,7 @@ async fn test_create_task_unauthorized() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_malformed_json_request() {
     let app = setup_app().await;
 
@@ -283,6 +293,7 @@ async fn test_malformed_json_request() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_invalid_uuid_in_path() {
     let app = setup_app().await;
 
@@ -305,6 +316,7 @@ async fn test_invalid_uuid_in_path() {
 
 // Task ownership integration tests
 #[tokio::test]
+#[serial]
 async fn test_task_ownership_workflow_integration() {
     let (app, pool) = setup_app_with_pool().await;
     let org_id = Uuid::new_v4(); // Generate unique org_id for each test
@@ -519,6 +531,7 @@ async fn test_task_ownership_workflow_integration() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_task_ownership_authorization() {
     let (app, pool) = setup_app_with_pool().await;
     let org_id = Uuid::new_v4(); // Generate unique org_id for each test
@@ -630,6 +643,7 @@ async fn test_task_ownership_authorization() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_task_ownership_state_transitions() {
     let (app, pool) = setup_app_with_pool().await;
     let org_id = Uuid::new_v4(); // Generate unique org_id for each test

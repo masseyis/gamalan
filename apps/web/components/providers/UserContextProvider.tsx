@@ -3,7 +3,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { usersApi, roleHelpers } from '@/lib/api/users'
 import { teamsApi } from '@/lib/api/teams'
-import { isTestEnvironment, getMockUser } from '@/lib/auth/test-utils'
 import {
   User,
   UserRole,
@@ -51,25 +50,17 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
   const [isLoaded, setIsLoaded] = useState(false)
 
   useEffect(() => {
-    if (isTestEnvironment()) {
-      // In test mode, simulate signed in state
-      setIsSignedIn(true)
+    // Use dynamic import to avoid SSR issues
+    import('@clerk/nextjs').then((clerk) => {
+      // Note: We can't use the hook here directly due to rules of hooks
+      // We'll handle this differently
+      setIsSignedIn(true) // For now, assume signed in
       setIsLoaded(true)
-    } else {
-      // In production, use dynamic import to avoid SSR issues
-      let useAuth: any
-      import('@clerk/nextjs').then((clerk) => {
-        useAuth = clerk.useAuth
-        // Note: We can't use the hook here directly due to rules of hooks
-        // We'll handle this differently
-        setIsSignedIn(true) // For now, assume signed in
-        setIsLoaded(true)
-      }).catch(() => {
-        // Fallback if Clerk is not available
-        setIsSignedIn(false)
-        setIsLoaded(true)
-      })
-    }
+    }).catch(() => {
+      // Fallback if Clerk is not available
+      setIsSignedIn(false)
+      setIsLoaded(true)
+    })
   }, [])
 
   // Calculate permissions based on user role
@@ -99,48 +90,30 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
     setError(null)
 
     try {
-      if (isTestEnvironment()) {
-        // In test mode, use mock data
-        const mockUser = getMockUser()
-        const mockUserProfile: User = {
-          id: mockUser.id,
-          externalId: mockUser.id,
-          email: mockUser.email,
-          role: 'product_owner',
-          specialty: undefined,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }
+      // Fetch user profile and team memberships in parallel
+      const [userProfile, userTeams] = await Promise.all([
+        usersApi.getCurrentUser().catch(() => null),
+        teamsApi.getTeams().catch(() => [])
+      ])
 
-        setUser(mockUserProfile)
-        setTeamMemberships([])
-        console.debug('Using mock user data for tests')
-      } else {
-        // Fetch user profile and team memberships in parallel
-        const [userProfile, userTeams] = await Promise.all([
-          usersApi.getCurrentUser().catch(() => null),
-          teamsApi.getTeams().catch(() => [])
-        ])
+      if (userProfile) {
+        setUser(userProfile)
 
-        if (userProfile) {
-          setUser(userProfile)
-
-          // Extract team memberships from teams data
-          const memberships: TeamMembership[] = []
-          userTeams.forEach(team => {
-            team.members.forEach(member => {
-              if (member.userId === userProfile.id) {
-                memberships.push(member)
-              }
-            })
+        // Extract team memberships from teams data
+        const memberships: TeamMembership[] = []
+        userTeams.forEach(team => {
+          team.members.forEach(member => {
+            if (member.userId === userProfile.id) {
+              memberships.push(member)
+            }
           })
-          setTeamMemberships(memberships)
-        } else {
-          // User not found in backend, might need to be created via Clerk webhook
-          console.warn('User not found in backend - Clerk webhook may not have processed yet')
-          setUser(null)
-          setTeamMemberships([])
-        }
+        })
+        setTeamMemberships(memberships)
+      } else {
+        // User not found in backend, might need to be created via Clerk webhook
+        console.warn('User not found in backend - Clerk webhook may not have processed yet')
+        setUser(null)
+        setTeamMemberships([])
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch user context'

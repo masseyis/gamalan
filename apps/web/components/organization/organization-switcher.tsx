@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { isTestEnvironment } from '@/lib/auth/test-utils'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -24,7 +23,7 @@ import {
 import { CreateOrganizationModal } from './create-organization-modal'
 
 export function OrganizationSwitcher() {
-  return isTestEnvironment() ? <MockOrganizationSwitcher /> : <ClerkOrganizationSwitcher />
+  return <ClerkOrganizationSwitcher />
 }
 
 function MockOrganizationSwitcher() {

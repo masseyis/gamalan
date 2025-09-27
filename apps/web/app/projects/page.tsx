@@ -8,12 +8,12 @@ import Link from 'next/link'
 import { projectsApi } from '@/lib/api/projects'
 import { useApiClient } from '@/lib/api/client'
 import { useEffect, useState } from 'react'
-import { useConditionalAuth } from '@/app/auth-provider-wrapper'
+import { useAuth } from '@clerk/nextjs'
 import { useRoles } from '@/components/providers/UserContextProvider'
 import { UserGuide } from '@/components/ui/user-guide'
 
 export default function ProjectsPage() {
-  const { isLoaded } = useConditionalAuth()
+  const { isLoaded } = useAuth()
   const { setupClients } = useApiClient()
   const { user } = useRoles()
 

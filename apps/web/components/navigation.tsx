@@ -19,24 +19,18 @@ import {
 } from 'lucide-react'
 
 import { useUserContext } from '@/components/providers/UserContextProvider'
-import { isTestEnvironment } from '@/lib/auth/test-utils'
 import { OrganizationSwitcher } from '@/components/organization/organization-switcher'
 
 export function Navigation() {
   const pathname = usePathname()
   const { user, isLoading } = useUserContext()
 
-  // Mock the auth state for compatibility
-  const isSignedIn = !!user || isTestEnvironment()
-  const isLoaded = !isLoading || isTestEnvironment()
+  // Auth state
+  const isSignedIn = !!user
+  const isLoaded = !isLoading
 
-  // Mock signOut function
+  // SignOut function
   const signOut = () => {
-    if (isTestEnvironment()) {
-      console.debug('Mock signOut called')
-      return
-    }
-    // In production, redirect to sign-out
     window.location.href = '/sign-out'
   }
 
@@ -86,20 +80,12 @@ function NavigationContent({ pathname, isSignedIn, user, signOut, loading }: any
     }
   ]
 
-  // Helper function to get display name and initials from mock user or User type
+  // Helper function to get display name and initials from User type
   const getDisplayName = () => {
-    if (isTestEnvironment()) {
-      const mockUser = require('@/lib/auth/test-utils').getMockUser()
-      return `${mockUser.firstName} ${mockUser.lastName}`
-    }
     return user?.email?.split('@')[0] || 'User'
   }
 
   const getInitials = () => {
-    if (isTestEnvironment()) {
-      const mockUser = require('@/lib/auth/test-utils').getMockUser()
-      return `${mockUser.firstName[0]}${mockUser.lastName[0]}`
-    }
     return user?.email?.[0]?.toUpperCase() || 'U'
   }
 

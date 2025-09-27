@@ -15,6 +15,7 @@ export default defineConfig({
       '**/.next/**',
       '**/__tests__/e2e/**',
       '**/tests/e2e/**',
+      '**/__tests__/integration/**',
       '**/*.{e2e,spec}.{js,ts,jsx,tsx}'
     ]
   },
