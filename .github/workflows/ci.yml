@@ -706,16 +706,17 @@ jobs:
 
       - name: Start Rust backend
         run: |
-          # Start the API gateway in background
+          # Start the API gateway in background with proper Shuttle environment
           echo "Starting API Gateway on port 8000..."
           DATABASE_URL="postgres://postgres:password@localhost:5432/gamalan_test" \
+          SHUTTLE_ENV="development" \
           RUST_LOG=info \
           ./target/release/api-gateway &
           BACKEND_PID=$!
           echo "Backend PID: $BACKEND_PID"
           echo "BACKEND_PID=$BACKEND_PID" >> $GITHUB_ENV
 
-          # Wait for backend to be ready with better error handling
+          # Wait for backend to be ready with better error handling and logging
           echo "Waiting for backend to be ready..."
           for i in {1..30}; do
             if curl -f http://localhost:8000/health 2>/dev/null; then
@@ -727,6 +728,12 @@ jobs:
               echo "Backend logs:"
               jobs -p | xargs -I {} ps -p {} -o pid,ppid,cmd || true
               netstat -tulpn | grep :8000 || true
+              echo "Checking if backend process is still running:"
+              if kill -0 $BACKEND_PID 2>/dev/null; then
+                echo "Backend process is still running, checking logs..."
+              else
+                echo "Backend process has died"
+              fi
               exit 1
             fi
             echo "Attempt $i/30: Backend not ready, waiting 2 seconds..."
@@ -734,6 +741,7 @@ jobs:
           done
         env:
           DATABASE_URL: postgres://postgres:password@localhost:5432/gamalan_test
+          SHUTTLE_ENV: development
 
       - name: Build and start Next.js frontend
         working-directory: apps/web
