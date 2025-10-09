@@ -30,6 +30,10 @@ export interface Story {
   labels: string[]
   sprintId?: string
   assignedToUserId?: string
+  readinessOverride?: boolean
+  readinessOverrideBy?: string
+  readinessOverrideReason?: string
+  readinessOverrideAt?: string
   createdAt: string
   updatedAt: string
   tasks?: Task[]

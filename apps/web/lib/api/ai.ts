@@ -2,7 +2,6 @@ import { promptBuilderClient, readinessClient } from './client'
 import { 
   PlanPack, 
   TaskPack, 
-  ReadinessCheck, 
   ReadinessEvaluation,
   CreatePlanPackRequest,
   CreateTaskPackRequest,
@@ -16,26 +15,14 @@ const mockAI = {
   checkStoryReadiness: async (projectId: string, storyId: string): Promise<ReadinessEvaluation> => {
     await new Promise(resolve => setTimeout(resolve, 1500))
     return {
-      storyId,
-      isReady: true,
       score: 85,
-      checks: [
-        {
-          type: 'AcceptanceCriteria',
-          passed: true,
-          message: 'Story has well-defined acceptance criteria'
-        },
-        {
-          type: 'TaskCoverage',
-          passed: true,
-          message: 'All acceptance criteria are covered by tasks'
-        }
+      missingItems: [],
+      recommendations: [
+        'Review edge cases before sprint planning',
+        'Double-check integration dependencies'
       ],
-      suggestions: [
-        'Consider adding edge case scenarios',
-        'Verify API integration requirements'
-      ],
-      createdAt: new Date().toISOString()
+      summary: 'Story meets readiness requirements and can be scheduled for the next sprint.',
+      isReady: true,
     }
   },
 
@@ -274,11 +261,7 @@ export const aiApi = {
     if (useMockData) {
       return mockAI.checkStoryReadiness(projectId, storyId)
     }
-    return readinessClient.post<ReadinessEvaluation>(`/projects/${projectId}/stories/${storyId}/readiness-check`)
-  },
-
-  async getReadinessCheck(projectId: string, storyId: string, checkId: string): Promise<ReadinessCheck> {
-    return readinessClient.get<ReadinessCheck>(`/projects/${projectId}/stories/${storyId}/readiness-checks/${checkId}`)
+    return readinessClient.post<ReadinessEvaluation>(`/readiness/${storyId}/evaluate`)
   },
 
   // AI-Powered Story Analysis

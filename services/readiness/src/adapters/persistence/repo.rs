@@ -135,13 +135,16 @@ impl SqlReadinessEvaluationRepository {
 impl ReadinessEvaluationRepository for SqlReadinessEvaluationRepository {
     async fn save_evaluation(&self, eval: &ReadinessEvaluation) -> Result<(), AppError> {
         sqlx::query(
-            "INSERT INTO readiness_evals (id, story_id, score, missing_items) 
-             VALUES ($1, $2, $3, $4)",
+            "INSERT INTO readiness_evals (id, story_id, organization_id, score, missing_items, summary, recommendations) 
+             VALUES ($1, $2, $3, $4, $5, $6, $7)",
         )
         .bind(eval.id)
         .bind(eval.story_id)
+        .bind(eval.organization_id)
         .bind(eval.score)
         .bind(&eval.missing_items)
+        .bind(&eval.summary)
+        .bind(&eval.recommendations)
         .execute(&self.pool)
         .await
         .map_err(|_| AppError::InternalServerError)?;
@@ -155,7 +158,7 @@ impl ReadinessEvaluationRepository for SqlReadinessEvaluationRepository {
         organization_id: Option<Uuid>,
     ) -> Result<Option<ReadinessEvaluation>, AppError> {
         let row = sqlx::query_as::<_, ReadinessEvaluationRow>(
-            "SELECT id, story_id, score, missing_items FROM readiness_evals
+            "SELECT id, story_id, organization_id, score, missing_items, summary, recommendations FROM readiness_evals
              WHERE story_id = $1 AND (organization_id = $2 OR ($2 IS NULL AND organization_id IS NULL)) 
              ORDER BY id DESC 
              LIMIT 1",

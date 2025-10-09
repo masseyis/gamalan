@@ -120,7 +120,7 @@ export const backlogApi = {
   },
 
   async getStory(projectId: string, storyId: string): Promise<Story> {
-    return backlogClient.get<Story>(`/projects/${projectId}/stories/${storyId}`)
+    return backlogClient.get<Story>(`/stories/${storyId}`)
   },
 
   async createStory(projectId: string, data: CreateStoryRequest): Promise<Story> {
@@ -128,45 +128,53 @@ export const backlogApi = {
   },
 
   async updateStory(projectId: string, storyId: string, data: UpdateStoryRequest): Promise<Story> {
-    return backlogClient.patch<Story>(`/projects/${projectId}/stories/${storyId}`, data)
+    return backlogClient.patch<Story>(`/stories/${storyId}`, data)
+  },
+
+  async overrideStoryReady(projectId: string, storyId: string, reason?: string): Promise<Story> {
+    return backlogClient.put<Story>(`/stories/${storyId}/ready-override`, { reason })
   },
 
   async updateStoryStatus(projectId: string, storyId: string, status: StoryStatus): Promise<Story> {
-    return backlogClient.patch<Story>(`/projects/${projectId}/stories/${storyId}/status`, { status })
+    return backlogClient.patch<Story>(`/stories/${storyId}/status`, { status })
   },
 
   async deleteStory(projectId: string, storyId: string): Promise<void> {
-    return backlogClient.delete<void>(`/projects/${projectId}/stories/${storyId}`)
+    return backlogClient.delete<void>(`/stories/${storyId}`)
   },
 
   // Tasks
   async getTasks(projectId: string, storyId: string): Promise<Task[]> {
-    return backlogClient.get<Task[]>(`/projects/${projectId}/stories/${storyId}/tasks`)
+    return backlogClient.get<Task[]>(`/stories/${storyId}/tasks`)
   },
 
   async getTask(projectId: string, storyId: string, taskId: string): Promise<Task> {
-    return backlogClient.get<Task>(`/projects/${projectId}/stories/${storyId}/tasks/${taskId}`)
+    return backlogClient.get<Task>(`/stories/${storyId}/tasks/${taskId}`)
   },
 
   async createTask(projectId: string, storyId: string, data: CreateTaskRequest): Promise<Task> {
-    return backlogClient.post<Task>(`/projects/${projectId}/stories/${storyId}/tasks`, data)
+    return backlogClient.post<Task>(`/stories/${storyId}/tasks`, {
+      title: data.title,
+      description: data.description,
+      acceptance_criteria_refs: data.acceptanceCriteriaRefs,
+    })
   },
 
   async updateTask(projectId: string, storyId: string, taskId: string, data: UpdateTaskRequest): Promise<Task> {
-    return backlogClient.patch<Task>(`/projects/${projectId}/stories/${storyId}/tasks/${taskId}`, data)
+    return backlogClient.patch<Task>(`/stories/${storyId}/tasks/${taskId}`, data)
   },
 
-  async updateTaskStatus(projectId: string, storyId: string, taskId: string, status: TaskStatus): Promise<Task> {
-    return backlogClient.patch<Task>(`/projects/${projectId}/stories/${storyId}/tasks/${taskId}/status`, { status })
+  async updateTaskStatus(taskId: string, status: TaskStatus): Promise<Task> {
+    return backlogClient.patch<Task>(`/tasks/${taskId}/status`, { status })
   },
 
   async deleteTask(projectId: string, storyId: string, taskId: string): Promise<void> {
-    return backlogClient.delete<void>(`/projects/${projectId}/stories/${storyId}/tasks/${taskId}`)
+    return backlogClient.delete<void>(`/stories/${storyId}/tasks/${taskId}`)
   },
 
   // Acceptance Criteria
   async getAcceptanceCriteria(projectId: string, storyId: string): Promise<AcceptanceCriterion[]> {
-    return backlogClient.get<AcceptanceCriterion[]>(`/projects/${projectId}/stories/${storyId}/acceptance-criteria`)
+    return backlogClient.get<AcceptanceCriterion[]>(`/stories/${storyId}/acceptance-criteria`)
   },
 
   async createAcceptanceCriterion(projectId: string, storyId: string, data: {
@@ -174,7 +182,7 @@ export const backlogApi = {
     when: string
     then: string
   }): Promise<AcceptanceCriterion> {
-    return backlogClient.post<AcceptanceCriterion>(`/projects/${projectId}/stories/${storyId}/acceptance-criteria`, data)
+    return backlogClient.post<AcceptanceCriterion>(`/stories/${storyId}/acceptance-criteria`, data)
   },
 
   async updateAcceptanceCriterion(projectId: string, storyId: string, criterionId: string, data: {
@@ -182,11 +190,11 @@ export const backlogApi = {
     when: string
     then: string
   }): Promise<AcceptanceCriterion> {
-    return backlogClient.patch<AcceptanceCriterion>(`/projects/${projectId}/stories/${storyId}/acceptance-criteria/${criterionId}`, data)
+    return backlogClient.patch<AcceptanceCriterion>(`/stories/${storyId}/acceptance-criteria/${criterionId}`, data)
   },
 
   async deleteAcceptanceCriterion(projectId: string, storyId: string, criterionId: string): Promise<void> {
-    return backlogClient.delete<void>(`/projects/${projectId}/stories/${storyId}/acceptance-criteria/${criterionId}`)
+    return backlogClient.delete<void>(`/stories/${storyId}/acceptance-criteria/${criterionId}`)
   },
 
   // Backlog management

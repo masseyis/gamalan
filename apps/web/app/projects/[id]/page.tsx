@@ -6,9 +6,10 @@ import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Kanban, List, Settings, Plus, Clock, CheckCircle, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Kanban, List, Settings, Plus, Clock, CheckCircle, AlertCircle, Sparkles, RefreshCw, Loader2 } from 'lucide-react'
 import { projectsApi } from '@/lib/api/projects'
 import { backlogApi } from '@/lib/api/backlog'
+import { useProjectSuggestions } from '@/lib/stores/assistant'
 
 export default function ProjectDetailPage() {
   const params = useParams()
@@ -24,6 +25,13 @@ export default function ProjectDetailPage() {
     queryFn: () => backlogApi.getStories(projectId),
     enabled: !!projectId,
   })
+
+  const {
+    suggestions: projectSuggestions,
+    isFetching: isFetchingSuggestions,
+    refresh: refreshSuggestions,
+    lastFetched: suggestionsLastFetched,
+  } = useProjectSuggestions(projectId)
 
   if (projectLoading) {
     return (
@@ -261,6 +269,74 @@ export default function ProjectDetailPage() {
                       Create Story
                     </Button>
                   </Link>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="lg:col-span-2">
+            <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Sparkles className="h-4 w-4 text-salunga-primary" />
+                  AI Suggestions
+                </CardTitle>
+                <CardDescription>Assistant insights tailored to this project</CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => refreshSuggestions()}
+                disabled={isFetchingSuggestions}
+              >
+                {isFetchingSuggestions ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                )}
+                Refresh
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {isFetchingSuggestions && projectSuggestions.length === 0 ? (
+                <div className="flex items-center justify-center gap-2 py-10 text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Generating suggestions...</span>
+                </div>
+              ) : projectSuggestions.length > 0 ? (
+                <div className="space-y-4">
+                  {projectSuggestions.slice(0, 3).map((suggestion) => (
+                    <div key={suggestion.id} className="p-4 border rounded-lg bg-muted/30">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{suggestion.title}</p>
+                          <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                            {suggestion.description}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="capitalize">
+                          {suggestion.priority}
+                        </Badge>
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-3 flex flex-wrap gap-x-4 gap-y-1">
+                        <span>Confidence: {Math.round(suggestion.confidence * 100)}%</span>
+                        <span>
+                          Updated {new Date(suggestion.createdAt).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                  <p className="text-xs text-muted-foreground">
+                    {suggestionsLastFetched
+                      ? `Last checked ${new Date(suggestionsLastFetched).toLocaleTimeString()}`
+                      : 'Suggestions refresh automatically every few minutes.'}
+                  </p>
+                </div>
+              ) : (
+                <div className="text-center py-10 text-muted-foreground space-y-2">
+                  <Sparkles className="h-8 w-8 mx-auto opacity-40" />
+                  <p>No suggestions yet</p>
+                  <p className="text-sm">Refresh to pull the latest AI insights for this project.</p>
                 </div>
               )}
             </CardContent>

@@ -37,7 +37,8 @@ async fn create_test_app() -> Router {
     // Create actual service routers with shared resources
     let auth_router = auth_gateway::create_auth_router(pool.clone(), verifier.clone()).await;
     let projects_router = projects::create_projects_router(pool.clone(), verifier.clone()).await;
-    let backlog_router = backlog::create_backlog_router(pool.clone(), verifier.clone()).await;
+    let backlog_router =
+        backlog::create_backlog_router_unprefixed(pool.clone(), verifier.clone()).await;
     let readiness_router = readiness::create_readiness_router(pool.clone(), verifier.clone()).await;
     let prompt_builder_router =
         prompt_builder::create_prompt_builder_router(pool.clone(), verifier.clone()).await;

@@ -26,10 +26,9 @@ export function NavigationTest() {
       pathname={pathname}
       isSignedIn={true}
       user={{
-        id: '01234567-89ab-cdef-0123-456789abcdef',
-        firstName: 'Test',
-        lastName: 'User',
-        emailAddresses: [{ emailAddress: 'test@example.com' }]
+        name: 'Test User',
+      email: 'test@example.com',
+      initials: 'TU'
       }}
       signOut={() => Promise.resolve()}
       loading={false}
@@ -37,7 +36,19 @@ export function NavigationTest() {
   )
 }
 
-function NavigationContent({ pathname, isSignedIn, user, signOut, loading }: any) {
+interface NavigationContentProps {
+  pathname: string
+  isSignedIn: boolean
+  user: {
+    name: string
+    email: string
+    initials: string
+  }
+  signOut: () => void | Promise<void>
+  loading: boolean
+}
+
+function NavigationContent({ pathname, isSignedIn, user, signOut, loading }: NavigationContentProps) {
   const navigation = [
     {
       name: 'Dashboard',
@@ -71,10 +82,6 @@ function NavigationContent({ pathname, isSignedIn, user, signOut, loading }: any
       isPrimary: true
     }
   ]
-
-  const userInitials = user?.firstName && user?.lastName
-    ? `${user.firstName[0]}${user.lastName[0]}`
-    : user?.emailAddresses?.[0]?.emailAddress?.[0]?.toUpperCase() || 'U'
 
   return (
     <nav className="border-b border-border bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/50 sticky top-0 z-50">
@@ -160,10 +167,10 @@ function NavigationContent({ pathname, isSignedIn, user, signOut, loading }: any
               <div className="flex items-center gap-3 pl-3 border-l border-border/50">
                 <div className="hidden sm:block text-right">
                   <div className="text-sm font-medium text-foreground">
-                    {user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : 'Test User'}
+                    {user.name}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {user?.emailAddresses?.[0]?.emailAddress || 'test@example.com'}
+                    {user.email}
                   </div>
                 </div>
                 <Avatar
@@ -172,7 +179,7 @@ function NavigationContent({ pathname, isSignedIn, user, signOut, loading }: any
                   title="Click to sign out"
                 >
                   <AvatarFallback className="bg-gradient-primary text-white text-sm font-semibold">
-                    {userInitials}
+                    {user.initials}
                   </AvatarFallback>
                 </Avatar>
               </div>

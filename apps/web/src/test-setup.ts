@@ -14,6 +14,9 @@ vi.mock('@clerk/nextjs', () => {
     useAuth: useMockAuth,
     useClerk: useMockClerk,
     useOrganization: useMockOrganization,
+    SignedIn: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children),
+    SignedOut: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children),
+    SignInButton: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children),
     auth: () => ({
       userId: '01234567-89ab-cdef-0123-456789abcdef',
       getToken: vi.fn().mockResolvedValue('valid-test-token')

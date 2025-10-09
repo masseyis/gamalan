@@ -13,10 +13,23 @@ export function AuthProviderWrapper({ children }: { children: ReactNode }) {
     )
   }
 
+  const signInUrl = process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL || '/sign-in'
+  const signUpUrl = process.env.NEXT_PUBLIC_CLERK_SIGN_UP_URL || '/sign-up'
+  const afterSignInUrl = process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL || '/assistant'
+  const afterSignUpUrl = process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL || '/assistant'
+
   return (
     <ClerkProvider
       publishableKey={publishableKey}
-      domain={undefined}
+      signInUrl={signInUrl}
+      signUpUrl={signUpUrl}
+      afterSignInUrl={afterSignInUrl}
+      afterSignUpUrl={afterSignUpUrl}
+      appearance={{
+        elements: {
+          organizationSwitcherTriggerIcon: 'text-muted-foreground',
+        },
+      }}
     >
       {children}
     </ClerkProvider>
@@ -48,7 +61,7 @@ export const useMockAuth = () => {
 
 export const useMockClerk = () => {
   return {
-    signOut: () => Promise.resolve()
+    signOut: (_?: unknown) => Promise.resolve()
   }
 }
 

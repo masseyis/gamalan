@@ -51,14 +51,31 @@ impl From<AcceptanceCriterion> for AcceptanceCriterionResponse {
 #[derive(Debug, Serialize)]
 pub struct ReadinessEvaluationResponse {
     pub score: i32,
+    #[serde(rename = "missingItems")]
     pub missing_items: Vec<String>,
+    pub recommendations: Vec<String>,
+    pub summary: String,
+    #[serde(rename = "isReady")]
+    pub is_ready: bool,
 }
 
 impl From<ReadinessEvaluation> for ReadinessEvaluationResponse {
     fn from(eval: ReadinessEvaluation) -> Self {
+        let is_ready = eval.is_ready();
+        let ReadinessEvaluation {
+            score,
+            missing_items,
+            recommendations,
+            summary,
+            ..
+        } = eval;
+
         Self {
-            score: eval.score,
-            missing_items: eval.missing_items,
+            score,
+            missing_items,
+            recommendations,
+            summary,
+            is_ready,
         }
     }
 }

@@ -1,6 +1,8 @@
+import { useCallback, useEffect } from 'react'
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { 
+  AssistantState,
   AssistantStore, 
   IntentResult, 
   EntityMatch, 
@@ -17,6 +19,9 @@ const RECENT_ACTIONS_LIMIT = 20
 export const useAssistantStore = create<AssistantStore>()(
   persist(
     (set, get) => ({
+      activeProjectId: null,
+      isFetchingSuggestions: false,
+      suggestionsProjectId: null,
       // Input state
       currentUtterance: '',
       isProcessing: false,
@@ -29,12 +34,32 @@ export const useAssistantStore = create<AssistantStore>()(
       
       // Suggestions state
       suggestions: [],
-      dismissedSuggestions: new Set(),
+      dismissedSuggestions: new Set<string>(),
       suggestionsLastFetched: null,
       
       // History
       utteranceHistory: [],
       recentActions: [],
+
+      setActiveProjectId: (projectId: string | null) => {
+        const currentProjectId = get().activeProjectId
+        if (currentProjectId === projectId) {
+          return
+        }
+
+        set((state) => ({
+          activeProjectId: projectId,
+          suggestions: projectId && state.suggestionsProjectId === projectId
+            ? state.suggestions
+            : [],
+          suggestionsProjectId: projectId && state.suggestionsProjectId === projectId
+            ? state.suggestionsProjectId
+            : null,
+          suggestionsLastFetched: projectId && state.suggestionsProjectId === projectId
+            ? state.suggestionsLastFetched
+            : null,
+        }))
+      },
 
       // Input actions
       setUtterance: (utterance: string) => {
@@ -42,8 +67,17 @@ export const useAssistantStore = create<AssistantStore>()(
       },
 
       submitUtterance: async (utterance: string) => {
+        const projectId = get().activeProjectId
+
+        if (!projectId) {
+          set({
+            error: 'Select a project to use the assistant',
+          })
+          return
+        }
+
         const { addToHistory } = get()
-        
+
         set({ 
           isProcessing: true, 
           error: null, 
@@ -54,9 +88,6 @@ export const useAssistantStore = create<AssistantStore>()(
         })
         
         try {
-          // Get current project context (this would come from route params in real usage)
-          const projectId = 'current-project' // TODO: Get from router/context
-          
           const result = await orchestratorApi.interpretUtterance({
             utterance,
             projectId,
@@ -105,13 +136,22 @@ export const useAssistantStore = create<AssistantStore>()(
       confirmAction: async () => {
         const { pendingAction, recentActions } = get()
         if (!pendingAction) return
-        
+
+        const projectId = get().activeProjectId
+
+        if (!projectId) {
+          set({
+            error: 'Select a project before confirming actions',
+          })
+          return
+        }
+
         set({ isProcessing: true, error: null })
         
         try {
           const result = await orchestratorApi.executeAction({
             action: pendingAction,
-            projectId: 'current-project', // TODO: Get from context
+            projectId,
             userId: 'current-user' // TODO: Get from auth
           })
           
@@ -154,19 +194,30 @@ export const useAssistantStore = create<AssistantStore>()(
       },
 
       // Suggestions
-      fetchSuggestions: async () => {
+      fetchSuggestions: async (projectId?: string) => {
         try {
-          const projectId = 'current-project' // TODO: Get from context
-          const result = await orchestratorApi.getSuggestions(projectId)
-          
+          const targetProjectId = projectId ?? get().activeProjectId
+
+          if (!targetProjectId) {
+            console.warn('Attempted to fetch suggestions without a project context')
+            return
+          }
+
+          set({ isFetchingSuggestions: true })
+
+          const result = await orchestratorApi.getSuggestions(targetProjectId)
+
           set({ 
             suggestions: result.suggestions,
+            suggestionsProjectId: targetProjectId,
             suggestionsLastFetched: new Date().toISOString()
           })
-          
+
         } catch (error) {
           console.error('Failed to fetch suggestions:', error)
           // Don't set error state for suggestions as it's not critical
+        } finally {
+          set({ isFetchingSuggestions: false })
         }
       },
 
@@ -225,14 +276,19 @@ export const useAssistantStore = create<AssistantStore>()(
       partialize: (state) => ({
         // Only persist non-sensitive state
         utteranceHistory: state.utteranceHistory,
-        dismissedSuggestions: Array.from(state.dismissedSuggestions), // Convert Set to Array for JSON
+        dismissedSuggestions: Array.from(state.dismissedSuggestions ?? new Set<string>()),
         suggestionsLastFetched: state.suggestionsLastFetched,
       }),
       onRehydrateStorage: () => (state) => {
-        // Convert dismissed suggestions back to Set after rehydration
-        if (state && Array.isArray(state.dismissedSuggestions)) {
-          state.dismissedSuggestions = new Set(state.dismissedSuggestions as string[])
+        if (!state) {
+          return
         }
+
+        const persistedDismissed = (state as unknown as { dismissedSuggestions?: unknown }).dismissedSuggestions
+
+        ;(state as AssistantState).dismissedSuggestions = new Set(
+          Array.isArray(persistedDismissed) ? persistedDismissed as string[] : []
+        )
       }
     }
   )
@@ -249,12 +305,74 @@ export function useCurrentProjectId(): string | null {
 export function useAutoFetchSuggestions() {
   const fetchSuggestions = useAssistantStore(state => state.fetchSuggestions)
   const lastFetched = useAssistantStore(state => state.suggestionsLastFetched)
-  
-  // Auto-fetch suggestions if not fetched recently
-  const shouldFetch = !lastFetched || 
-    (Date.now() - new Date(lastFetched).getTime() > 5 * 60 * 1000) // 5 minutes
-    
-  if (shouldFetch) {
-    fetchSuggestions()
+  const activeProjectId = useAssistantStore(state => state.activeProjectId)
+  const suggestionsProjectId = useAssistantStore(state => state.suggestionsProjectId)
+
+  useEffect(() => {
+    const targetProjectId = activeProjectId
+
+    if (!targetProjectId) {
+      return
+    }
+
+    const fetchedForProject = suggestionsProjectId === targetProjectId
+    const isStale = !lastFetched || !fetchedForProject || (
+      Date.now() - new Date(lastFetched).getTime() > 5 * 60 * 1000
+    )
+
+    if (isStale) {
+      void fetchSuggestions(targetProjectId)
+    }
+  }, [activeProjectId, suggestionsProjectId, lastFetched, fetchSuggestions])
+}
+
+export function useProjectSuggestions(projectId?: string) {
+  const setActiveProjectId = useAssistantStore(state => state.setActiveProjectId)
+  const fetchSuggestions = useAssistantStore(state => state.fetchSuggestions)
+  const suggestions = useAssistantStore(state => state.suggestions)
+  const suggestionsProjectId = useAssistantStore(state => state.suggestionsProjectId)
+  const isFetching = useAssistantStore(state => state.isFetchingSuggestions)
+  const lastFetched = useAssistantStore(state => state.suggestionsLastFetched)
+
+  useEffect(() => {
+    if (!projectId) {
+      setActiveProjectId(null)
+      return
+    }
+
+    setActiveProjectId(projectId)
+
+    return () => {
+      setActiveProjectId(null)
+    }
+  }, [projectId, setActiveProjectId])
+
+  useEffect(() => {
+    if (!projectId) {
+      return
+    }
+
+    const fetchedForProject = suggestionsProjectId === projectId
+    const isStale = !lastFetched || !fetchedForProject || (
+      Date.now() - new Date(lastFetched).getTime() > 5 * 60 * 1000
+    )
+
+    if (!fetchedForProject || isStale) {
+      void fetchSuggestions(projectId)
+    }
+  }, [projectId, fetchSuggestions, suggestionsProjectId, lastFetched])
+
+  const refresh = useCallback(() => {
+    if (!projectId) return
+    void fetchSuggestions(projectId)
+  }, [projectId, fetchSuggestions])
+
+  const projectSuggestions = suggestionsProjectId === projectId ? suggestions : []
+
+  return {
+    suggestions: projectSuggestions,
+    isFetching,
+    refresh,
+    lastFetched,
   }
 }

@@ -15,6 +15,10 @@ pub struct StoryRow {
     pub story_points: Option<i32>, // Using i32 for PostgreSQL compatibility
     pub sprint_id: Option<Uuid>,
     pub assigned_to_user_id: Option<Uuid>,
+    pub readiness_override: bool,
+    pub readiness_override_by: Option<Uuid>,
+    pub readiness_override_reason: Option<String>,
+    pub readiness_override_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -34,6 +38,10 @@ impl From<StoryRow> for Story {
             story_points: row.story_points.map(|p| p as u32),
             sprint_id: row.sprint_id,
             assigned_to_user_id: row.assigned_to_user_id,
+            readiness_override: row.readiness_override,
+            readiness_override_by: row.readiness_override_by,
+            readiness_override_reason: row.readiness_override_reason,
+            readiness_override_at: row.readiness_override_at,
             created_at: row.created_at,
             updated_at: row.updated_at,
         }
@@ -84,8 +92,11 @@ pub struct AcceptanceCriteriaRow {
     pub story_id: Uuid,
     pub description: String,
     pub given: String,
-    pub when: String,
-    pub then: String,
+    #[sqlx(rename = "when_clause")]
+    pub when_clause: String,
+    #[sqlx(rename = "then_clause")]
+    pub then_clause: String,
+    pub created_at: DateTime<Utc>,
 }
 
 impl From<AcceptanceCriteriaRow> for AcceptanceCriteria {
@@ -94,8 +105,9 @@ impl From<AcceptanceCriteriaRow> for AcceptanceCriteria {
             id: row.id,
             description: row.description,
             given: row.given,
-            when: row.when,
-            then: row.then,
+            when: row.when_clause,
+            then: row.then_clause,
+            created_at: row.created_at,
         }
     }
 }

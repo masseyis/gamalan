@@ -58,6 +58,7 @@ pub struct StoryInfo {
     pub id: Uuid,
     pub title: String,
     pub description: Option<String>,
+    pub story_points: Option<u32>,
 }
 
 #[derive(Debug, Clone)]

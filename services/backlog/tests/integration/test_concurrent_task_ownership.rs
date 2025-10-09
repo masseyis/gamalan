@@ -12,7 +12,7 @@ use uuid::Uuid;
 
 use auth_clerk::JwtVerifier;
 use backlog::adapters::http::routes::create_backlog_router_with_readiness;
-use backlog::adapters::integrations::MockReadinessService;
+
 use tokio::sync::Mutex;
 
 // Import the common test setup
@@ -22,13 +22,7 @@ async fn setup_test_app(pool: PgPool) -> axum::Router {
     // Create a mock JWT verifier for testing
     let verifier = Arc::new(Mutex::new(JwtVerifier::new_test_verifier()));
 
-    // Use MockReadinessService for tests
-    let readiness_service = Arc::new(MockReadinessService::new());
-
-    axum::Router::new().nest(
-        "/api/v1",
-        create_backlog_router_with_readiness(pool, verifier, Some(readiness_service)).await,
-    )
+    create_backlog_router_with_readiness(pool, verifier).await
 }
 
 async fn create_test_task(app: &axum::Router) -> (Uuid, Uuid, Uuid) {

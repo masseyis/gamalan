@@ -16,6 +16,7 @@ export default function AssistantPage() {
   const { setupClients } = useApiClient()
   const suggestions = useAssistantStore(state => state.suggestions)
   const recentActions = useAssistantStore(state => state.recentActions)
+  const setActiveProjectId = useAssistantStore(state => state.setActiveProjectId)
   
   // Auto-fetch suggestions when component mounts
   useAutoFetchSuggestions()
@@ -26,6 +27,10 @@ export default function AssistantPage() {
       setupClients()
     }
   }, [setupClients, isLoaded])
+
+  useEffect(() => {
+    setActiveProjectId(null)
+  }, [setActiveProjectId])
 
   // Show loading until Clerk is ready
   if (!isLoaded) {

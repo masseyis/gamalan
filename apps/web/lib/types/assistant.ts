@@ -83,6 +83,9 @@ export interface SuggestionAction {
 }
 
 export interface AssistantState {
+  activeProjectId: string | null
+  isFetchingSuggestions: boolean
+  suggestionsProjectId: string | null
   // Input state
   currentUtterance: string
   isProcessing: boolean
@@ -104,6 +107,7 @@ export interface AssistantState {
 }
 
 export interface AssistantActions {
+  setActiveProjectId: (projectId: string | null) => void
   // Input actions
   setUtterance: (utterance: string) => void
   submitUtterance: (utterance: string) => Promise<void>
@@ -115,7 +119,7 @@ export interface AssistantActions {
   cancelAction: () => void
   
   // Suggestions
-  fetchSuggestions: () => Promise<void>
+  fetchSuggestions: (projectId?: string) => Promise<void>
   applySuggestionAction: (action: SuggestionAction) => Promise<void>
   dismissSuggestion: (suggestionId: string) => void
   

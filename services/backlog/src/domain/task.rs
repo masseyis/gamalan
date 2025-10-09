@@ -240,6 +240,30 @@ impl Task {
         Ok(())
     }
 
+    pub fn transition_to_status(
+        &mut self,
+        target: TaskStatus,
+        actor: Uuid,
+    ) -> Result<(), AppError> {
+        if self.status == target {
+            return Ok(());
+        }
+
+        match target {
+            TaskStatus::Available => self.release_ownership(actor),
+            TaskStatus::Owned => match self.status {
+                TaskStatus::Available => self.take_ownership(actor),
+                TaskStatus::InProgress => self.pause_work(actor),
+                TaskStatus::Owned => Ok(()),
+                _ => Err(AppError::BadRequest(
+                    "Cannot move task to owned from its current state".to_string(),
+                )),
+            },
+            TaskStatus::InProgress => self.start_work(actor),
+            TaskStatus::Completed => self.complete(actor),
+        }
+    }
+
     /// Set estimated hours for the task (None to clear estimate)
     pub fn set_estimated_hours(&mut self, hours: Option<u32>) -> Result<(), AppError> {
         if let Some(h) = hours {

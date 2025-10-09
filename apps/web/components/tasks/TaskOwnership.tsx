@@ -25,7 +25,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useToast } from '@/hooks/use-toast'
 import { backlogApi } from '@/lib/api/backlog'
 import { usePermissions, useRoles } from '@/components/providers/UserContextProvider'
-import { Task, TaskStatus } from '@/lib/types'
+import { Task, TaskStatus, StoryStatus } from '@/lib/types'
 import {
   Clock,
   User,
@@ -45,6 +45,8 @@ interface TaskOwnershipProps {
   showWorkflow?: boolean
   compact?: boolean
   className?: string
+  storyStatus?: StoryStatus
+  sprintId?: string | null
 }
 
 export function TaskOwnership({
@@ -52,7 +54,9 @@ export function TaskOwnership({
   showEstimate = true,
   showWorkflow = true,
   compact = false,
-  className = ''
+  className = '',
+  storyStatus,
+  sprintId,
 }: TaskOwnershipProps) {
   const [estimateDialogOpen, setEstimateDialogOpen] = useState(false)
   const [releaseDialogOpen, setReleaseDialogOpen] = useState(false)
@@ -66,6 +70,21 @@ export function TaskOwnership({
 
   // Check if current user owns this task
   const isOwner = task.ownerUserId === user?.id
+
+  const storyStatusesAllowingOwnership: StoryStatus[] = [
+    'committed',
+    'inprogress',
+    'taskscomplete',
+    'deployed',
+    'awaitingacceptance',
+  ]
+
+  const isStoryInSprint = Boolean(sprintId)
+  const isStoryEligibleForOwnership = isStoryInSprint
+    ? !storyStatus || storyStatusesAllowingOwnership.includes(storyStatus)
+    : false
+
+  const canDisplayOwnership = canTakeTaskOwnership && isStoryEligibleForOwnership
 
   // Task ownership mutations
   const takeOwnershipMutation = useMutation({
@@ -305,7 +324,7 @@ export function TaskOwnership({
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-2">
           {/* Available tasks - show "I'm on it" button */}
-          {task.status === 'available' && canTakeTaskOwnership && (
+          {task.status === 'available' && canDisplayOwnership && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -327,7 +346,7 @@ export function TaskOwnership({
           )}
 
           {/* Available tasks - restriction message for non-contributors */}
-          {task.status === 'available' && !canTakeTaskOwnership && (
+          {task.status === 'available' && !canDisplayOwnership && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -337,7 +356,10 @@ export function TaskOwnership({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Only contributors can take task ownership</p>
+                  {isStoryEligibleForOwnership
+                    ? <p>Only contributors can take task ownership</p>
+                    : <p>Tasks can only be claimed once the story is in an active sprint</p>
+                  }
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>

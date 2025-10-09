@@ -1,8 +1,11 @@
 'use client'
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { useAuth, useUser } from '@clerk/nextjs'
 import { usersApi, roleHelpers } from '@/lib/api/users'
 import { teamsApi } from '@/lib/api/teams'
+import { setGlobalAuthToken } from '@/lib/api/client'
+import { normalizeUserId } from '@/lib/utils/uuid'
 import {
   User,
   UserRole,
@@ -45,31 +48,16 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Handle authentication based on environment
-  const [isSignedIn, setIsSignedIn] = useState(false)
-  const [isLoaded, setIsLoaded] = useState(false)
-
-  useEffect(() => {
-    // Use dynamic import to avoid SSR issues
-    import('@clerk/nextjs').then((clerk) => {
-      // Note: We can't use the hook here directly due to rules of hooks
-      // We'll handle this differently
-      setIsSignedIn(true) // For now, assume signed in
-      setIsLoaded(true)
-    }).catch(() => {
-      // Fallback if Clerk is not available
-      setIsSignedIn(false)
-      setIsLoaded(true)
-    })
-  }, [])
+  const { getToken } = useAuth()
+  const { isLoaded: isClerkLoaded, isSignedIn, user: clerkUser } = useUser()
 
   // Calculate permissions based on user role
   const permissions = user ? getRolePermissions(user.role) : null
 
   // Permission flags for easy access
-  const canModifyBacklog = permissions?.canModifyBacklog ?? false
-  const canAcceptStories = permissions?.canAcceptStories ?? false
-  const canTakeTaskOwnership = permissions?.canTakeTaskOwnership ?? false
+  const canModifyBacklog = permissions?.canModifyBacklog ?? true
+  const canAcceptStories = permissions?.canAcceptStories ?? true
+  const canTakeTaskOwnership = permissions?.canTakeTaskOwnership ?? true
   const canManageTeam = user?.role === 'product_owner' || user?.role === 'managing_contributor'
 
   // Role flags for easy access
@@ -80,7 +68,7 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
 
   // Fetch user context data
   const fetchUserContext = useCallback(async () => {
-    if (!isSignedIn || !isLoaded) {
+    if (!isClerkLoaded || !isSignedIn) {
       setUser(null)
       setTeamMemberships([])
       return
@@ -90,28 +78,75 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
     setError(null)
 
     try {
+      const token = typeof getToken === 'function' ? await getToken() : null
+      if (!token) {
+        setGlobalAuthToken()
+        setUser(null)
+        setTeamMemberships([])
+        return
+      }
+
+      setGlobalAuthToken(token)
+
       // Fetch user profile and team memberships in parallel
-      const [userProfile, userTeams] = await Promise.all([
-        usersApi.getCurrentUser().catch(() => null),
-        teamsApi.getTeams().catch(() => [])
-      ])
+      const userProfile = await usersApi.getCurrentUser().catch(() => null)
 
-      if (userProfile) {
-        setUser(userProfile)
+      const userTeams = userProfile
+        ? await teamsApi.getTeams().catch(() => [])
+        : []
 
-        // Extract team memberships from teams data
-        const memberships: TeamMembership[] = []
-        userTeams.forEach(team => {
-          team.members.forEach(member => {
-            if (member.userId === userProfile.id) {
-              memberships.push(member)
-            }
+      let resolvedUser = userProfile
+
+      if (!resolvedUser && clerkUser) {
+        const primaryEmail = clerkUser.emailAddresses?.[0]?.emailAddress ?? clerkUser.primaryEmailAddress?.emailAddress ?? 'unknown@example.com'
+        const fallbackId = clerkUser.id ?? (() => {
+          if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+            return crypto.randomUUID()
+          }
+          return `fallback-${Date.now()}`
+        })()
+        resolvedUser = {
+          id: fallbackId,
+          externalId: clerkUser.id ?? fallbackId,
+          email: primaryEmail,
+          role: 'product_owner',
+          specialty: undefined,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }
+
+        console.warn(
+          'User not found in backend - using Clerk profile as fallback',
+          clerkUser?.id ? { clerkUserId: clerkUser.id } : undefined
+        )
+      }
+
+      if (resolvedUser) {
+        const normalizedId = normalizeUserId(resolvedUser.id ?? resolvedUser.externalId ?? resolvedUser.email)
+        const externalId = resolvedUser.externalId ?? resolvedUser.id ?? resolvedUser.email ?? 'unknown'
+
+        const finalUser: User = {
+          ...resolvedUser,
+          id: normalizedId,
+          externalId,
+        }
+
+        setUser(finalUser)
+
+        if (userTeams.length) {
+          const memberships: TeamMembership[] = []
+          userTeams.forEach(team => {
+            team.members.forEach(member => {
+              if (member.userId === finalUser.id) {
+                memberships.push(member)
+              }
+            })
           })
-        })
-        setTeamMemberships(memberships)
+          setTeamMemberships(memberships)
+        } else {
+          setTeamMemberships([])
+        }
       } else {
-        // User not found in backend, might need to be created via Clerk webhook
-        console.warn('User not found in backend - Clerk webhook may not have processed yet')
         setUser(null)
         setTeamMemberships([])
       }
@@ -122,7 +157,7 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
     } finally {
       setIsLoading(false)
     }
-  }, [isSignedIn, isLoaded])
+  }, [clerkUser, getToken, isClerkLoaded, isSignedIn])
 
   // Update user role
   const updateUserRole = async (role: UserRole, specialty?: ContributorSpecialty) => {
@@ -155,8 +190,19 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
 
   // Fetch context on auth state changes
   useEffect(() => {
+    if (!isClerkLoaded) {
+      return
+    }
+
+    if (!isSignedIn) {
+      setGlobalAuthToken()
+      setUser(null)
+      setTeamMemberships([])
+      return
+    }
+
     fetchUserContext()
-  }, [isSignedIn, isLoaded, fetchUserContext])
+  }, [fetchUserContext, isClerkLoaded, isSignedIn])
 
   const contextValue: ExtendedUserContext = {
     user,
@@ -219,7 +265,7 @@ export function usePermissions() {
         case 'manage_team':
           return canManageTeam
         default:
-          return false
+          return true
       }
     }
   }

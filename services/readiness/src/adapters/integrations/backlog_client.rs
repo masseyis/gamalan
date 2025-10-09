@@ -14,6 +14,8 @@ struct StoryResponse {
     description: Option<String>,
     status: String,
     labels: Vec<String>,
+    #[serde(rename = "storyPoints")]
+    story_points: Option<u32>,
 }
 
 #[allow(dead_code)]
@@ -74,6 +76,7 @@ impl StoryService for HttpBacklogService {
             id: story.id,
             title: story.title,
             description: story.description,
+            story_points: story.story_points,
         }))
     }
 

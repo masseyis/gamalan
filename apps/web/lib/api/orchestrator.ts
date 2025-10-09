@@ -6,13 +6,33 @@ import {
   SuggestionsResponse 
 } from '@/lib/types/assistant'
 
+const DEFAULT_ORCHESTRATOR_BASE = 'http://localhost:8000/api/v1/context'
+
+const normalizeBaseUrl = (input?: string): string => {
+  if (!input) {
+    return DEFAULT_ORCHESTRATOR_BASE
+  }
+
+  const trimmed = input.replace(/\/+$/, '')
+
+  if (trimmed.includes('/context')) {
+    return trimmed
+  }
+
+  if (trimmed.includes('/api/v1')) {
+    return `${trimmed}/context`
+  }
+
+  return `${trimmed}/api/v1/context`
+}
+
 // Create orchestrator client
 class OrchestratorClient {
   private baseURL: string
   private timeout: number
 
   constructor() {
-    this.baseURL = process.env.NEXT_PUBLIC_ORCHESTRATOR_API_URL || 'http://localhost:8005'
+    this.baseURL = normalizeBaseUrl(process.env.NEXT_PUBLIC_ORCHESTRATOR_API_URL)
     this.timeout = 15000 // 15 seconds for LLM processing
   }
 

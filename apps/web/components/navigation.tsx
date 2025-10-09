@@ -11,41 +11,71 @@ import {
   Users,
   Settings,
   Bell,
-  Search,
   Plus,
   Sparkles,
   Command,
   Zap
 } from 'lucide-react'
 
+import { useClerk, useUser, SignInButton, SignedIn, SignedOut } from '@clerk/nextjs'
 import { useUserContext } from '@/components/providers/UserContextProvider'
 import { OrganizationSwitcher } from '@/components/organization/organization-switcher'
 
 export function Navigation() {
   const pathname = usePathname()
-  const { user, isLoading } = useUserContext()
+  const { user: clerkUser, isLoaded: isClerkLoaded, isSignedIn } = useUser()
+  const { signOut } = useClerk()
+  const { user: appUser, isLoading } = useUserContext()
 
-  // Auth state
-  const isSignedIn = !!user
-  const isLoaded = !isLoading
+  const loading = !isClerkLoaded || isLoading
 
-  // SignOut function
-  const signOut = () => {
-    window.location.href = '/sign-out'
-  }
+  const resolvedEmail =
+    appUser?.email ||
+    clerkUser?.primaryEmailAddress?.emailAddress ||
+    clerkUser?.emailAddresses?.[0]?.emailAddress ||
+    ''
+
+  const resolvedName =
+    clerkUser?.fullName ||
+    clerkUser?.firstName ||
+    resolvedEmail.split('@')[0] ||
+    'User'
+
+  const initials = resolvedName
+    .split(' ')
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || 'U'
 
   return (
     <NavigationContent
       pathname={pathname}
       isSignedIn={isSignedIn}
-      user={user}
-      signOut={signOut}
-      loading={!isLoaded}
+      user={{
+        name: resolvedName,
+        email: resolvedEmail,
+        initials,
+      }}
+      signOut={() => signOut({ redirectUrl: '/sign-in' })}
+      loading={loading}
     />
   )
 }
 
-function NavigationContent({ pathname, isSignedIn, user, signOut, loading }: any) {
+interface NavigationContentProps {
+  pathname: string
+  isSignedIn: boolean
+  user: {
+    name: string
+    email: string
+    initials: string
+  }
+  signOut: () => void | Promise<void>
+  loading: boolean
+}
+
+function NavigationContent({ pathname, isSignedIn, user, signOut, loading }: NavigationContentProps) {
   const navigation = [
     {
       name: 'Dashboard',
@@ -80,16 +110,8 @@ function NavigationContent({ pathname, isSignedIn, user, signOut, loading }: any
     }
   ]
 
-  // Helper function to get display name and initials from User type
-  const getDisplayName = () => {
-    return user?.email?.split('@')[0] || 'User'
-  }
-
-  const getInitials = () => {
-    return user?.email?.[0]?.toUpperCase() || 'U'
-  }
-
-  const userInitials = getInitials()
+  const displayName = user.name || 'User'
+  const displayEmail = user.email || 'user@example.com'
 
   return (
     <nav className="border-b border-border bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/50 sticky top-0 z-50">
@@ -107,8 +129,10 @@ function NavigationContent({ pathname, isSignedIn, user, signOut, loading }: any
             </Link>
 
             {/* Organization Switcher (only show when signed in) */}
-            {isSignedIn && !loading && (
-              <OrganizationSwitcher />
+            {!loading && (
+              <SignedIn>
+                <OrganizationSwitcher />
+              </SignedIn>
             )}
           </div>
 
@@ -180,10 +204,10 @@ function NavigationContent({ pathname, isSignedIn, user, signOut, loading }: any
               <div className="flex items-center gap-3 pl-3 border-l border-border/50">
                 <div className="hidden sm:block text-right">
                   <div className="text-sm font-medium text-foreground">
-                    {getDisplayName()}
+                    {displayName}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {user?.email || 'user@example.com'}
+                    {displayEmail}
                   </div>
                 </div>
                 <Avatar 
@@ -192,15 +216,17 @@ function NavigationContent({ pathname, isSignedIn, user, signOut, loading }: any
                   title="Click to sign out"
                 >
                   <AvatarFallback className="bg-gradient-primary text-white text-sm font-semibold">
-                    {userInitials}
+                    {user.initials}
                   </AvatarFallback>
                 </Avatar>
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <Link href="/sign-in" prefetch={false}>
-                  <Button size="sm">Sign In</Button>
-                </Link>
+                <SignedOut>
+                  <SignInButton mode="modal">
+                    <Button size="sm">Sign In</Button>
+                  </SignInButton>
+                </SignedOut>
               </div>
             )}
           </div>

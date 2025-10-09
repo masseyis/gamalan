@@ -8,6 +8,8 @@ pub struct ReadinessEvaluation {
     pub organization_id: Option<Uuid>,
     pub score: i32,
     pub missing_items: Vec<String>,
+    pub summary: String,
+    pub recommendations: Vec<String>,
 }
 
 impl ReadinessEvaluation {
@@ -16,6 +18,8 @@ impl ReadinessEvaluation {
         organization_id: Option<Uuid>,
         score: i32,
         missing_items: Vec<String>,
+        summary: String,
+        recommendations: Vec<String>,
     ) -> Self {
         Self {
             id: Uuid::new_v4(),
@@ -23,6 +27,8 @@ impl ReadinessEvaluation {
             organization_id,
             score: score.clamp(0, 100), // Clamp between 0-100
             missing_items,
+            summary,
+            recommendations,
         }
     }
 
@@ -59,7 +65,14 @@ mod tests {
     #[test]
     fn test_readiness_evaluation() {
         let story_id = Uuid::new_v4();
-        let eval = ReadinessEvaluation::new(story_id, None, 85, vec![]);
+        let eval = ReadinessEvaluation::new(
+            story_id,
+            None,
+            85,
+            vec![],
+            "Story looks solid".to_string(),
+            vec![],
+        );
 
         assert_eq!(eval.story_id, story_id);
         assert_eq!(eval.score, 85);
@@ -74,6 +87,8 @@ mod tests {
             None,
             90,
             vec!["Missing acceptance criteria".to_string()],
+            "Needs work".to_string(),
+            vec!["Add detailed acceptance criteria".to_string()],
         );
 
         assert!(!eval.is_ready());
@@ -82,10 +97,10 @@ mod tests {
     #[test]
     fn test_score_clamping() {
         let story_id = Uuid::new_v4();
-        let eval = ReadinessEvaluation::new(story_id, None, 150, vec![]);
+        let eval = ReadinessEvaluation::new(story_id, None, 150, vec![], "".to_string(), vec![]);
         assert_eq!(eval.score, 100);
 
-        let eval = ReadinessEvaluation::new(story_id, None, -50, vec![]);
+        let eval = ReadinessEvaluation::new(story_id, None, -50, vec![], "".to_string(), vec![]);
         assert_eq!(eval.score, 0);
     }
 }

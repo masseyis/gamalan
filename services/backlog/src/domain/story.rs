@@ -110,6 +110,7 @@ pub struct AcceptanceCriteria {
     pub given: String, // Given context
     pub when: String,  // When action
     pub then: String,  // Then outcome
+    pub created_at: DateTime<Utc>,
 }
 
 impl AcceptanceCriteria {
@@ -146,6 +147,7 @@ impl AcceptanceCriteria {
             given: given.trim().to_string(),
             when: when.trim().to_string(),
             then: then.trim().to_string(),
+            created_at: Utc::now(),
         })
     }
 }
@@ -163,6 +165,10 @@ pub struct Story {
     pub story_points: Option<u32>,
     pub sprint_id: Option<Uuid>,
     pub assigned_to_user_id: Option<Uuid>, // Product Owner or Managing Contributor who owns this story
+    pub readiness_override: bool,
+    pub readiness_override_by: Option<Uuid>,
+    pub readiness_override_reason: Option<String>,
+    pub readiness_override_at: Option<chrono::DateTime<chrono::Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -199,6 +205,10 @@ impl Story {
             story_points: None,
             sprint_id: None,
             assigned_to_user_id: None,
+            readiness_override: false,
+            readiness_override_by: None,
+            readiness_override_reason: None,
+            readiness_override_at: None,
             created_at: now,
             updated_at: now,
         })
@@ -218,7 +228,9 @@ impl Story {
         // Enforce readiness checks before certain transitions
         match new_status {
             StoryStatus::Ready => {
-                self.validate_ready_requirements()?;
+                if !self.readiness_override {
+                    self.validate_ready_requirements()?;
+                }
             }
             StoryStatus::Committed => {
                 if self.sprint_id.is_none() {
@@ -275,6 +287,30 @@ impl Story {
         }
 
         Ok(())
+    }
+
+    pub fn apply_readiness_override(&mut self, user_id: Uuid, reason: Option<String>) {
+        self.readiness_override = true;
+        self.readiness_override_by = Some(user_id);
+        self.readiness_override_reason = reason.and_then(|value| {
+            let trimmed = value.trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed.to_string())
+            }
+        });
+        self.readiness_override_at = Some(Utc::now());
+        self.status = StoryStatus::Ready;
+        self.updated_at = Utc::now();
+    }
+
+    pub fn clear_readiness_override(&mut self) {
+        self.readiness_override = false;
+        self.readiness_override_by = None;
+        self.readiness_override_reason = None;
+        self.readiness_override_at = None;
+        self.updated_at = Utc::now();
     }
 
     /// Add acceptance criteria to the story
@@ -399,6 +435,7 @@ impl Story {
         title: Option<String>,
         description: Option<Option<String>>,
         labels: Option<Vec<String>>,
+        story_points: Option<u32>,
     ) -> Result<(), AppError> {
         if let Some(new_title) = title {
             if new_title.trim().is_empty() {
@@ -420,6 +457,14 @@ impl Story {
 
         if let Some(new_labels) = labels {
             self.labels = new_labels;
+        }
+
+        if let Some(points) = story_points {
+            self.set_story_points(points)?;
+        }
+
+        if self.readiness_override && self.validate_ready_requirements().is_ok() {
+            self.clear_readiness_override();
         }
 
         self.updated_at = Utc::now();

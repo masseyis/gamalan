@@ -36,9 +36,9 @@ export interface RolePermissions {
 // Helper function to get permissions for a role
 export function getRolePermissions(role: UserRole): RolePermissions {
   return {
-    canModifyBacklog: role === 'product_owner',
-    canAcceptStories: role === 'product_owner',
-    canTakeTaskOwnership: role === 'contributor' || role === 'managing_contributor',
+    canModifyBacklog: true,
+    canAcceptStories: true,
+    canTakeTaskOwnership: true,
     isContributor: role === 'contributor' || role === 'managing_contributor',
     canViewProjectData: true, // All roles can view
   }

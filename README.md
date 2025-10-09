@@ -49,11 +49,39 @@ This is a monorepo for Battra AI, an AI-enhanced agile project management platfo
    cp .env.example .env
    ```
 
+   For the Next.js app, create `apps/web/.env.local` from the provided example and add your Clerk keys:
+
+   ```sh
+   cd apps/web
+   cp .env.example .env.local
+   ```
+
+   At a minimum you need:
+
+   ```env
+   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+   CLERK_SECRET_KEY=sk_test_...
+   NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+   NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+   NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/assistant
+   NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/assistant
+   ```
+
+   These values should match the Clerk dev instance that also backs the E2E credentials.
+
 4. **Start backend services:**
 
    ```sh
    cargo run -p services/<service-name>
    ```
+
+   To boot the consolidated API gateway with real Clerk verification run from `services/api-gateway/`:
+
+   ```sh
+   cargo shuttle run --secrets ../../Secrets.toml --port 8000
+   ```
+
+   The default `local_uri` in `services/api-gateway/src/main.rs` expects a PostgreSQL database at `postgres://postgres:password@localhost:5432/gamalan`. Update that connection or export `DATABASE_URL` if you use a different local database. The shared `Secrets.toml` already contains the Clerk JWKS settings for the dev tenant.
 
 5. **Start the frontend:**
 

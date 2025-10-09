@@ -1,11 +1,13 @@
 'use client'
 
 import { useParams } from 'next/navigation'
-import { useQuery } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
+import type { FormEvent } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Edit, Plus, CheckCircle2, Circle, Clock, Zap, User, Timer } from 'lucide-react'
+import { ArrowLeft, Edit, Plus, CheckCircle2, Circle, Clock, Zap, User, Timer, AlertTriangle, Sparkles, Loader2 } from 'lucide-react'
 import {
   Tooltip,
   TooltipContent,
@@ -15,10 +17,24 @@ import {
 import Link from 'next/link'
 import { projectsApi } from '@/lib/api/projects'
 import { backlogApi } from '@/lib/api/backlog'
+import { aiApi } from '@/lib/api/ai'
 import { AIAssistant } from '@/components/ai/ai-assistant'
 import { TaskOwnership } from '@/components/tasks/TaskOwnership'
 import { usePermissions, useRoles } from '@/components/providers/UserContextProvider'
 import { CanModifyBacklog, CanAcceptStories } from '@/components/guards/RoleGuard'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
+import { useToast } from '@/hooks/use-toast'
+import type { ReadinessEvaluation } from '@/lib/types/ai'
 
 // Updated status config to match new 9-stage workflow
 const statusConfig = {
@@ -52,6 +68,28 @@ export default function StoryDetailPage() {
   const storyId = params.storyId as string
   const { canModifyBacklog, canAcceptStories } = usePermissions()
   const { user, getRoleDisplayName } = useRoles()
+  const { toast } = useToast()
+  const queryClient = useQueryClient()
+
+  const [isEditStoryOpen, setIsEditStoryOpen] = useState(false)
+  const [isAddCriterionOpen, setIsAddCriterionOpen] = useState(false)
+  const [isAddTaskOpen, setIsAddTaskOpen] = useState(false)
+  const [overrideDialogOpen, setOverrideDialogOpen] = useState(false)
+  const [overrideReason, setOverrideReason] = useState('')
+  const [overrideConfirmation, setOverrideConfirmation] = useState('')
+
+  const [editStoryTitle, setEditStoryTitle] = useState('')
+  const [editStoryDescription, setEditStoryDescription] = useState('')
+  const [editStoryPoints, setEditStoryPoints] = useState<string>('')
+
+  const [criterionGiven, setCriterionGiven] = useState('')
+  const [criterionWhen, setCriterionWhen] = useState('')
+  const [criterionThen, setCriterionThen] = useState('')
+
+  const [taskTitle, setTaskTitle] = useState('')
+  const [taskDescription, setTaskDescription] = useState('')
+  const [taskAcceptanceRefs, setTaskAcceptanceRefs] = useState<string[]>([])
+  const [taskManualRefs, setTaskManualRefs] = useState('')
 
   const { data: project, isLoading: projectLoading } = useQuery({
     queryKey: ['projects', projectId],
@@ -77,7 +115,134 @@ export default function StoryDetailPage() {
     enabled: !!projectId && !!storyId,
   })
 
+  const {
+    data: readinessEvaluation,
+    isLoading: readinessLoading,
+    isFetching: readinessFetching,
+    refetch: refetchReadiness,
+    error: readinessError,
+  } = useQuery<ReadinessEvaluation>({
+    queryKey: ['story-readiness', projectId, storyId, story?.updatedAt],
+    queryFn: () => aiApi.checkStoryReadiness(projectId, storyId),
+    enabled: !!projectId && !!storyId && !!story,
+  })
+
+  const updateStoryMutation = useMutation({
+    mutationFn: (payload: { title?: string; description?: string; storyPoints?: number }) =>
+      backlogApi.updateStory(projectId, storyId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['stories', projectId, storyId] })
+      toast({ title: 'Story updated', description: 'Story details saved successfully.' })
+      setIsEditStoryOpen(false)
+      refetchReadiness()
+    },
+    onError: (error) => {
+      toast({
+        title: 'Failed to update story',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'destructive',
+      })
+    },
+  })
+
+  const applyReadyMutation = useMutation({
+    mutationFn: () => backlogApi.updateStoryStatus(projectId, storyId, 'ready'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['stories', projectId, storyId] })
+      toast({ title: 'Story marked as Ready', description: 'Status updated based on readiness review.' })
+      refetchReadiness()
+    },
+    onError: (error) => {
+      toast({
+        title: 'Failed to mark story ready',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'destructive',
+      })
+    },
+  })
+
+  const overrideReadyMutation = useMutation({
+    mutationFn: (reason?: string) =>
+      backlogApi.overrideStoryReady(projectId, storyId, reason && reason.trim() ? reason.trim() : undefined),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['stories', projectId, storyId] })
+      toast({ title: 'Readiness override recorded', description: 'Story marked as Ready with manual override.' })
+      setOverrideDialogOpen(false)
+      setOverrideReason('')
+      setOverrideConfirmation('')
+      refetchReadiness()
+    },
+    onError: (error) => {
+      toast({
+        title: 'Failed to override readiness',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'destructive',
+      })
+    },
+  })
+
+  const createCriterionMutation = useMutation({
+    mutationFn: (payload: { given: string; when: string; then: string }) =>
+      backlogApi.createAcceptanceCriterion(projectId, storyId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['acceptance-criteria', projectId, storyId] })
+      toast({ title: 'Acceptance criterion added' })
+      setIsAddCriterionOpen(false)
+      setCriterionGiven('')
+      setCriterionWhen('')
+      setCriterionThen('')
+    },
+    onError: (error) => {
+      toast({
+        title: 'Failed to add acceptance criterion',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'destructive',
+      })
+    },
+  })
+
+  const createTaskMutation = useMutation({
+    mutationFn: (payload: { title: string; description?: string; acceptanceCriteriaRefs: string[] }) =>
+      backlogApi.createTask(projectId, storyId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks', projectId, storyId] })
+      toast({ title: 'Task created' })
+      setIsAddTaskOpen(false)
+      setTaskTitle('')
+      setTaskDescription('')
+      setTaskAcceptanceRefs([])
+      setTaskManualRefs('')
+    },
+    onError: (error) => {
+      toast({
+        title: 'Failed to add task',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'destructive',
+      })
+    },
+  })
+
   const isLoading = projectLoading || storyLoading || tasksLoading || acLoading
+
+  // Seed form fields when story data is available
+  useEffect(() => {
+    if (story) {
+      setEditStoryTitle(story.title)
+      setEditStoryDescription(story.description ?? '')
+      setEditStoryPoints(story.storyPoints ? String(story.storyPoints) : '')
+    }
+  }, [story])
+
+  useEffect(() => {
+    if (isAddTaskOpen) {
+      if (acceptanceCriteria.length) {
+        setTaskAcceptanceRefs(acceptanceCriteria.map((criterion) => criterion.id))
+      } else {
+        setTaskAcceptanceRefs([])
+      }
+      setTaskManualRefs('')
+    }
+  }, [isAddTaskOpen, acceptanceCriteria])
 
   if (isLoading) {
     return (
@@ -117,9 +282,60 @@ export default function StoryDetailPage() {
   const completedTasks = tasks.filter(t => t.status === 'completed').length
   const taskProgress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
 
+  const handleStorySubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    updateStoryMutation.mutate({
+      title: editStoryTitle.trim() || undefined,
+      description: editStoryDescription.trim() || undefined,
+      storyPoints: editStoryPoints ? Number(editStoryPoints) : undefined,
+    })
+  }
+
+  const handleAddCriterion = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    createCriterionMutation.mutate({
+      given: criterionGiven.trim(),
+      when: criterionWhen.trim(),
+      then: criterionThen.trim(),
+    })
+  }
+
+  const handleAddTask = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    let finalRefs: string[]
+
+    if (acceptanceCriteria.length) {
+      finalRefs = taskAcceptanceRefs.length
+        ? taskAcceptanceRefs
+        : acceptanceCriteria.map((criterion) => criterion.id)
+    } else {
+      const manual = taskManualRefs
+        .split(',')
+        .map((ref) => ref.trim())
+        .filter(Boolean)
+
+      finalRefs = manual.length ? manual : ['AC-1']
+    }
+
+    createTaskMutation.mutate({
+      title: taskTitle.trim(),
+      description: taskDescription.trim() || undefined,
+      acceptanceCriteriaRefs: finalRefs,
+    })
+  }
+
+  const toggleTaskRef = (id: string) => {
+    setTaskAcceptanceRefs((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto py-8">
+    <>
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto py-8">
         <div className="mb-8">
           <Link href={`/projects/${projectId}/backlog`} className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4">
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -211,7 +427,7 @@ export default function StoryDetailPage() {
                 </Tooltip>
               </TooltipProvider>
             }>
-              <Button>
+              <Button onClick={() => setIsEditStoryOpen(true)}>
                 <Edit className="h-4 w-4 mr-2" />
                 Edit Story
               </Button>
@@ -280,7 +496,12 @@ export default function StoryDetailPage() {
                       </Tooltip>
                     </TooltipProvider>
                   }>
-                    <Button size="sm" variant="outline" data-testid="add-acceptance-criteria">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      data-testid="add-acceptance-criteria"
+                      onClick={() => setIsAddCriterionOpen(true)}
+                    >
                       <Plus className="h-4 w-4 mr-2" />
                       Add Criterion
                     </Button>
@@ -368,7 +589,12 @@ export default function StoryDetailPage() {
                       </Tooltip>
                     </TooltipProvider>
                   }>
-                    <Button size="sm" variant="outline" data-testid="add-task">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      data-testid="add-task"
+                      onClick={() => setIsAddTaskOpen(true)}
+                    >
                       <Plus className="h-4 w-4 mr-2" />
                       Add Task
                     </Button>
@@ -411,6 +637,8 @@ export default function StoryDetailPage() {
                             showEstimate={true}
                             showWorkflow={true}
                             compact={false}
+                            storyStatus={story.status}
+                            sprintId={story.sprintId}
                           />
                         </div>
                       </div>
@@ -441,11 +669,153 @@ export default function StoryDetailPage() {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* AI Assistant */}
-            <AIAssistant projectId={projectId} storyId={storyId} context="story" />
+          {/* AI Assistant */}
+          <AIAssistant projectId={projectId} storyId={storyId} context="story" />
 
-            {/* Story Stats */}
-            <Card>
+          {/* AI Readiness Review */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-purple-500" />
+                AI Readiness Review
+              </CardTitle>
+              <CardDescription>
+                Automatic guidance to determine when the story is sprint-ready.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {readinessLoading ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Evaluating story readiness…</span>
+                </div>
+              ) : readinessError ? (
+                <div className="space-y-3">
+                  <div className="flex items-start gap-2 text-sm text-red-600">
+                    <AlertTriangle className="h-4 w-4 mt-0.5" />
+                    <span>
+                      {readinessError instanceof Error
+                        ? readinessError.message
+                        : 'Unable to run readiness check. Please try again.'}
+                    </span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => refetchReadiness()}
+                    disabled={readinessFetching}
+                  >
+                    {readinessFetching && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+                    Retry Check
+                  </Button>
+                </div>
+              ) : readinessEvaluation ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={readinessEvaluation.isReady ? 'default' : 'destructive'}>
+                      {readinessEvaluation.isReady ? 'Ready for Sprint' : 'Needs Refinement'}
+                    </Badge>
+                    <span className="text-sm text-muted-foreground">Score: {readinessEvaluation.score}/100</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {readinessEvaluation.summary}
+                  </p>
+
+                  {readinessEvaluation.missingItems.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold uppercase text-muted-foreground">Blocking Items</p>
+                      <ul className="mt-2 space-y-1 text-sm text-red-600">
+                        {readinessEvaluation.missingItems.map((item, index) => (
+                          <li key={index} className="flex gap-2">
+                            <AlertTriangle className="h-4 w-4 mt-0.5" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {readinessEvaluation.recommendations.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold uppercase text-muted-foreground">Suggested Actions</p>
+                      <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+                        {readinessEvaluation.recommendations.map((item, index) => (
+                          <li key={index} className="flex gap-2">
+                            <Sparkles className="h-4 w-4 text-purple-500 mt-0.5" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {story?.readinessOverride && (
+                    <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+                      <p className="font-semibold">Manual override is active</p>
+                      {story.readinessOverrideReason && (
+                        <p className="mt-1">{story.readinessOverrideReason}</p>
+                      )}
+                      <p className="mt-1 text-amber-800">
+                        Applied{' '}
+                        {story.readinessOverrideAt
+                          ? new Date(story.readinessOverrideAt).toLocaleString()
+                          : 'previously'}
+                        {story.readinessOverrideBy && ` by ${story.readinessOverrideBy}`}.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => refetchReadiness()}
+                      disabled={readinessFetching}
+                    >
+                      {readinessFetching && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+                      Re-run Check
+                    </Button>
+
+                    {readinessEvaluation.isReady &&
+                      story &&
+                      story.status !== 'ready' &&
+                      !['committed', 'inprogress', 'taskscomplete', 'deployed', 'awaitingacceptance', 'accepted'].includes(story.status) &&
+                      canAcceptStories && (
+                        <Button
+                          size="sm"
+                          onClick={() => applyReadyMutation.mutate()}
+                          disabled={applyReadyMutation.isPending}
+                        >
+                          {applyReadyMutation.isPending && (
+                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                          )}
+                          Mark Story Ready
+                        </Button>
+                      )}
+
+                    {!readinessEvaluation.isReady &&
+                      canAcceptStories &&
+                      !story?.readinessOverride && (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => setOverrideDialogOpen(true)}
+                        >
+                          Override & Mark Ready
+                        </Button>
+                      )}
+                  </div>
+                </>
+              ) : (
+                <div className="text-sm text-muted-foreground">
+                  Make a change to the story or run a manual check to see readiness feedback.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Story Stats */}
+          <Card>
               <CardHeader>
                 <CardTitle>Story Stats</CardTitle>
               </CardHeader>
@@ -458,6 +828,16 @@ export default function StoryDetailPage() {
                   <span className="text-muted-foreground">Priority</span>
                   <Badge variant="outline" className={priorityConfig[story.priority || 'medium'].color}>
                     {priorityConfig[story.priority || 'medium'].label}
+                  </Badge>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Story Points</span>
+                  <span>{story.storyPoints ?? 'Not estimated'}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Readiness Override</span>
+                  <Badge variant={story.readinessOverride ? 'destructive' : 'outline'}>
+                    {story.readinessOverride ? 'Enabled' : 'None'}
                   </Badge>
                 </div>
                 <div className="flex justify-between items-center">
@@ -478,7 +858,258 @@ export default function StoryDetailPage() {
             </Card>
           </div>
         </div>
+        </div>
       </div>
-    </div>
+      <Dialog open={isEditStoryOpen} onOpenChange={setIsEditStoryOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Story</DialogTitle>
+            <DialogDescription>
+              Update the story details. Leave a field blank to keep its current value.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleStorySubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="story-title">Title</Label>
+            <Input
+              id="story-title"
+              value={editStoryTitle}
+              onChange={(event) => setEditStoryTitle(event.target.value)}
+              placeholder="Story title"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="story-description">Description</Label>
+            <Textarea
+              id="story-description"
+              value={editStoryDescription}
+              onChange={(event) => setEditStoryDescription(event.target.value)}
+              placeholder="Story description"
+              rows={4}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="story-points">Story Points</Label>
+            <Input
+              id="story-points"
+              type="number"
+              min={1}
+              max={8}
+              value={editStoryPoints}
+              onChange={(event) => setEditStoryPoints(event.target.value)}
+              placeholder="Optional"
+            />
+          </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsEditStoryOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={updateStoryMutation.isPending}>
+                {updateStoryMutation.isPending ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={overrideDialogOpen}
+        onOpenChange={(open) => {
+          setOverrideDialogOpen(open)
+          if (!open) {
+            setOverrideReason('')
+            setOverrideConfirmation('')
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Override Readiness Recommendation</DialogTitle>
+            <DialogDescription>
+              Provide a justification and confirm the override. Overrides are logged and should be used sparingly.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="override-reason">Override justification</Label>
+              <Textarea
+                id="override-reason"
+                value={overrideReason}
+                onChange={(event) => setOverrideReason(event.target.value)}
+                placeholder="Explain why this story should advance despite the AI feedback."
+                rows={4}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="override-confirm">Type OVERRIDE to confirm</Label>
+              <Input
+                id="override-confirm"
+                value={overrideConfirmation}
+                onChange={(event) => setOverrideConfirmation(event.target.value)}
+                placeholder="Type OVERRIDE to continue"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              The system will continue to highlight missing readiness items even after an override.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setOverrideDialogOpen(false)
+                setOverrideReason('')
+                setOverrideConfirmation('')
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => overrideReadyMutation.mutate(overrideReason)}
+              disabled={
+                overrideReadyMutation.isPending ||
+                overrideReason.trim().length < 10 ||
+                overrideConfirmation.trim().toLowerCase() !== 'override'
+              }
+            >
+              {overrideReadyMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Confirm Override
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAddCriterionOpen} onOpenChange={setIsAddCriterionOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Acceptance Criterion</DialogTitle>
+            <DialogDescription>
+              Provide the Given / When / Then details for this criterion.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleAddCriterion} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="criterion-given">Given</Label>
+              <Input
+                id="criterion-given"
+                value={criterionGiven}
+                onChange={(event) => setCriterionGiven(event.target.value)}
+                placeholder="Given ..."
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="criterion-when">When</Label>
+              <Input
+                id="criterion-when"
+                value={criterionWhen}
+                onChange={(event) => setCriterionWhen(event.target.value)}
+                placeholder="When ..."
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="criterion-then">Then</Label>
+              <Input
+                id="criterion-then"
+                value={criterionThen}
+                onChange={(event) => setCriterionThen(event.target.value)}
+                placeholder="Then ..."
+                required
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsAddCriterionOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={createCriterionMutation.isPending}>
+                {createCriterionMutation.isPending ? 'Adding...' : 'Add Criterion'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAddTaskOpen} onOpenChange={setIsAddTaskOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Task</DialogTitle>
+            <DialogDescription>
+              Capture a new task for this story. Acceptance criteria references are optional and can be a comma-separated list.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleAddTask} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="task-title">Title</Label>
+              <Input
+                id="task-title"
+                value={taskTitle}
+                onChange={(event) => setTaskTitle(event.target.value)}
+                placeholder="Task title"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="task-description">Description</Label>
+              <Textarea
+                id="task-description"
+                value={taskDescription}
+                onChange={(event) => setTaskDescription(event.target.value)}
+                placeholder="Optional task description"
+                rows={4}
+              />
+            </div>
+            {acceptanceCriteria.length > 0 ? (
+              <div className="space-y-2">
+                <Label>Acceptance Criteria References</Label>
+                <div className="space-y-2">
+                  {acceptanceCriteria.map((criterion, index) => (
+                    <label key={criterion.id} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={taskAcceptanceRefs.includes(criterion.id)}
+                        onChange={() => toggleTaskRef(criterion.id)}
+                      />
+                      <span>
+                        Criterion {index + 1}: {criterion.given} → {criterion.thenClause}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                {taskAcceptanceRefs.length === 0 && (
+                  <p className="text-xs text-orange-600">
+                    No criteria selected — all criteria will be linked automatically.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="task-refs">Acceptance Criteria References</Label>
+                <Input
+                  id="task-refs"
+                  value={taskManualRefs}
+                  onChange={(event) => setTaskManualRefs(event.target.value)}
+                  placeholder="e.g. AC-1, AC-2"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Provide at least one reference so the task can be validated.
+                </p>
+              </div>
+            )}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsAddTaskOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={createTaskMutation.isPending}>
+                {createTaskMutation.isPending ? 'Creating...' : 'Create Task'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

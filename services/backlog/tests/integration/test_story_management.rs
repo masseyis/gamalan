@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 use auth_clerk::JwtVerifier;
 use backlog::adapters::http::routes::create_backlog_router_with_readiness;
-use backlog::adapters::integrations::MockReadinessService;
+
 use tokio::sync::Mutex;
 
 // Import the common test setup
@@ -21,13 +21,7 @@ async fn setup_test_app(pool: PgPool) -> axum::Router {
     // Create a mock JWT verifier for testing
     let verifier = Arc::new(Mutex::new(JwtVerifier::new_test_verifier()));
 
-    // Use MockReadinessService for tests
-    let readiness_service = Arc::new(MockReadinessService::new());
-
-    axum::Router::new().nest(
-        "/api/v1",
-        create_backlog_router_with_readiness(pool, verifier, Some(readiness_service)).await,
-    )
+    create_backlog_router_with_readiness(pool, verifier).await
 }
 
 async fn create_test_project_and_story(pool: &PgPool) -> (Uuid, Uuid) {
@@ -169,7 +163,8 @@ async fn test_story_lifecycle_integration() -> Result<(), Box<dyn std::error::Er
             json!({
                 "title": "Enhanced Authentication Feature",
                 "description": "Implement OAuth2 user authentication with JWT tokens",
-                "labels": ["feature", "authentication", "security"]
+                "labels": ["feature", "authentication", "security"],
+                "storyPoints": 5
             })
             .to_string(),
         ))?;
@@ -201,6 +196,7 @@ async fn test_story_lifecycle_integration() -> Result<(), Box<dyn std::error::Er
         updated_story["labels"],
         json!(["feature", "authentication", "security"])
     );
+    assert_eq!(updated_story["storyPoints"], 5);
 
     // 6. Get stories by project
     let get_project_stories_request = Request::builder()

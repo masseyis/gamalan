@@ -1,9 +1,10 @@
-use crate::adapters::persistence::models::{StoryRow, TaskRow};
+use crate::adapters::persistence::models::{AcceptanceCriteriaRow, StoryRow, TaskRow};
 use crate::application::ports::{StoryRepository, TaskRepository};
-use crate::domain::{Story, Task};
+use crate::domain::{AcceptanceCriteria, Story, Task};
 use async_trait::async_trait;
 use common::AppError;
 use sqlx::PgPool;
+use std::collections::HashMap;
 use uuid::Uuid;
 
 pub struct SqlStoryRepository {
@@ -20,7 +21,7 @@ impl SqlStoryRepository {
 
 #[async_trait]
 impl StoryRepository for SqlStoryRepository {
-    async fn create_story(&self, story: &Story) -> Result<(), AppError> {
+    async fn create_story(&self, story: &Story) -> Result<Uuid, AppError> {
         let mut tx = self
             .pool
             .begin()
@@ -50,7 +51,7 @@ impl StoryRepository for SqlStoryRepository {
         tx.commit()
             .await
             .map_err(|_| AppError::InternalServerError)?;
-        Ok(())
+        Ok(story.id)
     }
 
     async fn get_story(
@@ -59,7 +60,7 @@ impl StoryRepository for SqlStoryRepository {
         organization_id: Option<Uuid>,
     ) -> Result<Option<Story>, AppError> {
         let story_row = sqlx::query_as::<_, StoryRow>(
-            "SELECT id, project_id, organization_id, title, description, status, labels, story_points, sprint_id, assigned_to_user_id, created_at, updated_at FROM stories
+            "SELECT id, project_id, organization_id, title, description, status, labels, story_points, sprint_id, assigned_to_user_id, readiness_override, readiness_override_by, readiness_override_reason, readiness_override_at, created_at, updated_at FROM stories
              WHERE id = $1 AND (
                  (organization_id IS NOT NULL AND organization_id = $2) OR
                  (organization_id IS NULL AND $2 IS NULL)
@@ -76,7 +77,27 @@ impl StoryRepository for SqlStoryRepository {
 
         match story_row {
             Some(row) => {
-                let story = Story::from(row);
+                let mut story = Story::from(row);
+
+                let acceptance_rows = sqlx::query_as::<_, AcceptanceCriteriaRow>(
+                    "SELECT id, story_id, description, given, when_clause, then_clause, created_at
+                     FROM acceptance_criteria
+                     WHERE story_id = $1
+                     ORDER BY created_at",
+                )
+                .bind(story.id)
+                .fetch_all(&self.pool)
+                .await
+                .map_err(|e| {
+                    eprintln!("SQL Error in get_story (acceptance criteria): {}", e);
+                    AppError::InternalServerError
+                })?;
+
+                story.acceptance_criteria = acceptance_rows
+                    .into_iter()
+                    .map(AcceptanceCriteria::from)
+                    .collect();
+
                 Ok(Some(story))
             }
             None => Ok(None),
@@ -91,10 +112,10 @@ impl StoryRepository for SqlStoryRepository {
             .map_err(|_| AppError::InternalServerError)?;
 
         sqlx::query(
-            "UPDATE stories SET title = $2, description = $3, status = $4, labels = $5, updated_at = NOW()
+            "UPDATE stories SET title = $2, description = $3, status = $4, labels = $5, story_points = $6, readiness_override = $7, readiness_override_by = $8, readiness_override_reason = $9, readiness_override_at = $10, updated_at = NOW()
              WHERE id = $1 AND (
-                 (organization_id IS NOT NULL AND organization_id = $6) OR
-                 (organization_id IS NULL AND $6 IS NULL)
+                 (organization_id IS NOT NULL AND organization_id = $11) OR
+                 (organization_id IS NULL AND $11 IS NULL)
              )",
         )
         .bind(story.id)
@@ -102,10 +123,44 @@ impl StoryRepository for SqlStoryRepository {
         .bind(&story.description)
         .bind(story.status.to_string())
         .bind(&story.labels)
+        .bind(story.story_points.map(|points| points as i32))
+        .bind(story.readiness_override)
+        .bind(story.readiness_override_by)
+        .bind(&story.readiness_override_reason)
+        .bind(story.readiness_override_at)
         .bind(story.organization_id)
         .execute(&mut *tx)
         .await
         .map_err(|_| AppError::InternalServerError)?;
+
+        sqlx::query("DELETE FROM acceptance_criteria WHERE story_id = $1")
+            .bind(story.id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| {
+                eprintln!("SQL Error deleting acceptance criteria: {}", e);
+                AppError::InternalServerError
+            })?;
+
+        for ac in &story.acceptance_criteria {
+            sqlx::query(
+                "INSERT INTO acceptance_criteria (id, story_id, description, given, when_clause, then_clause, created_at)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7)",
+            )
+            .bind(ac.id)
+            .bind(story.id)
+            .bind(&ac.description)
+            .bind(&ac.given)
+            .bind(&ac.when)
+            .bind(&ac.then)
+            .bind(ac.created_at)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| {
+                eprintln!("SQL Error inserting acceptance criterion: {}", e);
+                AppError::InternalServerError
+            })?;
+        }
 
         tx.commit()
             .await
@@ -134,7 +189,7 @@ impl StoryRepository for SqlStoryRepository {
         organization_id: Option<Uuid>,
     ) -> Result<Vec<Story>, AppError> {
         let story_rows = sqlx::query_as::<_, StoryRow>(
-            "SELECT id, project_id, organization_id, title, description, status, labels, story_points, sprint_id, assigned_to_user_id, created_at, updated_at FROM stories
+            "SELECT id, project_id, organization_id, title, description, status, labels, story_points, sprint_id, assigned_to_user_id, readiness_override, readiness_override_by, readiness_override_reason, readiness_override_at, created_at, updated_at FROM stories
              WHERE project_id = $1 AND (organization_id = $2 OR ($2 IS NULL AND organization_id IS NULL)) AND deleted_at IS NULL
              ORDER BY title",
         )
@@ -144,7 +199,42 @@ impl StoryRepository for SqlStoryRepository {
         .await
         .map_err(|_| AppError::InternalServerError)?;
 
-        let stories = story_rows.into_iter().map(Story::from).collect();
+        let mut stories: Vec<Story> = story_rows.into_iter().map(Story::from).collect();
+        let story_ids: Vec<Uuid> = stories.iter().map(|story| story.id).collect();
+
+        if !story_ids.is_empty() {
+            let acceptance_rows = sqlx::query_as::<_, AcceptanceCriteriaRow>(
+                "SELECT id, story_id, description, given, when_clause, then_clause, created_at
+                 FROM acceptance_criteria
+                 WHERE story_id = ANY($1)
+                 ORDER BY created_at",
+            )
+            .bind(&story_ids)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| {
+                eprintln!(
+                    "SQL Error in get_stories_by_project (acceptance criteria): {}",
+                    e
+                );
+                AppError::InternalServerError
+            })?;
+
+            let mut grouped: HashMap<Uuid, Vec<AcceptanceCriteria>> = HashMap::new();
+            for row in acceptance_rows {
+                grouped
+                    .entry(row.story_id)
+                    .or_default()
+                    .push(AcceptanceCriteria::from(row));
+            }
+
+            for story in &mut stories {
+                if let Some(acs) = grouped.remove(&story.id) {
+                    story.acceptance_criteria = acs;
+                }
+            }
+        }
+
         Ok(stories)
     }
 }

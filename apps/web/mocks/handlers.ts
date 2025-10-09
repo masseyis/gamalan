@@ -158,18 +158,13 @@ export const handlers = [
   }),
 
   // AI API
-  http.post('*/projects/:projectId/stories/:storyId/readiness-check', () => {
+  http.post('*/readiness/:storyId/evaluate', () => {
     return HttpResponse.json({
-      id: 'readiness-check-id',
-      storyId: 'test-story-id',
-      status: 'ready',
       score: 85,
-      checks: [
-        { name: 'Acceptance Criteria', passed: true, message: 'Story has well-defined acceptance criteria' },
-        { name: 'Story Points', passed: true, message: 'Story is properly estimated' },
-        { name: 'Dependencies', passed: false, message: 'Story has unresolved dependencies' },
-      ],
-      createdAt: new Date().toISOString(),
+      missingItems: [],
+      recommendations: ['Verify dependencies before scheduling'],
+      summary: 'Story meets the readiness bar and can be scheduled for a sprint.',
+      isReady: true,
     })
   }),
 

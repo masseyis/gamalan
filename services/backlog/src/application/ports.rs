@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 #[async_trait]
 pub trait StoryRepository: Send + Sync {
-    async fn create_story(&self, story: &Story) -> Result<(), AppError>;
+    async fn create_story(&self, story: &Story) -> Result<Uuid, AppError>;
     async fn get_story(
         &self,
         id: Uuid,

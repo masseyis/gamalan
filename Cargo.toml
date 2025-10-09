@@ -31,7 +31,7 @@ shuttle-qdrant = "0.56.0"
 sqlx = { version = "0.8.6", features = ["postgres", "uuid", "chrono", "runtime-tokio-rustls", "migrate"] }
 utoipa = { version = "4.2.3", features = ["axum_extras"] }
 utoipa-swagger-ui = { version = "9.0.2", features = ["axum"] }
-tower-http = { version = "0.6.2", features = ["trace", "cors"] }
+tower-http = { version = "0.6.2", features = ["trace", "cors", "map-request-body"] }
 axum-extra = { version = "0.10.0", features = ["typed-header"] }
 async-trait = "0.1.83"
 tracing = "0.1.41"
@@ -40,6 +40,6 @@ tracing-error = "0.2.0"
 color-eyre = "0.6.3"
 serde_with = "3.11.0"
 http-body-util = "0.1.2"
-uuid = { version = "1.11.0", features = ["v4", "serde"] }
+uuid = { version = "1.11.0", features = ["v4", "v5", "serde"] }
 reqwest = { version = "0.12.11", features = ["json"] }
 chrono = { version = "0.4.38", features = ["serde"] }

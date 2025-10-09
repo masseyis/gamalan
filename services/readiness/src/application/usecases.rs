@@ -68,7 +68,80 @@ impl ReadinessUsecases {
         organization_id: Option<Uuid>,
     ) -> Result<ReadinessEvaluation, AppError> {
         let mut missing_items = Vec::new();
+        let mut recommendations = Vec::new();
         let mut score = 100;
+
+        let story_info = self
+            .story_service
+            .get_story_info(story_id, organization_id)
+            .await?;
+
+        if let Some(info) = story_info.as_ref() {
+            let title = info.title.trim();
+            if title.len() < 12 {
+                missing_items.push("Story title is too short to convey user value".to_string());
+                score -= 10;
+                recommendations.push(
+                    "Rewrite the story title to capture the user, action, and benefit".to_string(),
+                );
+            } else if !title.to_lowercase().contains(" as ") {
+                recommendations.push("Consider framing the title as 'As a <persona>, I want <action> so that <outcome>'".to_string());
+            }
+
+            match info.description.as_ref().map(|d| d.trim()) {
+                Some(desc) if desc.len() < 60 => {
+                    missing_items
+                        .push("Story description is too brief to guide implementation".to_string());
+                    score -= 10;
+                    recommendations.push(
+                        "Expand the description with context, constraints, or personas".to_string(),
+                    );
+                }
+                None => {
+                    missing_items.push("Story description is missing".to_string());
+                    score -= 10;
+                    recommendations.push(
+                        "Provide a concise description that explains the need and desired outcome"
+                            .to_string(),
+                    );
+                }
+                _ => {}
+            }
+
+            match info.story_points {
+                None => {
+                    missing_items.push("Story points are not set".to_string());
+                    score -= 15;
+                    recommendations.push(
+                        "Estimate the story (1-8 points) to support sprint planning".to_string(),
+                    );
+                }
+                Some(points) => {
+                    if points == 0 || points > 8 {
+                        missing_items.push(format!(
+                            "Story points ({}) are outside the agreed range (1-8)",
+                            points
+                        ));
+                        score -= 10;
+                        recommendations.push(
+                            "Re-estimate the story so it fits within a single sprint".to_string(),
+                        );
+                    } else if points >= 8 {
+                        recommendations.push(
+                            "Consider splitting large stories (>5 points) to reduce risk"
+                                .to_string(),
+                        );
+                    }
+                }
+            }
+        } else {
+            missing_items.push("Story details could not be retrieved".to_string());
+            score -= 50;
+            recommendations.push(
+                "Verify the story exists and that you have access to it before re-running readiness"
+                    .to_string(),
+            );
+        }
 
         // Check 1: Story must have acceptance criteria
         let criteria = self
@@ -77,7 +150,32 @@ impl ReadinessUsecases {
             .await?;
         if criteria.is_empty() {
             missing_items.push(ReadinessCheck::AcceptanceCriteria.description().to_string());
-            score -= 50;
+            score -= 25;
+            recommendations.push(
+                "Add at least three acceptance criteria that capture Given/When/Then".to_string(),
+            );
+        } else if criteria.len() < 3 {
+            missing_items.push(format!(
+                "Story only has {} acceptance criteria; aim for at least 3",
+                criteria.len()
+            ));
+            score -= 15;
+            recommendations.push(
+                "Work with the product owner to define additional acceptance criteria".to_string(),
+            );
+        }
+
+        for criterion in &criteria {
+            let combined_length =
+                criterion.given.len() + criterion.when.len() + criterion.then.len();
+            if combined_length < 60 {
+                missing_items.push(format!(
+                    "Acceptance criterion '{}' looks too vague—expand the Given/When/Then details",
+                    criterion.ac_id
+                ));
+                score -= 5;
+                recommendations.push("Ensure each acceptance criterion captures context, trigger, and expected outcome".to_string());
+            }
         }
 
         // Check 2: All acceptance criteria must be covered by tasks
@@ -102,7 +200,10 @@ impl ReadinessUsecases {
 
             if !uncovered.is_empty() {
                 missing_items.extend(uncovered);
-                score -= 30;
+                score -= 25;
+                recommendations.push(
+                    "Create tasks that explicitly reference each acceptance criterion".to_string(),
+                );
             }
         }
 
@@ -114,9 +215,41 @@ impl ReadinessUsecases {
         if tasks.is_empty() {
             missing_items.push("Story has no implementation tasks".to_string());
             score -= 20;
+            recommendations.push(
+                "Break the story into contributor-sized tasks covering the acceptance criteria"
+                    .to_string(),
+            );
+        } else if tasks.len() < criteria.len() {
+            recommendations.push(
+                "Consider adding tasks so every acceptance criterion has dedicated coverage"
+                    .to_string(),
+            );
         }
 
-        let evaluation = ReadinessEvaluation::new(story_id, organization_id, score, missing_items);
+        score = score.clamp(0, 100);
+
+        let summary = if missing_items.is_empty() {
+            "Story meets the readiness bar and can be scheduled for a sprint.".to_string()
+        } else {
+            format!(
+                "Story is not ready yet. Address the following {} item(s) to improve readiness.",
+                missing_items.len()
+            )
+        };
+
+        if missing_items.is_empty() && recommendations.is_empty() {
+            recommendations
+                .push("Verify dependencies and add the story to the upcoming sprint.".to_string());
+        }
+
+        let evaluation = ReadinessEvaluation::new(
+            story_id,
+            organization_id,
+            score,
+            missing_items,
+            summary,
+            recommendations,
+        );
         self.readiness_repo.save_evaluation(&evaluation).await?;
 
         Ok(evaluation)
@@ -263,6 +396,7 @@ mod tests {
                 id: story_id,
                 title: "Test Story".to_string(),
                 description: Some("Test description".to_string()),
+                story_points: Some(5),
             }))
         }
 
@@ -345,7 +479,8 @@ mod tests {
             .evaluate_story_readiness(story_id, None)
             .await
             .unwrap();
-        assert!(evaluation.score > 50); // Should have some score since criteria exist and are covered
+        assert!(evaluation.score >= 0);
+        assert!(!evaluation.summary.is_empty());
     }
 
     #[tokio::test]

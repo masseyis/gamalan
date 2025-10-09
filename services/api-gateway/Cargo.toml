@@ -7,9 +7,7 @@ edition = "2021"
 name = "api-gateway"
 path = "src/main.rs"
 
-[[bin]]
-name = "api-gateway-test"
-path = "src/test_main.rs"
+
 
 [dependencies]
 # Workspace dependencies for core functionality

@@ -1,4 +1,5 @@
 import { useUser, useOrganization } from '@clerk/nextjs'
+import { normalizeUserId } from '@/lib/utils/uuid'
 
 /**
  * Hook to get the current organization context for API calls
@@ -23,10 +24,17 @@ export function useOrganizationContext() {
     organization,
     user,
     // Helper to get headers for API calls
-    getApiHeaders: () => ({
-      'X-Organization-Id': organization?.id || '',
-      'X-User-Id': user?.id || '',
-      'X-Context-Type': contextType
-    })
+    getApiHeaders: () => {
+      const headers: Record<string, string> = {
+        'X-User-Id': normalizeUserId(user?.id),
+        'X-Context-Type': contextType,
+      }
+
+      if (organization?.id) {
+        headers['X-Organization-Id'] = organization.id
+      }
+
+      return headers
+    }
   }
 }

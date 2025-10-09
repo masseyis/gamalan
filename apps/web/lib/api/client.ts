@@ -1,11 +1,78 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
+import { normalizeUserId } from '@/lib/utils/uuid'
 
 export interface ApiClientOptions {
   baseURL: string
   timeout?: number
 }
 
-class ApiClient {
+const DEFAULT_ORCHESTRATOR_BASE = 'http://localhost:8000/api/v1/context'
+
+const resolveOrchestratorBaseUrl = () => {
+  const configured = process.env.NEXT_PUBLIC_ORCHESTRATOR_API_URL
+  if (!configured) {
+    return DEFAULT_ORCHESTRATOR_BASE
+  }
+
+  const trimmed = configured.replace(/\/+$/, '')
+
+  if (trimmed.includes('/context')) {
+    return trimmed
+  }
+
+  if (trimmed.includes('/api/v1')) {
+    return `${trimmed}/context`
+  }
+
+  return `${trimmed}/api/v1/context`
+}
+
+type ContextTypeHeader = 'organization' | 'personal'
+
+type UserContext = {
+  userId?: string | null
+  organizationId?: string | null
+  contextType?: ContextTypeHeader
+}
+
+const resolveContextType = (context: UserContext): ContextTypeHeader => {
+  if (context.contextType) {
+    return context.contextType
+  }
+  return context.organizationId ? 'organization' : 'personal'
+}
+
+const applyUserContextHeaders = (
+  headers: Record<string, any>,
+  context: UserContext
+) => {
+  const normalizedUserId = normalizeUserId(context.userId)
+  const contextType = resolveContextType(context)
+
+  headers['X-User-Id'] = normalizedUserId
+
+  if (context.organizationId) {
+    headers['X-Organization-Id'] = context.organizationId
+  } else if ('X-Organization-Id' in headers) {
+    delete headers['X-Organization-Id']
+  }
+
+  headers['X-Context-Type'] = contextType
+}
+
+const clearUserContextHeaders = (headers: Record<string, any>) => {
+  if ('X-User-Id' in headers) {
+    delete headers['X-User-Id']
+  }
+  if ('X-Organization-Id' in headers) {
+    delete headers['X-Organization-Id']
+  }
+  if ('X-Context-Type' in headers) {
+    delete headers['X-Context-Type']
+  }
+}
+
+export class ApiClient {
   private client: AxiosInstance
 
   constructor(options: ApiClientOptions) {
@@ -32,8 +99,10 @@ class ApiClient {
             if (isTestMode) {
               // Use mock authentication for tests
               config.headers.Authorization = 'Bearer mock-test-token'
-              config.headers['X-User-Id'] = 'test-user-id'
-              config.headers['X-Context-Type'] = 'personal'
+              applyUserContextHeaders(config.headers as Record<string, any>, {
+                userId: 'test-user-id',
+                contextType: 'personal',
+              })
             } else {
               // Use real Clerk authentication for production
               const Clerk = (window as any).Clerk
@@ -47,13 +116,13 @@ class ApiClient {
                 const user = Clerk.user
                 const organization = Clerk.organization
 
-                if (organization) {
-                  config.headers['X-Organization-Id'] = organization.id
-                  config.headers['X-Context-Type'] = 'organization'
-                } else if (user) {
-                  config.headers['X-User-Id'] = user.id
-                  config.headers['X-Context-Type'] = 'personal'
-                }
+                const contextType: ContextTypeHeader = organization ? 'organization' : 'personal'
+
+                applyUserContextHeaders(config.headers as Record<string, any>, {
+                  userId: user?.id ?? (config.headers['X-User-Id'] as string | undefined),
+                  organizationId: organization?.id,
+                  contextType,
+                })
               }
             }
           } catch (error) {
@@ -124,6 +193,20 @@ class ApiClient {
     return response.data
   }
 
+  setUserContext(context?: UserContext) {
+    const headers = this.client.defaults.headers.common as Record<string, any>
+    if (!context) {
+      clearUserContextHeaders(headers)
+      return
+    }
+    applyUserContextHeaders(headers, context)
+  }
+
+  clearUserContext() {
+    const headers = this.client.defaults.headers.common as Record<string, any>
+    clearUserContextHeaders(headers)
+  }
+
   setAuthToken(token: string) {
     this.client.defaults.headers.common['Authorization'] = `Bearer ${token}`
   }
@@ -151,13 +234,31 @@ export const promptBuilderClient = new ApiClient({
 })
 
 export const orchestratorClient = new ApiClient({
-  baseURL: process.env.NEXT_PUBLIC_ORCHESTRATOR_API_URL || 'http://localhost:8005',
+  baseURL: resolveOrchestratorBaseUrl(),
   timeout: 15000, // Longer timeout for LLM processing
 })
 
 export const authGatewayClient = new ApiClient({
   baseURL: process.env.NEXT_PUBLIC_AUTH_GATEWAY_API_URL || 'http://localhost:8000',
 })
+
+const ALL_CLIENTS = [
+  projectsClient,
+  backlogClient,
+  readinessClient,
+  promptBuilderClient,
+  orchestratorClient,
+  authGatewayClient,
+]
+
+export function setGlobalAuthToken(token?: string) {
+  if (token) {
+    ALL_CLIENTS.forEach((client) => client.setAuthToken(token))
+    return
+  }
+
+  ALL_CLIENTS.forEach((client) => client.removeAuthToken())
+}
 
 // Function to setup authenticated clients (non-hook version)
 export async function setupAuthenticatedClients() {
@@ -207,4 +308,3 @@ export function useApiClient() {
 
   return { setupClients }
 }
-

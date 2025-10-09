@@ -218,6 +218,8 @@ We use Clerk's official testing approach with real authentication:
    - Credentials managed via environment variables
    - Automatic cleanup of test data
 
+   The Playwright config expects the dev Clerk tenant credentials that also power local development. Populate these in `.env.local` and ensure the backend gateway is running with `cargo shuttle run --secrets ../../Secrets.toml` so JWT verification succeeds.
+
 3. **Authentication State**:
    - Persistent across test sessions
    - Separate projects for authenticated/unauthenticated tests
