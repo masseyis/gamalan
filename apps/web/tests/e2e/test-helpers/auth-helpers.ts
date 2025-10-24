@@ -59,7 +59,7 @@ export async function signOut(page: Page) {
       await userMenu.click()
 
       // Look for sign out option
-      const signOutButton = page.locator('text=Sign out, text=Logout, button:has-text("Sign out")')
+      const signOutButton = page.locator('text=Sign out').or(page.locator('text=Logout')).or(page.locator('button:has-text("Sign out")'))
       if (await signOutButton.isVisible({ timeout: 2000 })) {
         await signOutButton.click()
       }
