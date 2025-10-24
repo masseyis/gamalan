@@ -728,6 +728,15 @@ async fn try_resolve_organization_id(
     let owner_user_id = resolve_authenticated_user_uuid(auth_with_org)?;
     let owner_email = auth_with_org.auth.email.as_deref();
 
+    // Check for multiple organizations early to ensure consistent validation
+    if let Some(orgs) = &auth_with_org.auth.orgs {
+        if orgs.len() > 1 {
+            return Err(AppError::BadRequest(
+                "Multiple organizations detected; specify X-Organization-Id header".to_string(),
+            ));
+        }
+    }
+
     if let Some(ref identifier) = auth_with_org.org_context.organization_id {
         if let Some(resolved) = resolve_identifier(
             identifier,
@@ -791,10 +800,6 @@ async fn try_resolve_organization_id(
             {
                 return Ok(Some(resolved));
             }
-        } else if orgs.len() > 1 {
-            return Err(AppError::BadRequest(
-                "Multiple organizations detected; specify X-Organization-Id header".to_string(),
-            ));
         }
     }
 
@@ -1028,4 +1033,100 @@ pub async fn complete_story_points(
         success: true,
         message: "Story points completed successfully".to_string(),
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use auth_clerk::AuthenticatedWithOrg;
+    use auth_clerk::organization::{OrganizationContext, ContextType};
+    use uuid::Uuid;
+
+    // Mock organization usecases for testing
+    struct MockOrganizationUsecases;
+
+    // Test helper to create a mock AuthenticatedWithOrg
+    fn create_mock_auth_with_orgs(orgs: Vec<String>) -> AuthenticatedWithOrg {
+        let mut auth = auth_clerk::AuthClaims {
+            sub: "test-user".to_string(),
+            email: Some("test@example.com".to_string()),
+            org_id: None,
+            org_name: None,
+            orgs: Some(orgs),
+            ..Default::default()
+        };
+
+        let org_context = OrganizationContext {
+            context_type: ContextType::User,
+            organization_id: None,
+            organization_name: None,
+            organization_external_id: None,
+            user_uuid: Some(Uuid::new_v4()),
+        };
+
+        AuthenticatedWithOrg { auth, org_context }
+    }
+
+    #[tokio::test]
+    async fn test_multi_org_validation_early_check() {
+        // Test that multi-org validation happens early
+        let auth_with_org = create_mock_auth_with_orgs(vec![
+            "org1".to_string(),
+            "org2".to_string(),
+        ]);
+
+        let org_usecases = MockOrganizationUsecases;
+        let result = try_resolve_organization_id(&auth_with_org, &org_usecases).await;
+
+        // Should return error for multiple orgs, even without other identifiers
+        assert!(result.is_err());
+        if let Err(e) = result {
+            assert!(e.to_string().contains("Multiple organizations detected"));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_multi_org_validation_with_organization_id_header() {
+        // Test that multi-org validation happens even when organization_id is provided
+        let mut auth_with_org = create_mock_auth_with_orgs(vec![
+            "org1".to_string(),
+            "org2".to_string(),
+        ]);
+
+        // Set organization_id in context (simulating X-Organization-Id header)
+        auth_with_org.org_context.organization_id = Some("org1".to_string());
+
+        let org_usecases = MockOrganizationUsecases;
+        let result = try_resolve_organization_id(&auth_with_org, &org_usecases).await;
+
+        // Should still return error for multiple orgs, even with organization_id header
+        assert!(result.is_err());
+        if let Err(e) = result {
+            assert!(e.to_string().contains("Multiple organizations detected"));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_single_org_allowed() {
+        // Test that single org is allowed
+        let auth_with_org = create_mock_auth_with_orgs(vec!["org1".to_string()]);
+
+        let org_usecases = MockOrganizationUsecases;
+        let result = try_resolve_organization_id(&auth_with_org, &org_usecases).await;
+
+        // Should not return error for single org (though it might return None due to mock)
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_no_orgs_allowed() {
+        // Test that no orgs is allowed
+        let auth_with_org = create_mock_auth_with_orgs(vec![]);
+
+        let org_usecases = MockOrganizationUsecases;
+        let result = try_resolve_organization_id(&auth_with_org, &org_usecases).await;
+
+        // Should not return error for no orgs
+        assert!(result.is_ok());
+    }
 }
