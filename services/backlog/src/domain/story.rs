@@ -392,9 +392,19 @@ impl Story {
 
         self.sprint_id = None;
 
-        // If story was committed, move it back to Ready
+        // If story was committed, move it back to a valid non-sprint state.
+        // Validate readiness first; if not ready, send it to NeedsRefinement
         if self.status == StoryStatus::Committed {
-            self.status = StoryStatus::Ready;
+            let meets_ready_requirements =
+                self.readiness_override || self.validate_ready_requirements().is_ok();
+
+            if meets_ready_requirements {
+                // Use normal transition path to enforce invariants
+                self.update_status(StoryStatus::Ready)?;
+            } else {
+                // Special-case downgrade when removing from sprint
+                self.status = StoryStatus::NeedsRefinement;
+            }
         }
 
         self.updated_at = Utc::now();
@@ -719,6 +729,39 @@ mod tests {
         story.remove_from_sprint().unwrap();
         assert!(story.sprint_id.is_none());
         assert_eq!(story.status, StoryStatus::Ready);
+    }
+
+    #[test]
+    fn test_remove_from_sprint_downgrades_if_no_longer_ready() {
+        let mut story = create_test_story();
+
+        // Make story ready
+        story.description = Some("Proper description".to_string());
+        story.set_story_points(5).unwrap();
+        for i in 0..3 {
+            let ac = AcceptanceCriteria::new(
+                format!("AC {}", i + 1),
+                format!("given {}", i + 1),
+                format!("when {}", i + 1),
+                format!("then {}", i + 1),
+            )
+            .unwrap();
+            story.add_acceptance_criteria(ac);
+        }
+        story.update_status(StoryStatus::Ready).unwrap();
+
+        // Assign to sprint and commit
+        let sprint_id = Uuid::new_v4();
+        story.assign_to_sprint(sprint_id).unwrap();
+        story.update_status(StoryStatus::Committed).unwrap();
+
+        // Break ready requirements while still committed
+        story.description = None;
+
+        // Removing from sprint should now downgrade to NeedsRefinement
+        story.remove_from_sprint().unwrap();
+        assert!(story.sprint_id.is_none());
+        assert_eq!(story.status, StoryStatus::NeedsRefinement);
     }
 
     #[test]
