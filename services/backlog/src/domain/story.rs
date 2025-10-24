@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use common::AppError;
 use serde::{Deserialize, Serialize};
+use tracing::info;
 use uuid::Uuid;
 
 /// Opinionated agile workflow statuses that enforce best practices
@@ -313,6 +314,22 @@ impl Story {
         self.updated_at = Utc::now();
     }
 
+    /// Clears the readiness override with logging to track when and why it was cleared
+    pub fn clear_readiness_override_with_logging(&mut self, reason: &str) {
+        let previous_reason = self.readiness_override_reason.clone();
+        let override_by = self.readiness_override_by;
+        
+        info!(
+            story_id = %self.id,
+            previous_override_reason = ?previous_reason,
+            override_by = ?override_by,
+            clear_reason = %reason,
+            "Readiness override cleared for story"
+        );
+        
+        self.clear_readiness_override();
+    }
+
     /// Add acceptance criteria to the story
     pub fn add_acceptance_criteria(&mut self, ac: AcceptanceCriteria) {
         self.acceptance_criteria.push(ac);
@@ -464,7 +481,7 @@ impl Story {
         }
 
         if self.readiness_override && self.validate_ready_requirements().is_ok() {
-            self.clear_readiness_override();
+            self.clear_readiness_override_with_logging("Story now meets ready requirements");
         }
 
         self.updated_at = Utc::now();
