@@ -223,7 +223,9 @@ LIVING_ARCHITECTURE.md
    ```
 
 Generate diff summary & update docs/adr/LIVING_ARCHITECTURE.md (+ ADR if substantive)
-Open PR with architecture summary + links; ensure CI is green 11) CI/CD Goals
+Open PR with architecture summary + links; ensure CI is green
+
+## 11) CI/CD Goals
 Fast feedback, reproducible builds, deterministic tests
 Enforced gates (fmt, clippy, tests, coverage, contract conformance)
 Automated deploys to Shuttle on tags/manual approval
