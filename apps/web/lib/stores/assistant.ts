@@ -50,15 +50,15 @@ export const useAssistantStore = create<AssistantStore>()(
         set((state) => ({
           activeProjectId: projectId,
           suggestions:
-            projectId && state.suggestionsProjectId === projectId ? state.suggestions : [],
+            !projectId || state.suggestionsProjectId !== projectId ? [] : state.suggestions,
           suggestionsProjectId:
-            projectId && state.suggestionsProjectId === projectId
-              ? state.suggestionsProjectId
-              : null,
+            !projectId || state.suggestionsProjectId !== projectId
+              ? null
+              : state.suggestionsProjectId,
           suggestionsLastFetched:
-            projectId && state.suggestionsProjectId === projectId
-              ? state.suggestionsLastFetched
-              : null,
+            !projectId || state.suggestionsProjectId !== projectId
+              ? null
+              : state.suggestionsLastFetched,
         }))
       },
 
