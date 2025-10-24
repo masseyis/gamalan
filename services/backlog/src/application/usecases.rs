@@ -253,9 +253,10 @@ impl BacklogUsecases {
         }
 
         let goal = goal.trim().to_string();
-        
+
         // Start a transaction to ensure all operations succeed or fail together
-        let mut tx = self.pool
+        let mut tx = self
+            .pool
             .begin()
             .await
             .map_err(|_| AppError::InternalServerError)?;

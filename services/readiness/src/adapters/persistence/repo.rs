@@ -82,18 +82,20 @@ pub async fn get_criteria_by_story(
         return Ok(rows.into_iter().map(AcceptanceCriterion::from).collect());
     }
 
-    let json_row =
-        sqlx::query("SELECT acceptance_criteria FROM readiness_story_projections WHERE id = $1")
-            .bind(story_id)
-            .fetch_optional(pool)
-            .await
-            .map_err(|err| {
-                error!(error = %err, %story_id, "Failed to fetch readiness story projection");
-                AppError::InternalServerError
-            })?;
+    let json_row = sqlx::query(
+        "SELECT organization_id, acceptance_criteria FROM readiness_story_projections WHERE id = $1",
+    )
+    .bind(story_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|err| {
+        error!(error = %err, %story_id, "Failed to fetch readiness story projection");
+        AppError::InternalServerError
+    })?;
 
     if let Some(row) = json_row {
         let value: Value = row.get("acceptance_criteria");
+        let projection_org_id: Option<Uuid> = row.get("organization_id");
         let records: Vec<AcceptanceCriterionRecord> = match serde_json::from_value(value.clone()) {
             Ok(records) => records,
             Err(err) => {
@@ -106,7 +108,7 @@ pub async fn get_criteria_by_story(
             .map(|record| AcceptanceCriterion {
                 id: record.id,
                 story_id: record.story_id,
-                organization_id,
+                organization_id: projection_org_id,
                 ac_id: record.id.to_string(),
                 given: record.given,
                 when: record.when,
@@ -189,18 +191,20 @@ pub async fn get_criterion_by_story_and_ac_id(
         return Ok(Some(AcceptanceCriterion::from(row)));
     }
 
-    let json_row =
-        sqlx::query("SELECT acceptance_criteria FROM readiness_story_projections WHERE id = $1")
-            .bind(story_id)
-            .fetch_optional(pool)
-            .await
-            .map_err(|err| {
-                error!(error = %err, %story_id, "Failed to fetch readiness story projection");
-                AppError::InternalServerError
-            })?;
+    let json_row = sqlx::query(
+        "SELECT organization_id, acceptance_criteria FROM readiness_story_projections WHERE id = $1",
+    )
+    .bind(story_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|err| {
+        error!(error = %err, %story_id, "Failed to fetch readiness story projection");
+        AppError::InternalServerError
+    })?;
 
     if let Some(row) = json_row {
         let value: Value = row.get("acceptance_criteria");
+        let projection_org_id: Option<Uuid> = row.get("organization_id");
         let records: Vec<AcceptanceCriterionRecord> = match serde_json::from_value(value.clone()) {
             Ok(records) => records,
             Err(err) => {
@@ -215,7 +219,7 @@ pub async fn get_criterion_by_story_and_ac_id(
             return Ok(Some(AcceptanceCriterion {
                 id: record.id,
                 story_id: record.story_id,
-                organization_id,
+                organization_id: projection_org_id,
                 ac_id: record.id.to_string(),
                 given: record.given,
                 when: record.when,
