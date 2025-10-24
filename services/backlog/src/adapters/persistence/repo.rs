@@ -207,6 +207,67 @@ pub async fn update_story(pool: &PgPool, story: &Story) -> Result<(), AppError> 
     Ok(())
 }
 
+pub async fn update_story_with_transaction(
+    tx: &mut Transaction<'_, Postgres>,
+    story: &Story,
+) -> Result<(), AppError> {
+    sqlx::query(
+        "UPDATE stories SET title = $2, description = $3, status = $4, labels = $5, story_points = $6, readiness_override = $7, readiness_override_by = $8, readiness_override_reason = $9, readiness_override_at = $10, updated_at = NOW()
+         WHERE id = $1 AND (
+             (organization_id IS NOT NULL AND organization_id = $11) OR
+             (organization_id IS NULL AND $11 IS NULL)
+         )",
+    )
+    .bind(story.id)
+    .bind(&story.title)
+    .bind(&story.description)
+    .bind(story.status.to_string())
+    .bind(&story.labels)
+    .bind(story.story_points.map(|points| points as i32))
+    .bind(story.readiness_override)
+    .bind(story.readiness_override_by)
+    .bind(&story.readiness_override_reason)
+    .bind(story.readiness_override_at)
+    .bind(story.organization_id)
+    .execute(tx)
+    .await
+    .map_err(|e| {
+        tracing::error!(error = %e, "SQL error updating story");
+        AppError::InternalServerError
+    })?;
+
+    sqlx::query("DELETE FROM acceptance_criteria WHERE story_id = $1")
+        .bind(story.id)
+        .execute(tx)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "SQL error deleting acceptance criteria");
+            AppError::InternalServerError
+        })?;
+
+    for ac in &story.acceptance_criteria {
+        sqlx::query(
+            "INSERT INTO acceptance_criteria (id, story_id, description, given, when_clause, then_clause, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)",
+        )
+        .bind(ac.id)
+        .bind(story.id)
+        .bind(&ac.description)
+        .bind(&ac.given)
+        .bind(&ac.when)
+        .bind(&ac.then)
+        .bind(ac.created_at)
+        .execute(tx)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "SQL error inserting acceptance criterion");
+            AppError::InternalServerError
+        })?;
+    }
+
+    Ok(())
+}
+
 pub async fn delete_story(
     pool: &PgPool,
     id: Uuid,

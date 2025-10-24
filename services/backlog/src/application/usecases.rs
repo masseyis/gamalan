@@ -5,7 +5,7 @@ use event_bus::{
     AcceptanceCriterionRecord, BacklogEvent, DomainEvent, EventPublisher, SprintEvent,
     SprintRecord, StoryRecord, TaskRecord,
 };
-use sqlx::PgPool;
+use sqlx::{PgPool, Postgres, Transaction};
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -253,8 +253,15 @@ impl BacklogUsecases {
         }
 
         let goal = goal.trim().to_string();
-        let sprint_id = repo::create_sprint(
-            &self.pool,
+        
+        // Start a transaction to ensure all operations succeed or fail together
+        let mut tx = self.pool
+            .begin()
+            .await
+            .map_err(|_| AppError::InternalServerError)?;
+
+        let sprint_id = repo::create_sprint_with_transaction(
+            &mut tx,
             project_id,
             team_id,
             effective_org_id,
@@ -269,18 +276,29 @@ impl BacklogUsecases {
         )
         .await?;
 
+        // Update all stories within the same transaction
         for mut story in stories_to_commit {
             story.assign_to_sprint(sprint_id)?;
             story.update_status(StoryStatus::Committed)?;
-            repo::update_story(&self.pool, &story).await?;
-            let record = Self::story_record(&story);
+            repo::update_story_with_transaction(&mut tx, &story).await?;
+        }
+
+        // Set team active sprint within the same transaction
+        repo::set_team_active_sprint_with_transaction(&mut tx, team_id, sprint_id).await?;
+
+        // Commit the transaction - if any operation failed, this will rollback everything
+        tx.commit()
+            .await
+            .map_err(|_| AppError::InternalServerError)?;
+
+        // Publish events after successful transaction commit
+        for story in &stories_to_commit {
+            let record = Self::story_record(story);
             self.publish(DomainEvent::Backlog(BacklogEvent::StoryUpdated {
                 story: record,
             }))
             .await;
         }
-
-        repo::set_team_active_sprint(&self.pool, team_id, sprint_id).await?;
 
         self.publish(DomainEvent::Sprint(SprintEvent::Created {
             sprint: SprintRecord {
