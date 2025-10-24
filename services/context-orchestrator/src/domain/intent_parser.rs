@@ -50,6 +50,9 @@ impl IntentParser {
             || utterance_lower.contains("i'll handle")
             || utterance_lower.contains("taking this")
             || utterance_lower.contains("picking up")
+            || utterance_lower.contains("taking ownership")
+            || utterance_lower.contains("takes ownership")
+            || utterance_lower.contains("took ownership")
             || (utterance_lower.contains("take") && utterance_lower.contains("ownership"))
         {
             IntentType::TakeOwnership
@@ -362,6 +365,26 @@ mod tests {
         assert_eq!(result.intent_type, IntentType::TakeOwnership);
 
         let result = IntentParser::fallback_heuristic_parse("taking this task", &candidates);
+        assert_eq!(result.intent_type, IntentType::TakeOwnership);
+    }
+
+    #[test]
+    fn test_fallback_heuristic_parse_take_ownership_variations() {
+        let candidates = vec![];
+        
+        // Test the specific bug case mentioned in the issue
+        let result = IntentParser::fallback_heuristic_parse("taking ownership and moving forward", &candidates);
+        assert_eq!(result.intent_type, IntentType::TakeOwnership);
+
+        // Test other ownership variations
+        let result = IntentParser::fallback_heuristic_parse("takes ownership of this task", &candidates);
+        assert_eq!(result.intent_type, IntentType::TakeOwnership);
+
+        let result = IntentParser::fallback_heuristic_parse("took ownership and will move forward", &candidates);
+        assert_eq!(result.intent_type, IntentType::TakeOwnership);
+
+        // Test that ownership takes precedence over move/change
+        let result = IntentParser::fallback_heuristic_parse("I'll take ownership and change the status", &candidates);
         assert_eq!(result.intent_type, IntentType::TakeOwnership);
     }
 
