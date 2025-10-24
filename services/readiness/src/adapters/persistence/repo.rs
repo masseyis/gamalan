@@ -103,11 +103,12 @@ pub async fn get_criteria_by_story(
         };
         let criteria = records
             .into_iter()
-            .map(|record| AcceptanceCriterion {
+            .enumerate()
+            .map(|(index, record)| AcceptanceCriterion {
                 id: record.id,
                 story_id: record.story_id,
                 organization_id: projection_org_id,
-                ac_id: record.id.to_string(),
+                ac_id: format!("AC{}", index + 1),
                 given: record.given,
                 when: record.when,
                 then: record.then,
@@ -208,15 +209,21 @@ pub async fn get_criterion_by_story_and_ac_id(
                 Vec::new()
             }
         };
-        if let Some(record) = records
+        if let Some((index, record)) = records
             .into_iter()
-            .find(|record| record.id.to_string() == ac_id)
+            .enumerate()
+            .find(|(index, _)| format!("AC{}", index + 1) == ac_id)
         {
             return Ok(Some(AcceptanceCriterion {
                 id: record.id,
                 story_id: record.story_id,
+<<<<<<< HEAD
                 organization_id: projection_org_id,
                 ac_id: record.id.to_string(),
+=======
+                organization_id,
+                ac_id: format!("AC{}", index + 1),
+>>>>>>> 17da963 (Refactor: Standardize acceptance criterion IDs to AC1, AC2, etc.)
                 given: record.given,
                 when: record.when,
                 then: record.then,

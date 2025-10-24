@@ -728,4 +728,33 @@ mod tests {
             .unwrap();
         assert_eq!(invalid, vec!["INVALID"]);
     }
+
+    #[tokio::test]
+    async fn test_ac_id_format_consistency() {
+        // Test that ac_id follows the expected format (AC1, AC2, AC3, etc.)
+        let story_id = Uuid::new_v4();
+        let usecases = setup_usecases();
+
+        // Add multiple criteria to test the numbering
+        let criteria_data = vec![
+            ("AC1".to_string(), "given1".to_string(), "when1".to_string(), "then1".to_string()),
+            ("AC2".to_string(), "given2".to_string(), "when2".to_string(), "then2".to_string()),
+            ("AC3".to_string(), "given3".to_string(), "when3".to_string(), "then3".to_string()),
+        ];
+
+        let _ = usecases
+            .add_acceptance_criteria(story_id, None, criteria_data)
+            .await
+            .unwrap();
+
+        let criteria = usecases
+            .get_criteria_by_story(story_id, None)
+            .await
+            .unwrap();
+
+        assert_eq!(criteria.len(), 3);
+        assert_eq!(criteria[0].ac_id, "AC1");
+        assert_eq!(criteria[1].ac_id, "AC2");
+        assert_eq!(criteria[2].ac_id, "AC3");
+    }
 }
