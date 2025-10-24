@@ -73,7 +73,6 @@ export function TaskOwnership({
     'inprogress',
     'taskscomplete',
     'deployed',
-    'awaitingacceptance',
   ]
 
   const isStoryInSprint = Boolean(sprintId)
