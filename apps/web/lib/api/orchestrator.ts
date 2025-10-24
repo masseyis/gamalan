@@ -15,14 +15,28 @@ const normalizeBaseUrl = (input?: string): string => {
 
   const trimmed = input.replace(/\/+$/, '')
 
-  if (trimmed.includes('/context')) {
+  // Check if both /api/v1 and /context are present in the correct order
+  const hasApiV1 = trimmed.includes('/api/v1')
+  const hasContext = trimmed.includes('/context')
+  
+  if (hasApiV1 && hasContext) {
+    // Both are present, return as-is
     return trimmed
   }
-
-  if (trimmed.includes('/api/v1')) {
+  
+  if (hasApiV1 && !hasContext) {
+    // Has /api/v1 but missing /context, append it
     return `${trimmed}/context`
   }
-
+  
+  if (!hasApiV1 && hasContext) {
+    // Has /context but missing /api/v1, insert /api/v1 before /context
+    const contextIndex = trimmed.indexOf('/context')
+    const baseUrl = trimmed.substring(0, contextIndex)
+    return `${baseUrl}/api/v1/context`
+  }
+  
+  // Neither is present, append both
   return `${trimmed}/api/v1/context`
 }
 
