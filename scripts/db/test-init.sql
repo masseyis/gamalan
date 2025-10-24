@@ -21,14 +21,15 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Create test tasks
 INSERT INTO tasks (id, story_id, title, description, acceptance_criteria_refs, created_at) VALUES 
-    ('550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440000', 'Test Task 1', 'Integration test task', '{AC1,AC2}', NOW()),
-    ('550e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440001', 'Test Task 2', 'Performance test task', '{AC1}', NOW())
+    ('550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440000', 'Test Task 1', 'Integration test task', '{550e8400-e29b-41d4-a716-446655440000,550e8400-e29b-41d4-a716-446655440001}', NOW()),
+    ('550e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440001', 'Test Task 2', 'Performance test task', '{550e8400-e29b-41d4-a716-446655440002}', NOW())
 ON CONFLICT (id) DO NOTHING;
 
 -- Create test acceptance criteria
 INSERT INTO acceptance_criteria (id, story_id, description, given, when_clause, then_clause, created_at) VALUES 
-    ('550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440000', 'AC1', 'a user is authenticated', 'they request test data', 'they should receive valid test responses', NOW()),
-    ('550e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440000', 'AC2', 'a user makes an invalid request', 'they send malformed data', 'they should receive a 400 error', NOW())
+    ('550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440000', 'User can retrieve test data when authenticated', 'a user is authenticated', 'they request test data', 'they should receive valid test responses', NOW()),
+    ('550e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440000', 'System returns 400 error for invalid requests', 'a user makes an invalid request', 'they send malformed data', 'they should receive a 400 error', NOW()),
+    ('550e8400-e29b-41d4-a716-446655440002', '550e8400-e29b-41d4-a716-446655440001', 'System meets performance requirements', 'a user performs a performance test', 'they execute the test scenario', 'the system should respond within acceptable time limits', NOW())
 ON CONFLICT (id) DO NOTHING;
 
 -- Create test readiness evaluations
