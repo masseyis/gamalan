@@ -1,7 +1,7 @@
 use crate::adapters::persistence::models::{AcceptanceCriteriaRow, ProjectRow, StoryRow, TaskRow};
 use crate::domain::{AcceptanceCriteria, Project, Story, Task};
 use common::AppError;
-use sqlx::PgPool;
+use sqlx::{PgPool, Postgres, Transaction};
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -269,6 +269,46 @@ pub async fn create_sprint(
     Ok(sprint_id)
 }
 
+pub async fn create_sprint_with_transaction(
+    tx: &mut Transaction<'_, Postgres>,
+    project_id: Uuid,
+    team_id: Uuid,
+    organization_id: Option<Uuid>,
+    name: String,
+    goal: String,
+    capacity_points: u32,
+    status: &str,
+    start_date: chrono::DateTime<chrono::Utc>,
+    end_date: chrono::DateTime<chrono::Utc>,
+    committed_points: u32,
+    completed_points: u32,
+) -> Result<Uuid, AppError> {
+    let sprint_id = Uuid::new_v4();
+    sqlx::query(
+        "INSERT INTO sprints (id, project_id, team_id, organization_id, name, goal, capacity_points, status, start_date, end_date, committed_points, completed_points, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())",
+    )
+    .bind(sprint_id)
+    .bind(project_id)
+    .bind(team_id)
+    .bind(organization_id)
+    .bind(name)
+    .bind(goal)
+    .bind(capacity_points as i32)
+    .bind(status)
+    .bind(start_date)
+    .bind(end_date)
+    .bind(committed_points as i32)
+    .bind(completed_points as i32)
+    .execute(tx)
+    .await
+    .map_err(|e| {
+        tracing::error!(error = %e, "SQL error creating sprint");
+        AppError::InternalServerError
+    })?;
+    Ok(sprint_id)
+}
+
 pub async fn get_team_active_sprint(
     pool: &PgPool,
     team_id: Uuid,
@@ -302,6 +342,24 @@ pub async fn set_team_active_sprint(
         .bind(team_id)
         .bind(sprint_id)
         .execute(pool)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "SQL error updating team active sprint");
+            AppError::InternalServerError
+        })?;
+
+    Ok(())
+}
+
+pub async fn set_team_active_sprint_with_transaction(
+    tx: &mut Transaction<'_, Postgres>,
+    team_id: Uuid,
+    sprint_id: Uuid,
+) -> Result<(), AppError> {
+    sqlx::query("UPDATE teams SET active_sprint_id = $2, updated_at = NOW() WHERE id = $1")
+        .bind(team_id)
+        .bind(sprint_id)
+        .execute(tx)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "SQL error updating team active sprint");
