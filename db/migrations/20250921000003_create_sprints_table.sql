@@ -30,8 +30,10 @@ ALTER TABLE teams ADD CONSTRAINT fk_teams_active_sprint_id
     FOREIGN KEY (active_sprint_id) REFERENCES sprints(id) ON DELETE SET NULL;
 
 -- Ensure only one active sprint per team at a time
+-- This constraint ensures that each team can have at most one active sprint
+-- and that each sprint can only be active for one team
 CREATE UNIQUE INDEX idx_teams_one_active_sprint
-    ON teams(organization_id)
+    ON teams(active_sprint_id)
     WHERE active_sprint_id IS NOT NULL;
 
 -- Create indexes for performance
