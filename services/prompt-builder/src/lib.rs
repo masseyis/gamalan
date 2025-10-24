@@ -4,6 +4,7 @@ pub mod config;
 pub mod domain;
 mod projections;
 
+use adapters::persistence::repo::{SqlPlanPackRepository, SqlTaskPackRepository};
 use application::{
     ports::{BacklogService, LlmService, PlanPackRepository, ReadinessService, TaskPackRepository},
     PromptBuilderUsecases,
@@ -23,8 +24,8 @@ pub fn build_usecases(
 ) -> Arc<PromptBuilderUsecases> {
     let pool = Arc::new(pool);
     projections::SprintProjectionWorker::spawn(pool.clone(), event_bus);
-    let plan_pack_repo: Arc<dyn PlanPackRepository> = pool.clone();
-    let task_pack_repo: Arc<dyn TaskPackRepository> = pool.clone();
+    let plan_pack_repo: Arc<dyn PlanPackRepository> = Arc::new(SqlPlanPackRepository::new((*pool).clone()));
+    let task_pack_repo: Arc<dyn TaskPackRepository> = Arc::new(SqlTaskPackRepository::new((*pool).clone()));
 
     Arc::new(PromptBuilderUsecases::new(
         plan_pack_repo,

@@ -199,40 +199,60 @@ pub async fn delete_task_pack(pool: &PgPool, id: Uuid) -> Result<(), AppError> {
     Ok(())
 }
 
-#[async_trait]
-impl PlanPackRepository for PgPool {
-    async fn save_plan_pack(&self, plan_pack: &PlanPack) -> Result<(), AppError> {
-        save_plan_pack(self, plan_pack).await
-    }
+pub struct SqlPlanPackRepository {
+    pool: PgPool,
+}
 
-    async fn get_plan_pack(&self, id: Uuid) -> Result<Option<PlanPack>, AppError> {
-        get_plan_pack(self, id).await
-    }
-
-    async fn get_plan_pack_by_story(&self, story_id: Uuid) -> Result<Option<PlanPack>, AppError> {
-        get_plan_pack_by_story(self, story_id).await
-    }
-
-    async fn delete_plan_pack(&self, id: Uuid) -> Result<(), AppError> {
-        delete_plan_pack(self, id).await
+impl SqlPlanPackRepository {
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
     }
 }
 
 #[async_trait]
-impl TaskPackRepository for PgPool {
+impl PlanPackRepository for SqlPlanPackRepository {
+    async fn save_plan_pack(&self, plan_pack: &PlanPack) -> Result<(), AppError> {
+        save_plan_pack(&self.pool, plan_pack).await
+    }
+
+    async fn get_plan_pack(&self, id: Uuid) -> Result<Option<PlanPack>, AppError> {
+        get_plan_pack(&self.pool, id).await
+    }
+
+    async fn get_plan_pack_by_story(&self, story_id: Uuid) -> Result<Option<PlanPack>, AppError> {
+        get_plan_pack_by_story(&self.pool, story_id).await
+    }
+
+    async fn delete_plan_pack(&self, id: Uuid) -> Result<(), AppError> {
+        delete_plan_pack(&self.pool, id).await
+    }
+}
+
+pub struct SqlTaskPackRepository {
+    pool: PgPool,
+}
+
+impl SqlTaskPackRepository {
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
+}
+
+#[async_trait]
+impl TaskPackRepository for SqlTaskPackRepository {
     async fn save_task_pack(&self, task_pack: &TaskPack) -> Result<(), AppError> {
-        save_task_pack(self, task_pack).await
+        save_task_pack(&self.pool, task_pack).await
     }
 
     async fn get_task_pack(&self, id: Uuid) -> Result<Option<TaskPack>, AppError> {
-        get_task_pack(self, id).await
+        get_task_pack(&self.pool, id).await
     }
 
     async fn get_task_pack_by_task(&self, task_id: Uuid) -> Result<Option<TaskPack>, AppError> {
-        get_task_pack_by_task(self, task_id).await
+        get_task_pack_by_task(&self.pool, task_id).await
     }
 
     async fn delete_task_pack(&self, id: Uuid) -> Result<(), AppError> {
-        delete_task_pack(self, id).await
+        delete_task_pack(&self.pool, id).await
     }
 }
