@@ -60,14 +60,12 @@ pub async fn get_criteria_by_story(
     organization_id: Option<Uuid>,
 ) -> Result<Vec<AcceptanceCriterion>, AppError> {
     let rows = sqlx::query_as::<_, AcceptanceCriterionRow>(
-        "SELECT id, story_id, ac_id, given, \"when\" AS \"when\", \"then\" AS \"then\" FROM criteria \
-         WHERE story_id = $1 \
-           AND ($2::UUID IS NULL OR EXISTS (
-                SELECT 1 FROM stories s
-                WHERE s.id = criteria.story_id
-                  AND (s.organization_id = $2 OR (s.organization_id IS NULL AND $2 IS NULL))
-           )) \
-         ORDER BY ac_id",
+        "SELECT c.id, c.story_id, s.organization_id, c.ac_id, c.given, c.\"when\" AS \"when\", c.\"then\" AS \"then\" \
+         FROM criteria c \
+         JOIN stories s ON s.id = c.story_id \
+         WHERE c.story_id = $1 \
+           AND ($2::UUID IS NULL OR s.organization_id = $2 OR (s.organization_id IS NULL AND $2 IS NULL)) \
+         ORDER BY c.ac_id",
     )
     .bind(story_id)
     .bind(organization_id)
@@ -168,14 +166,12 @@ pub async fn get_criterion_by_story_and_ac_id(
     ac_id: &str,
 ) -> Result<Option<AcceptanceCriterion>, AppError> {
     let row = sqlx::query_as::<_, AcceptanceCriterionRow>(
-        "SELECT id, story_id, ac_id, given, \"when\" AS \"when\", \"then\" AS \"then\" FROM criteria \
-         WHERE story_id = $1 \
-           AND ($2::UUID IS NULL OR EXISTS (
-                SELECT 1 FROM stories s
-                WHERE s.id = criteria.story_id
-                  AND (s.organization_id = $2 OR (s.organization_id IS NULL AND $2 IS NULL))
-           )) \
-           AND ac_id = $3",
+        "SELECT c.id, c.story_id, s.organization_id, c.ac_id, c.given, c.\"when\" AS \"when\", c.\"then\" AS \"then\" \
+         FROM criteria c \
+         JOIN stories s ON s.id = c.story_id \
+         WHERE c.story_id = $1 \
+           AND ($2::UUID IS NULL OR s.organization_id = $2 OR (s.organization_id IS NULL AND $2 IS NULL)) \
+           AND c.ac_id = $3",
     )
     .bind(story_id)
     .bind(organization_id)
