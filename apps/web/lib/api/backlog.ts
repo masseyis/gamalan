@@ -11,7 +11,7 @@ import {
   TaskStatus,
   TaskOwnershipResponse,
   SetTaskEstimateRequest,
-  UpdateStoryStatusRequest
+  UpdateStoryStatusRequest,
 } from '@/lib/types/story'
 
 // Mock data for demonstration
@@ -20,7 +20,8 @@ const mockStories: Record<string, Story[]> = {
     {
       id: 'story-1',
       title: 'User Authentication System',
-      description: 'As a user, I want to securely authenticate using Clerk so that I can access my personal projects and data',
+      description:
+        'As a user, I want to securely authenticate using Clerk so that I can access my personal projects and data',
       status: 'ready',
       priority: 'high',
       storyPoints: 8,
@@ -32,7 +33,8 @@ const mockStories: Record<string, Story[]> = {
     {
       id: 'story-2',
       title: 'Project Dashboard',
-      description: 'As a project manager, I want to see an overview of all my projects with key metrics so that I can quickly assess project health',
+      description:
+        'As a project manager, I want to see an overview of all my projects with key metrics so that I can quickly assess project health',
       status: 'inprogress',
       priority: 'high',
       storyPoints: 5,
@@ -44,7 +46,8 @@ const mockStories: Record<string, Story[]> = {
     {
       id: 'story-3',
       title: 'Drag-and-Drop Sprint Board',
-      description: 'As a scrum master, I want to drag stories between sprint board columns so that I can easily update story status during standups',
+      description:
+        'As a scrum master, I want to drag stories between sprint board columns so that I can easily update story status during standups',
       status: 'accepted',
       priority: 'medium',
       storyPoints: 13,
@@ -56,7 +59,8 @@ const mockStories: Record<string, Story[]> = {
     {
       id: 'story-4',
       title: 'AI Story Readiness Assessment',
-      description: 'As a product owner, I want AI to analyze my stories and provide readiness feedback so that I know which stories are ready for development',
+      description:
+        'As a product owner, I want AI to analyze my stories and provide readiness feedback so that I know which stories are ready for development',
       status: 'ready',
       priority: 'medium',
       storyPoints: 8,
@@ -64,13 +68,14 @@ const mockStories: Record<string, Story[]> = {
       labels: ['ai', 'assessment'],
       createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
       updatedAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-    }
+    },
   ],
   'project-2': [
     {
       id: 'story-5',
       title: 'Mobile App Setup',
-      description: 'As a developer, I want to set up the React Native project structure so that we can begin mobile development',
+      description:
+        'As a developer, I want to set up the React Native project structure so that we can begin mobile development',
       status: 'ready',
       priority: 'critical',
       storyPoints: 5,
@@ -78,8 +83,8 @@ const mockStories: Record<string, Story[]> = {
       labels: ['mobile', 'setup'],
       createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
       updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    }
-  ]
+    },
+  ],
 }
 
 const mockAcceptanceCriteria: Record<string, AcceptanceCriterion[]> = {
@@ -103,18 +108,57 @@ const mockAcceptanceCriteria: Record<string, AcceptanceCriterion[]> = {
       thenClause: 'I should be authenticated and redirected to the dashboard',
       storyId: 'story-1',
       createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
-    }
-  ]
+    },
+  ],
 }
 
 export const backlogApi = {
   // Stories
-  async getStories(projectId: string): Promise<Story[]> {
+  async getStories(
+    projectId: string,
+    sprintId?: string,
+    status?: StoryStatus,
+    options?: { includeTasks?: boolean }
+  ): Promise<Story[]> {
     try {
-      const result = await backlogClient.get<Story[]>(`/projects/${projectId}/stories`)
-      return result || []
+      let url = `/projects/${projectId}/stories`
+      const params = new URLSearchParams()
+      if (sprintId) {
+        params.append('sprintId', sprintId)
+      }
+      if (status) {
+        params.append('status', status)
+      }
+      if (params.toString()) {
+        url += `?${params.toString()}`
+      }
+      const stories = (await backlogClient.get<Story[]>(url)) || []
+
+      if (options?.includeTasks && stories.length > 0) {
+        const storiesWithTasks = await Promise.all(
+          stories.map(async (story) => {
+            try {
+              const tasks = await backlogClient.get<Task[]>(`/stories/${story.id}/tasks`)
+              return { ...story, tasks }
+            } catch (taskError) {
+              console.warn(
+                `Failed to fetch tasks for story ${story.id}, continuing without tasks:`,
+                taskError
+              )
+              return story
+            }
+          })
+        )
+
+        return storiesWithTasks
+      }
+
+      return stories
     } catch (error) {
-      console.warn(`Failed to fetch stories for project ${projectId}, returning empty array:`, error)
+      console.warn(
+        `Failed to fetch stories for project ${projectId}, returning empty array:`,
+        error
+      )
       return []
     }
   },
@@ -160,7 +204,12 @@ export const backlogApi = {
     })
   },
 
-  async updateTask(projectId: string, storyId: string, taskId: string, data: UpdateTaskRequest): Promise<Task> {
+  async updateTask(
+    projectId: string,
+    storyId: string,
+    taskId: string,
+    data: UpdateTaskRequest
+  ): Promise<Task> {
     return backlogClient.patch<Task>(`/stories/${storyId}/tasks/${taskId}`, data)
   },
 
@@ -177,23 +226,39 @@ export const backlogApi = {
     return backlogClient.get<AcceptanceCriterion[]>(`/stories/${storyId}/acceptance-criteria`)
   },
 
-  async createAcceptanceCriterion(projectId: string, storyId: string, data: {
-    given: string
-    when: string
-    then: string
-  }): Promise<AcceptanceCriterion> {
+  async createAcceptanceCriterion(
+    projectId: string,
+    storyId: string,
+    data: {
+      given: string
+      when: string
+      then: string
+    }
+  ): Promise<AcceptanceCriterion> {
     return backlogClient.post<AcceptanceCriterion>(`/stories/${storyId}/acceptance-criteria`, data)
   },
 
-  async updateAcceptanceCriterion(projectId: string, storyId: string, criterionId: string, data: {
-    given: string
-    when: string
-    then: string
-  }): Promise<AcceptanceCriterion> {
-    return backlogClient.patch<AcceptanceCriterion>(`/stories/${storyId}/acceptance-criteria/${criterionId}`, data)
+  async updateAcceptanceCriterion(
+    projectId: string,
+    storyId: string,
+    criterionId: string,
+    data: {
+      given: string
+      when: string
+      then: string
+    }
+  ): Promise<AcceptanceCriterion> {
+    return backlogClient.patch<AcceptanceCriterion>(
+      `/stories/${storyId}/acceptance-criteria/${criterionId}`,
+      data
+    )
   },
 
-  async deleteAcceptanceCriterion(projectId: string, storyId: string, criterionId: string): Promise<void> {
+  async deleteAcceptanceCriterion(
+    projectId: string,
+    storyId: string,
+    criterionId: string
+  ): Promise<void> {
     return backlogClient.delete<void>(`/stories/${storyId}/acceptance-criteria/${criterionId}`)
   },
 
@@ -203,7 +268,9 @@ export const backlogApi = {
   },
 
   async reorderTasks(projectId: string, storyId: string, taskIds: string[]): Promise<void> {
-    return backlogClient.patch<void>(`/projects/${projectId}/stories/${storyId}/tasks/reorder`, { taskIds })
+    return backlogClient.patch<void>(`/projects/${projectId}/stories/${storyId}/tasks/reorder`, {
+      taskIds,
+    })
   },
 
   // Task Ownership API (Self-Selection "I'm on it" workflow)
@@ -231,12 +298,18 @@ export const backlogApi = {
     return backlogClient.post<TaskOwnershipResponse>(`/tasks/${taskId}/work/complete`)
   },
 
-  async setTaskEstimate(taskId: string, request: SetTaskEstimateRequest): Promise<TaskOwnershipResponse> {
+  async setTaskEstimate(
+    taskId: string,
+    request: SetTaskEstimateRequest
+  ): Promise<TaskOwnershipResponse> {
     return backlogClient.patch<TaskOwnershipResponse>(`/tasks/${taskId}/estimate`, request)
   },
 
   // Enhanced story status updates
-  async updateStoryStatusEnhanced(storyId: string, request: UpdateStoryStatusRequest): Promise<Story> {
+  async updateStoryStatusEnhanced(
+    storyId: string,
+    request: UpdateStoryStatusRequest
+  ): Promise<Story> {
     return backlogClient.patch<Story>(`/stories/${storyId}/status`, request)
   },
 }

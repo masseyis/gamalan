@@ -230,7 +230,26 @@ impl IntoResponse for AppError {
 
         let (status, _error_code, error_response) = match &self {
             AppError::InternalServerError => {
-                error!("Internal server error occurred");
+                let stack_trace = get_stack_trace();
+                if let Some(ref trace) = stack_trace {
+                    error!(%trace, "Internal server error occurred");
+                } else {
+                    error!("Internal server error occurred");
+                }
+
+                let debug_info = if is_debug {
+                    Some(DebugInfo {
+                        service: env!("CARGO_PKG_NAME").to_string(),
+                        endpoint: None,
+                        method: None,
+                        user_id: None,
+                        error_chain: vec!["Internal server error".to_string()],
+                        stack_trace,
+                    })
+                } else {
+                    None
+                };
+
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "INTERNAL_SERVER_ERROR".to_string(),
@@ -238,7 +257,7 @@ impl IntoResponse for AppError {
                         "INTERNAL_SERVER_ERROR",
                         "Internal server error",
                         None,
-                        None,
+                        debug_info,
                         is_debug,
                     ),
                 )

@@ -46,7 +46,8 @@ describe('Clerk Authentication Integration', () => {
     vi.clearAllMocks()
 
     // Set up test environment
-    process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = 'pk_test_bW9jay1rZXktZm9yLXRlc3RpbmctcHVycG9zZXMtb25seQ=='
+    process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY =
+      'pk_test_bW9jay1rZXktZm9yLXRlc3RpbmctcHVycG9zZXMtb25seQ=='
   })
 
   describe('ClerkProvider Integration', () => {
@@ -133,9 +134,7 @@ describe('Clerk Authentication Integration', () => {
   describe('Multiple Provider Instances', () => {
     it('should handle nested providers correctly', async () => {
       const TestWrapper = ({ children }: { children: React.ReactNode }) => (
-        <MockClerkProvider>
-          {children}
-        </MockClerkProvider>
+        <MockClerkProvider>{children}</MockClerkProvider>
       )
 
       render(
@@ -225,7 +224,7 @@ describe('Clerk Authentication Integration', () => {
       if (typeof window === 'undefined') {
         Object.defineProperty(global, 'window', {
           value: {},
-          writable: true
+          writable: true,
         })
       }
 

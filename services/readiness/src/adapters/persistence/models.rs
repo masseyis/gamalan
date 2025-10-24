@@ -6,7 +6,6 @@ use uuid::Uuid;
 pub struct AcceptanceCriterionRow {
     pub id: Uuid,
     pub story_id: Uuid,
-    pub organization_id: Option<Uuid>,
     pub ac_id: String,
     pub given: String,
     pub when: String,
@@ -18,7 +17,7 @@ impl From<AcceptanceCriterionRow> for AcceptanceCriterion {
         AcceptanceCriterion {
             id: row.id,
             story_id: row.story_id,
-            organization_id: row.organization_id,
+            organization_id: None,
             ac_id: row.ac_id,
             given: row.given,
             when: row.when,

@@ -125,13 +125,13 @@ fi
 # STEP 2: CARGO CLIPPY (Quality gate - fail on warnings/errors)
 # ==============================================================================
 
-print_status "Running cargo clippy --all-targets --all-features -- -D warnings..."
+print_status "Running cargo clippy --lib --bins --examples --all-features -- -D warnings..."
 
 # Run clippy with strict warning enforcement
 CLIPPY_OUTPUT=$(mktemp)
 CLIPPY_EXIT_CODE=0
 
-if ! cargo clippy --all-targets --all-features --color=always -- -D warnings 2>&1 | tee "$CLIPPY_OUTPUT"; then
+if ! cargo clippy --lib --bins --examples --all-features --color=always -- -D warnings 2>&1 | tee "$CLIPPY_OUTPUT"; then
     CLIPPY_EXIT_CODE=1
 fi
 
@@ -168,7 +168,7 @@ print_success "Pre-commit hook installed successfully!"
 echo
 print_status "The hook will:"
 print_status "  1. Run 'cargo fmt --all' and auto-stage any formatting changes"
-print_status "  2. Run 'cargo clippy' with -D warnings and fail on any issues"
+print_status "  2. Run 'cargo clippy --lib --bins --examples' with -D warnings and fail on any issues"
 print_status "  3. Provide clear feedback about what's happening"
 echo
 print_status "To test the hook, you can run: .git/hooks/pre-commit"

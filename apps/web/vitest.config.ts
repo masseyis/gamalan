@@ -16,8 +16,8 @@ export default defineConfig({
       '**/__tests__/e2e/**',
       '**/tests/e2e/**',
       '**/__tests__/integration/**',
-      '**/*.{e2e,spec}.{js,ts,jsx,tsx}'
-    ]
+      '**/*.{e2e,spec}.{js,ts,jsx,tsx}',
+    ],
   },
   resolve: {
     alias: {

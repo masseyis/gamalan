@@ -77,9 +77,7 @@ export function UserGuide({ userRole, context, showHelp = true }: UserGuideProps
           <BookOpen className="h-5 w-5 text-blue-600" />
           <CardTitle className="text-blue-900">{guidance.title}</CardTitle>
         </div>
-        <CardDescription className="text-blue-700">
-          {guidance.description}
-        </CardDescription>
+        <CardDescription className="text-blue-700">{guidance.description}</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
@@ -320,7 +318,8 @@ function getStoryGuidance(role: UserRole) {
     {
       icon: Target,
       title: 'Understanding Stories',
-      description: 'Stories define features from a user perspective with clear acceptance criteria.',
+      description:
+        'Stories define features from a user perspective with clear acceptance criteria.',
     },
     {
       icon: CheckCircle2,
@@ -413,9 +412,7 @@ export function RoleExplanation({ role }: { role: UserRole }) {
           <AlertCircle className="h-5 w-5 text-gray-600" />
           <CardTitle className="text-gray-900">Your Role: {info.title}</CardTitle>
         </div>
-        <CardDescription className="text-gray-700">
-          {info.description}
-        </CardDescription>
+        <CardDescription className="text-gray-700">{info.description}</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-2">

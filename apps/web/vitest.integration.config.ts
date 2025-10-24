@@ -9,9 +9,7 @@ export default defineConfig({
     setupFiles: ['./src/test-setup-integration.ts'],
     globals: true,
     css: true,
-    include: [
-      '**/__tests__/integration/**/*.{test,spec}.{js,ts,jsx,tsx}'
-    ],
+    include: ['**/__tests__/integration/**/*.{test,spec}.{js,ts,jsx,tsx}'],
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
@@ -20,7 +18,7 @@ export default defineConfig({
       '**/tests/e2e/**',
       '**/__tests__/components/**',
       '**/__tests__/lib/**',
-      '**/*.{e2e,spec}.{js,ts,jsx,tsx}'
+      '**/*.{e2e,spec}.{js,ts,jsx,tsx}',
     ],
     testTimeout: 15000,
     env: {
@@ -33,7 +31,7 @@ export default defineConfig({
       NEXT_PUBLIC_BACKLOG_API_URL: 'http://localhost:8000',
       NEXT_PUBLIC_READINESS_API_URL: 'http://localhost:8000',
       NEXT_PUBLIC_PROMPT_BUILDER_API_URL: 'http://localhost:8000',
-    }
+    },
   },
   resolve: {
     alias: {

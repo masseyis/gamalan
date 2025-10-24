@@ -31,7 +31,7 @@ export function RoleGuard({
   requiredPermissions,
   fallback = null,
   showLoading = true,
-  customCheck
+  customCheck,
 }: RoleGuardProps) {
   const userContext = useUserContext()
   const { hasPermission } = usePermissions()
@@ -70,9 +70,7 @@ export function RoleGuard({
 
   // Check required permissions
   if (requiredPermissions) {
-    const hasAllPermissions = requiredPermissions.every(permission =>
-      hasPermission(permission)
-    )
+    const hasAllPermissions = requiredPermissions.every((permission) => hasPermission(permission))
     if (!hasAllPermissions) {
       return <>{fallback}</>
     }
@@ -84,49 +82,52 @@ export function RoleGuard({
 
 // Specialized guards for common use cases
 
-export function ContributorOnly({ children, fallback }: {
+export function ContributorOnly({
+  children,
+  fallback,
+}: {
   children: React.ReactNode
   fallback?: React.ReactNode
 }) {
   return (
-    <RoleGuard
-      allowedRoles={['contributor', 'managing_contributor']}
-      fallback={fallback}
-    >
+    <RoleGuard allowedRoles={['contributor', 'managing_contributor']} fallback={fallback}>
       {children}
     </RoleGuard>
   )
 }
 
-export function ProductOwnerOnly({ children, fallback }: {
+export function ProductOwnerOnly({
+  children,
+  fallback,
+}: {
   children: React.ReactNode
   fallback?: React.ReactNode
 }) {
   return (
-    <RoleGuard
-      allowedRoles={['product_owner']}
-      fallback={fallback}
-    >
+    <RoleGuard allowedRoles={['product_owner']} fallback={fallback}>
       {children}
     </RoleGuard>
   )
 }
 
-export function ManagerOnly({ children, fallback }: {
+export function ManagerOnly({
+  children,
+  fallback,
+}: {
   children: React.ReactNode
   fallback?: React.ReactNode
 }) {
   return (
-    <RoleGuard
-      allowedRoles={['product_owner', 'managing_contributor']}
-      fallback={fallback}
-    >
+    <RoleGuard allowedRoles={['product_owner', 'managing_contributor']} fallback={fallback}>
       {children}
     </RoleGuard>
   )
 }
 
-export function ReadOnlyForSponsors({ children, readOnlyVersion }: {
+export function ReadOnlyForSponsors({
+  children,
+  readOnlyVersion,
+}: {
   children: React.ReactNode
   readOnlyVersion: React.ReactNode
 }) {
@@ -141,43 +142,43 @@ export function ReadOnlyForSponsors({ children, readOnlyVersion }: {
 
 // Permission-based guards
 
-export function CanModifyBacklog({ children, fallback }: {
+export function CanModifyBacklog({
+  children,
+  fallback,
+}: {
   children: React.ReactNode
   fallback?: React.ReactNode
 }) {
   return (
-    <RoleGuard
-      requiredPermissions={['modify_backlog']}
-      fallback={fallback}
-    >
+    <RoleGuard requiredPermissions={['modify_backlog']} fallback={fallback}>
       {children}
     </RoleGuard>
   )
 }
 
-export function CanTakeOwnership({ children, fallback }: {
+export function CanTakeOwnership({
+  children,
+  fallback,
+}: {
   children: React.ReactNode
   fallback?: React.ReactNode
 }) {
   return (
-    <RoleGuard
-      requiredPermissions={['take_task_ownership']}
-      fallback={fallback}
-    >
+    <RoleGuard requiredPermissions={['take_task_ownership']} fallback={fallback}>
       {children}
     </RoleGuard>
   )
 }
 
-export function CanAcceptStories({ children, fallback }: {
+export function CanAcceptStories({
+  children,
+  fallback,
+}: {
   children: React.ReactNode
   fallback?: React.ReactNode
 }) {
   return (
-    <RoleGuard
-      requiredPermissions={['accept_stories']}
-      fallback={fallback}
-    >
+    <RoleGuard requiredPermissions={['accept_stories']} fallback={fallback}>
       {children}
     </RoleGuard>
   )

@@ -1,7 +1,6 @@
 const UUID_NAMESPACE_URL = '6ba7b811-9dad-11d1-80b4-00c04fd430c8'
 
-const UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 const textEncoder = new TextEncoder()
 
@@ -149,4 +148,3 @@ export const normalizeUserId = (value?: string | null): string => {
   const trimmed = value.trim()
   return validateUuid(trimmed) ? trimmed.toLowerCase() : uuidV5(trimmed)
 }
-

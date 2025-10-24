@@ -6,6 +6,8 @@ use uuid::Uuid;
 #[derive(Debug, Clone)]
 pub struct OrganizationContext {
     pub organization_id: Option<String>,
+    pub organization_external_id: Option<String>,
+    pub organization_name: Option<String>,
     pub user_id: Option<String>,
     pub context_type: ContextType,
 }
@@ -20,6 +22,8 @@ impl OrganizationContext {
     /// Create organization context from headers
     pub fn from_headers(
         org_id_header: Option<&str>,
+        org_external_id_header: Option<&str>,
+        org_name_header: Option<&str>,
         user_id_header: Option<&str>,
         context_type_header: Option<&str>,
     ) -> Self {
@@ -34,6 +38,8 @@ impl OrganizationContext {
 
         Self {
             organization_id: org_id_header.map(|s| s.to_string()),
+            organization_external_id: org_external_id_header.map(|s| s.to_string()),
+            organization_name: org_name_header.map(|s| s.to_string()),
             user_id: user_id_header.map(|s| s.to_string()),
             context_type,
         }
@@ -92,6 +98,16 @@ where
             .get("x-organization-id")
             .and_then(|v| v.to_str().ok());
 
+        let org_external_id = parts
+            .headers
+            .get("x-organization-external-id")
+            .and_then(|v| v.to_str().ok());
+
+        let org_name = parts
+            .headers
+            .get("x-organization-name")
+            .and_then(|v| v.to_str().ok());
+
         let user_id = parts.headers.get("x-user-id").and_then(|v| v.to_str().ok());
 
         let context_type = parts
@@ -101,6 +117,8 @@ where
 
         Ok(OrganizationContext::from_headers(
             org_id,
+            org_external_id,
+            org_name,
             user_id,
             context_type,
         ))
@@ -137,10 +155,17 @@ mod tests {
         // Test organization context
         let org_ctx = OrganizationContext::from_headers(
             Some("org_123"),
+            Some("org_123"),
+            Some("My Org"),
             Some("user_456"),
             Some("organization"),
         );
         assert_eq!(org_ctx.organization_id, Some("org_123".to_string()));
+        assert_eq!(
+            org_ctx.organization_external_id,
+            Some("org_123".to_string())
+        );
+        assert_eq!(org_ctx.organization_name, Some("My Org".to_string()));
         assert_eq!(org_ctx.user_id, Some("user_456".to_string()));
         assert_eq!(org_ctx.context_type, ContextType::Organization);
         assert!(org_ctx.is_organization());
@@ -148,8 +173,10 @@ mod tests {
 
         // Test personal context
         let personal_ctx =
-            OrganizationContext::from_headers(None, Some("user_456"), Some("personal"));
+            OrganizationContext::from_headers(None, None, None, Some("user_456"), Some("personal"));
         assert_eq!(personal_ctx.organization_id, None);
+        assert_eq!(personal_ctx.organization_external_id, None);
+        assert_eq!(personal_ctx.organization_name, None);
         assert_eq!(personal_ctx.user_id, Some("user_456".to_string()));
         assert_eq!(personal_ctx.context_type, ContextType::Personal);
         assert!(!personal_ctx.is_organization());
@@ -157,7 +184,7 @@ mod tests {
 
         // Test default to personal
         let default_ctx =
-            OrganizationContext::from_headers(None, Some("user_456"), Some("invalid"));
+            OrganizationContext::from_headers(None, None, None, Some("user_456"), Some("invalid"));
         assert_eq!(default_ctx.context_type, ContextType::Personal);
     }
 
@@ -166,6 +193,8 @@ mod tests {
         // Organization context should return the org ID
         let org_ctx = OrganizationContext::from_headers(
             Some("org_123"),
+            Some("org_123"),
+            Some("Acme"),
             Some("user_456"),
             Some("organization"),
         );
@@ -176,7 +205,7 @@ mod tests {
 
         // Personal context should return None
         let personal_ctx =
-            OrganizationContext::from_headers(None, Some("user_456"), Some("personal"));
+            OrganizationContext::from_headers(None, None, None, Some("user_456"), Some("personal"));
         assert_eq!(personal_ctx.effective_organization_id(), None);
     }
 
@@ -185,6 +214,8 @@ mod tests {
         let valid_uuid = "550e8400-e29b-41d4-a716-446655440000";
         let ctx = OrganizationContext::from_headers(
             Some(valid_uuid),
+            Some(valid_uuid),
+            Some("Org Name"),
             Some(valid_uuid),
             Some("organization"),
         );
@@ -196,6 +227,8 @@ mod tests {
         // Test invalid UUID
         let invalid_ctx = OrganizationContext::from_headers(
             Some("invalid-uuid"),
+            Some("invalid-uuid"),
+            Some("Invalid Org"),
             Some("invalid-uuid"),
             Some("organization"),
         );

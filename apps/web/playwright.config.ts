@@ -47,7 +47,8 @@ export default defineConfig({
     // Authenticated tests project - tests that start with an authenticated user
     {
       name: 'authenticated tests',
-      testMatch: /.*authenticated\.spec\.ts|.*cross-browser\.spec\.ts|.*error-handling\.spec\.ts|.*performance-stress\.spec\.ts/,
+      testMatch:
+        /.*authenticated\.spec\.ts|.*cross-browser\.spec\.ts|.*error-handling\.spec\.ts|.*performance-stress\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         storageState: 'tests/playwright/.clerk/user.json',
@@ -129,4 +130,3 @@ export default defineConfig({
     },
   },
 })
-

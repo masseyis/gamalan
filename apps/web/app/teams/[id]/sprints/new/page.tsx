@@ -49,16 +49,16 @@ export default function NewSprintPage() {
       queryClient.invalidateQueries({ queryKey: ['team-sprints', teamId] })
       queryClient.invalidateQueries({ queryKey: ['teams', teamId] })
       toast({
-        title: "Sprint created",
-        description: "Sprint has been created successfully",
+        title: 'Sprint created',
+        description: 'Sprint has been created successfully',
       })
       router.push(`/teams/${teamId}/sprints/${response.sprintId}`)
     },
     onError: (error) => {
       toast({
-        title: "Failed to create sprint",
-        description: error instanceof Error ? error.message : "An error occurred",
-        variant: "destructive",
+        title: 'Failed to create sprint',
+        description: error instanceof Error ? error.message : 'An error occurred',
+        variant: 'destructive',
       })
     },
   })
@@ -67,36 +67,36 @@ export default function NewSprintPage() {
     // Validation
     if (!sprintName.trim()) {
       toast({
-        title: "Validation error",
-        description: "Sprint name is required",
-        variant: "destructive",
+        title: 'Validation error',
+        description: 'Sprint name is required',
+        variant: 'destructive',
       })
       return
     }
 
     if (!sprintGoal.trim()) {
       toast({
-        title: "Validation error",
-        description: "Sprint goal is required",
-        variant: "destructive",
+        title: 'Validation error',
+        description: 'Sprint goal is required',
+        variant: 'destructive',
       })
       return
     }
 
     if (!startDate || !endDate) {
       toast({
-        title: "Validation error",
-        description: "Start and end dates are required",
-        variant: "destructive",
+        title: 'Validation error',
+        description: 'Start and end dates are required',
+        variant: 'destructive',
       })
       return
     }
 
     if (!capacityPoints || isNaN(Number(capacityPoints)) || Number(capacityPoints) <= 0) {
       toast({
-        title: "Validation error",
-        description: "Capacity points must be a positive number",
-        variant: "destructive",
+        title: 'Validation error',
+        description: 'Capacity points must be a positive number',
+        variant: 'destructive',
       })
       return
     }
@@ -105,9 +105,9 @@ export default function NewSprintPage() {
     const dateValidation = sprintHelpers.validateSprintDates(startDate, endDate)
     if (!dateValidation.isValid) {
       toast({
-        title: "Date validation error",
+        title: 'Date validation error',
         description: dateValidation.errors[0],
-        variant: "destructive",
+        variant: 'destructive',
       })
       return
     }
@@ -164,7 +164,10 @@ export default function NewSprintPage() {
       <div className="min-h-screen bg-background">
         <div className="container mx-auto py-8">
           <div className="mb-8">
-            <Link href="/teams" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4">
+            <Link
+              href="/teams"
+              className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4"
+            >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Teams
             </Link>
@@ -179,28 +182,33 @@ export default function NewSprintPage() {
   const sprintDuration = getSprintDuration()
 
   return (
-    <ManagerOnly fallback={
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto py-8">
-          <div className="text-center py-12">
-            <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-              <Calendar className="h-12 w-12 text-gray-400" />
+    <ManagerOnly
+      fallback={
+        <div className="min-h-screen bg-background">
+          <div className="container mx-auto py-8">
+            <div className="text-center py-12">
+              <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                <Calendar className="h-12 w-12 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Access Restricted</h3>
+              <p className="text-gray-500 mb-4">
+                Only Product Owners and Managing Contributors can create sprints.
+              </p>
+              <Link href={`/teams/${teamId}/sprints`}>
+                <Button>Back to Sprints</Button>
+              </Link>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Access Restricted</h3>
-            <p className="text-gray-500 mb-4">
-              Only Product Owners and Managing Contributors can create sprints.
-            </p>
-            <Link href={`/teams/${teamId}/sprints`}>
-              <Button>Back to Sprints</Button>
-            </Link>
           </div>
         </div>
-      </div>
-    }>
+      }
+    >
       <div className="min-h-screen bg-background">
         <div className="container mx-auto py-8 max-w-2xl">
           <div className="mb-8">
-            <Link href={`/teams/${teamId}/sprints`} className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4">
+            <Link
+              href={`/teams/${teamId}/sprints`}
+              className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4"
+            >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Sprints
             </Link>
@@ -225,8 +233,8 @@ export default function NewSprintPage() {
                 <span className="font-medium">Active Sprint Detected</span>
               </div>
               <p className="text-sm text-orange-700">
-                Team already has an active sprint: &quot;{activeSprint.name}&quot;.
-                Consider completing the current sprint before starting a new one.
+                Team already has an active sprint: &quot;{activeSprint.name}&quot;. Consider
+                completing the current sprint before starting a new one.
               </p>
             </div>
           )}
@@ -236,9 +244,7 @@ export default function NewSprintPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Sprint Information</CardTitle>
-                <CardDescription>
-                  Define the sprint goals and timeline
-                </CardDescription>
+                <CardDescription>Define the sprint goals and timeline</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
@@ -269,9 +275,7 @@ export default function NewSprintPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Capacity Planning</CardTitle>
-                <CardDescription>
-                  Set the team&apos;s capacity for this sprint
-                </CardDescription>
+                <CardDescription>Set the team&apos;s capacity for this sprint</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
@@ -285,9 +289,7 @@ export default function NewSprintPage() {
                     min="1"
                     data-testid="capacity-input"
                   />
-                  <p className="text-sm text-gray-600 mt-1">
-                    Suggested: {getSuggestedCapacity()}
-                  </p>
+                  <p className="text-sm text-gray-600 mt-1">Suggested: {getSuggestedCapacity()}</p>
                 </div>
               </CardContent>
             </Card>
@@ -296,9 +298,7 @@ export default function NewSprintPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Sprint Timeline</CardTitle>
-                <CardDescription>
-                  Define when the sprint starts and ends
-                </CardDescription>
+                <CardDescription>Define when the sprint starts and ends</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -345,7 +345,8 @@ export default function NewSprintPage() {
                     {(sprintDuration > SPRINT_CONSTRAINTS.MAX_DURATION_DAYS ||
                       sprintDuration < SPRINT_CONSTRAINTS.MIN_DURATION_DAYS) && (
                       <p className="text-xs text-gray-600 mt-1">
-                        Recommended: {SPRINT_CONSTRAINTS.MIN_DURATION_DAYS}-{SPRINT_CONSTRAINTS.MAX_DURATION_DAYS} days
+                        Recommended: {SPRINT_CONSTRAINTS.MIN_DURATION_DAYS}-
+                        {SPRINT_CONSTRAINTS.MAX_DURATION_DAYS} days
                       </p>
                     )}
                   </div>
@@ -379,10 +380,21 @@ export default function NewSprintPage() {
               <div className="flex-1">
                 <h3 className="font-medium text-blue-900 mb-2">Sprint Planning Tips</h3>
                 <div className="text-sm text-blue-800 space-y-1">
-                  <p>• <strong>Capacity:</strong> Consider team availability, holidays, and other commitments</p>
-                  <p>• <strong>Goal:</strong> Keep it specific and achievable - what value will be delivered?</p>
-                  <p>• <strong>Duration:</strong> 1-4 weeks is recommended, with 2 weeks being most common</p>
-                  <p>• <strong>Stories:</strong> Add and estimate stories after creating the sprint</p>
+                  <p>
+                    • <strong>Capacity:</strong> Consider team availability, holidays, and other
+                    commitments
+                  </p>
+                  <p>
+                    • <strong>Goal:</strong> Keep it specific and achievable - what value will be
+                    delivered?
+                  </p>
+                  <p>
+                    • <strong>Duration:</strong> 1-4 weeks is recommended, with 2 weeks being most
+                    common
+                  </p>
+                  <p>
+                    • <strong>Stories:</strong> Add and estimate stories after creating the sprint
+                  </p>
                 </div>
               </div>
             </div>

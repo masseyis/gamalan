@@ -6,28 +6,25 @@ import { Navigation } from '@/components/navigation'
 import { NavigationTest } from '@/components/navigation-test'
 import { AuthProviderWrapper } from './auth-provider-wrapper'
 
-const inter = Inter({ 
+const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
-  display: 'swap'
+  display: 'swap',
 })
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
   variable: '--font-space-grotesk',
-  display: 'swap'
+  display: 'swap',
 })
 
 export const metadata: Metadata = {
   title: 'Battra AI - AI-Enhanced Agile Project Management',
-  description: 'AI-enhanced agile project management tool that brings powerful intelligence and bold design to modern development teams',
+  description:
+    'AI-enhanced agile project management tool that brings powerful intelligence and bold design to modern development teams',
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   // Always use regular Navigation now that we have ClerkProvider available
   const NavigationComponent = Navigation
 
@@ -37,9 +34,7 @@ export default function RootLayout({
         <body className={`${inter.variable} ${spaceGrotesk.variable} font-sans`}>
           <Providers>
             <NavigationComponent />
-            <main className="min-h-screen">
-              {children}
-            </main>
+            <main className="min-h-screen">{children}</main>
           </Providers>
         </body>
       </html>

@@ -3,37 +3,23 @@ use axum::{
     http::{Request, StatusCode},
     Router,
 };
-use backlog::create_backlog_router_with_readiness;
 use serde_json::json;
 use serial_test::serial;
-use std::sync::Arc;
-use tokio::sync::Mutex;
 use tower::util::ServiceExt;
 use uuid::Uuid;
 
-use auth_clerk::JwtVerifier;
-
 // Import the common test setup
-use crate::common::setup_test_db;
+use crate::common::{build_backlog_router_for_tests, setup_test_db};
 
 async fn setup_app() -> Router {
     let pool = setup_test_db().await;
-
-    // Create a test JWT verifier that accepts "valid-test-token"
-    let verifier = Arc::new(Mutex::new(JwtVerifier::new_test_verifier()));
-
-    // Nest under /api/v1 like the production api-gateway does
-    create_backlog_router_with_readiness(pool, verifier).await
+    build_backlog_router_for_tests(pool).await
 }
 
 async fn setup_app_with_pool() -> (Router, sqlx::PgPool) {
     let pool = setup_test_db().await;
 
-    // Create a test JWT verifier that accepts "valid-test-token"
-    let verifier = Arc::new(Mutex::new(JwtVerifier::new_test_verifier()));
-
-    // Nest under /api/v1 like the production api-gateway does
-    let router = create_backlog_router_with_readiness(pool.clone(), verifier).await;
+    let router = build_backlog_router_for_tests(pool.clone()).await;
 
     (router, pool)
 }

@@ -2,9 +2,7 @@ import { test, expect } from '@playwright/test'
 import { loginAs, createTestTeam } from './helpers/test-utils'
 
 test.describe('Sprint Workflow Management', () => {
-
   test.describe('Sprint Creation and Planning', () => {
-
     test('Product Owner can create a sprint with required fields', async ({ page }) => {
       // Given I am a Product Owner with a team
       await loginAs(page, 'product_owner')
@@ -28,7 +26,9 @@ test.describe('Sprint Workflow Management', () => {
       await page.click('[data-testid="create-sprint-btn-submit"]')
 
       // Then the sprint should be created successfully
-      await expect(page.locator('[data-testid="sprint-list"]')).toContainText('Sprint 1: Authentication')
+      await expect(page.locator('[data-testid="sprint-list"]')).toContainText(
+        'Sprint 1: Authentication'
+      )
       await expect(page.locator('[data-testid="sprint-status"]')).toContainText('Planning')
       await expect(page.locator('[data-testid="sprint-capacity"]')).toContainText('25 points')
     })
@@ -53,8 +53,9 @@ test.describe('Sprint Workflow Management', () => {
       await page.click('[data-testid="create-sprint-btn-submit"]')
 
       // Then I should see a validation error
-      await expect(page.locator('[data-testid="date-error"]'))
-        .toContainText('Sprint cannot exceed 28 days (4 weeks)')
+      await expect(page.locator('[data-testid="date-error"]')).toContainText(
+        'Sprint cannot exceed 28 days (4 weeks)'
+      )
 
       // When I try to set end date before start date
       const invalidEndDate = new Date(startDate.getTime() - 24 * 60 * 60 * 1000) // 1 day before
@@ -62,16 +63,18 @@ test.describe('Sprint Workflow Management', () => {
       await page.click('[data-testid="create-sprint-btn-submit"]')
 
       // Then I should see appropriate error
-      await expect(page.locator('[data-testid="date-error"]'))
-        .toContainText('End date must be after start date')
+      await expect(page.locator('[data-testid="date-error"]')).toContainText(
+        'End date must be after start date'
+      )
 
       // When I set zero capacity
       await page.fill('[data-testid="capacity-points"]', '0')
       await page.click('[data-testid="create-sprint-btn-submit"]')
 
       // Then I should see capacity validation
-      await expect(page.locator('[data-testid="capacity-error"]'))
-        .toContainText('Sprint capacity must be greater than 0')
+      await expect(page.locator('[data-testid="capacity-error"]')).toContainText(
+        'Sprint capacity must be greater than 0'
+      )
     })
 
     test('Sprint goal is required and provides guidance', async ({ page }) => {
@@ -94,25 +97,29 @@ test.describe('Sprint Workflow Management', () => {
       await page.click('[data-testid="create-sprint-btn-submit"]')
 
       // Then I should see a validation error
-      await expect(page.locator('[data-testid="goal-error"]'))
-        .toContainText('Sprint goal is required')
+      await expect(page.locator('[data-testid="goal-error"]')).toContainText(
+        'Sprint goal is required'
+      )
 
       // And I should see guidance about good goals
-      await expect(page.locator('[data-testid="goal-help"]'))
-        .toContainText('A good sprint goal describes the value being delivered, not just features')
+      await expect(page.locator('[data-testid="goal-help"]')).toContainText(
+        'A good sprint goal describes the value being delivered, not just features'
+      )
 
       // When I hover over the goal help icon
       await page.hover('[data-testid="goal-help-icon"]')
 
       // Then I should see examples
-      await expect(page.locator('[data-testid="goal-examples"]'))
-        .toContainText('Good: "Users can securely authenticate" Bad: "Build login page"')
+      await expect(page.locator('[data-testid="goal-examples"]')).toContainText(
+        'Good: "Users can securely authenticate" Bad: "Build login page"'
+      )
     })
   })
 
   test.describe('Sprint Status Transitions', () => {
-
-    test('Sprint follows proper lifecycle: Planning → Active → Review → Completed', async ({ page }) => {
+    test('Sprint follows proper lifecycle: Planning → Active → Review → Completed', async ({
+      page,
+    }) => {
       // Given I have a sprint in Planning status
       await loginAs(page, 'product_owner')
       const teamId = await createTestTeam(page, 'Dev Team')
@@ -147,8 +154,9 @@ test.describe('Sprint Workflow Management', () => {
       await expect(page.locator('[data-testid="sprint-status"]')).toContainText('Completed')
 
       // And the sprint should be locked from further changes
-      await expect(page.locator('[data-testid="sprint-locked-notice"]'))
-        .toContainText('This sprint is completed and cannot be modified')
+      await expect(page.locator('[data-testid="sprint-locked-notice"]')).toContainText(
+        'This sprint is completed and cannot be modified'
+      )
     })
 
     test('Active sprints prevent team from starting new sprints', async ({ page }) => {
@@ -167,20 +175,21 @@ test.describe('Sprint Workflow Management', () => {
       await expect(page.locator('[data-testid="create-sprint-btn"]')).toBeDisabled()
 
       // And I should see explanation
-      await expect(page.locator('[data-testid="active-sprint-notice"]'))
-        .toContainText('Complete the current sprint before starting a new one')
+      await expect(page.locator('[data-testid="active-sprint-notice"]')).toContainText(
+        'Complete the current sprint before starting a new one'
+      )
 
       // When I hover over the disabled button
       await page.hover('[data-testid="create-sprint-btn"]')
 
       // Then I should see the restriction tooltip
-      await expect(page.locator('[data-testid="one-sprint-restriction-tooltip"]'))
-        .toContainText('Teams focus on one sprint at a time to maintain commitment and flow')
+      await expect(page.locator('[data-testid="one-sprint-restriction-tooltip"]')).toContainText(
+        'Teams focus on one sprint at a time to maintain commitment and flow'
+      )
     })
   })
 
   test.describe('Sprint Capacity and Story Management', () => {
-
     test('Stories can be committed to sprint within capacity', async ({ page }) => {
       // Given I have a sprint and ready stories
       await loginAs(page, 'product_owner')
@@ -196,23 +205,34 @@ test.describe('Sprint Workflow Management', () => {
       await page.goto(`/teams/${teamId}/sprints/${sprintId}/planning`)
 
       // Then I should see available stories
-      await expect(page.locator('[data-testid="available-stories"]')).toContainText('User Login (5 pts)')
-      await expect(page.locator('[data-testid="available-stories"]')).toContainText('Password Reset (8 pts)')
+      await expect(page.locator('[data-testid="available-stories"]')).toContainText(
+        'User Login (5 pts)'
+      )
+      await expect(page.locator('[data-testid="available-stories"]')).toContainText(
+        'Password Reset (8 pts)'
+      )
 
       // When I commit stories to sprint
       await page.dragAndDrop('[data-testid="story-user-login"]', '[data-testid="sprint-backlog"]')
-      await page.dragAndDrop('[data-testid="story-password-reset"]', '[data-testid="sprint-backlog"]')
+      await page.dragAndDrop(
+        '[data-testid="story-password-reset"]',
+        '[data-testid="sprint-backlog"]'
+      )
 
       // Then capacity should be updated
       await expect(page.locator('[data-testid="committed-points"]')).toContainText('13')
       await expect(page.locator('[data-testid="remaining-capacity"]')).toContainText('7')
 
       // When I try to add a story that would exceed capacity
-      await page.dragAndDrop('[data-testid="story-user-registration"]', '[data-testid="sprint-backlog"]')
+      await page.dragAndDrop(
+        '[data-testid="story-user-registration"]',
+        '[data-testid="sprint-backlog"]'
+      )
 
       // Then I should see a capacity warning
-      await expect(page.locator('[data-testid="capacity-warning"]'))
-        .toContainText('Adding this story would exceed sprint capacity (26/20 points)')
+      await expect(page.locator('[data-testid="capacity-warning"]')).toContainText(
+        'Adding this story would exceed sprint capacity (26/20 points)'
+      )
 
       // And I should be able to proceed with warning or cancel
       await expect(page.locator('[data-testid="proceed-over-capacity"]')).toBeVisible()
@@ -229,7 +249,7 @@ test.describe('Sprint Workflow Management', () => {
       await commitStoriestoSprint(page, sprintId, [
         { name: 'User Login', points: 5, completed: true },
         { name: 'Password Reset', points: 8, completed: true },
-        { name: 'User Profile', points: 3, completed: false }
+        { name: 'User Profile', points: 3, completed: false },
       ])
 
       // When I complete the sprint
@@ -247,13 +267,13 @@ test.describe('Sprint Workflow Management', () => {
       await expect(page.locator('[data-testid="velocity-chart"]')).toContainText('Sprint 1: 13 pts')
 
       // And team capacity planning should use this data
-      await expect(page.locator('[data-testid="recommended-capacity"]'))
-        .toContainText('Based on recent velocity: 13 points')
+      await expect(page.locator('[data-testid="recommended-capacity"]')).toContainText(
+        'Based on recent velocity: 13 points'
+      )
     })
   })
 
   test.describe('Sprint Board and Daily Management', () => {
-
     test('Sprint board shows task progress across workflow', async ({ page }) => {
       // Given I have an active sprint with stories and tasks
       await loginAs(page, 'contributor')
@@ -270,15 +290,21 @@ test.describe('Sprint Workflow Management', () => {
       await expect(page.locator('[data-testid="completed-column"]')).toBeVisible()
 
       // And I should see tasks in appropriate columns
-      await expect(page.locator('[data-testid="available-column"]')).toContainText('Implement API endpoint')
+      await expect(page.locator('[data-testid="available-column"]')).toContainText(
+        'Implement API endpoint'
+      )
       await expect(page.locator('[data-testid="owned-column"]')).toContainText('Create login form')
 
       // When I take ownership of an available task
       await page.click('[data-testid="task-implement-api"] [data-testid="take-ownership"]')
 
       // Then the task should move to Owned column
-      await expect(page.locator('[data-testid="owned-column"]')).toContainText('Implement API endpoint')
-      await expect(page.locator('[data-testid="available-column"]')).not.toContainText('Implement API endpoint')
+      await expect(page.locator('[data-testid="owned-column"]')).toContainText(
+        'Implement API endpoint'
+      )
+      await expect(page.locator('[data-testid="available-column"]')).not.toContainText(
+        'Implement API endpoint'
+      )
     })
 
     test('Sprint burndown chart tracks daily progress', async ({ page }) => {
@@ -304,7 +330,6 @@ test.describe('Sprint Workflow Management', () => {
   })
 
   test.describe('Role-Based Sprint Permissions', () => {
-
     test('Only Product Owners can manage sprint lifecycle', async ({ page }) => {
       // Given I am a contributor with an active sprint
       await loginAs(page, 'contributor')

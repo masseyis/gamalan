@@ -1,8 +1,9 @@
 use anyhow::Context;
 use axum::http::header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE};
-use axum::http::HeaderValue;
-use axum::http::Method;
-use shuttle_axum::axum::{routing::get, Router};
+use axum::http::{HeaderValue, Method};
+use axum::middleware;
+use axum::routing::get;
+use axum::Router;
 use shuttle_axum::ShuttleAxum;
 use shuttle_shared_db::Postgres;
 use sqlx::PgPool;
@@ -15,6 +16,12 @@ mod migrations;
 
 use auth_clerk::JwtVerifier;
 use common::init_tracing;
+
+use api_gateway::{
+    build_backlog_router, build_prompt_builder_router, build_readiness_router, build_sprint_router,
+    PromptBacklogServiceAdapter, PromptReadinessServiceAdapter,
+};
+use event_bus::{EventBus, EventPublisher};
 
 #[shuttle_runtime::main]
 async fn main(
@@ -55,17 +62,51 @@ async fn main(
         )))
     };
 
-    // Create service routers with shared resources
+    // Core usecases
+    let event_bus = Arc::new(EventBus::new());
+    let event_publisher: Arc<dyn EventPublisher> = event_bus.clone();
+    let backlog_usecases = backlog::build_usecases(pool.clone(), event_publisher);
+
+    let readiness_llm: Arc<dyn readiness::application::ports::LlmService> =
+        Arc::new(readiness::adapters::integrations::MockLlmService);
+    let readiness_usecases =
+        readiness::build_usecases(pool.clone(), event_bus.clone(), readiness_llm);
+
+    let prompt_backlog_service = Arc::new(PromptBacklogServiceAdapter {
+        backlog: backlog_usecases.clone(),
+    });
+    let prompt_readiness_service = Arc::new(PromptReadinessServiceAdapter {
+        readiness: readiness_usecases.clone(),
+    });
+    let prompt_llm: Arc<dyn prompt_builder::application::ports::LlmService> =
+        Arc::new(prompt_builder::adapters::integrations::MockLlmService);
+    let prompt_builder_usecases = prompt_builder::build_usecases(
+        pool.clone(),
+        event_bus.clone(),
+        prompt_backlog_service,
+        prompt_readiness_service,
+        prompt_llm,
+    );
+
+    let sprint_usecases = Arc::new(sprint::SprintsUsecases::new(Arc::new(pool.clone())));
+
     let auth_router = auth_gateway::create_auth_router(pool.clone(), verifier.clone()).await;
     let projects_router = projects::create_projects_router(pool.clone(), verifier.clone()).await;
-    let backlog_router =
-        backlog::create_backlog_router_unprefixed(pool.clone(), verifier.clone()).await;
-    let readiness_router = readiness::create_readiness_router(pool.clone(), verifier.clone()).await;
+    let context_orchestrator_router = context_orchestrator::create_context_orchestrator_router(
+        pool.clone(),
+        verifier.clone(),
+        event_bus.clone(),
+    )
+    .await;
+
+    let backlog_router = build_backlog_router(backlog_usecases.clone(), verifier.clone());
+    let readiness_router =
+        build_readiness_router(pool.clone(), readiness_usecases.clone(), verifier.clone());
     let prompt_builder_router =
-        prompt_builder::create_prompt_builder_router(pool.clone(), verifier.clone()).await;
-    let context_orchestrator_router =
-        context_orchestrator::create_context_orchestrator_router(pool.clone(), verifier.clone())
-            .await;
+        build_prompt_builder_router(prompt_builder_usecases.clone(), verifier.clone());
+    let sprint_router = build_sprint_router(sprint_usecases.clone(), verifier.clone());
+
+    let api_key_state = api_gateway::auth::ApiKeyState::new(Arc::new(pool.clone()));
 
     // Create unified router with path-based routing
     let cors_origins = env::var("CORS_ALLOWED_ORIGINS")
@@ -91,6 +132,9 @@ async fn main(
             "X-User-Id".parse().unwrap(),
             "X-Context-Type".parse().unwrap(),
             "X-Organization-Id".parse().unwrap(),
+            "X-Organization-External-Id".parse().unwrap(),
+            "X-Organization-Name".parse().unwrap(),
+            "X-Api-Key".parse().unwrap(),
         ])
         .allow_credentials(true);
 
@@ -101,11 +145,16 @@ async fn main(
         // Service-specific routes with prefixes
         .nest("/api/v1", auth_router)
         .nest("/api/v1", projects_router)
-        .nest("/api/v1", backlog_router)
-        .nest("/api/v1", readiness_router)
-        .nest("/api/v1", prompt_builder_router)
         .nest("/api/v1/context", context_orchestrator_router)
+        .merge(backlog_router)
+        .merge(readiness_router)
+        .merge(prompt_builder_router)
+        .merge(sprint_router)
         // Add CORS and tracing
+        .layer(middleware::from_fn_with_state(
+            api_key_state,
+            api_gateway::auth::api_key_auth,
+        ))
         .layer(cors)
         .layer(TraceLayer::new_for_http());
 

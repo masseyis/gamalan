@@ -2,9 +2,7 @@ import { test, expect } from '@playwright/test'
 import { loginAs, createTestProject, createTestStory } from './helpers/test-utils'
 
 test.describe('Enhanced Story Workflow (9-Stage Process)', () => {
-
   test.describe('Story Status Transitions', () => {
-
     test('Story follows the complete workflow: Draft → Accepted', async ({ page }) => {
       // Given I am logged in as a Product Owner
       await loginAs(page, 'product_owner')
@@ -24,7 +22,9 @@ test.describe('Enhanced Story Workflow (9-Stage Process)', () => {
       await page.click('[data-testid="save-status-btn"]')
 
       // Then the status should update
-      await expect(page.locator(`[data-testid="story-status-${storyId}"]`)).toContainText('Needs Refinement')
+      await expect(page.locator(`[data-testid="story-status-${storyId}"]`)).toContainText(
+        'Needs Refinement'
+      )
 
       // When I add required acceptance criteria (minimum 3)
       await page.click('[data-testid="add-acceptance-criteria"]')
@@ -44,7 +44,10 @@ test.describe('Enhanced Story Workflow (9-Stage Process)', () => {
       await page.click('[data-testid="add-acceptance-criteria"]')
       await page.fill('[data-testid="ac-given"]', 'Given a user is locked out')
       await page.fill('[data-testid="ac-when"]', 'When they attempt to log in')
-      await page.fill('[data-testid="ac-then"]', 'Then they should be notified about account status')
+      await page.fill(
+        '[data-testid="ac-then"]',
+        'Then they should be notified about account status'
+      )
       await page.click('[data-testid="save-ac-btn"]')
 
       // When I transition to Ready (should be available now with 3+ ACs)
@@ -62,14 +65,16 @@ test.describe('Enhanced Story Workflow (9-Stage Process)', () => {
         { from: 'inprogress', to: 'taskscomplete', label: 'Tasks Complete' },
         { from: 'taskscomplete', to: 'deployed', label: 'Deployed' },
         { from: 'deployed', to: 'awaitingacceptance', label: 'Awaiting Acceptance' },
-        { from: 'awaitingacceptance', to: 'accepted', label: 'Accepted' }
+        { from: 'awaitingacceptance', to: 'accepted', label: 'Accepted' },
       ]
 
       for (const transition of statusFlow) {
         await page.click(`[data-testid="update-status-${storyId}"]`)
         await page.selectOption('[data-testid="status-select"]', transition.to)
         await page.click('[data-testid="save-status-btn"]')
-        await expect(page.locator(`[data-testid="story-status-${storyId}"]`)).toContainText(transition.label)
+        await expect(page.locator(`[data-testid="story-status-${storyId}"]`)).toContainText(
+          transition.label
+        )
       }
     })
 
@@ -85,12 +90,15 @@ test.describe('Enhanced Story Workflow (9-Stage Process)', () => {
       await page.click(`[data-testid="update-status-${storyId}"]`)
 
       // Then Committed should not be available in the dropdown
-      const committedOption = page.locator('[data-testid="status-select"] option[value="committed"]')
+      const committedOption = page.locator(
+        '[data-testid="status-select"] option[value="committed"]'
+      )
       await expect(committedOption).toBeDisabled()
 
       // And I should see guidance about valid transitions
-      await expect(page.locator('[data-testid="valid-transitions-help"]'))
-        .toContainText('From Draft, you can only transition to: Needs Refinement')
+      await expect(page.locator('[data-testid="valid-transitions-help"]')).toContainText(
+        'From Draft, you can only transition to: Needs Refinement'
+      )
     })
 
     test('Stories can go backwards in workflow for refinement', async ({ page }) => {
@@ -119,7 +127,9 @@ test.describe('Enhanced Story Workflow (9-Stage Process)', () => {
       await page.click('[data-testid="save-status-btn"]')
 
       // Then the status should update successfully
-      await expect(page.locator(`[data-testid="story-status-${storyId}"]`)).toContainText('Needs Refinement')
+      await expect(page.locator(`[data-testid="story-status-${storyId}"]`)).toContainText(
+        'Needs Refinement'
+      )
 
       // And I can even go back to Draft if needed
       await page.click(`[data-testid="update-status-${storyId}"]`)
@@ -131,7 +141,6 @@ test.describe('Enhanced Story Workflow (9-Stage Process)', () => {
   })
 
   test.describe('Story Readiness Gates', () => {
-
     test('Stories require minimum 3 acceptance criteria to become Ready', async ({ page }) => {
       // Given I have a story in Needs Refinement
       await loginAs(page, 'product_owner')
@@ -151,19 +160,35 @@ test.describe('Enhanced Story Workflow (9-Stage Process)', () => {
       await expect(readyOption).toBeDisabled()
 
       // And I should see guidance about requirements
-      await expect(page.locator('[data-testid="readiness-requirements"]'))
-        .toContainText('Requires: 3+ acceptance criteria, test prompts, demo script')
+      await expect(page.locator('[data-testid="readiness-requirements"]')).toContainText(
+        'Requires: 3+ acceptance criteria, test prompts, demo script'
+      )
 
       // When I add only 2 acceptance criteria
-      await addAcceptanceCriteria(page, 'User wants to log in', 'They enter credentials', 'They are authenticated')
-      await addAcceptanceCriteria(page, 'User enters invalid data', 'They submit form', 'They see error')
+      await addAcceptanceCriteria(
+        page,
+        'User wants to log in',
+        'They enter credentials',
+        'They are authenticated'
+      )
+      await addAcceptanceCriteria(
+        page,
+        'User enters invalid data',
+        'They submit form',
+        'They see error'
+      )
 
       // Then Ready should still be disabled
       await page.click(`[data-testid="update-status-${storyId}"]`)
       await expect(readyOption).toBeDisabled()
 
       // When I add the third acceptance criteria
-      await addAcceptanceCriteria(page, 'User account is locked', 'They attempt login', 'They see lockout message')
+      await addAcceptanceCriteria(
+        page,
+        'User account is locked',
+        'They attempt login',
+        'They see lockout message'
+      )
 
       // Then Ready should become available
       await page.click(`[data-testid="update-status-${storyId}"]`)
@@ -184,12 +209,14 @@ test.describe('Enhanced Story Workflow (9-Stage Process)', () => {
       await page.click('[data-testid="save-points-btn"]')
 
       // Then I should see a validation error
-      await expect(page.locator('[data-testid="points-error"]'))
-        .toContainText('Story points cannot exceed 8. Consider splitting this story.')
+      await expect(page.locator('[data-testid="points-error"]')).toContainText(
+        'Story points cannot exceed 8. Consider splitting this story.'
+      )
 
       // And I should see guidance about story splitting
-      await expect(page.locator('[data-testid="split-story-help"]'))
-        .toContainText('Large stories should be split for better predictability')
+      await expect(page.locator('[data-testid="split-story-help"]')).toContainText(
+        'Large stories should be split for better predictability'
+      )
 
       // When I set valid story points
       await page.fill('[data-testid="story-points-input"]', '5')
@@ -201,7 +228,6 @@ test.describe('Enhanced Story Workflow (9-Stage Process)', () => {
   })
 
   test.describe('Role-Based Permissions', () => {
-
     test('Only Product Owners can accept completed stories', async ({ page }) => {
       // Given I am a contributor with a story awaiting acceptance
       await loginAs(page, 'contributor')
@@ -219,8 +245,9 @@ test.describe('Enhanced Story Workflow (9-Stage Process)', () => {
       await expect(acceptedOption).toBeDisabled()
 
       // And I should see an explanation
-      await expect(page.locator('[data-testid="acceptance-restriction"]'))
-        .toContainText('Only Product Owners can accept completed stories')
+      await expect(page.locator('[data-testid="acceptance-restriction"]')).toContainText(
+        'Only Product Owners can accept completed stories'
+      )
 
       // When I log in as Product Owner
       await loginAs(page, 'product_owner')
@@ -250,8 +277,9 @@ test.describe('Enhanced Story Workflow (9-Stage Process)', () => {
 
       // And I should see a tooltip explaining my read-only access
       await page.hover(`[data-testid="story-card-${storyId}"]`)
-      await expect(page.locator('[data-testid="sponsor-view-tooltip"]'))
-        .toContainText('Sponsors have read-only access to view progress and forecasts')
+      await expect(page.locator('[data-testid="sponsor-view-tooltip"]')).toContainText(
+        'Sponsors have read-only access to view progress and forecasts'
+      )
     })
   })
 })
@@ -267,7 +295,22 @@ async function addAcceptanceCriteria(page: any, given: string, when: string, the
 
 // Helper to add minimum required ACs
 async function addMinimumAcceptanceCriteria(page: any) {
-  await addAcceptanceCriteria(page, 'User wants to log in', 'They enter valid credentials', 'They are authenticated')
-  await addAcceptanceCriteria(page, 'User enters invalid credentials', 'They attempt to log in', 'They see an error message')
-  await addAcceptanceCriteria(page, 'User account is locked', 'They attempt to log in', 'They see lockout notification')
+  await addAcceptanceCriteria(
+    page,
+    'User wants to log in',
+    'They enter valid credentials',
+    'They are authenticated'
+  )
+  await addAcceptanceCriteria(
+    page,
+    'User enters invalid credentials',
+    'They attempt to log in',
+    'They see an error message'
+  )
+  await addAcceptanceCriteria(
+    page,
+    'User account is locked',
+    'They attempt to log in',
+    'They see lockout notification'
+  )
 }

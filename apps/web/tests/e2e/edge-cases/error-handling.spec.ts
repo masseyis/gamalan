@@ -1,5 +1,12 @@
 import { test, expect } from '@playwright/test'
-import { AuthPage, ProjectsPage, BacklogPage, BoardPage, AssistantPage, testUtils } from '../page-objects'
+import {
+  AuthPage,
+  ProjectsPage,
+  BacklogPage,
+  BoardPage,
+  AssistantPage,
+  testUtils,
+} from '../page-objects'
 
 test.describe('Error Handling and Edge Cases', () => {
   let authPage: AuthPage
@@ -47,8 +54,8 @@ test.describe('Error Handling and Edge Cases', () => {
       await projectsPage.gotoProjects()
 
       // Simulate slow API response
-      await page.route('**/api/projects', route => {
-        return new Promise(resolve => {
+      await page.route('**/api/projects', (route) => {
+        return new Promise((resolve) => {
           setTimeout(() => resolve(route.continue()), 10000) // 10 second delay
         })
       })
@@ -68,7 +75,7 @@ test.describe('Error Handling and Edge Cases', () => {
 
         const result = await Promise.race([
           loadingIndicator.isVisible({ timeout: 15000 }),
-          errorMessage.isVisible({ timeout: 15000 })
+          errorMessage.isVisible({ timeout: 15000 }),
         ]).catch(() => false)
 
         expect(result).toBeTruthy()
@@ -79,11 +86,11 @@ test.describe('Error Handling and Edge Cases', () => {
       await projectsPage.gotoProjects()
 
       // Simulate server error
-      await page.route('**/api/projects', route => {
+      await page.route('**/api/projects', (route) => {
         route.fulfill({
           status: 500,
           contentType: 'application/json',
-          body: JSON.stringify({ error: 'Internal Server Error' })
+          body: JSON.stringify({ error: 'Internal Server Error' }),
         })
       })
 
@@ -105,11 +112,11 @@ test.describe('Error Handling and Edge Cases', () => {
       await projectsPage.gotoProjects()
 
       // Simulate client error
-      await page.route('**/api/projects', route => {
+      await page.route('**/api/projects', (route) => {
         route.fulfill({
           status: 400,
           contentType: 'application/json',
-          body: JSON.stringify({ error: 'Bad Request', message: 'Invalid project data' })
+          body: JSON.stringify({ error: 'Bad Request', message: 'Invalid project data' }),
         })
       })
 
@@ -131,11 +138,11 @@ test.describe('Error Handling and Edge Cases', () => {
       await projectsPage.gotoProjects()
 
       // Simulate expired token
-      await page.route('**/api/**', route => {
+      await page.route('**/api/**', (route) => {
         route.fulfill({
           status: 401,
           contentType: 'application/json',
-          body: JSON.stringify({ error: 'Unauthorized', message: 'Token expired' })
+          body: JSON.stringify({ error: 'Unauthorized', message: 'Token expired' }),
         })
       })
 
@@ -144,7 +151,10 @@ test.describe('Error Handling and Edge Cases', () => {
 
       // Should redirect to login or show auth error
       const loginRedirect = page.url().includes('/sign-in')
-      const authError = await page.locator('text=unauthorized, text=expired').isVisible({ timeout: 5000 }).catch(() => false)
+      const authError = await page
+        .locator('text=unauthorized, text=expired')
+        .isVisible({ timeout: 5000 })
+        .catch(() => false)
 
       expect(loginRedirect || authError).toBeTruthy()
     })
@@ -153,16 +163,19 @@ test.describe('Error Handling and Edge Cases', () => {
       await projectsPage.gotoProjects()
 
       // Simulate malformed JSON response
-      await page.route('**/api/projects', route => {
+      await page.route('**/api/projects', (route) => {
         route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: 'invalid json response'
+          body: 'invalid json response',
         })
       })
 
       // Should handle parse error gracefully
-      const errorOccurred = await page.locator('text=error, [role="alert"]').isVisible({ timeout: 10000 }).catch(() => false)
+      const errorOccurred = await page
+        .locator('text=error, [role="alert"]')
+        .isVisible({ timeout: 10000 })
+        .catch(() => false)
 
       // Either shows error or falls back to cached/default data
       expect(errorOccurred || true).toBeTruthy() // Accept graceful handling
@@ -184,8 +197,14 @@ test.describe('Error Handling and Edge Cases', () => {
         await submitButton.click()
 
         // Should show validation error or truncate
-        const validationError = await page.locator('text=too long, text=limit').isVisible({ timeout: 5000 }).catch(() => false)
-        const successMessage = await page.locator('text=created').isVisible({ timeout: 5000 }).catch(() => false)
+        const validationError = await page
+          .locator('text=too long, text=limit')
+          .isVisible({ timeout: 5000 })
+          .catch(() => false)
+        const successMessage = await page
+          .locator('text=created')
+          .isVisible({ timeout: 5000 })
+          .catch(() => false)
 
         expect(validationError || successMessage).toBeTruthy()
       }
@@ -211,7 +230,7 @@ test.describe('Error Handling and Edge Cases', () => {
         // Should either create project or show validation error
         const result = await Promise.race([
           page.locator('text=created').isVisible({ timeout: 5000 }),
-          page.locator('[role="alert"]').isVisible({ timeout: 5000 })
+          page.locator('[role="alert"]').isVisible({ timeout: 5000 }),
         ]).catch(() => false)
 
         expect(result).toBeTruthy()
@@ -230,7 +249,7 @@ test.describe('Error Handling and Edge Cases', () => {
       await projectsPage.gotoProjects()
 
       // Intercept and modify API responses to include null values
-      await page.route('**/api/projects', route => {
+      await page.route('**/api/projects', (route) => {
         const response = {
           projects: [
             {
@@ -238,15 +257,15 @@ test.describe('Error Handling and Edge Cases', () => {
               name: null,
               description: undefined,
               createdAt: null,
-              updatedAt: ''
-            }
-          ]
+              updatedAt: '',
+            },
+          ],
         }
 
         route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify(response)
+          body: JSON.stringify(response),
         })
       })
 
@@ -276,11 +295,7 @@ test.describe('Error Handling and Edge Cases', () => {
         const submitButton = page.locator('button:has-text("Create"), button[type="submit"]')
 
         // Submit multiple times rapidly
-        await Promise.all([
-          submitButton.click(),
-          submitButton.click(),
-          submitButton.click()
-        ])
+        await Promise.all([submitButton.click(), submitButton.click(), submitButton.click()])
 
         // Should handle concurrent submissions gracefully
         const errorMessage = page.locator('text=already exists, text=duplicate')
@@ -288,7 +303,7 @@ test.describe('Error Handling and Edge Cases', () => {
 
         const result = await Promise.race([
           errorMessage.isVisible({ timeout: 10000 }),
-          successMessage.isVisible({ timeout: 10000 })
+          successMessage.isVisible({ timeout: 10000 }),
         ]).catch(() => false)
 
         expect(result).toBeTruthy()
@@ -296,7 +311,9 @@ test.describe('Error Handling and Edge Cases', () => {
         // Only one project should be created
         try {
           await projectsPage.gotoProjects()
-          const projectCards = page.locator('[data-testid="project-card"]:has-text("Concurrent Test Project")')
+          const projectCards = page.locator(
+            '[data-testid="project-card"]:has-text("Concurrent Test Project")'
+          )
           const count = await projectCards.count()
           expect(count).toBeLessThanOrEqual(1)
 
@@ -335,10 +352,12 @@ test.describe('Error Handling and Edge Cases', () => {
 
       // Check for memory leaks by looking at performance
       const memoryInfo = await page.evaluate(() => {
-        return (performance as any).memory ? {
-          usedJSHeapSize: (performance as any).memory.usedJSHeapSize,
-          totalJSHeapSize: (performance as any).memory.totalJSHeapSize
-        } : null
+        return (performance as any).memory
+          ? {
+              usedJSHeapSize: (performance as any).memory.usedJSHeapSize,
+              totalJSHeapSize: (performance as any).memory.totalJSHeapSize,
+            }
+          : null
       })
 
       if (memoryInfo) {
@@ -452,7 +471,10 @@ test.describe('Error Handling and Edge Cases', () => {
 
         // Should handle session timeout gracefully
         const redirectToLogin = page.url().includes('/sign-in')
-        const sessionError = await page.locator('text=session, text=expired').isVisible({ timeout: 5000 }).catch(() => false)
+        const sessionError = await page
+          .locator('text=session, text=expired')
+          .isVisible({ timeout: 5000 })
+          .catch(() => false)
 
         expect(redirectToLogin || sessionError).toBeTruthy()
       }
@@ -482,8 +504,14 @@ test.describe('Error Handling and Edge Cases', () => {
       await projectsPage.newProjectButton.click()
 
       // Should either work or show appropriate fallback
-      const formVisible = await page.locator('form, [data-testid="create-project-form"]').isVisible({ timeout: 5000 }).catch(() => false)
-      const errorMessage = await page.locator('text=error, [role="alert"]').isVisible({ timeout: 5000 }).catch(() => false)
+      const formVisible = await page
+        .locator('form, [data-testid="create-project-form"]')
+        .isVisible({ timeout: 5000 })
+        .catch(() => false)
+      const errorMessage = await page
+        .locator('text=error, [role="alert"]')
+        .isVisible({ timeout: 5000 })
+        .catch(() => false)
 
       expect(formVisible || errorMessage).toBeTruthy()
     })
@@ -496,7 +524,7 @@ test.describe('Error Handling and Edge Cases', () => {
       await page.addInitScript(() => {
         Object.defineProperty(document, 'cookie', {
           get: () => '',
-          set: () => false
+          set: () => false,
         })
       })
 
@@ -516,7 +544,7 @@ test.describe('Error Handling and Edge Cases', () => {
 
         const result = await Promise.race([
           passwordField.isVisible({ timeout: 10000 }),
-          cookieWarning.isVisible({ timeout: 10000 })
+          cookieWarning.isVisible({ timeout: 10000 }),
         ]).catch(() => false)
 
         expect(result).toBeTruthy()
@@ -548,7 +576,7 @@ test.describe('Error Handling and Edge Cases', () => {
         // Should handle the submission regardless of resize operations
         const result = await Promise.race([
           page.locator('text=created').isVisible({ timeout: 10000 }),
-          page.locator('[role="alert"]').isVisible({ timeout: 10000 })
+          page.locator('[role="alert"]').isVisible({ timeout: 10000 }),
         ]).catch(() => false)
 
         expect(result).toBeTruthy()
@@ -569,7 +597,7 @@ test.describe('Error Handling and Edge Cases', () => {
       await projectsPage.gotoProjects()
 
       // Mock API response with potential XSS content
-      await page.route('**/api/projects', route => {
+      await page.route('**/api/projects', (route) => {
         const response = {
           projects: [
             {
@@ -577,15 +605,15 @@ test.describe('Error Handling and Edge Cases', () => {
               name: '<script>window.xssExecuted = true</script>XSS Test',
               description: '<img src="x" onerror="window.xssExecuted = true">',
               createdAt: '2023-01-01T00:00:00Z',
-              updatedAt: '2023-01-01T00:00:00Z'
-            }
-          ]
+              updatedAt: '2023-01-01T00:00:00Z',
+            },
+          ],
         }
 
         route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify(response)
+          body: JSON.stringify(response),
         })
       })
 
@@ -611,8 +639,8 @@ test.describe('Error Handling and Edge Cases', () => {
       const response = await page.request.post('/api/projects', {
         data: {
           name: 'CSRF Test Project',
-          description: 'Testing CSRF protection'
-        }
+          description: 'Testing CSRF protection',
+        },
       })
 
       // Should reject request without proper CSRF protection
@@ -631,7 +659,7 @@ test.describe('Error Handling and Edge Cases', () => {
         const maliciousFile = {
           name: '../../malicious.exe',
           mimeType: 'application/exe',
-          buffer: Buffer.from('MZ') // EXE header
+          buffer: Buffer.from('MZ'), // EXE header
         }
 
         await fileInput.setInputFiles(maliciousFile)
@@ -641,7 +669,7 @@ test.describe('Error Handling and Edge Cases', () => {
         const hasError = await errorMessage.isVisible({ timeout: 5000 }).catch(() => false)
 
         // Either shows error or sanitizes filename
-        const fileName = await fileInput.evaluate(input => {
+        const fileName = await fileInput.evaluate((input) => {
           return (input as HTMLInputElement).files?.[0]?.name
         })
 

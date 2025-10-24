@@ -11,7 +11,9 @@ export class BacklogPage extends BasePage {
 
   constructor(page: Page) {
     super(page)
-    this.addStoryButton = page.locator('button:has-text("Add Story"), button:has-text("New Story"), a:has-text("New Story")')
+    this.addStoryButton = page.locator(
+      'button:has-text("Add Story"), button:has-text("New Story"), a:has-text("New Story")'
+    )
     this.storiesList = page.locator('[data-testid="stories-list"]')
     this.storyCards = page.locator('[data-testid="story-card"]')
     this.filterDropdown = page.locator('button:has-text("Filter")')
@@ -31,7 +33,9 @@ export class BacklogPage extends BasePage {
     const titleInput = this.page.locator('input[name="title"], input[placeholder*="title"]')
     await titleInput.fill(title)
 
-    const descInput = this.page.locator('textarea[name="description"], textarea[placeholder*="description"]')
+    const descInput = this.page.locator(
+      'textarea[name="description"], textarea[placeholder*="description"]'
+    )
     await descInput.fill(description)
 
     // Add acceptance criteria if provided
@@ -40,7 +44,9 @@ export class BacklogPage extends BasePage {
     }
 
     // Submit form
-    const submitButton = this.page.locator('button:has-text("Create"), button:has-text("Save"), button[type="submit"]')
+    const submitButton = this.page.locator(
+      'button:has-text("Create"), button:has-text("Save"), button[type="submit"]'
+    )
     await submitButton.click()
 
     await this.expectToastMessage('Story created successfully')
@@ -53,7 +59,9 @@ export class BacklogPage extends BasePage {
       await addCriterionButton.click()
     }
 
-    const criterionInput = this.page.locator('textarea[placeholder*="criterion"], input[placeholder*="criterion"]').last()
+    const criterionInput = this.page
+      .locator('textarea[placeholder*="criterion"], input[placeholder*="criterion"]')
+      .last()
     await criterionInput.fill(criterion)
   }
 
@@ -63,7 +71,10 @@ export class BacklogPage extends BasePage {
     await this.page.waitForURL(/.*\/backlog\/.*/, { timeout: 10000 })
   }
 
-  async updateStoryStatus(storyTitle: string, status: 'backlog' | 'ready' | 'in-progress' | 'review' | 'done') {
+  async updateStoryStatus(
+    storyTitle: string,
+    status: 'backlog' | 'ready' | 'in-progress' | 'review' | 'done'
+  ) {
     const storyCard = this.page.locator(`[data-testid="story-card"]:has-text("${storyTitle}")`)
     const statusDropdown = storyCard.locator('[data-testid="status-dropdown"]')
 
@@ -154,7 +165,7 @@ export class BacklogPage extends BasePage {
     // Wait for either stories list or empty state
     await Promise.race([
       this.storiesList.waitFor({ state: 'visible' }),
-      this.page.locator('[data-testid="empty-backlog"]').waitFor({ state: 'visible' })
+      this.page.locator('[data-testid="empty-backlog"]').waitFor({ state: 'visible' }),
     ])
   }
 }
@@ -191,7 +202,9 @@ export class StoryDetailPage extends BasePage {
     await titleInput.fill(title)
 
     if (description) {
-      const descInput = this.page.locator('textarea[name="description"], textarea[placeholder*="description"]')
+      const descInput = this.page.locator(
+        'textarea[name="description"], textarea[placeholder*="description"]'
+      )
       await descInput.fill(description)
     }
 

@@ -6,7 +6,12 @@ import { server } from '../mocks/server'
 
 // Mock Clerk module to use our test wrapper hooks
 vi.mock('@clerk/nextjs', () => {
-  const { useMockUser, useMockAuth, useMockClerk, useMockOrganization } = require('@/app/auth-provider-wrapper')
+  const {
+    useMockUser,
+    useMockAuth,
+    useMockClerk,
+    useMockOrganization,
+  } = require('@/app/auth-provider-wrapper')
 
   return {
     ClerkProvider: ({ children }: { children: React.ReactNode }) => children,
@@ -14,17 +19,28 @@ vi.mock('@clerk/nextjs', () => {
     useAuth: useMockAuth,
     useClerk: useMockClerk,
     useOrganization: useMockOrganization,
-    SignedIn: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children),
-    SignedOut: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children),
-    SignInButton: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children),
+    SignedIn: ({ children }: { children: React.ReactNode }) =>
+      React.createElement(React.Fragment, null, children),
+    SignedOut: ({ children }: { children: React.ReactNode }) =>
+      React.createElement(React.Fragment, null, children),
+    SignInButton: ({ children }: { children: React.ReactNode }) =>
+      React.createElement(React.Fragment, null, children),
     auth: () => ({
       userId: '01234567-89ab-cdef-0123-456789abcdef',
-      getToken: vi.fn().mockResolvedValue('valid-test-token')
+      getToken: vi.fn().mockResolvedValue('valid-test-token'),
     }),
-    SignIn: () => React.createElement('div', { 'data-testid': 'mock-sign-in' }, 'Mock Sign In Component'),
-    SignUp: () => React.createElement('div', { 'data-testid': 'mock-sign-up' }, 'Mock Sign Up Component'),
-    OrganizationSwitcher: () => React.createElement('div', { 'data-testid': 'mock-org-switcher' }, 'Mock Organization Switcher'),
-    UserButton: () => React.createElement('div', { 'data-testid': 'mock-user-button' }, 'Mock User Button'),
+    SignIn: () =>
+      React.createElement('div', { 'data-testid': 'mock-sign-in' }, 'Mock Sign In Component'),
+    SignUp: () =>
+      React.createElement('div', { 'data-testid': 'mock-sign-up' }, 'Mock Sign Up Component'),
+    OrganizationSwitcher: () =>
+      React.createElement(
+        'div',
+        { 'data-testid': 'mock-org-switcher' },
+        'Mock Organization Switcher'
+      ),
+    UserButton: () =>
+      React.createElement('div', { 'data-testid': 'mock-user-button' }, 'Mock User Button'),
     authMiddleware: (config: any) => (req: any, res: any, next: any) => next?.(),
   }
 })

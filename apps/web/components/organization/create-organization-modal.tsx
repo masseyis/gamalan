@@ -29,7 +29,7 @@ export function CreateOrganizationModal({ open, onClose }: CreateOrganizationMod
   const { toast } = useToast()
 
   // createOrganization function
-  const createOrganization = async (options: { name: string, slug: string }) => {
+  const createOrganization = async (options: { name: string; slug: string }) => {
     // Production implementation should use proper Clerk organization management
     throw new Error('Organization creation requires Clerk to be properly configured')
   }
@@ -198,4 +198,3 @@ export function CreateOrganizationModal({ open, onClose }: CreateOrganizationMod
     </Dialog>
   )
 }
-

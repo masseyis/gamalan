@@ -40,7 +40,9 @@ export class BasePage {
         await userMenu.click()
 
         // Look for sign out option
-        const signOutButton = this.page.locator('text=Sign out, text=Logout, button:has-text("Sign out")')
+        const signOutButton = this.page.locator(
+          'text=Sign out, text=Logout, button:has-text("Sign out")'
+        )
         if (await signOutButton.isVisible({ timeout: 2000 })) {
           await signOutButton.click()
         }

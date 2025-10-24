@@ -30,7 +30,7 @@ describe('Projects API Integration with Clerk Authentication', () => {
       lastActiveAt: Date.now(),
       expireAt: Date.now() + 3600000,
       user: 'user_test123',
-      getToken: vi.fn().mockResolvedValue('clerk_test_token_123')
+      getToken: vi.fn().mockResolvedValue('clerk_test_token_123'),
     },
     organization: {
       id: 'org_test123',
@@ -40,7 +40,7 @@ describe('Projects API Integration with Clerk Authentication', () => {
       adminDeleteEnabled: true,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-    }
+    },
   }
 
   beforeEach(() => {
@@ -54,7 +54,7 @@ describe('Projects API Integration with Clerk Authentication', () => {
       getToken: mockClerk.session.getToken,
       signOut: vi.fn(),
       openSignIn: vi.fn(),
-      openSignUp: vi.fn()
+      openSignUp: vi.fn(),
     }
   })
 
@@ -74,7 +74,7 @@ describe('Projects API Integration with Clerk Authentication', () => {
               description: 'First test project',
               organizationId: 'org_test123',
               createdAt: '2024-01-01T00:00:00Z',
-              updatedAt: '2024-01-01T00:00:00Z'
+              updatedAt: '2024-01-01T00:00:00Z',
             },
             {
               id: 'proj_456',
@@ -82,8 +82,8 @@ describe('Projects API Integration with Clerk Authentication', () => {
               description: 'Second test project',
               organizationId: 'org_test123',
               createdAt: '2024-01-02T00:00:00Z',
-              updatedAt: '2024-01-02T00:00:00Z'
-            }
+              updatedAt: '2024-01-02T00:00:00Z',
+            },
           ])
         })
       )
@@ -95,7 +95,7 @@ describe('Projects API Integration with Clerk Authentication', () => {
         id: 'proj_123',
         name: 'Test Project 1',
         description: 'First test project',
-        organizationId: 'org_test123'
+        organizationId: 'org_test123',
       })
     })
 
@@ -109,7 +109,7 @@ describe('Projects API Integration with Clerk Authentication', () => {
             description: `Description for project ${params.id}`,
             organizationId: 'org_test123',
             createdAt: '2024-01-01T00:00:00Z',
-            updatedAt: '2024-01-01T00:00:00Z'
+            updatedAt: '2024-01-01T00:00:00Z',
           })
         })
       )
@@ -120,27 +120,27 @@ describe('Projects API Integration with Clerk Authentication', () => {
         id: 'proj_123',
         name: 'Project proj_123',
         description: 'Description for project proj_123',
-        organizationId: 'org_test123'
+        organizationId: 'org_test123',
       })
     })
 
     it('should create a new project with authentication', async () => {
       const newProjectData = {
         name: 'New Test Project',
-        description: 'A brand new test project'
+        description: 'A brand new test project',
       }
 
       // Override MSW handler for this specific test
       server.use(
         http.post('*/projects', async ({ request }) => {
-          const body = await request.json() as any
+          const body = (await request.json()) as any
           return HttpResponse.json({
             id: 'proj_new_123',
             name: body.name,
             description: body.description,
             organizationId: 'org_test123',
             createdAt: '2024-01-01T00:00:00Z',
-            updatedAt: '2024-01-01T00:00:00Z'
+            updatedAt: '2024-01-01T00:00:00Z',
           })
         })
       )
@@ -151,14 +151,14 @@ describe('Projects API Integration with Clerk Authentication', () => {
         id: 'proj_new_123',
         name: 'New Test Project',
         description: 'A brand new test project',
-        organizationId: 'org_test123'
+        organizationId: 'org_test123',
       })
     })
 
     it('should update an existing project with authentication', async () => {
       const updateData = {
         name: 'Updated Project Name',
-        description: 'Updated description'
+        description: 'Updated description',
       }
 
       await expect(projectsApi.updateProject('proj_123', updateData)).resolves.toBeUndefined()
@@ -172,7 +172,7 @@ describe('Projects API Integration with Clerk Authentication', () => {
       const settings = {
         theme: 'dark',
         notifications: true,
-        autoSave: false
+        autoSave: false,
       }
 
       await expect(projectsApi.updateProjectSettings('proj_123', settings)).resolves.toBeUndefined()
@@ -224,7 +224,7 @@ describe('Projects API Integration with Clerk Authentication', () => {
     it('should throw error when creating project without auth', async () => {
       const newProjectData = {
         name: 'Unauthorized Project',
-        description: 'Should fail'
+        description: 'Should fail',
       }
 
       await expect(projectsApi.createProject(newProjectData)).rejects.toThrow()
@@ -258,8 +258,8 @@ describe('Projects API Integration with Clerk Authentication', () => {
               description: 'Project in different org',
               organizationId: 'org_different_456',
               createdAt: '2024-01-01T00:00:00Z',
-              updatedAt: '2024-01-01T00:00:00Z'
-            }
+              updatedAt: '2024-01-01T00:00:00Z',
+            },
           ])
         })
       )
@@ -292,8 +292,8 @@ describe('Projects API Integration with Clerk Authentication', () => {
               description: 'Personal project',
               organizationId: null,
               createdAt: '2024-01-01T00:00:00Z',
-              updatedAt: '2024-01-01T00:00:00Z'
-            }
+              updatedAt: '2024-01-01T00:00:00Z',
+            },
           ])
         })
       )
@@ -338,7 +338,7 @@ describe('Projects API Integration with Clerk Authentication', () => {
         http.get('*/projects', () => {
           return new HttpResponse('Invalid JSON response', {
             status: 200,
-            headers: { 'Content-Type': 'application/json' }
+            headers: { 'Content-Type': 'application/json' },
           })
         })
       )
@@ -373,7 +373,7 @@ describe('Projects API Integration with Clerk Authentication', () => {
       const promises = [
         projectsApi.getProjects(),
         projectsApi.getProject('proj_123'),
-        projectsApi.getProject('proj_456')
+        projectsApi.getProject('proj_456'),
       ]
 
       const results = await Promise.all(promises)

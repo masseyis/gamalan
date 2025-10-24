@@ -6,7 +6,7 @@ pub mod application;
 pub mod config;
 pub mod domain;
 
-pub use crate::{adapters::http::routes::create_backlog_router, config::AppConfig};
+pub use crate::config::AppConfig;
 
 // Local testing main - not used in production deployment
 #[tokio::main]

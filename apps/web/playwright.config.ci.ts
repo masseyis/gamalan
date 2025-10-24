@@ -7,10 +7,7 @@ import { defineConfig, devices } from '@playwright/test'
 export default defineConfig({
   testDir: './tests/e2e',
   /* Exclude heavy tests that run separately */
-  testIgnore: [
-    '**/*.cross-browser.spec.ts',
-    '**/performance-stress.spec.ts'
-  ],
+  testIgnore: ['**/*.cross-browser.spec.ts', '**/performance-stress.spec.ts'],
   fullyParallel: true,
   forbidOnly: true, // Always forbid test.only in CI
   retries: 2, // Retry failed tests twice
@@ -19,7 +16,7 @@ export default defineConfig({
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
     ['json', { outputFile: 'test-results/results.json' }],
     ['junit', { outputFile: 'test-results/junit.xml' }],
-    ['github'] // GitHub Actions annotations
+    ['github'], // GitHub Actions annotations
   ],
   globalTimeout: 15 * 60 * 1000, // 15 minutes for entire test suite
   timeout: 45 * 1000, // 45 seconds per test
@@ -67,10 +64,7 @@ export default defineConfig({
     // Core workflow tests
     {
       name: 'core workflows',
-      testMatch: [
-        '**/workflows/*.authenticated.spec.ts',
-        '**/edge-cases/error-handling.spec.ts'
-      ],
+      testMatch: ['**/workflows/*.authenticated.spec.ts', '**/edge-cases/error-handling.spec.ts'],
       use: {
         ...devices['Desktop Chrome'],
         storageState: 'tests/playwright/.clerk/user.json',
@@ -90,8 +84,12 @@ export default defineConfig({
       ...process.env,
       NODE_ENV: 'test',
       PORT: '3000',
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_Y2xlcmtfdGVzdF9wdWJsaXNoYWJsZV9rZXkxMjM0NTY3ODkwYWJjZGVm',
-      CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY || 'sk_test_Y2xlcmtfdGVzdF9zZWNyZXRfa2V5MTIzNDU2Nzg5MGFiY2RlZg==',
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
+        process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ||
+        'pk_test_Y2xlcmtfdGVzdF9wdWJsaXNoYWJsZV9rZXkxMjM0NTY3ODkwYWJjZGVm',
+      CLERK_SECRET_KEY:
+        process.env.CLERK_SECRET_KEY ||
+        'sk_test_Y2xlcmtfdGVzdF9zZWNyZXRfa2V5MTIzNDU2Nzg5MGFiY2RlZg==',
       E2E_CLERK_USER_USERNAME: process.env.E2E_CLERK_USER_USERNAME || 'test@example.com',
       E2E_CLERK_USER_PASSWORD: process.env.E2E_CLERK_USER_PASSWORD || 'testpassword123',
       NEXT_PUBLIC_ENABLE_MOCK_AUTH: 'true',

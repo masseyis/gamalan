@@ -2,6 +2,7 @@ use auth_clerk::JwtVerifier;
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use context_orchestrator::create_context_orchestrator_router;
+use event_bus::EventBus;
 use serde_json::json;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -21,7 +22,8 @@ async fn test_interpret_handler_success() {
         .await;
 
     if let Ok(pool) = pool_result {
-        let app = create_context_orchestrator_router(pool, verifier).await;
+        let event_bus = Arc::new(EventBus::new());
+        let app = create_context_orchestrator_router(pool, verifier, event_bus).await;
 
         let request = Request::builder()
             .uri("/interpret")

@@ -15,18 +15,8 @@ use common::AppError;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-pub struct UserRepositoryImpl {
-    pool: PgPool,
-}
-
-impl UserRepositoryImpl {
-    pub fn new(pool: PgPool) -> Self {
-        Self { pool }
-    }
-}
-
 #[async_trait]
-impl UserRepository for UserRepositoryImpl {
+impl UserRepository for PgPool {
     async fn upsert_user(&self, user: &User) -> Result<(), AppError> {
         let role_str = match user.role {
             crate::domain::user::UserRole::Sponsor => "sponsor",
@@ -63,7 +53,7 @@ impl UserRepository for UserRepositoryImpl {
         .bind(specialty_str)
         .bind(user.created_at)
         .bind(user.updated_at)
-        .execute(&self.pool)
+        .execute(self)
         .await
         .map_err(|_| AppError::InternalServerError)?;
 
@@ -73,26 +63,46 @@ impl UserRepository for UserRepositoryImpl {
     async fn get_user_by_external_id(&self, external_id: &str) -> Result<Option<User>, AppError> {
         let user_db = sqlx::query_as::<_, UserDb>("SELECT * FROM users WHERE external_id = $1")
             .bind(external_id)
-            .fetch_optional(&self.pool)
+            .fetch_optional(self)
             .await
             .map_err(|_| AppError::InternalServerError)?;
 
         Ok(user_db.map(Into::into))
     }
-}
 
-pub struct OrganizationRepositoryImpl {
-    pool: PgPool,
-}
+    async fn get_user_by_id(&self, id: &Uuid) -> Result<Option<User>, AppError> {
+        let user_db = sqlx::query_as::<_, UserDb>("SELECT * FROM users WHERE id = $1")
+            .bind(id)
+            .fetch_optional(self)
+            .await
+            .map_err(|_| AppError::InternalServerError)?;
 
-impl OrganizationRepositoryImpl {
-    pub fn new(pool: PgPool) -> Self {
-        Self { pool }
+        Ok(user_db.map(Into::into))
+    }
+
+    async fn search_users(&self, query: &str, limit: usize) -> Result<Vec<User>, AppError> {
+        let pattern = format!("%{}%", query.to_lowercase());
+        let rows = sqlx::query_as::<_, UserDb>(
+            r#"
+            SELECT *
+            FROM users
+            WHERE LOWER(email) LIKE $1 OR LOWER(external_id) LIKE $1
+            ORDER BY email ASC
+            LIMIT $2
+            "#,
+        )
+        .bind(pattern)
+        .bind(limit as i64)
+        .fetch_all(self)
+        .await
+        .map_err(|_| AppError::InternalServerError)?;
+
+        Ok(rows.into_iter().map(Into::into).collect())
     }
 }
 
 #[async_trait]
-impl OrganizationRepository for OrganizationRepositoryImpl {
+impl OrganizationRepository for PgPool {
     async fn create_organization(
         &self,
         request: &CreateOrganizationRequest,
@@ -102,7 +112,6 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
 
         // Start transaction
         let mut tx = self
-            .pool
             .begin()
             .await
             .map_err(|_| AppError::InternalServerError)?;
@@ -169,7 +178,7 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
             "SELECT * FROM organizations WHERE external_id = $1",
         )
         .bind(external_id)
-        .fetch_optional(&self.pool)
+        .fetch_optional(self)
         .await
         .map_err(|_| AppError::InternalServerError)?;
 
@@ -180,7 +189,7 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
         let org_db =
             sqlx::query_as::<_, OrganizationDb>("SELECT * FROM organizations WHERE id = $1")
                 .bind(id)
-                .fetch_optional(&self.pool)
+                .fetch_optional(self)
                 .await
                 .map_err(|_| AppError::InternalServerError)?;
 
@@ -224,7 +233,7 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
             "#,
         )
         .bind(user_id)
-        .fetch_all(&self.pool)
+        .fetch_all(self)
         .await
         .map_err(|_| AppError::InternalServerError)?;
 
@@ -288,7 +297,7 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
         .bind(role_str)
         .bind(now)
         .bind(now)
-        .execute(&self.pool)
+        .execute(self)
         .await
         .map_err(|_| AppError::InternalServerError)?;
 
@@ -312,7 +321,7 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
         )
         .bind(organization_id)
         .bind(user_id)
-        .fetch_optional(&self.pool)
+        .fetch_optional(self)
         .await
         .map_err(|_| AppError::InternalServerError)?;
 
@@ -325,7 +334,7 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
         )
         .bind(organization_id)
         .bind(user_id)
-        .execute(&self.pool)
+        .execute(self)
         .await
         .map_err(|_| AppError::InternalServerError)?;
 
@@ -333,42 +342,41 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
     }
 }
 
-pub struct TeamRepositoryImpl {
-    pool: PgPool,
-}
-
-impl TeamRepositoryImpl {
-    pub fn new(pool: PgPool) -> Self {
-        Self { pool }
-    }
-}
-
 #[async_trait]
-impl TeamRepository for TeamRepositoryImpl {
+impl TeamRepository for PgPool {
     async fn create_team(&self, request: &CreateTeamRequest) -> Result<Team, AppError> {
         let team_id = Uuid::new_v4();
         let now = Utc::now();
 
+        let description = request
+            .description
+            .as_ref()
+            .map(|value| value.trim())
+            .filter(|value| !value.is_empty())
+            .map(|value| value.to_string());
+
         sqlx::query(
             r#"
-            INSERT INTO teams (id, name, organization_id, active_sprint_id, velocity_history, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            INSERT INTO teams (id, name, description, organization_id, active_sprint_id, velocity_history, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             "#,
         )
         .bind(team_id)
         .bind(&request.name)
+        .bind(description.as_ref())
         .bind(request.organization_id)
         .bind(None::<Uuid>)
         .bind(Vec::<i32>::new()) // Empty velocity history
         .bind(now)
         .bind(now)
-        .execute(&self.pool)
+        .execute(self)
         .await
         .map_err(|_| AppError::InternalServerError)?;
 
         Ok(Team {
             id: team_id,
             name: request.name.clone(),
+            description: description.clone(),
             organization_id: request.organization_id,
             active_sprint_id: None,
             velocity_history: Vec::new(),
@@ -382,6 +390,7 @@ impl TeamRepository for TeamRepositoryImpl {
         struct TeamRow {
             id: Uuid,
             name: String,
+            description: Option<String>,
             organization_id: Uuid,
             active_sprint_id: Option<Uuid>,
             velocity_history: Vec<i32>,
@@ -390,10 +399,10 @@ impl TeamRepository for TeamRepositoryImpl {
         }
 
         let team_row = sqlx::query_as::<_, TeamRow>(
-            "SELECT id, name, organization_id, active_sprint_id, velocity_history, created_at, updated_at FROM teams WHERE id = $1"
+            "SELECT id, name, description, organization_id, active_sprint_id, velocity_history, created_at, updated_at FROM teams WHERE id = $1"
         )
         .bind(team_id)
-        .fetch_optional(&self.pool)
+        .fetch_optional(self)
         .await
         .map_err(|_| AppError::InternalServerError)?;
 
@@ -401,6 +410,7 @@ impl TeamRepository for TeamRepositoryImpl {
             Ok(Some(Team {
                 id: row.id,
                 name: row.name,
+                description: row.description,
                 organization_id: row.organization_id,
                 active_sprint_id: row.active_sprint_id,
                 velocity_history: row.velocity_history.into_iter().map(|v| v as u32).collect(),
@@ -417,6 +427,7 @@ impl TeamRepository for TeamRepositoryImpl {
         struct TeamRow {
             id: Uuid,
             name: String,
+            description: Option<String>,
             organization_id: Uuid,
             active_sprint_id: Option<Uuid>,
             velocity_history: Vec<i32>,
@@ -425,10 +436,10 @@ impl TeamRepository for TeamRepositoryImpl {
         }
 
         let team_rows = sqlx::query_as::<_, TeamRow>(
-            "SELECT id, name, organization_id, active_sprint_id, velocity_history, created_at, updated_at FROM teams WHERE organization_id = $1 ORDER BY name"
+            "SELECT id, name, description, organization_id, active_sprint_id, velocity_history, created_at, updated_at FROM teams WHERE organization_id = $1 ORDER BY name"
         )
         .bind(org_id)
-        .fetch_all(&self.pool)
+        .fetch_all(self)
         .await
         .map_err(|_| AppError::InternalServerError)?;
 
@@ -437,6 +448,7 @@ impl TeamRepository for TeamRepositoryImpl {
             .map(|row| Team {
                 id: row.id,
                 name: row.name,
+                description: row.description,
                 organization_id: row.organization_id,
                 active_sprint_id: row.active_sprint_id,
                 velocity_history: row.velocity_history.into_iter().map(|v| v as u32).collect(),
@@ -486,7 +498,7 @@ impl TeamRepository for TeamRepositoryImpl {
         .bind(true)
         .bind(now)
         .bind(now)
-        .execute(&self.pool)
+        .execute(self)
         .await
         .map_err(|_| AppError::InternalServerError)?;
 
@@ -524,7 +536,7 @@ impl TeamRepository for TeamRepositoryImpl {
             "SELECT id, team_id, user_id, role, specialty, is_active, joined_at, updated_at FROM team_memberships WHERE team_id = $1"
         )
         .bind(team_id)
-        .fetch_all(&self.pool)
+        .fetch_all(self)
         .await
         .map_err(|_| AppError::InternalServerError)?;
 
@@ -568,7 +580,7 @@ impl TeamRepository for TeamRepositoryImpl {
                 "SELECT id, external_id, email, role, specialty, created_at, updated_at FROM users WHERE id = $1"
             )
             .bind(membership.user_id)
-            .fetch_optional(&self.pool)
+            .fetch_optional(self)
             .await
             .map_err(|_| AppError::InternalServerError)?;
 
@@ -601,7 +613,7 @@ impl TeamRepository for TeamRepositoryImpl {
             "SELECT id, team_id, user_id, role, specialty, is_active, joined_at, updated_at FROM team_memberships WHERE user_id = $1"
         )
         .bind(user_id)
-        .fetch_all(&self.pool)
+        .fetch_all(self)
         .await
         .map_err(|_| AppError::InternalServerError)?;
 
@@ -612,6 +624,7 @@ impl TeamRepository for TeamRepositoryImpl {
             struct TeamRow {
                 id: Uuid,
                 name: String,
+                description: Option<String>,
                 organization_id: Uuid,
                 active_sprint_id: Option<Uuid>,
                 velocity_history: Vec<i32>,
@@ -620,10 +633,10 @@ impl TeamRepository for TeamRepositoryImpl {
             }
 
             let team_row = sqlx::query_as::<_, TeamRow>(
-                "SELECT id, name, organization_id, active_sprint_id, velocity_history, created_at, updated_at FROM teams WHERE id = $1"
+                "SELECT id, name, description, organization_id, active_sprint_id, velocity_history, created_at, updated_at FROM teams WHERE id = $1"
             )
             .bind(membership_row.team_id)
-            .fetch_optional(&self.pool)
+            .fetch_optional(self)
             .await
             .map_err(|_| AppError::InternalServerError)?;
 
@@ -631,6 +644,7 @@ impl TeamRepository for TeamRepositoryImpl {
                 let team = Team {
                     id: team_row.id,
                     name: team_row.name,
+                    description: team_row.description,
                     organization_id: team_row.organization_id,
                     active_sprint_id: team_row.active_sprint_id,
                     velocity_history: team_row
@@ -682,14 +696,19 @@ impl TeamRepository for TeamRepositoryImpl {
         sqlx::query(
             r#"
             UPDATE teams
-            SET name = $2, updated_at = $3
+            SET name = $2,
+                description = $3,
+                active_sprint_id = $4,
+                updated_at = $5
             WHERE id = $1
             "#,
         )
         .bind(team.id)
         .bind(&team.name)
+        .bind(&team.description)
+        .bind(team.active_sprint_id)
         .bind(team.updated_at)
-        .execute(&self.pool)
+        .execute(self)
         .await
         .map_err(|_| AppError::InternalServerError)?;
 
@@ -699,7 +718,7 @@ impl TeamRepository for TeamRepositoryImpl {
     async fn delete_team(&self, id: &Uuid) -> Result<(), AppError> {
         sqlx::query("DELETE FROM teams WHERE id = $1")
             .bind(id)
-            .execute(&self.pool)
+            .execute(self)
             .await
             .map_err(|_| AppError::InternalServerError)?;
 
@@ -710,7 +729,7 @@ impl TeamRepository for TeamRepositoryImpl {
         sqlx::query("DELETE FROM team_memberships WHERE team_id = $1 AND user_id = $2")
             .bind(team_id)
             .bind(user_id)
-            .execute(&self.pool)
+            .execute(self)
             .await
             .map_err(|_| AppError::InternalServerError)?;
 
@@ -727,7 +746,7 @@ impl TeamRepository for TeamRepositoryImpl {
         )
         .bind(membership.id)
         .bind(membership.updated_at)
-        .execute(&self.pool)
+        .execute(self)
         .await
         .map_err(|_| AppError::InternalServerError)?;
 
@@ -735,18 +754,8 @@ impl TeamRepository for TeamRepositoryImpl {
     }
 }
 
-pub struct SprintRepositoryImpl {
-    pool: PgPool,
-}
-
-impl SprintRepositoryImpl {
-    pub fn new(pool: PgPool) -> Self {
-        Self { pool }
-    }
-}
-
 #[async_trait]
-impl SprintRepository for SprintRepositoryImpl {
+impl SprintRepository for PgPool {
     async fn create_sprint(&self, request: &CreateSprintRequest) -> Result<Sprint, AppError> {
         let sprint_id = Uuid::new_v4();
         let now = Utc::now();
@@ -770,7 +779,7 @@ impl SprintRepository for SprintRepositoryImpl {
         .bind(0i32)
         .bind(now)
         .bind(now)
-        .execute(&self.pool)
+        .execute(self)
         .await
         .map_err(|_| AppError::InternalServerError)?;
 
@@ -812,7 +821,7 @@ impl SprintRepository for SprintRepositoryImpl {
             "SELECT id, name, team_id, goal, capacity_points, start_date, end_date, status, committed_points, completed_points, created_at, updated_at FROM sprints WHERE id = $1"
         )
         .bind(sprint_id)
-        .fetch_optional(&self.pool)
+        .fetch_optional(self)
         .await
         .map_err(|_| AppError::InternalServerError)?;
 
@@ -866,7 +875,7 @@ impl SprintRepository for SprintRepositoryImpl {
             "SELECT id, name, team_id, goal, capacity_points, start_date, end_date, status, committed_points, completed_points, created_at, updated_at FROM sprints WHERE team_id = $1 ORDER BY start_date DESC"
         )
         .bind(team_id)
-        .fetch_all(&self.pool)
+        .fetch_all(self)
         .await
         .map_err(|_| AppError::InternalServerError)?;
 
@@ -923,7 +932,7 @@ impl SprintRepository for SprintRepositoryImpl {
             "SELECT id, name, team_id, goal, capacity_points, start_date, end_date, status, committed_points, completed_points, created_at, updated_at FROM sprints WHERE team_id = $1 AND status = 'active' LIMIT 1"
         )
         .bind(team_id)
-        .fetch_optional(&self.pool)
+        .fetch_optional(self)
         .await
         .map_err(|_| AppError::InternalServerError)?;
 
@@ -973,7 +982,7 @@ impl SprintRepository for SprintRepositoryImpl {
         .bind(sprint.committed_points as i32)
         .bind(sprint.completed_points as i32)
         .bind(Utc::now())
-        .execute(&self.pool)
+        .execute(self)
         .await
         .map_err(|_| AppError::InternalServerError)?;
 
@@ -983,7 +992,7 @@ impl SprintRepository for SprintRepositoryImpl {
     async fn delete_sprint(&self, id: &Uuid) -> Result<(), AppError> {
         sqlx::query("DELETE FROM sprints WHERE id = $1")
             .bind(id)
-            .execute(&self.pool)
+            .execute(self)
             .await
             .map_err(|_| AppError::InternalServerError)?;
 

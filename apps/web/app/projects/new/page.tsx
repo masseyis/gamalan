@@ -29,7 +29,7 @@ export default function NewProjectPage() {
 
   const [form, setForm] = useState<CreateProjectForm>({
     name: '',
-    description: ''
+    description: '',
   })
 
   // Setup authentication for API clients
@@ -45,7 +45,7 @@ export default function NewProjectPage() {
       queryClient.invalidateQueries({ queryKey: ['projects'] })
       toast({
         title: 'Project created',
-        description: `${project.name} has been created successfully.`
+        description: `${project.name} has been created successfully.`,
       })
       router.push(`/projects/${project.id}/backlog`)
     },
@@ -53,34 +53,34 @@ export default function NewProjectPage() {
       toast({
         title: 'Failed to create project',
         description: 'Please check your input and try again.',
-        variant: 'destructive'
+        variant: 'destructive',
       })
       console.error('Create project error:', error)
-    }
+    },
   })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!form.name.trim()) {
       toast({
         title: 'Project name required',
         description: 'Please enter a name for your project.',
-        variant: 'destructive'
+        variant: 'destructive',
       })
       return
     }
 
     createProjectMutation.mutate({
       name: form.name.trim(),
-      description: form.description.trim()
+      description: form.description.trim(),
     })
   }
 
   const handleInputChange = (field: keyof CreateProjectForm, value: string) => {
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }))
   }
 
@@ -102,7 +102,10 @@ export default function NewProjectPage() {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto py-8">
         <div className="mb-8">
-          <Link href="/projects" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4">
+          <Link
+            href="/projects"
+            className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4"
+          >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Projects
           </Link>
@@ -116,9 +119,7 @@ export default function NewProjectPage() {
           <Card>
             <CardHeader>
               <CardTitle>Project Details</CardTitle>
-              <CardDescription>
-                Provide basic information about your new project
-              </CardDescription>
+              <CardDescription>Provide basic information about your new project</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">

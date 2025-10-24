@@ -113,6 +113,31 @@ impl From<AcceptanceCriteriaRow> for AcceptanceCriteria {
 }
 
 #[derive(Debug, FromRow)]
+pub struct ProjectRow {
+    pub id: Uuid,
+    pub name: String,
+    pub description: Option<String>,
+    pub team_id: Option<Uuid>,
+    pub organization_id: Option<Uuid>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl From<ProjectRow> for crate::domain::Project {
+    fn from(row: ProjectRow) -> Self {
+        Self {
+            id: row.id,
+            name: row.name,
+            description: row.description,
+            team_id: row.team_id,
+            organization_id: row.organization_id,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+        }
+    }
+}
+
+#[derive(Debug, FromRow)]
 pub struct LabelRow {
     #[allow(dead_code)]
     pub id: Uuid,

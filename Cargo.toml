@@ -15,6 +15,7 @@ members = [
     "services/gh-integrator",
     "services/analytics",
     "services/coach",
+    "libs/event-bus",
 ]
 
 [workspace.dependencies]
@@ -43,3 +44,4 @@ http-body-util = "0.1.2"
 uuid = { version = "1.11.0", features = ["v4", "v5", "serde"] }
 reqwest = { version = "0.12.11", features = ["json"] }
 chrono = { version = "0.4.38", features = ["serde"] }
+pubsub = "0.2"

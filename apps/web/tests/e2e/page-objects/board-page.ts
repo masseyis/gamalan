@@ -60,7 +60,10 @@ export class BoardPage extends BasePage {
     await this.page.locator(`button:has-text("${sprintName}")`).click()
   }
 
-  async dragTaskToColumn(taskTitle: string, targetColumn: 'todo' | 'in-progress' | 'review' | 'done') {
+  async dragTaskToColumn(
+    taskTitle: string,
+    targetColumn: 'todo' | 'in-progress' | 'review' | 'done'
+  ) {
     const taskCard = this.page.locator(`[data-testid="task-card"]:has-text("${taskTitle}")`)
     const targetColumnElement = this.page.locator(`[data-testid="column-${targetColumn}"]`)
 
@@ -142,7 +145,9 @@ export class BoardPage extends BasePage {
   }
 
   async expectSprintActive(sprintName: string) {
-    const activeSprintIndicator = this.page.locator(`[data-testid="active-sprint"]:has-text("${sprintName}")`)
+    const activeSprintIndicator = this.page.locator(
+      `[data-testid="active-sprint"]:has-text("${sprintName}")`
+    )
     await expect(activeSprintIndicator).toBeVisible()
   }
 

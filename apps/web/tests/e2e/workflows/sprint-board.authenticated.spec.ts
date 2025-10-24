@@ -26,8 +26,11 @@ test.describe('Sprint Board Workflows', () => {
     await backlogPage.gotoBacklog(projectId)
     const stories = [
       { title: 'User Authentication Story', description: 'Implement user login and registration' },
-      { title: 'Dashboard Display Story', description: 'Create user dashboard with project overview' },
-      { title: 'Data Export Story', description: 'Allow users to export project data' }
+      {
+        title: 'Dashboard Display Story',
+        description: 'Create user dashboard with project overview',
+      },
+      { title: 'Data Export Story', description: 'Allow users to export project data' },
     ]
 
     for (const story of stories) {
@@ -68,7 +71,9 @@ test.describe('Sprint Board Workflows', () => {
         await addStoryButton.click()
 
         // Select first available story
-        const storyCheckbox = boardPage.page.locator('[data-testid="story-selector"] input[type="checkbox"]').first()
+        const storyCheckbox = boardPage.page
+          .locator('[data-testid="story-selector"] input[type="checkbox"]')
+          .first()
         if (await storyCheckbox.isVisible({ timeout: 2000 })) {
           await storyCheckbox.check()
 
@@ -137,7 +142,9 @@ test.describe('Sprint Board Workflows', () => {
       await boardPage.gotoBoard(projectId)
 
       // Create a task in the todo column (if tasks are pre-populated)
-      const todoTasks = boardPage.page.locator('[data-testid="column-todo"] [data-testid="task-card"]')
+      const todoTasks = boardPage.page.locator(
+        '[data-testid="column-todo"] [data-testid="task-card"]'
+      )
       const taskCount = await todoTasks.count()
 
       if (taskCount > 0) {
@@ -163,7 +170,9 @@ test.describe('Sprint Board Workflows', () => {
     test('should update task status via dropdown', async () => {
       await boardPage.gotoBoard(projectId)
 
-      const todoTasks = boardPage.page.locator('[data-testid="column-todo"] [data-testid="task-card"]')
+      const todoTasks = boardPage.page.locator(
+        '[data-testid="column-todo"] [data-testid="task-card"]'
+      )
       const taskCount = await todoTasks.count()
 
       if (taskCount > 0) {
@@ -216,7 +225,9 @@ test.describe('Sprint Board Workflows', () => {
           await boardPage.removeTaskFromSprint(taskTitle.trim())
 
           // Verify task is back in backlog
-          const backlogTask = boardPage.page.locator(`[data-testid="backlog-task"]:has-text("${taskTitle.trim()}")`)
+          const backlogTask = boardPage.page.locator(
+            `[data-testid="backlog-task"]:has-text("${taskTitle.trim()}")`
+          )
           await expect(backlogTask).toBeVisible()
         }
       }
@@ -241,7 +252,9 @@ test.describe('Sprint Board Workflows', () => {
       await boardPage.gotoBoard(projectId)
 
       // If there are tasks, move one and verify counts update
-      const todoTasks = boardPage.page.locator('[data-testid="column-todo"] [data-testid="task-card"]')
+      const todoTasks = boardPage.page.locator(
+        '[data-testid="column-todo"] [data-testid="task-card"]'
+      )
       const initialTodoCount = await todoTasks.count()
 
       if (initialTodoCount > 0) {
@@ -329,7 +342,10 @@ test.describe('Sprint Board Workflows', () => {
       // Create a new project for empty board test
       const emptyProjectName = `Empty Board ${testUtils.generateProjectName()}`
       await projectsPage.gotoProjects()
-      const emptyProjectId = await projectsPage.createProject(emptyProjectName, 'Project for empty board test')
+      const emptyProjectId = await projectsPage.createProject(
+        emptyProjectName,
+        'Project for empty board test'
+      )
 
       await boardPage.gotoBoard(emptyProjectId)
       await boardPage.expectEmptyBoard()
@@ -343,9 +359,11 @@ test.describe('Sprint Board Workflows', () => {
       await boardPage.gotoBoard(projectId)
 
       // Simulate network failure
-      await boardPage.page.route('**/api/tasks/*', route => route.abort())
+      await boardPage.page.route('**/api/tasks/*', (route) => route.abort())
 
-      const todoTasks = boardPage.page.locator('[data-testid="column-todo"] [data-testid="task-card"]')
+      const todoTasks = boardPage.page.locator(
+        '[data-testid="column-todo"] [data-testid="task-card"]'
+      )
       const taskCount = await todoTasks.count()
 
       if (taskCount > 0) {
@@ -438,7 +456,9 @@ test.describe('Sprint Board Workflows', () => {
   // Cleanup after all tests
   test.afterAll(async ({ browser }) => {
     try {
-      const context = await browser.newContext({ storageState: 'tests/playwright/.clerk/user.json' })
+      const context = await browser.newContext({
+        storageState: 'tests/playwright/.clerk/user.json',
+      })
       const page = await context.newPage()
       const cleanupProjectsPage = new ProjectsPage(page)
 

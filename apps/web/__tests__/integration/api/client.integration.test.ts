@@ -19,7 +19,7 @@ describe('API Client Integration with Clerk Authentication', () => {
       lastActiveAt: Date.now(),
       expireAt: Date.now() + 3600000, // 1 hour from now
       user: 'user_test123',
-      getToken: vi.fn().mockResolvedValue('clerk_test_token_123')
+      getToken: vi.fn().mockResolvedValue('clerk_test_token_123'),
     },
     organization: {
       id: 'org_test123',
@@ -29,7 +29,7 @@ describe('API Client Integration with Clerk Authentication', () => {
       adminDeleteEnabled: true,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-    }
+    },
   }
 
   beforeEach(() => {
@@ -43,7 +43,7 @@ describe('API Client Integration with Clerk Authentication', () => {
       getToken: mockClerk.session.getToken,
       signOut: vi.fn(),
       openSignIn: vi.fn(),
-      openSignUp: vi.fn()
+      openSignUp: vi.fn(),
     }
   })
 
@@ -139,7 +139,7 @@ describe('API Client Integration with Clerk Authentication', () => {
       // Test session expiration handling
       const expiredSession = {
         ...mockClerk.session,
-        expireAt: Date.now() - 1000 // Expired 1 second ago
+        expireAt: Date.now() - 1000, // Expired 1 second ago
       }
 
       window.Clerk.session = expiredSession
@@ -152,7 +152,7 @@ describe('API Client Integration with Clerk Authentication', () => {
       const newOrganization = {
         id: 'org_new123',
         name: 'New Organization',
-        slug: 'new-org'
+        slug: 'new-org',
       }
 
       window.Clerk.organization = newOrganization

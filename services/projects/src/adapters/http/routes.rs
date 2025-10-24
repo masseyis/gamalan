@@ -2,7 +2,7 @@ use crate::adapters::http::handlers::{
     create_project, delete_project, get_project, get_project_settings, get_projects,
     update_project, update_project_settings,
 };
-use crate::adapters::persistence::repo::{ProjectRepositoryImpl, ProjectSettingsRepositoryImpl};
+use crate::application::ports::{ProjectRepository, ProjectSettingsRepository};
 use crate::application::usecases::ProjectUsecases;
 use auth_clerk::JwtVerifier;
 use shuttle_axum::axum::routing::get;
@@ -14,9 +14,9 @@ pub async fn create_projects_router(
     pool: PgPool,
     verifier: Arc<Mutex<JwtVerifier>>,
 ) -> shuttle_axum::axum::Router {
-    // Create repositories
-    let project_repo = Arc::new(ProjectRepositoryImpl::new(pool.clone()));
-    let settings_repo = Arc::new(ProjectSettingsRepositoryImpl::new(pool));
+    let pool = Arc::new(pool);
+    let project_repo: Arc<dyn ProjectRepository> = pool.clone();
+    let settings_repo: Arc<dyn ProjectSettingsRepository> = pool.clone();
 
     // Create use cases
     let project_usecases = Arc::new(ProjectUsecases::new(project_repo, settings_repo));

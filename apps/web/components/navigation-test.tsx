@@ -13,7 +13,7 @@ import {
   Plus,
   Sparkles,
   Command,
-  Zap
+  Zap,
 } from 'lucide-react'
 
 // Static test navigation component for E2E tests
@@ -27,8 +27,8 @@ export function NavigationTest() {
       isSignedIn={true}
       user={{
         name: 'Test User',
-      email: 'test@example.com',
-      initials: 'TU'
+        email: 'test@example.com',
+        initials: 'TU',
       }}
       signOut={() => Promise.resolve()}
       loading={false}
@@ -48,39 +48,45 @@ interface NavigationContentProps {
   loading: boolean
 }
 
-function NavigationContent({ pathname, isSignedIn, user, signOut, loading }: NavigationContentProps) {
+function NavigationContent({
+  pathname,
+  isSignedIn,
+  user,
+  signOut,
+  loading,
+}: NavigationContentProps) {
   const navigation = [
     {
       name: 'Dashboard',
       href: '/dashboard',
       icon: LayoutDashboard,
-      current: pathname === '/dashboard'
+      current: pathname === '/dashboard',
     },
     {
       name: 'Projects',
       href: '/projects',
       icon: FolderOpen,
-      current: pathname.startsWith('/projects')
+      current: pathname.startsWith('/projects'),
     },
     {
       name: 'Team',
       href: '/team',
       icon: Users,
-      current: pathname === '/team'
+      current: pathname === '/team',
     },
     {
       name: 'Reports',
       href: '/reports',
       icon: Settings,
-      current: pathname === '/reports'
+      current: pathname === '/reports',
     },
     {
       name: 'Assistant',
       href: '/assistant',
       icon: Sparkles,
       current: pathname === '/assistant',
-      isPrimary: true
-    }
+      isPrimary: true,
+    },
   ]
 
   return (
@@ -89,13 +95,16 @@ function NavigationContent({ pathname, isSignedIn, user, signOut, loading }: Nav
         <div className="flex justify-between items-center h-16">
           {/* Left side: Logo */}
           <div className="flex items-center gap-6">
-            <Link href="/assistant" className="flex items-center gap-3 group" prefetch={false} data-testid="battra-logo">
+            <Link
+              href="/assistant"
+              className="flex items-center gap-3 group"
+              prefetch={false}
+              data-testid="battra-logo"
+            >
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center group-hover:glow-yellow transition-all duration-200">
                 <Zap className="text-primary-foreground w-4 h-4" data-testid="zap-icon" />
               </div>
-              <span className="text-xl font-bold text-primary">
-                Battra AI
-              </span>
+              <span className="text-xl font-bold text-primary">Battra AI</span>
             </Link>
           </div>
 
@@ -106,21 +115,20 @@ function NavigationContent({ pathname, isSignedIn, user, signOut, loading }: Nav
               return (
                 <Link key={item.name} href={item.href} prefetch={false}>
                   <Button
-                    variant={item.current ? "default" : "ghost"}
+                    variant={item.current ? 'default' : 'ghost'}
                     className={`
                       gap-2 transition-all duration-200
-                      ${item.current
-                        ? "bg-primary text-primary-foreground shadow-soft"
-                        : "hover:bg-primary/10 hover:text-primary"
+                      ${
+                        item.current
+                          ? 'bg-primary text-primary-foreground shadow-soft'
+                          : 'hover:bg-primary/10 hover:text-primary'
                       }
-                      ${item.isPrimary ? "font-semibold" : ""}
+                      ${item.isPrimary ? 'font-semibold' : ''}
                     `}
                   >
                     <Icon className="h-4 w-4" />
                     {item.name}
-                    {item.isPrimary && (
-                      <div className="h-1.5 w-1.5 bg-primary rounded-full ml-1" />
-                    )}
+                    {item.isPrimary && <div className="h-1.5 w-1.5 bg-primary rounded-full ml-1" />}
                   </Button>
                 </Link>
               )
@@ -149,7 +157,11 @@ function NavigationContent({ pathname, isSignedIn, user, signOut, loading }: Nav
             </Button>
 
             {/* Notifications */}
-            <Button variant="ghost" size="icon" className="hover:bg-primary/10 hover:text-primary relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hover:bg-primary/10 hover:text-primary relative"
+            >
               <Bell className="h-4 w-4" />
               <div className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full text-xs flex items-center justify-center text-white">
                 <div className="h-1.5 w-1.5 bg-white rounded-full"></div>
@@ -157,7 +169,10 @@ function NavigationContent({ pathname, isSignedIn, user, signOut, loading }: Nav
             </Button>
 
             {/* Quick create */}
-            <Button size="sm" className="gap-2 shadow-soft hover:shadow-elevated transition-all duration-200">
+            <Button
+              size="sm"
+              className="gap-2 shadow-soft hover:shadow-elevated transition-all duration-200"
+            >
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">New</span>
             </Button>
@@ -166,12 +181,8 @@ function NavigationContent({ pathname, isSignedIn, user, signOut, loading }: Nav
             {isSignedIn ? (
               <div className="flex items-center gap-3 pl-3 border-l border-border/50">
                 <div className="hidden sm:block text-right">
-                  <div className="text-sm font-medium text-foreground">
-                    {user.name}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {user.email}
-                  </div>
+                  <div className="text-sm font-medium text-foreground">{user.name}</div>
+                  <div className="text-xs text-muted-foreground">{user.email}</div>
                 </div>
                 <Avatar
                   className="h-8 w-8 ring-2 ring-primary/20 hover:ring-primary/40 transition-all cursor-pointer"

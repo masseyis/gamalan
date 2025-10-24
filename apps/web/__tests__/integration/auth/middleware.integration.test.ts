@@ -5,7 +5,7 @@ import middleware, { config } from '@/middleware'
 
 // Mock Clerk middleware
 const mockAuth = {
-  protect: vi.fn()
+  protect: vi.fn(),
 }
 
 vi.mock('@clerk/nextjs/server', () => ({
@@ -26,7 +26,7 @@ vi.mock('@clerk/nextjs/server', () => ({
         return regex.test(url.pathname)
       })
     }
-  })
+  }),
 }))
 
 describe('Middleware Integration with Clerk Authentication', () => {
@@ -132,8 +132,8 @@ describe('Middleware Integration with Clerk Authentication', () => {
 
       const request = new NextRequest('http://localhost:3000/dashboard', {
         headers: {
-          'X-Organization-Id': 'org_456'
-        }
+          'X-Organization-Id': 'org_456',
+        },
       })
 
       await middleware(request, {} as any)
@@ -148,8 +148,8 @@ describe('Middleware Integration with Clerk Authentication', () => {
 
       const request = new NextRequest('http://localhost:3000/dashboard', {
         headers: {
-          'Authorization': 'Bearer valid_clerk_token'
-        }
+          Authorization: 'Bearer valid_clerk_token',
+        },
       })
 
       await middleware(request, {} as any)
@@ -162,8 +162,8 @@ describe('Middleware Integration with Clerk Authentication', () => {
 
       const request = new NextRequest('http://localhost:3000/dashboard', {
         headers: {
-          'Authorization': 'Bearer invalid_token'
-        }
+          Authorization: 'Bearer invalid_token',
+        },
       })
 
       await expect(middleware(request, {} as any)).rejects.toThrow('Invalid token')
@@ -174,8 +174,8 @@ describe('Middleware Integration with Clerk Authentication', () => {
 
       const request = new NextRequest('http://localhost:3000/dashboard', {
         headers: {
-          'Authorization': 'Bearer expired_token'
-        }
+          Authorization: 'Bearer expired_token',
+        },
       })
 
       await expect(middleware(request, {} as any)).rejects.toThrow('Token expired')
@@ -185,23 +185,14 @@ describe('Middleware Integration with Clerk Authentication', () => {
   describe('Route Matching Configuration', () => {
     it('should have correct matcher configuration', () => {
       expect(config.matcher).toBeDefined()
-      expect(config.matcher).toEqual([
-        '/((?!.+\\.[\\w]+$|_next).*)',
-        '/',
-        '/(api|trpc)(.*)'
-      ])
+      expect(config.matcher).toEqual(['/((?!.+\\.[\\w]+$|_next).*)', '/', '/(api|trpc)(.*)'])
     })
 
     it('should exclude static files from middleware', () => {
       // Test that static files would be excluded by the matcher
-      const staticPaths = [
-        '/favicon.ico',
-        '/logo.png',
-        '/styles.css',
-        '/script.js'
-      ]
+      const staticPaths = ['/favicon.ico', '/logo.png', '/styles.css', '/script.js']
 
-      staticPaths.forEach(path => {
+      staticPaths.forEach((path) => {
         // The first matcher pattern excludes files with extensions
         const pattern1 = '/((?!.+\\.[\\w]+$|_next).*)'
         const regex1 = new RegExp(pattern1)
@@ -215,7 +206,7 @@ describe('Middleware Integration with Clerk Authentication', () => {
       const nextPaths = [
         { path: '/_next/static/chunks/main.js', shouldMatch: false },
         { path: '/_next/image?url=test.jpg', shouldMatch: false },
-        { path: '/_next/webpack-hmr', shouldMatch: true } // Known issue: doesn't have file extension
+        { path: '/_next/webpack-hmr', shouldMatch: true }, // Known issue: doesn't have file extension
       ]
 
       nextPaths.forEach(({ path, shouldMatch }) => {
@@ -290,10 +281,10 @@ describe('Middleware Integration with Clerk Authentication', () => {
       const requests = [
         new NextRequest('http://localhost:3000/dashboard'),
         new NextRequest('http://localhost:3000/projects'),
-        new NextRequest('http://localhost:3000/team')
+        new NextRequest('http://localhost:3000/team'),
       ]
 
-      const promises = requests.map(request => middleware(request, {} as any))
+      const promises = requests.map((request) => middleware(request, {} as any))
 
       await Promise.all(promises)
 
@@ -315,11 +306,11 @@ describe('Middleware Integration with Clerk Authentication', () => {
       mockAuth.protect.mockResolvedValue(undefined)
       const startTime = Date.now()
 
-      const requests = Array(100).fill(null).map(() =>
-        new NextRequest('http://localhost:3000/dashboard')
-      )
+      const requests = Array(100)
+        .fill(null)
+        .map(() => new NextRequest('http://localhost:3000/dashboard'))
 
-      await Promise.all(requests.map(request => middleware(request, {} as any)))
+      await Promise.all(requests.map((request) => middleware(request, {} as any)))
 
       const endTime = Date.now()
       const duration = endTime - startTime

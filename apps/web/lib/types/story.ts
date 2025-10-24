@@ -12,10 +12,10 @@ export type StoryStatus =
 
 // Updated to match backend enum TaskStatus
 export type TaskStatus =
-  | 'available'  // Task is created and available for contributors to take ownership
-  | 'owned'      // Task is owned by a contributor ("I'm on it")
+  | 'available' // Task is created and available for contributors to take ownership
+  | 'owned' // Task is owned by a contributor ("I'm on it")
   | 'inprogress' // Task work is in progress
-  | 'completed'  // Task is completed
+  | 'completed' // Task is completed
 
 export type StoryPriority = 'low' | 'medium' | 'high' | 'critical'
 
@@ -26,7 +26,7 @@ export interface Story {
   description?: string
   status: StoryStatus
   priority?: StoryPriority
-  storyPoints?: number  // Max 8 points
+  storyPoints?: number // Max 8 points
   labels: string[]
   sprintId?: string
   assignedToUserId?: string
@@ -58,11 +58,11 @@ export interface Task {
 export interface AcceptanceCriterion {
   id: string
   storyId: string
-  acId?: string  // Optional for plan pack integration
+  acId?: string // Optional for plan pack integration
   description: string
   given: string
-  whenClause: string  // Backend uses when_clause to avoid SQL keyword
-  thenClause: string  // Backend uses then_clause to avoid SQL keyword
+  whenClause: string // Backend uses when_clause to avoid SQL keyword
+  thenClause: string // Backend uses then_clause to avoid SQL keyword
   createdAt: string
 }
 
@@ -83,7 +83,7 @@ export interface UpdateStoryRequest {
 }
 
 export interface CreateTaskRequest {
-  storyId: string
+  storyId?: string
   title: string
   description?: string
   acceptanceCriteriaRefs: string[]

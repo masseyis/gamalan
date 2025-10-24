@@ -6,7 +6,7 @@ export interface Team {
   description?: string
   organizationId: string
   activeSprintId?: string
-  velocityHistory: number[]  // Array of last 10 sprint velocities
+  velocityHistory: number[] // Array of last 10 sprint velocities
   createdAt: string
   updatedAt: string
 }
@@ -16,10 +16,16 @@ export interface TeamMembership {
   teamId: string
   userId: string
   role: UserRole
-  specialty?: ContributorSpecialty  // Only for contributors
+  specialty?: ContributorSpecialty // Only for contributors
   isActive: boolean
   joinedAt: string
   updatedAt: string
+}
+
+export interface AddTeamMemberRequest {
+  userId: string
+  role: UserRole
+  specialty?: ContributorSpecialty
 }
 
 export interface Sprint {
@@ -37,22 +43,14 @@ export interface Sprint {
   updatedAt: string
 }
 
-export type SprintStatus =
-  | 'planning'
-  | 'active'
-  | 'review'
-  | 'completed'
+export type SprintStatus = 'planning' | 'active' | 'review' | 'completed'
 
 // Request/Response interfaces
 export interface CreateTeamRequest {
   name: string
-  description?: string
-  organizationId: string
 }
 
-export interface CreateTeamResponse {
-  teamId: string
-}
+export type CreateTeamResponse = TeamWithMembers
 
 export interface JoinTeamRequest {
   teamId: string

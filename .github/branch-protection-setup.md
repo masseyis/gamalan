@@ -18,6 +18,7 @@ This guide will help you set up branch protection rules for the `main` branch to
 #### ✅ Required Settings
 
 **Protect matching branches:**
+
 - ✅ **Require a pull request before merging**
   - ✅ Require approvals: `1` (minimum)
   - ✅ Dismiss stale PR approvals when new commits are pushed
@@ -43,6 +44,7 @@ This guide will help you set up branch protection rules for the `main` branch to
 - ✅ **Restrict pushes that create pull requests**
 
 **Administrative settings:**
+
 - ✅ **Include administrators** (applies rules to admins too)
 - ✅ **Allow force pushes** → ❌ **Disable** (prevents force pushes)
 - ✅ **Allow deletions** → ❌ **Disable** (prevents branch deletion)
@@ -52,6 +54,7 @@ This guide will help you set up branch protection rules for the `main` branch to
 The following CI jobs must pass before a PR can be merged:
 
 #### Frontend CI Jobs (from `.github/workflows/frontend-ci.yml`):
+
 - `lint` - Lint and Type Check
 - `test` - Unit Tests
 - `e2e` - E2E Tests
@@ -59,6 +62,7 @@ The following CI jobs must pass before a PR can be merged:
 - `security` - Security Audit
 
 #### Rust CI Jobs (from `.github/workflows/ci.yml`):
+
 - `test-and-build-rust-workspace` - Core Rust tests and build
 - Any other critical Rust-specific checks
 
@@ -109,14 +113,17 @@ After setting up the rules:
 ## Troubleshooting
 
 ### Status Checks Not Appearing
+
 - Ensure the workflow names in the protection rules match exactly with your `.github/workflows/*.yml` job names
 - Status checks only appear after they've run at least once on a PR
 
 ### Can't Merge Despite Passing Checks
+
 - Check if "Require branches to be up to date before merging" is enabled
 - You may need to rebase or merge main into your feature branch
 
 ### Admin Override Needed
+
 - In emergency situations, admins can temporarily disable protection rules
 - Remember to re-enable them after the emergency
 

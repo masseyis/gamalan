@@ -3,14 +3,27 @@
 import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Plus, FolderOpen, Settings, Users, Sparkles, TrendingUp, Activity, Calendar } from 'lucide-react'
+import {
+  Plus,
+  FolderOpen,
+  Settings,
+  Users,
+  Sparkles,
+  TrendingUp,
+  Activity,
+  Calendar,
+  AlertCircle,
+  Loader2,
+} from 'lucide-react'
 import Link from 'next/link'
 import { projectsApi } from '@/lib/api/projects'
 import { useApiClient } from '@/lib/api/client'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useAuth } from '@clerk/nextjs'
 import { useRoles } from '@/components/providers/UserContextProvider'
 import { UserGuide } from '@/components/ui/user-guide'
+import { teamsApi } from '@/lib/api/teams'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 export default function ProjectsPage() {
   const { isLoaded } = useAuth()
@@ -24,11 +37,35 @@ export default function ProjectsPage() {
     }
   }, [setupClients, isLoaded])
 
-  const { data: projects = [], isLoading, error } = useQuery({
+  const {
+    data: projects = [],
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['projects'],
     queryFn: projectsApi.getProjects,
     enabled: isLoaded, // Only run query after Clerk is loaded
   })
+
+  const {
+    data: teams = [],
+    isLoading: teamsLoading,
+  } = useQuery({
+    queryKey: ['teams'],
+    queryFn: teamsApi.getTeams,
+    enabled: isLoaded,
+  })
+
+  const teamLookup = useMemo(() => {
+    const map = new Map<string, (typeof teams)[number]>()
+    teams.forEach((team) => map.set(team.id, team))
+    return map
+  }, [teams])
+
+  const projectsWithoutTeam = useMemo(
+    () => projects.filter((project) => !project.teamId).length,
+    [projects]
+  )
 
   // Show loading until Clerk is ready
   if (!isLoaded) {
@@ -100,9 +137,7 @@ export default function ProjectsPage() {
       <div className="container mx-auto py-8">
         <div className="mb-8 flex items-center justify-between animate-fade-in">
           <div>
-            <h1 className="text-4xl font-bold text-gradient-primary">
-              Projects
-            </h1>
+            <h1 className="text-4xl font-bold text-gradient-primary">Projects</h1>
             <p className="text-muted-foreground mt-2 text-lg">
               Manage your agile projects and track progress
             </p>
@@ -115,6 +150,19 @@ export default function ProjectsPage() {
           </Link>
         </div>
 
+        {projectsWithoutTeam > 0 && (
+          <Alert className="mb-8 border-amber-200 bg-amber-50">
+            <AlertTitle className="flex items-center gap-2 text-amber-900">
+              <AlertCircle className="h-4 w-4" />
+              {projectsWithoutTeam} project{projectsWithoutTeam > 1 ? 's' : ''} need a team
+            </AlertTitle>
+            <AlertDescription className="mt-2 text-amber-900/90">
+              Assign a delivery team to each project before sprint planning so commitments map to
+              the right squad.
+            </AlertDescription>
+          </Alert>
+        )}
+
         {projects.length === 0 ? (
           <Card className="card-elevated animate-scale-in">
             <CardContent className="p-12">
@@ -124,7 +172,8 @@ export default function ProjectsPage() {
                 </div>
                 <h3 className="text-2xl font-semibold mb-3">No projects yet</h3>
                 <p className="text-muted-foreground mb-8 max-w-md mx-auto text-lg">
-                  Create your first project to start managing stories, tasks, and sprint workflows with Salunga
+                  Create your first project to start managing stories, tasks, and sprint workflows
+                  with Salunga
                 </p>
                 <Link href="/projects/new">
                   <Button className="shadow-soft hover:shadow-elevated transition-all duration-200">
@@ -137,68 +186,113 @@ export default function ProjectsPage() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map((project, index) => (
-              <Card 
-                key={project.id} 
-                className="group card-elevated hover:shadow-elevated transition-all duration-300 hover:-translate-y-1 animate-slide-up" 
-                style={{animationDelay: `${index * 100}ms`}}
-                data-testid="project-card"
-              >
-                <CardHeader className="pb-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="p-2 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors">
-                          <FolderOpen className="h-5 w-5 text-primary" />
+            {projects.map((project, index) => {
+              const team = project.teamId ? teamLookup.get(project.teamId) : undefined
+
+              return (
+                <Card
+                  key={project.id}
+                  className="group card-elevated hover:shadow-elevated transition-all duration-300 hover:-translate-y-1 animate-slide-up"
+                  style={{ animationDelay: `${index * 100}ms` }}
+                  data-testid="project-card"
+                >
+                  <CardHeader className="pb-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="p-2 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors">
+                            <FolderOpen className="h-5 w-5 text-primary" />
+                          </div>
+                          <div className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-full">
+                            Project
+                          </div>
                         </div>
-                        <div className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-full">
-                          Project
-                        </div>
+                        <CardTitle className="text-lg leading-tight mb-2 group-hover:text-primary transition-colors">
+                          {project.name}
+                        </CardTitle>
+                        <CardDescription className="line-clamp-2 text-sm">
+                          {project.description || 'No description provided'}
+                        </CardDescription>
                       </div>
-                      <CardTitle className="text-lg leading-tight mb-2 group-hover:text-primary transition-colors">
-                        {project.name}
-                      </CardTitle>
-                      <CardDescription className="line-clamp-2 text-sm">
-                        {project.description || 'No description provided'}
-                      </CardDescription>
+                      <Link href={`/projects/${project.id}/settings`}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Settings className="h-4 w-4" />
+                        </Button>
+                      </Link>
                     </div>
-                    <Link href={`/projects/${project.id}/settings`}>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Settings className="h-4 w-4" />
-                      </Button>
-                    </Link>
-                  </div>
-                </CardHeader>
-                
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-2">
-                    <Link href={`/projects/${project.id}/backlog`}>
-                      <Button variant="outline" size="sm" className="w-full justify-start hover:bg-primary hover:text-primary-foreground transition-colors">
-                        <FolderOpen className="h-3 w-3 mr-2" />
-                        Backlog
-                      </Button>
-                    </Link>
-                    <Link href={`/projects/${project.id}/board`}>
-                      <Button variant="outline" size="sm" className="w-full justify-start hover:bg-primary hover:text-primary-foreground transition-colors">
-                        <Activity className="h-3 w-3 mr-2" />
-                        Board
-                      </Button>
-                    </Link>
-                  </div>
-                  
-                  <div className="pt-3 border-t flex items-center justify-between text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      Created {new Date(project.createdAt).toLocaleDateString()}
+                  </CardHeader>
+
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span className="flex items-center gap-2">
+                        <Users className="h-3 w-3" />
+                        {teamsLoading ? (
+                          <span className="flex items-center gap-1">
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            Loading team...
+                          </span>
+                        ) : team ? (
+                          <Link
+                            href={`/teams/${team.id}`}
+                            className="font-medium text-foreground transition-colors hover:text-primary"
+                          >
+                            {team.name}
+                          </Link>
+                        ) : (
+                          <span className="font-medium text-amber-600">No team assigned</span>
+                        )}
+                      </span>
+                      {!project.teamId && (
+                        <Link
+                          href={`/projects/${project.id}/settings`}
+                          className="text-primary transition-colors hover:text-primary/80"
+                        >
+                          Assign team
+                        </Link>
+                      )}
                     </div>
-                    <div className="flex items-center gap-1">
-                      <TrendingUp className="h-3 w-3" />
-                      Active
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <Link href={`/projects/${project.id}/backlog`}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full justify-start hover:bg-primary hover:text-primary-foreground transition-colors"
+                        >
+                          <FolderOpen className="h-3 w-3 mr-2" />
+                          Backlog
+                        </Button>
+                      </Link>
+                      <Link href={`/projects/${project.id}/board`}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full justify-start hover:bg-primary hover:text-primary-foreground transition-colors"
+                        >
+                          <Activity className="h-3 w-3 mr-2" />
+                          Board
+                        </Button>
+                      </Link>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+
+                    <div className="pt-3 border-t flex items-center justify-between text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        Created {new Date(project.createdAt).toLocaleDateString()}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <TrendingUp className="h-3 w-3" />
+                        Active
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
           </div>
         )}
 

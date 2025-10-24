@@ -2,7 +2,16 @@
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Plus, FolderOpen, Settings, Users, Sparkles, TrendingUp, Activity, Calendar } from 'lucide-react'
+import {
+  Plus,
+  FolderOpen,
+  Settings,
+  Users,
+  Sparkles,
+  TrendingUp,
+  Activity,
+  Calendar,
+} from 'lucide-react'
 import Link from 'next/link'
 import { useAuth } from '@clerk/nextjs'
 import { useRoles } from '@/components/providers/UserContextProvider'
@@ -32,9 +41,7 @@ export default function ProjectsPage({ projects }: { projects: Project[] }) {
       <div className="container mx-auto py-8">
         <div className="mb-8 flex items-center justify-between animate-fade-in">
           <div>
-            <h1 className="text-4xl font-bold text-gradient-primary">
-              Projects
-            </h1>
+            <h1 className="text-4xl font-bold text-gradient-primary">Projects</h1>
             <p className="text-muted-foreground mt-2 text-lg">
               Manage your agile projects and track progress
             </p>
@@ -56,7 +63,8 @@ export default function ProjectsPage({ projects }: { projects: Project[] }) {
                 </div>
                 <h3 className="text-2xl font-semibold mb-3">No projects yet</h3>
                 <p className="text-muted-foreground mb-8 max-w-md mx-auto text-lg">
-                  Create your first project to start managing stories, tasks, and sprint workflows with Salunga
+                  Create your first project to start managing stories, tasks, and sprint workflows
+                  with Salunga
                 </p>
                 <Link href="/projects/new">
                   <Button className="shadow-soft hover:shadow-elevated transition-all duration-200">
@@ -70,10 +78,10 @@ export default function ProjectsPage({ projects }: { projects: Project[] }) {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {projects.map((project, index) => (
-              <Card 
-                key={project.id} 
-                className="group card-elevated hover:shadow-elevated transition-all duration-300 hover:-translate-y-1 animate-slide-up" 
-                style={{animationDelay: `${index * 100}ms`}}
+              <Card
+                key={project.id}
+                className="group card-elevated hover:shadow-elevated transition-all duration-300 hover:-translate-y-1 animate-slide-up"
+                style={{ animationDelay: `${index * 100}ms` }}
                 data-testid="project-card"
               >
                 <CardHeader className="pb-4">
@@ -95,29 +103,41 @@ export default function ProjectsPage({ projects }: { projects: Project[] }) {
                       </CardDescription>
                     </div>
                     <Link href={`/projects/${project.id}/settings`}>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
                         <Settings className="h-4 w-4" />
                       </Button>
                     </Link>
                   </div>
                 </CardHeader>
-                
+
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 gap-2">
                     <Link href={`/projects/${project.id}/backlog`}>
-                      <Button variant="outline" size="sm" className="w-full justify-start hover:bg-primary hover:text-primary-foreground transition-colors">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full justify-start hover:bg-primary hover:text-primary-foreground transition-colors"
+                      >
                         <FolderOpen className="h-3 w-3 mr-2" />
                         Backlog
                       </Button>
                     </Link>
                     <Link href={`/projects/${project.id}/board`}>
-                      <Button variant="outline" size="sm" className="w-full justify-start hover:bg-primary hover:text-primary-foreground transition-colors">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full justify-start hover:bg-primary hover:text-primary-foreground transition-colors"
+                      >
                         <Activity className="h-3 w-3 mr-2" />
                         Board
                       </Button>
                     </Link>
                   </div>
-                  
+
                   <div className="pt-3 border-t flex items-center justify-between text-xs text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <Calendar className="h-3 w-3" />

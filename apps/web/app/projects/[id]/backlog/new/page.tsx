@@ -8,7 +8,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { ArrowLeft, Plus, Minus } from 'lucide-react'
 import Link from 'next/link'
 import { backlogApi } from '@/lib/api/backlog'
@@ -35,15 +41,13 @@ export default function NewStoryPage() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const projectId = params.id as string
-  
+
   const [form, setForm] = useState<CreateStoryForm>({
     title: '',
     description: '',
     priority: 'medium',
     storyPoints: null,
-    acceptanceCriteria: [
-      { given: '', when: '', then: '' }
-    ]
+    acceptanceCriteria: [{ given: '', when: '', then: '' }],
   })
 
   const { data: project } = useQuery({
@@ -53,17 +57,18 @@ export default function NewStoryPage() {
   })
 
   const createStoryMutation = useMutation({
-    mutationFn: () => backlogApi.createStory(projectId, {
-      projectId,
-      title: form.title.trim(),
-      description: form.description.trim(),
-      // Note: priority and storyPoints are not part of CreateStoryRequest type
-    }),
+    mutationFn: () =>
+      backlogApi.createStory(projectId, {
+        projectId,
+        title: form.title.trim(),
+        description: form.description.trim(),
+        // Note: priority and storyPoints are not part of CreateStoryRequest type
+      }),
     onSuccess: (story) => {
       queryClient.invalidateQueries({ queryKey: ['stories', projectId] })
       toast({
         title: 'Story created',
-        description: `${story.title} has been created successfully.`
+        description: `${story.title} has been created successfully.`,
       })
       router.push(`/projects/${projectId}/backlog`)
     },
@@ -71,20 +76,20 @@ export default function NewStoryPage() {
       toast({
         title: 'Failed to create story',
         description: 'Please check your input and try again.',
-        variant: 'destructive'
+        variant: 'destructive',
       })
       console.error('Create story error:', error)
-    }
+    },
   })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!form.title.trim()) {
       toast({
         title: 'Story title required',
         description: 'Please enter a title for your story.',
-        variant: 'destructive'
+        variant: 'destructive',
       })
       return
     }
@@ -92,36 +97,40 @@ export default function NewStoryPage() {
     createStoryMutation.mutate()
   }
 
-  const handleInputChange = (field: keyof Omit<CreateStoryForm, 'acceptanceCriteria'>, value: any) => {
-    setForm(prev => ({
+  const handleInputChange = (
+    field: keyof Omit<CreateStoryForm, 'acceptanceCriteria'>,
+    value: any
+  ) => {
+    setForm((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }))
   }
 
   const addAcceptanceCriterion = () => {
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
-      acceptanceCriteria: [
-        ...prev.acceptanceCriteria,
-        { given: '', when: '', then: '' }
-      ]
+      acceptanceCriteria: [...prev.acceptanceCriteria, { given: '', when: '', then: '' }],
     }))
   }
 
   const removeAcceptanceCriterion = (index: number) => {
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
-      acceptanceCriteria: prev.acceptanceCriteria.filter((_, i) => i !== index)
+      acceptanceCriteria: prev.acceptanceCriteria.filter((_, i) => i !== index),
     }))
   }
 
-  const updateAcceptanceCriterion = (index: number, field: 'given' | 'when' | 'then', value: string) => {
-    setForm(prev => ({
+  const updateAcceptanceCriterion = (
+    index: number,
+    field: 'given' | 'when' | 'then',
+    value: string
+  ) => {
+    setForm((prev) => ({
       ...prev,
       acceptanceCriteria: prev.acceptanceCriteria.map((ac, i) =>
         i === index ? { ...ac, [field]: value } : ac
-      )
+      ),
     }))
   }
 
@@ -129,7 +138,10 @@ export default function NewStoryPage() {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto py-8">
         <div className="mb-8">
-          <Link href={`/projects/${projectId}/backlog`} className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4">
+          <Link
+            href={`/projects/${projectId}/backlog`}
+            className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4"
+          >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Backlog
           </Link>
@@ -183,7 +195,9 @@ export default function NewStoryPage() {
                     <Label htmlFor="priority">Priority</Label>
                     <Select
                       value={form.priority}
-                      onValueChange={(value) => handleInputChange('priority', value as StoryPriority)}
+                      onValueChange={(value) =>
+                        handleInputChange('priority', value as StoryPriority)
+                      }
                       disabled={createStoryMutation.isPending}
                     >
                       <SelectTrigger>
@@ -202,7 +216,9 @@ export default function NewStoryPage() {
                     <Label htmlFor="storyPoints">Story Points</Label>
                     <Select
                       value={form.storyPoints?.toString() || ''}
-                      onValueChange={(value) => handleInputChange('storyPoints', value ? parseInt(value) : null)}
+                      onValueChange={(value) =>
+                        handleInputChange('storyPoints', value ? parseInt(value) : null)
+                      }
                       disabled={createStoryMutation.isPending}
                     >
                       <SelectTrigger>
@@ -248,14 +264,16 @@ export default function NewStoryPage() {
                         </Button>
                       )}
                     </div>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-2">
                         <Label>Given</Label>
                         <Input
                           placeholder="Given that..."
                           value={ac.given}
-                          onChange={(e) => updateAcceptanceCriterion(index, 'given', e.target.value)}
+                          onChange={(e) =>
+                            updateAcceptanceCriterion(index, 'given', e.target.value)
+                          }
                           disabled={createStoryMutation.isPending}
                         />
                       </div>
@@ -280,7 +298,7 @@ export default function NewStoryPage() {
                     </div>
                   </div>
                 ))}
-                
+
                 <Button
                   type="button"
                   variant="outline"
@@ -310,11 +328,7 @@ export default function NewStoryPage() {
                 )}
               </Button>
               <Link href={`/projects/${projectId}/backlog`}>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={createStoryMutation.isPending}
-                >
+                <Button type="button" variant="outline" disabled={createStoryMutation.isPending}>
                   Cancel
                 </Button>
               </Link>

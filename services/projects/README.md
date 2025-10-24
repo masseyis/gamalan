@@ -4,9 +4,9 @@ This service manages projects and their settings.
 
 ## Endpoints
 
--   `POST /projects`: Create a new project.
--   `PUT /projects/{id}/settings`: Update project settings.
--   `GET /projects/{id}`: Get project details.
+- `POST /projects`: Create a new project.
+- `PUT /projects/{id}/settings`: Update project settings.
+- `GET /projects/{id}`: Get project details.
 
 ## Local Development
 

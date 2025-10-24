@@ -18,7 +18,7 @@ export async function getProjects(): Promise<Project[]> {
 
   projectsClient.setUserContext({
     userId: authResult.userId,
-    organizationId: authResult.orgId,
+    organizationExternalId: authResult.orgId,
   })
 
   if (token) {
@@ -44,7 +44,7 @@ export async function getStories(projectId: string): Promise<Story[]> {
 
   backlogClient.setUserContext({
     userId: authResult.userId,
-    organizationId: authResult.orgId,
+    organizationExternalId: authResult.orgId,
   })
 
   if (token) {

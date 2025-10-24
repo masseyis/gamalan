@@ -9,24 +9,13 @@ use common::AppError;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-#[allow(dead_code)]
-pub struct PostgresRepository {
-    pool: PgPool,
-}
-
-impl PostgresRepository {
-    pub fn new(pool: PgPool) -> Self {
-        Self { pool }
-    }
-
-    pub async fn health_check(&self) -> Result<(), AppError> {
-        // TODO: Fix PostgreSQL SQLx integration - using stub for now
-        Ok(())
-    }
+pub async fn health_check(_pool: &PgPool) -> Result<(), AppError> {
+    // TODO: Fix PostgreSQL SQLx integration - using stub for now
+    Ok(())
 }
 
 #[async_trait]
-impl IntentHistoryRepository for PostgresRepository {
+impl IntentHistoryRepository for PgPool {
     async fn record_intent(&self, _intent: &IntentRecord) -> Result<(), AppError> {
         // TODO: Fix PostgreSQL SQLx integration - using stub for now
         Ok(())
@@ -60,7 +49,7 @@ impl IntentHistoryRepository for PostgresRepository {
 }
 
 #[async_trait]
-impl RateLimitRepository for PostgresRepository {
+impl RateLimitRepository for PgPool {
     async fn get_rate_limit_bucket(
         &self,
         _user_id: Uuid,
@@ -83,7 +72,7 @@ impl RateLimitRepository for PostgresRepository {
 }
 
 #[async_trait]
-impl AuditLogRepository for PostgresRepository {
+impl AuditLogRepository for PgPool {
     async fn record_action_audit(
         &self,
         _tenant_id: Uuid,
@@ -112,7 +101,7 @@ impl AuditLogRepository for PostgresRepository {
 }
 
 #[async_trait]
-impl ContextSnapshotRepository for PostgresRepository {
+impl ContextSnapshotRepository for PgPool {
     async fn save_context_snapshot(&self, _snapshot: &ContextSnapshot) -> Result<(), AppError> {
         // TODO: Fix PostgreSQL SQLx integration - using stub for now
         Ok(())

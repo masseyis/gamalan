@@ -62,7 +62,7 @@ export const handlers = [
   }),
 
   http.post('*/projects', async ({ request }) => {
-    const body = await request.json() as any
+    const body = (await request.json()) as any
     return HttpResponse.json({
       ...mockProject,
       ...body,
@@ -71,7 +71,7 @@ export const handlers = [
   }),
 
   http.patch('*/projects/:id', async ({ params, request }) => {
-    const body = await request.json() as any
+    const body = (await request.json()) as any
     // Return void (no content) for PATCH operations in this API design
     return new HttpResponse(null, { status: 204 })
   }),
@@ -98,7 +98,7 @@ export const handlers = [
   }),
 
   http.post('*/projects/:projectId/stories', async ({ params, request }) => {
-    const body = await request.json() as any
+    const body = (await request.json()) as any
     return HttpResponse.json({
       ...mockStory,
       ...body,
@@ -108,7 +108,7 @@ export const handlers = [
   }),
 
   http.patch('*/projects/:projectId/stories/:storyId', async ({ params, request }) => {
-    const body = await request.json() as any
+    const body = (await request.json()) as any
     return HttpResponse.json({
       ...mockStory,
       ...body,
@@ -118,7 +118,7 @@ export const handlers = [
   }),
 
   http.patch('*/projects/:projectId/stories/:storyId/status', async ({ params, request }) => {
-    const body = await request.json() as any
+    const body = (await request.json()) as any
     return HttpResponse.json({
       ...mockStory,
       id: params.storyId,
@@ -133,7 +133,7 @@ export const handlers = [
   }),
 
   http.post('*/projects/:projectId/stories/:storyId/tasks', async ({ params, request }) => {
-    const body = await request.json() as any
+    const body = (await request.json()) as any
     return HttpResponse.json({
       ...mockTask,
       ...body,
@@ -147,15 +147,18 @@ export const handlers = [
     return HttpResponse.json([mockAcceptanceCriterion])
   }),
 
-  http.post('*/projects/:projectId/stories/:storyId/acceptance-criteria', async ({ params, request }) => {
-    const body = await request.json() as any
-    return HttpResponse.json({
-      ...mockAcceptanceCriterion,
-      ...body,
-      id: 'new-ac-id',
-      storyId: params.storyId,
-    })
-  }),
+  http.post(
+    '*/projects/:projectId/stories/:storyId/acceptance-criteria',
+    async ({ params, request }) => {
+      const body = (await request.json()) as any
+      return HttpResponse.json({
+        ...mockAcceptanceCriterion,
+        ...body,
+        id: 'new-ac-id',
+        storyId: params.storyId,
+      })
+    }
+  ),
 
   // AI API
   http.post('*/readiness/:storyId/evaluate', () => {
@@ -168,37 +171,50 @@ export const handlers = [
     })
   }),
 
-  http.post('*/projects/:projectId/stories/:storyId/generate-acceptance-criteria', () => {
-    return HttpResponse.json({
-      suggestions: [
-        {
-          given: 'Given I am a logged-in user',
-          when: 'When I navigate to the dashboard',
-          then: 'Then I should see my project list',
-        },
-        {
-          given: 'Given I have no projects',
-          when: 'When I view the dashboard',
-          then: 'Then I should see an empty state with create project option',
-        },
-      ],
-    })
+  http.post('*/criteria/:storyId/generate', () => {
+    return HttpResponse.json([
+      {
+        id: 'mock-ac-1',
+        story_id: 'mock-story',
+        ac_id: 'AC1',
+        given: 'a user is viewing the dashboard',
+        when: 'they have pending tasks',
+        then: 'the dashboard displays the tasks in priority order',
+      },
+      {
+        id: 'mock-ac-2',
+        story_id: 'mock-story',
+        ac_id: 'AC2',
+        given: 'a user has unread notifications',
+        when: 'they open the dashboard',
+        then: 'a notification badge shows the unread count',
+      },
+    ])
   }),
 
-  http.post('*/projects/:projectId/stories/:storyId/suggest-breakdown', () => {
+  http.post('*/plans/from-story/:storyId', () => {
     return HttpResponse.json({
-      suggestions: [
+      proposed_tasks: [
         {
-          title: 'Create user authentication',
-          description: 'Implement login and registration functionality',
-          estimatedPoints: 8,
-          priority: 'high' as const,
+          title: 'Implement authentication UI',
+          description: 'Build login and registration forms with error handling',
+          acceptance_criteria_refs: ['AC1'],
+          estimated_effort: '3',
+          technical_notes: 'Use shared form components',
         },
         {
-          title: 'Design dashboard layout',
-          description: 'Create responsive dashboard design',
-          estimatedPoints: 5,
-          priority: 'medium' as const,
+          title: 'Create API gateway routes',
+          description: 'Configure routes for authentication and user management',
+          acceptance_criteria_refs: ['AC2'],
+          estimated_effort: '5',
+          technical_notes: null,
+        },
+        {
+          title: 'Add integration tests',
+          description: 'Write integration tests covering happy path and failure modes',
+          acceptance_criteria_refs: ['AC1', 'AC2'],
+          estimated_effort: '2',
+          technical_notes: 'Focus on regression scenarios',
         },
       ],
     })

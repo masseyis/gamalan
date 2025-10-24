@@ -7,20 +7,20 @@ import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { useAssistantStore } from '@/lib/stores/assistant'
 import { AISuggestion, SuggestionAction } from '@/lib/types/assistant'
-import { 
-  CheckCircle2, 
-  Edit3, 
-  X, 
-  AlertTriangle, 
-  FileText, 
-  Calendar, 
+import {
+  CheckCircle2,
+  Edit3,
+  X,
+  AlertTriangle,
+  FileText,
+  Calendar,
   Presentation,
   ListTodo,
   Clock,
   Sparkles,
   ChevronDown,
   ChevronUp,
-  RefreshCw
+  RefreshCw,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
@@ -34,18 +34,34 @@ const SUGGESTION_ICONS = {
 } as const
 
 const PRIORITY_CONFIG = {
-  low: { color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200', badge: 'bg-blue-100 text-blue-800' },
-  medium: { color: 'text-yellow-600', bg: 'bg-yellow-50 border-yellow-200', badge: 'bg-yellow-100 text-yellow-800' },
-  high: { color: 'text-orange-600', bg: 'bg-orange-50 border-orange-200', badge: 'bg-orange-100 text-orange-800' },
-  urgent: { color: 'text-red-600', bg: 'bg-red-50 border-red-200', badge: 'bg-red-100 text-red-800' },
+  low: {
+    color: 'text-blue-600',
+    bg: 'bg-blue-50 border-blue-200',
+    badge: 'bg-blue-100 text-blue-800',
+  },
+  medium: {
+    color: 'text-yellow-600',
+    bg: 'bg-yellow-50 border-yellow-200',
+    badge: 'bg-yellow-100 text-yellow-800',
+  },
+  high: {
+    color: 'text-orange-600',
+    bg: 'bg-orange-50 border-orange-200',
+    badge: 'bg-orange-100 text-orange-800',
+  },
+  urgent: {
+    color: 'text-red-600',
+    bg: 'bg-red-50 border-red-200',
+    badge: 'bg-red-100 text-red-800',
+  },
 } as const
 
-function SuggestionCard({ 
-  suggestion, 
-  onAction 
-}: { 
+function SuggestionCard({
+  suggestion,
+  onAction,
+}: {
   suggestion: AISuggestion
-  onAction: (action: SuggestionAction) => void 
+  onAction: (action: SuggestionAction) => void
 }) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -58,10 +74,14 @@ function SuggestionCard({
   const handleAction = async (type: SuggestionAction['type'], parameters?: Record<string, any>) => {
     setIsActioning(true)
     try {
-      await onAction({ 
-        type, 
-        suggestionId: suggestion.id, 
-        parameters: { ...parameters, editedDescription: editedDescription !== suggestion.description ? editedDescription : undefined }
+      await onAction({
+        type,
+        suggestionId: suggestion.id,
+        parameters: {
+          ...parameters,
+          editedDescription:
+            editedDescription !== suggestion.description ? editedDescription : undefined,
+        },
       })
     } finally {
       setIsActioning(false)
@@ -72,19 +92,20 @@ function SuggestionCard({
   const timeAgo = new Date(suggestion.createdAt).toLocaleString()
 
   return (
-    <Card className={cn("transition-all duration-200", priorityConfig.bg)} data-testid="suggestion-card">
+    <Card
+      className={cn('transition-all duration-200', priorityConfig.bg)}
+      data-testid="suggestion-card"
+    >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3 flex-1">
-            <div className={cn("p-2 rounded-lg bg-background border", priorityConfig.color)}>
+            <div className={cn('p-2 rounded-lg bg-background border', priorityConfig.color)}>
               <Icon className="h-4 w-4" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-start gap-2 mb-1">
-                <h3 className="font-semibold text-sm leading-tight">
-                  {suggestion.title}
-                </h3>
-                <Badge className={cn("text-xs", priorityConfig.badge)} variant="secondary">
+                <h3 className="font-semibold text-sm leading-tight">{suggestion.title}</h3>
+                <Badge className={cn('text-xs', priorityConfig.badge)} variant="secondary">
                   {suggestion.priority}
                 </Badge>
               </div>
@@ -100,18 +121,14 @@ function SuggestionCard({
               </div>
             </div>
           </div>
-          
+
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setIsExpanded(!isExpanded)}
             className="flex-shrink-0"
           >
-            {isExpanded ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : (
-              <ChevronDown className="h-4 w-4" />
-            )}
+            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </Button>
         </div>
       </CardHeader>
@@ -127,9 +144,7 @@ function SuggestionCard({
               placeholder="Edit suggestion description..."
             />
           ) : (
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              {editedDescription}
-            </p>
+            <p className="text-sm text-muted-foreground leading-relaxed">{editedDescription}</p>
           )}
         </div>
 
@@ -149,7 +164,9 @@ function SuggestionCard({
             {suggestion.suggestedAction && (
               <div>
                 <span className="font-medium">Suggested Action:</span>
-                <span className="ml-2 capitalize">{suggestion.suggestedAction.replace(/[_-]/g, ' ')}</span>
+                <span className="ml-2 capitalize">
+                  {suggestion.suggestedAction.replace(/[_-]/g, ' ')}
+                </span>
               </div>
             )}
           </div>
@@ -168,7 +185,7 @@ function SuggestionCard({
               Accept
             </Button>
           )}
-          
+
           <Button
             variant="outline"
             size="sm"
@@ -184,7 +201,7 @@ function SuggestionCard({
             <Edit3 className="mr-2 h-4 w-4" />
             {isEditing ? 'Save' : 'Edit'}
           </Button>
-          
+
           {isEditing && (
             <Button
               variant="ghost"
@@ -198,7 +215,7 @@ function SuggestionCard({
               Cancel
             </Button>
           )}
-          
+
           <Button
             variant="ghost"
             size="sm"
@@ -217,35 +234,31 @@ function SuggestionCard({
 export function SuggestionFeed() {
   const [filter, setFilter] = useState<'all' | AISuggestion['type']>('all')
   const { toast } = useToast()
-  
-  const {
-    suggestions,
-    fetchSuggestions,
-    applySuggestionAction
-  } = useAssistantStore()
 
-  const filteredSuggestions = suggestions.filter(suggestion => 
-    filter === 'all' || suggestion.type === filter
+  const { suggestions, fetchSuggestions, applySuggestionAction } = useAssistantStore()
+
+  const filteredSuggestions = suggestions.filter(
+    (suggestion) => filter === 'all' || suggestion.type === filter
   )
 
   // Group suggestions by priority
   const groupedSuggestions = {
-    urgent: filteredSuggestions.filter(s => s.priority === 'urgent'),
-    high: filteredSuggestions.filter(s => s.priority === 'high'),
-    medium: filteredSuggestions.filter(s => s.priority === 'medium'),
-    low: filteredSuggestions.filter(s => s.priority === 'low'),
+    urgent: filteredSuggestions.filter((s) => s.priority === 'urgent'),
+    high: filteredSuggestions.filter((s) => s.priority === 'high'),
+    medium: filteredSuggestions.filter((s) => s.priority === 'medium'),
+    low: filteredSuggestions.filter((s) => s.priority === 'low'),
   }
 
   const handleSuggestionAction = async (action: SuggestionAction) => {
     try {
       await applySuggestionAction(action)
-      
+
       const actionLabels = {
         accept: 'accepted',
         edit: 'updated',
-        dismiss: 'dismissed'
+        dismiss: 'dismissed',
       }
-      
+
       toast({
         title: `Suggestion ${actionLabels[action.type]}`,
         description: `The suggestion has been ${actionLabels[action.type]} successfully.`,
@@ -254,7 +267,7 @@ export function SuggestionFeed() {
       toast({
         title: 'Action Failed',
         description: 'Unable to process the suggestion action. Please try again.',
-        variant: 'destructive'
+        variant: 'destructive',
       })
     }
   }
@@ -270,7 +283,7 @@ export function SuggestionFeed() {
       toast({
         title: 'Refresh Failed',
         description: 'Unable to fetch new suggestions. Please try again.',
-        variant: 'destructive'
+        variant: 'destructive',
       })
     }
   }
@@ -293,13 +306,9 @@ export function SuggestionFeed() {
           <h2 className="text-lg font-semibold">AI Suggestions</h2>
           <Badge variant="secondary">{filteredSuggestions.length}</Badge>
         </div>
-        
+
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-          >
+          <Button variant="outline" size="sm" onClick={handleRefresh}>
             <RefreshCw className="mr-2 h-4 w-4" />
             Refresh
           </Button>
@@ -308,10 +317,10 @@ export function SuggestionFeed() {
 
       {/* Filter Tabs */}
       <div className="flex flex-wrap gap-2">
-        {suggestionTypes.map(type => (
+        {suggestionTypes.map((type) => (
           <Button
             key={type.value}
-            variant={filter === type.value ? "default" : "outline"}
+            variant={filter === type.value ? 'default' : 'outline'}
             size="sm"
             onClick={() => setFilter(type.value)}
             className="text-xs"
@@ -325,7 +334,7 @@ export function SuggestionFeed() {
       <div className="space-y-6">
         {Object.entries(groupedSuggestions).map(([priority, prioritySuggestions]) => {
           if (prioritySuggestions.length === 0) return null
-          
+
           return (
             <div key={priority} className="space-y-3">
               <div className="flex items-center gap-2">
@@ -334,9 +343,9 @@ export function SuggestionFeed() {
                   {prioritySuggestions.length}
                 </Badge>
               </div>
-              
+
               <div className="space-y-3">
-                {prioritySuggestions.map(suggestion => (
+                {prioritySuggestions.map((suggestion) => (
                   <SuggestionCard
                     key={suggestion.id}
                     suggestion={suggestion}
@@ -355,10 +364,9 @@ export function SuggestionFeed() {
             <Sparkles className="h-12 w-12 mx-auto mb-4 opacity-50" />
             <p className="text-lg">No suggestions available</p>
             <p className="text-sm mt-2">
-              {filter === 'all' 
+              {filter === 'all'
                 ? "I'll notify you when there are opportunities to improve your workflow"
-                : `No ${filter.replace('-', ' ')} suggestions at the moment`
-              }
+                : `No ${filter.replace('-', ' ')} suggestions at the moment`}
             </p>
           </CardContent>
         </Card>

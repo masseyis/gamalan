@@ -119,7 +119,9 @@ export class AssistantPage extends BasePage {
   }
 
   async expectMessageSent(message: string) {
-    const userMessage = this.messagesContainer.locator(`[data-testid="user-message"]:has-text("${message}")`)
+    const userMessage = this.messagesContainer.locator(
+      `[data-testid="user-message"]:has-text("${message}")`
+    )
     await expect(userMessage).toBeVisible({ timeout: 5000 })
   }
 
@@ -137,12 +139,16 @@ export class AssistantPage extends BasePage {
   }
 
   async expectAIResponseContains(text: string) {
-    const aiMessage = this.messagesContainer.locator(`[data-testid="ai-message"]:has-text("${text}")`)
+    const aiMessage = this.messagesContainer.locator(
+      `[data-testid="ai-message"]:has-text("${text}")`
+    )
     await expect(aiMessage).toBeVisible({ timeout: 30000 })
   }
 
   async expectEmptyChat() {
-    const messages = this.messagesContainer.locator('[data-testid="user-message"], [data-testid="ai-message"]')
+    const messages = this.messagesContainer.locator(
+      '[data-testid="user-message"], [data-testid="ai-message"]'
+    )
     await expect(messages).toHaveCount(0)
   }
 
@@ -166,7 +172,9 @@ export class AssistantPage extends BasePage {
   }
 
   async getMessageCount(): Promise<number> {
-    const messages = this.messagesContainer.locator('[data-testid="user-message"], [data-testid="ai-message"]')
+    const messages = this.messagesContainer.locator(
+      '[data-testid="user-message"], [data-testid="ai-message"]'
+    )
     return await messages.count()
   }
 
@@ -197,7 +205,9 @@ export class AssistantPage extends BasePage {
   }
 
   async expectMessageHistory(messageCount: number) {
-    const messages = this.messagesContainer.locator('[data-testid="user-message"], [data-testid="ai-message"]')
+    const messages = this.messagesContainer.locator(
+      '[data-testid="user-message"], [data-testid="ai-message"]'
+    )
     await expect(messages).toHaveCount(messageCount)
   }
 }

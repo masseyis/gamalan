@@ -14,19 +14,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useAssistantStore } from '@/lib/stores/assistant'
 import { ActionDraft, ActionStep } from '@/lib/types/assistant'
-import { 
+import {
   Eye,
-  CheckCircle2, 
-  AlertTriangle, 
-  Clock, 
-  Zap, 
+  CheckCircle2,
+  AlertTriangle,
+  Clock,
+  Zap,
   ArrowRight,
   Play,
   Settings,
   Bell,
   Shield,
   Lightbulb,
-  AlertCircle
+  AlertCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
@@ -57,7 +57,7 @@ const RISK_CONFIG = {
     color: 'text-red-600',
     bgColor: 'bg-red-50 border-red-200',
     badge: 'bg-red-100 text-red-800',
-  }
+  },
 } as const
 
 function ActionStepCard({ step, index }: { step: ActionStep; index: number }) {
@@ -101,7 +101,7 @@ function ActionStepCard({ step, index }: { step: ActionStep; index: number }) {
           </div>
         </div>
       </CardHeader>
-      
+
       {isExpanded && (
         <CardContent className="pt-0">
           <div className="pl-9 text-sm text-muted-foreground">
@@ -114,13 +114,8 @@ function ActionStepCard({ step, index }: { step: ActionStep; index: number }) {
 }
 
 export function ActionPreviewDialog() {
-  const {
-    pendingAction,
-    selectedCandidate,
-    isProcessing,
-    confirmAction,
-    cancelAction,
-  } = useAssistantStore()
+  const { pendingAction, selectedCandidate, isProcessing, confirmAction, cancelAction } =
+    useAssistantStore()
 
   // Only show preview if action has draft and we haven't confirmed yet
   const isOpen = !!pendingAction?.draft && !isProcessing
@@ -140,12 +135,15 @@ export function ActionPreviewDialog() {
     }
   }
 
-  const requiredSteps = draft.steps.filter(step => !step.canSkip)
-  const optionalSteps = draft.steps.filter(step => step.canSkip)
+  const requiredSteps = draft.steps.filter((step) => !step.canSkip)
+  const optionalSteps = draft.steps.filter((step) => step.canSkip)
 
   return (
     <Dialog open={isOpen} onOpenChange={() => !isProcessing && cancelAction()}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col" data-testid="action-preview-dialog">
+      <DialogContent
+        className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col"
+        data-testid="action-preview-dialog"
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Eye className="h-5 w-5" />
@@ -167,14 +165,16 @@ export function ActionPreviewDialog() {
             </CardHeader>
             <CardContent>
               <p className="text-sm leading-relaxed">{draft.summary}</p>
-              
+
               {entityTitle && (
                 <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
                   <ArrowRight className="h-3 w-3" />
-                  <span>Target: <strong>{entityTitle}</strong></span>
+                  <span>
+                    Target: <strong>{entityTitle}</strong>
+                  </span>
                 </div>
               )}
-              
+
               {draft.estimatedTime && (
                 <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
                   <Clock className="h-3 w-3" />
@@ -185,20 +185,24 @@ export function ActionPreviewDialog() {
           </Card>
 
           {/* Risk Assessment */}
-          <Alert className={cn("border", riskConfig.bgColor)}>
+          <Alert className={cn('border', riskConfig.bgColor)}>
             <div className="flex items-center gap-2">
-              <RiskIcon className={cn("h-4 w-4", riskConfig.color)} />
+              <RiskIcon className={cn('h-4 w-4', riskConfig.color)} />
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-sm font-medium">Risk Level</span>
-                  <Badge className={cn("text-xs", riskConfig.badge)} variant="secondary">
-                    {pendingAction.riskLevel.charAt(0).toUpperCase() + pendingAction.riskLevel.slice(1)}
+                  <Badge className={cn('text-xs', riskConfig.badge)} variant="secondary">
+                    {pendingAction.riskLevel.charAt(0).toUpperCase() +
+                      pendingAction.riskLevel.slice(1)}
                   </Badge>
                 </div>
                 <AlertDescription className="text-xs">
-                  {pendingAction.riskLevel === 'low' && 'This action is safe and easily reversible.'}
-                  {pendingAction.riskLevel === 'medium' && 'This action may affect multiple items. Review carefully.'}
-                  {pendingAction.riskLevel === 'high' && 'This action cannot be easily undone. Proceed with caution.'}
+                  {pendingAction.riskLevel === 'low' &&
+                    'This action is safe and easily reversible.'}
+                  {pendingAction.riskLevel === 'medium' &&
+                    'This action may affect multiple items. Review carefully.'}
+                  {pendingAction.riskLevel === 'high' &&
+                    'This action cannot be easily undone. Proceed with caution.'}
                 </AlertDescription>
               </div>
             </div>
@@ -210,7 +214,7 @@ export function ActionPreviewDialog() {
               <Settings className="h-4 w-4" />
               Steps to Execute ({requiredSteps.length} required)
             </h3>
-            
+
             <div className="space-y-3">
               {requiredSteps.map((step, index) => (
                 <ActionStepCard key={step.id} step={step} index={index} />
@@ -224,10 +228,10 @@ export function ActionPreviewDialog() {
                 </h4>
                 <div className="space-y-2">
                   {optionalSteps.map((step, index) => (
-                    <ActionStepCard 
-                      key={step.id} 
-                      step={step} 
-                      index={requiredSteps.length + index} 
+                    <ActionStepCard
+                      key={step.id}
+                      step={step}
+                      index={requiredSteps.length + index}
                     />
                   ))}
                 </div>
@@ -241,9 +245,7 @@ export function ActionPreviewDialog() {
               <CardTitle className="text-sm font-medium">Why I&apos;m Suggesting This</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                {draft.reasoning}
-              </p>
+              <p className="text-sm text-muted-foreground leading-relaxed">{draft.reasoning}</p>
             </CardContent>
           </Card>
 
@@ -256,9 +258,7 @@ export function ActionPreviewDialog() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-green-700 leading-relaxed">
-                {draft.expectedOutcome}
-              </p>
+              <p className="text-sm text-green-700 leading-relaxed">{draft.expectedOutcome}</p>
             </CardContent>
           </Card>
 
@@ -286,11 +286,7 @@ export function ActionPreviewDialog() {
         </div>
 
         <DialogFooter className="pt-4 border-t">
-          <Button
-            variant="outline"
-            onClick={cancelAction}
-            disabled={isProcessing}
-          >
+          <Button variant="outline" onClick={cancelAction} disabled={isProcessing}>
             Cancel
           </Button>
           <Button

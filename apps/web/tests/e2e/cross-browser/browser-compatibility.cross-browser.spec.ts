@@ -1,5 +1,14 @@
 import { test, expect } from '@playwright/test'
-import { AuthPage, ProjectsPage, BacklogPage, AssistantPage, testUtils, ensureAuthenticated, getTestCredentials, signOut } from '../page-objects'
+import {
+  AuthPage,
+  ProjectsPage,
+  BacklogPage,
+  AssistantPage,
+  testUtils,
+  ensureAuthenticated,
+  getTestCredentials,
+  signOut,
+} from '../page-objects'
 
 test.describe('Browser Compatibility Tests', () => {
   let authPage: AuthPage
@@ -10,7 +19,7 @@ test.describe('Browser Compatibility Tests', () => {
   test.beforeEach(async ({ page, browserName }) => {
     test.info().annotations.push({
       type: 'browser',
-      description: browserName
+      description: browserName,
     })
 
     authPage = new AuthPage(page)
@@ -57,7 +66,7 @@ test.describe('Browser Compatibility Tests', () => {
 
       // Check that CSS is loaded properly
       const body = page.locator('body')
-      const backgroundColor = await body.evaluate(el => {
+      const backgroundColor = await body.evaluate((el) => {
         return window.getComputedStyle(el).backgroundColor
       })
 
@@ -68,7 +77,7 @@ test.describe('Browser Compatibility Tests', () => {
       // Check that fonts are loaded
       const heading = page.locator('h1, h2').first()
       if (await heading.isVisible({ timeout: 5000 })) {
-        const fontFamily = await heading.evaluate(el => {
+        const fontFamily = await heading.evaluate((el) => {
           return window.getComputedStyle(el).fontFamily
         })
         expect(fontFamily).toBeTruthy()
@@ -81,12 +90,16 @@ test.describe('Browser Compatibility Tests', () => {
       await projectsPage.gotoProjects()
 
       // Test that JavaScript click handlers work - try to create a new project
-      const newButton = page.locator('button:has-text("New Project"), button:has-text("Create Your First Project")').first()
+      const newButton = page
+        .locator('button:has-text("New Project"), button:has-text("Create Your First Project")')
+        .first()
       if (await newButton.isVisible({ timeout: 5000 })) {
         await newButton.click()
 
         // Should trigger JavaScript navigation/form submission
-        const projectForm = page.locator('input[name="name"], input[placeholder*="project"], input[placeholder*="Project"]')
+        const projectForm = page.locator(
+          'input[name="name"], input[placeholder*="project"], input[placeholder*="Project"]'
+        )
         await expect(projectForm.first()).toBeVisible({ timeout: 10000 })
       } else {
         // Fallback - just verify JavaScript is working by checking for dynamic content
@@ -110,9 +123,11 @@ test.describe('Browser Compatibility Tests', () => {
       await projectsPage.gotoProjects()
 
       // Check that modern CSS layout is working
-      const projectsContainer = page.locator('[data-testid="projects-grid"], [data-testid="projects-list"]')
+      const projectsContainer = page.locator(
+        '[data-testid="projects-grid"], [data-testid="projects-list"]'
+      )
       if (await projectsContainer.isVisible({ timeout: 5000 })) {
-        const display = await projectsContainer.evaluate(el => {
+        const display = await projectsContainer.evaluate((el) => {
           return window.getComputedStyle(el).display
         })
 
@@ -142,7 +157,9 @@ test.describe('Browser Compatibility Tests', () => {
       // Already authenticated via global setup - test form validation on project creation
       await projectsPage.gotoProjects()
 
-      const newButton = page.locator('button:has-text("New Project"), button:has-text("Create Your First Project")').first()
+      const newButton = page
+        .locator('button:has-text("New Project"), button:has-text("Create Your First Project")')
+        .first()
       if (await newButton.isVisible({ timeout: 5000 })) {
         await newButton.click()
 
@@ -159,7 +176,7 @@ test.describe('Browser Compatibility Tests', () => {
             '.error',
             '[data-testid*="error"]',
             'input:invalid',
-            'input[aria-invalid="true"]'
+            'input[aria-invalid="true"]',
           ]
 
           let validationFound = false
@@ -173,7 +190,8 @@ test.describe('Browser Compatibility Tests', () => {
 
           // Either validation should be shown OR form shouldn't submit (stay on same page)
           const currentUrl = page.url()
-          const stayedOnForm = currentUrl.includes('projects') && !currentUrl.match(/\/projects\/[^\/]+$/)
+          const stayedOnForm =
+            currentUrl.includes('projects') && !currentUrl.match(/\/projects\/[^\/]+$/)
 
           expect(validationFound || stayedOnForm).toBeTruthy()
         }
@@ -197,13 +215,13 @@ test.describe('Browser Compatibility Tests', () => {
         const testFile = {
           name: 'test.txt',
           mimeType: 'text/plain',
-          buffer: Buffer.from('test file content')
+          buffer: Buffer.from('test file content'),
         }
 
         await fileInput.setInputFiles(testFile)
 
         // Verify file was selected
-        const fileName = await fileInput.evaluate(input => {
+        const fileName = await fileInput.evaluate((input) => {
           return (input as HTMLInputElement).files?.[0]?.name
         })
         expect(fileName).toBe('test.txt')
@@ -217,7 +235,9 @@ test.describe('Browser Compatibility Tests', () => {
       await projectsPage.gotoProjects()
 
       // Test various click events
-      const newButton = page.locator('button:has-text("New Project"), button:has-text("Create Your First Project")').first()
+      const newButton = page
+        .locator('button:has-text("New Project"), button:has-text("Create Your First Project")')
+        .first()
       if (await newButton.isVisible({ timeout: 5000 })) {
         await newButton.click()
 
@@ -231,7 +251,9 @@ test.describe('Browser Compatibility Tests', () => {
         // Check multiple possible outcomes
         const modalVisible = await modal.isVisible({ timeout: 3000 }).catch(() => false)
         const urlChanged = page.url() !== currentUrl
-        const formVisible = await page.locator('input[name="name"], input[placeholder*="project"]').isVisible({ timeout: 3000 })
+        const formVisible = await page
+          .locator('input[name="name"], input[placeholder*="project"]')
+          .isVisible({ timeout: 3000 })
 
         expect(modalVisible || urlChanged || formVisible).toBeTruthy()
       } else {
@@ -249,7 +271,9 @@ test.describe('Browser Compatibility Tests', () => {
       if (await chatInput.isVisible({ timeout: 5000 })) {
         await page.keyboard.press('Meta+k') // Cmd/Ctrl+K
 
-        const isFocused = await chatInput.evaluate(el => el === document.activeElement).catch(() => false)
+        const isFocused = await chatInput
+          .evaluate((el) => el === document.activeElement)
+          .catch(() => false)
         expect(isFocused).toBeTruthy()
 
         // Test Enter key submission
@@ -274,7 +298,7 @@ test.describe('Browser Compatibility Tests', () => {
         'nav a[href*="projects"]',
         'nav a',
         'button:has-text("Projects")',
-        'nav button'
+        'nav button',
       ]
 
       let navItem = null
@@ -290,7 +314,7 @@ test.describe('Browser Compatibility Tests', () => {
         await navItem.hover()
 
         // Check if hover styles are applied
-        const color = await navItem.evaluate(el => {
+        const color = await navItem.evaluate((el) => {
           return window.getComputedStyle(el).color
         })
         expect(color).toBeTruthy()
@@ -328,7 +352,7 @@ test.describe('Browser Compatibility Tests', () => {
         await expect(focusedElement).toBeVisible()
 
         // Check focus indicator
-        const outline = await focusedElement.evaluate(el => {
+        const outline = await focusedElement.evaluate((el) => {
           const style = window.getComputedStyle(el)
           return style.outline || style.boxShadow
         })
@@ -346,7 +370,7 @@ test.describe('Browser Compatibility Tests', () => {
       let apiRequestMade = false
 
       // Monitor API requests
-      page.on('request', request => {
+      page.on('request', (request) => {
         if (request.url().includes('/api/')) {
           apiRequestMade = true
         }
@@ -363,7 +387,7 @@ test.describe('Browser Compatibility Tests', () => {
       // Already authenticated via global setup
 
       // Simulate API failure
-      await page.route('**/api/projects', route => route.abort())
+      await page.route('**/api/projects', (route) => route.abort())
 
       await projectsPage.gotoProjects()
 
@@ -375,7 +399,7 @@ test.describe('Browser Compatibility Tests', () => {
         'text=offline',
         'text=unavailable',
         'text=Something went wrong',
-        'text=Unable to load'
+        'text=Unable to load',
       ]
 
       let hasErrorHandling = false
@@ -402,7 +426,7 @@ test.describe('Browser Compatibility Tests', () => {
         await Promise.all([
           projectsPage.gotoProjects(),
           assistantPage.gotoAssistant(),
-          authPage.navigateTo('Dashboard')
+          authPage.navigateTo('Dashboard'),
         ])
       } catch (error) {
         // Some navigation might fail due to concurrency, but app should still be functional
@@ -412,9 +436,9 @@ test.describe('Browser Compatibility Tests', () => {
       await page.waitForTimeout(2000) // Allow navigation to settle
       const currentUrl = page.url()
       const validUrls = ['projects', 'assistant', 'dashboard']
-      const isOnValidPage = validUrls.some(url => currentUrl.includes(url))
+      const isOnValidPage = validUrls.some((url) => currentUrl.includes(url))
 
-      expect(isOnValidPage || await page.locator('body').isVisible()).toBeTruthy()
+      expect(isOnValidPage || (await page.locator('body').isVisible())).toBeTruthy()
     })
   })
 
@@ -425,9 +449,11 @@ test.describe('Browser Compatibility Tests', () => {
       // Check if authentication state is stored
       const authData = await page.evaluate(() => {
         try {
-          return localStorage.getItem('clerk-db-jwt') ||
-                 localStorage.getItem('auth-token') ||
-                 Object.keys(localStorage).some(key => key.includes('auth') || key.includes('clerk'))
+          return (
+            localStorage.getItem('clerk-db-jwt') ||
+            localStorage.getItem('auth-token') ||
+            Object.keys(localStorage).some((key) => key.includes('auth') || key.includes('clerk'))
+          )
         } catch (error) {
           // LocalStorage may not be accessible in some browser configurations
           return true // Consider test passed if localStorage is restricted
@@ -471,10 +497,11 @@ test.describe('Browser Compatibility Tests', () => {
       const cookies = await page.context().cookies()
 
       // Should have session/auth cookies
-      const hasAuthCookies = cookies.some(cookie =>
-        cookie.name.includes('session') ||
-        cookie.name.includes('auth') ||
-        cookie.name.includes('clerk')
+      const hasAuthCookies = cookies.some(
+        (cookie) =>
+          cookie.name.includes('session') ||
+          cookie.name.includes('auth') ||
+          cookie.name.includes('clerk')
       )
 
       expect(hasAuthCookies).toBeTruthy()
@@ -485,7 +512,7 @@ test.describe('Browser Compatibility Tests', () => {
     test('should handle JavaScript errors gracefully', async ({ page, browserName }) => {
       let jsErrors: string[] = []
 
-      page.on('pageerror', error => {
+      page.on('pageerror', (error) => {
         jsErrors.push(error.message)
       })
 
@@ -493,10 +520,11 @@ test.describe('Browser Compatibility Tests', () => {
       await projectsPage.gotoProjects()
 
       // Should not have critical JavaScript errors
-      const criticalErrors = jsErrors.filter(error =>
-        !error.includes('Non-Error promise rejection') &&
-        !error.includes('ResizeObserver') &&
-        !error.includes('firebase') // Ignore third-party errors
+      const criticalErrors = jsErrors.filter(
+        (error) =>
+          !error.includes('Non-Error promise rejection') &&
+          !error.includes('ResizeObserver') &&
+          !error.includes('firebase') // Ignore third-party errors
       )
 
       expect(criticalErrors).toHaveLength(0)
@@ -554,7 +582,7 @@ test.describe('Browser Compatibility Tests', () => {
       for (const zoom of zoomLevels) {
         await page.setViewportSize({
           width: Math.floor(1200 * zoom),
-          height: Math.floor(800 * zoom)
+          height: Math.floor(800 * zoom),
         })
 
         await projectsPage.gotoProjects()

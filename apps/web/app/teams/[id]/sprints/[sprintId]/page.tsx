@@ -15,12 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   ArrowLeft,
   Calendar,
@@ -61,7 +56,11 @@ export default function SprintDetailPage() {
     enabled: !!teamId,
   })
 
-  const { data: sprint, isLoading: sprintLoading, error: sprintError } = useQuery({
+  const {
+    data: sprint,
+    isLoading: sprintLoading,
+    error: sprintError,
+  } = useQuery({
     queryKey: ['sprint', teamId, sprintId],
     queryFn: () => sprintsApi.getSprint(teamId, sprintId),
     enabled: !!teamId && !!sprintId,
@@ -76,15 +75,15 @@ export default function SprintDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['teams', teamId] })
       setStatusUpdateDialogOpen(false)
       toast({
-        title: "Sprint status updated",
-        description: "Sprint status has been changed successfully",
+        title: 'Sprint status updated',
+        description: 'Sprint status has been changed successfully',
       })
     },
     onError: (error) => {
       toast({
-        title: "Failed to update sprint status",
-        description: error instanceof Error ? error.message : "An error occurred",
-        variant: "destructive",
+        title: 'Failed to update sprint status',
+        description: error instanceof Error ? error.message : 'An error occurred',
+        variant: 'destructive',
       })
     },
   })
@@ -95,16 +94,16 @@ export default function SprintDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['team-sprints', teamId] })
       queryClient.invalidateQueries({ queryKey: ['teams', teamId] })
       toast({
-        title: "Sprint deleted",
-        description: "Sprint has been permanently deleted",
+        title: 'Sprint deleted',
+        description: 'Sprint has been permanently deleted',
       })
       window.location.href = `/teams/${teamId}/sprints`
     },
     onError: (error) => {
       toast({
-        title: "Failed to delete sprint",
-        description: error instanceof Error ? error.message : "An error occurred",
-        variant: "destructive",
+        title: 'Failed to delete sprint',
+        description: error instanceof Error ? error.message : 'An error occurred',
+        variant: 'destructive',
       })
     },
   })
@@ -129,7 +128,10 @@ export default function SprintDetailPage() {
       <div className="min-h-screen bg-background">
         <div className="container mx-auto py-8">
           <div className="mb-8">
-            <Link href={`/teams/${teamId}/sprints`} className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4">
+            <Link
+              href={`/teams/${teamId}/sprints`}
+              className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4"
+            >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Sprints
             </Link>
@@ -221,7 +223,10 @@ export default function SprintDetailPage() {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto py-8">
         <div className="mb-8">
-          <Link href={`/teams/${teamId}/sprints`} className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4">
+          <Link
+            href={`/teams/${teamId}/sprints`}
+            className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4"
+          >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Sprints
           </Link>
@@ -238,7 +243,8 @@ export default function SprintDetailPage() {
                 </Badge>
               </div>
               <p className="text-muted-foreground">
-                Sprint for {team.name} • {new Date(sprint.startDate).toLocaleDateString()} - {new Date(sprint.endDate).toLocaleDateString()}
+                Sprint for {team.name} • {new Date(sprint.startDate).toLocaleDateString()} -{' '}
+                {new Date(sprint.endDate).toLocaleDateString()}
               </p>
               {user && (
                 <div className="mt-2">
@@ -264,19 +270,19 @@ export default function SprintDetailPage() {
                       <DialogHeader>
                         <DialogTitle>{statusActionLabel}</DialogTitle>
                         <DialogDescription>
-                          Are you sure you want to {statusActionLabel?.toLowerCase()}? This will change the sprint status from{' '}
-                          <strong>{sprint.status}</strong> to <strong>{nextStatus}</strong>.
+                          Are you sure you want to {statusActionLabel?.toLowerCase()}? This will
+                          change the sprint status from <strong>{sprint.status}</strong> to{' '}
+                          <strong>{nextStatus}</strong>.
                         </DialogDescription>
                       </DialogHeader>
                       <DialogFooter>
-                        <Button
-                          variant="outline"
-                          onClick={() => setStatusUpdateDialogOpen(false)}
-                        >
+                        <Button variant="outline" onClick={() => setStatusUpdateDialogOpen(false)}>
                           Cancel
                         </Button>
                         <Button
-                          onClick={() => updateSprintStatusMutation.mutate({ sprintId, status: nextStatus })}
+                          onClick={() =>
+                            updateSprintStatusMutation.mutate({ sprintId, status: nextStatus })
+                          }
                           disabled={updateSprintStatusMutation.isPending}
                         >
                           {updateSprintStatusMutation.isPending ? 'Updating...' : statusActionLabel}
@@ -300,20 +306,24 @@ export default function SprintDetailPage() {
               )}
 
               {/* Settings Button */}
-              <ManagerOnly fallback={
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="outline" disabled>
-                        <Settings className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Only Product Owners and Managing Contributors can modify sprint settings</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              }>
+              <ManagerOnly
+                fallback={
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="outline" disabled>
+                          <Settings className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>
+                          Only Product Owners and Managing Contributors can modify sprint settings
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                }
+              >
                 <Button variant="outline">
                   <Settings className="h-4 w-4" />
                 </Button>
@@ -344,15 +354,21 @@ export default function SprintDetailPage() {
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-3 gap-4 text-center">
                     <div>
-                      <div className="text-2xl font-bold text-blue-600">{sprint.completedPoints}</div>
+                      <div className="text-2xl font-bold text-blue-600">
+                        {sprint.completedPoints}
+                      </div>
                       <div className="text-sm text-gray-600">Completed</div>
                     </div>
                     <div>
-                      <div className="text-2xl font-bold text-orange-600">{sprint.committedPoints - sprint.completedPoints}</div>
+                      <div className="text-2xl font-bold text-orange-600">
+                        {sprint.committedPoints - sprint.completedPoints}
+                      </div>
                       <div className="text-sm text-gray-600">Remaining</div>
                     </div>
                     <div>
-                      <div className="text-2xl font-bold text-green-600">{progress.progressPercentage}%</div>
+                      <div className="text-2xl font-bold text-green-600">
+                        {progress.progressPercentage}%
+                      </div>
                       <div className="text-sm text-gray-600">Complete</div>
                     </div>
                   </div>
@@ -385,9 +401,7 @@ export default function SprintDetailPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Sprint Backlog</CardTitle>
-                <CardDescription>
-                  Stories committed to this sprint
-                </CardDescription>
+                <CardDescription>Stories committed to this sprint</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="text-center py-8">
@@ -429,14 +443,16 @@ export default function SprintDetailPage() {
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Duration</span>
                   <span className="font-medium">
-                    {Math.ceil((new Date(sprint.endDate).getTime() - new Date(sprint.startDate).getTime()) / (1000 * 60 * 60 * 24))} days
+                    {Math.ceil(
+                      (new Date(sprint.endDate).getTime() - new Date(sprint.startDate).getTime()) /
+                        (1000 * 60 * 60 * 24)
+                    )}{' '}
+                    days
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Created</span>
-                  <span className="text-sm">
-                    {new Date(sprint.createdAt).toLocaleDateString()}
-                  </span>
+                  <span className="text-sm">{new Date(sprint.createdAt).toLocaleDateString()}</span>
                 </div>
               </CardContent>
             </Card>
@@ -493,16 +509,13 @@ export default function SprintDetailPage() {
                         <DialogHeader>
                           <DialogTitle>Delete Sprint</DialogTitle>
                           <DialogDescription>
-                            Are you sure you want to delete &quot;{sprint.name}&quot;?
-                            This action cannot be undone and will permanently remove the sprint
-                            and all associated data.
+                            Are you sure you want to delete &quot;{sprint.name}&quot;? This action
+                            cannot be undone and will permanently remove the sprint and all
+                            associated data.
                           </DialogDescription>
                         </DialogHeader>
                         <DialogFooter>
-                          <Button
-                            variant="outline"
-                            onClick={() => setDeleteDialogOpen(false)}
-                          >
+                          <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
                             Cancel
                           </Button>
                           <Button

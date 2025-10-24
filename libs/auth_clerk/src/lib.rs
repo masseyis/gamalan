@@ -16,6 +16,17 @@ use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
+#[derive(Debug, Clone)]
+pub struct ApiKeyAuthClaims {
+    pub sub: String,
+    pub email: Option<String>,
+    pub org_id: Option<String>,
+    pub org_slug: Option<String>,
+    pub org_role: Option<String>,
+    pub org_name: Option<String>,
+    pub context_type: ContextType,
+}
+
 #[derive(Clone)]
 pub struct JwtVerifier {
     jwks_cache: JwksCache,
@@ -89,6 +100,11 @@ impl JwtVerifier {
                 iat: 1000000000,
                 email: Some("test@example.com".to_string()),
                 orgs: Some(vec!["test-org".to_string()]),
+                org_id: Some("test-org".to_string()),
+                org_slug: Some("test-org".to_string()),
+                org_role: Some("owner".to_string()),
+                org_name: Some("Test Org".to_string()),
+                org: None,
             });
         }
         let header = decode_header(token).map_err(|e| {
@@ -194,6 +210,10 @@ pub struct Authenticated {
     pub sub: String,
     pub email: Option<String>,
     pub orgs: Option<Vec<String>>,
+    pub org_id: Option<String>,
+    pub org_slug: Option<String>,
+    pub org_role: Option<String>,
+    pub org_name: Option<String>,
 }
 
 impl<S> FromRequestParts<S> for Authenticated
@@ -223,6 +243,19 @@ impl Authenticated {
 
         let context =
             ErrorContext::new("auth_clerk").with_request_info(method.to_string(), uri.to_string());
+
+        if let Some(api_claims) = parts.extensions.get::<ApiKeyAuthClaims>() {
+            tracing::debug!("Authenticated via API key for user: {}", api_claims.sub);
+            return Ok(Authenticated {
+                sub: api_claims.sub.clone(),
+                email: api_claims.email.clone(),
+                orgs: api_claims.org_slug.as_ref().map(|slug| vec![slug.clone()]),
+                org_id: api_claims.org_id.clone(),
+                org_slug: api_claims.org_slug.clone(),
+                org_role: api_claims.org_role.clone(),
+                org_name: api_claims.org_name.clone(),
+            });
+        }
 
         let TypedHeader(Authorization(bearer)) = parts
             .extract::<TypedHeader<Authorization<Bearer>>>()
@@ -262,10 +295,32 @@ impl Authenticated {
             .await?;
 
         tracing::debug!("Successfully authenticated user: {}", claims.sub);
+
+        let org_id = claims
+            .org_id
+            .clone()
+            .or_else(|| claims.org.as_ref().and_then(|o| o.id.clone()));
+        let org_slug = claims
+            .org_slug
+            .clone()
+            .or_else(|| claims.org.as_ref().and_then(|o| o.slug.clone()));
+        let org_role = claims
+            .org_role
+            .clone()
+            .or_else(|| claims.org.as_ref().and_then(|o| o.role.clone()));
+        let org_name = claims
+            .org_name
+            .clone()
+            .or_else(|| claims.org.as_ref().and_then(|o| o.name.clone()));
+
         Ok(Authenticated {
             sub: claims.sub,
             email: claims.email,
             orgs: claims.orgs,
+            org_id,
+            org_slug,
+            org_role,
+            org_name,
         })
     }
 }

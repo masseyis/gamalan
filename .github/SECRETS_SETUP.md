@@ -32,6 +32,7 @@ CLERK_JWKS_URL=https://your-clerk-instance.clerk.accounts.dev/.well-known/jwks.j
 ### Database Connection Secrets
 
 #### Production Database URLs
+
 ```bash
 # Main services database URLs (production)
 DATABASE_URL_PROJECTS=postgresql://user:pass@host:5432/salunga_projects_prod
@@ -42,6 +43,7 @@ DATABASE_URL_PROMPT_BUILDER=postgresql://user:pass@host:5432/salunga_prompt_buil
 ```
 
 #### Staging Database URLs
+
 ```bash
 # Main services database URLs (staging)
 DATABASE_URL_PROJECTS_STAGING=postgresql://user:pass@host:5432/salunga_projects_staging
@@ -82,6 +84,7 @@ SERVICE_API_KEY=your-internal-service-api-key-here
 ### Environment-Specific Configuration
 
 #### Production Environment Variables
+
 ```bash
 ENVIRONMENT=production
 LOG_LEVEL=info
@@ -91,6 +94,7 @@ WEB_BASE_URL=https://app.salunga.com
 ```
 
 #### Staging Environment Variables
+
 ```bash
 ENVIRONMENT=staging
 LOG_LEVEL=debug

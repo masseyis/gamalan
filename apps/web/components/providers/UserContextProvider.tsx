@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { useAuth, useUser } from '@clerk/nextjs'
 import { usersApi, roleHelpers } from '@/lib/api/users'
 import { teamsApi } from '@/lib/api/teams'
-import { setGlobalAuthToken } from '@/lib/api/client'
+import { setGlobalAuthToken, setGlobalApiKey } from '@/lib/api/client'
 import { normalizeUserId } from '@/lib/utils/uuid'
 import {
   User,
@@ -12,6 +12,7 @@ import {
   ContributorSpecialty,
   RolePermissions,
   TeamMembership,
+  UserOrganization,
   getRolePermissions,
 } from '@/lib/types'
 
@@ -20,6 +21,8 @@ interface ExtendedUserContext {
   user: User | null
   permissions: RolePermissions | null
   teamMemberships: TeamMembership[]
+  organizations: UserOrganization[]
+  organizationMap: Record<string, string>
   isLoading: boolean
   error: string | null
 
@@ -38,6 +41,9 @@ interface ExtendedUserContext {
   isProductOwner: boolean
   isSponsor: boolean
   isManagingContributor: boolean
+
+  // Organization helpers
+  resolveOrganizationId: (externalId: string) => string | undefined
 }
 
 const UserContext = createContext<ExtendedUserContext | undefined>(undefined)
@@ -45,11 +51,49 @@ const UserContext = createContext<ExtendedUserContext | undefined>(undefined)
 export function UserContextProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [teamMemberships, setTeamMemberships] = useState<TeamMembership[]>([])
+  const [organizations, setOrganizations] = useState<UserOrganization[]>([])
+  const [organizationMap, setOrganizationMap] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const { getToken } = useAuth()
   const { isLoaded: isClerkLoaded, isSignedIn, user: clerkUser } = useUser()
+  const personaApiKey = process.env.NEXT_PUBLIC_BATTRA_API_KEY
+
+  const updateOrganizationMapping = useCallback((orgs: UserOrganization[]) => {
+    setOrganizations(orgs)
+    const mapping: Record<string, string> = {}
+    orgs.forEach((org) => {
+      if (org.externalId) {
+        mapping[org.externalId] = org.id
+      }
+    })
+    setOrganizationMap(mapping)
+    if (typeof window !== 'undefined') {
+      ;(window as any).__SALUNGA_ORG_ID_MAP = mapping
+    }
+  }, [])
+
+  const clearOrganizationMapping = useCallback(() => {
+    setOrganizations([])
+    setOrganizationMap({})
+    if (typeof window !== 'undefined') {
+      delete (window as any).__SALUNGA_ORG_ID_MAP
+    }
+  }, [])
+
+  useEffect(() => {
+    if (personaApiKey) {
+      setGlobalApiKey(personaApiKey)
+      return () => {
+        setGlobalApiKey()
+      }
+    }
+    setGlobalApiKey()
+    return () => {
+      setGlobalApiKey()
+    }
+  }, [personaApiKey])
 
   // Calculate permissions based on user role
   const permissions = user ? getRolePermissions(user.role) : null
@@ -71,6 +115,7 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
     if (!isClerkLoaded || !isSignedIn) {
       setUser(null)
       setTeamMemberships([])
+      clearOrganizationMapping()
       return
     }
 
@@ -83,28 +128,36 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
         setGlobalAuthToken()
         setUser(null)
         setTeamMemberships([])
+        clearOrganizationMapping()
         return
       }
 
       setGlobalAuthToken(token)
 
-      // Fetch user profile and team memberships in parallel
-      const userProfile = await usersApi.getCurrentUser().catch(() => null)
+      const [userProfile, orgs] = await Promise.all([
+        usersApi.getCurrentUser().catch(() => null),
+        usersApi.getMyOrganizations().catch(() => [] as UserOrganization[]),
+      ])
 
-      const userTeams = userProfile
-        ? await teamsApi.getTeams().catch(() => [])
-        : []
+      updateOrganizationMapping(orgs)
+
+      const userTeams = userProfile ? await teamsApi.getTeams().catch(() => []) : []
 
       let resolvedUser = userProfile
 
       if (!resolvedUser && clerkUser) {
-        const primaryEmail = clerkUser.emailAddresses?.[0]?.emailAddress ?? clerkUser.primaryEmailAddress?.emailAddress ?? 'unknown@example.com'
-        const fallbackId = clerkUser.id ?? (() => {
-          if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-            return crypto.randomUUID()
-          }
-          return `fallback-${Date.now()}`
-        })()
+        const primaryEmail =
+          clerkUser.emailAddresses?.[0]?.emailAddress ??
+          clerkUser.primaryEmailAddress?.emailAddress ??
+          'unknown@example.com'
+        const fallbackId =
+          clerkUser.id ??
+          (() => {
+            if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+              return crypto.randomUUID()
+            }
+            return `fallback-${Date.now()}`
+          })()
         resolvedUser = {
           id: fallbackId,
           externalId: clerkUser.id ?? fallbackId,
@@ -122,8 +175,11 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
       }
 
       if (resolvedUser) {
-        const normalizedId = normalizeUserId(resolvedUser.id ?? resolvedUser.externalId ?? resolvedUser.email)
-        const externalId = resolvedUser.externalId ?? resolvedUser.id ?? resolvedUser.email ?? 'unknown'
+        const normalizedId = normalizeUserId(
+          resolvedUser.id ?? resolvedUser.externalId ?? resolvedUser.email
+        )
+        const externalId =
+          resolvedUser.externalId ?? resolvedUser.id ?? resolvedUser.email ?? 'unknown'
 
         const finalUser: User = {
           ...resolvedUser,
@@ -135,8 +191,8 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
 
         if (userTeams.length) {
           const memberships: TeamMembership[] = []
-          userTeams.forEach(team => {
-            team.members.forEach(member => {
+          userTeams.forEach((team) => {
+            team.members.forEach((member) => {
               if (member.userId === finalUser.id) {
                 memberships.push(member)
               }
@@ -153,11 +209,19 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch user context'
       setError(errorMessage)
+      clearOrganizationMapping()
       console.error('UserContextProvider error:', err)
     } finally {
       setIsLoading(false)
     }
-  }, [clerkUser, getToken, isClerkLoaded, isSignedIn])
+  }, [
+    clerkUser,
+    getToken,
+    isClerkLoaded,
+    isSignedIn,
+    clearOrganizationMapping,
+    updateOrganizationMapping,
+  ])
 
   // Update user role
   const updateUserRole = async (role: UserRole, specialty?: ContributorSpecialty) => {
@@ -168,12 +232,16 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
       await usersApi.updateUserRole(role, specialty)
 
       // Update local state
-      setUser(prev => prev ? {
-        ...prev,
-        role,
-        specialty,
-        updatedAt: new Date().toISOString()
-      } : null)
+      setUser((prev) =>
+        prev
+          ? {
+              ...prev,
+              role,
+              specialty,
+              updatedAt: new Date().toISOString(),
+            }
+          : null
+      )
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update user role'
       setError(errorMessage)
@@ -198,16 +266,24 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
       setGlobalAuthToken()
       setUser(null)
       setTeamMemberships([])
+      clearOrganizationMapping()
       return
     }
 
     fetchUserContext()
-  }, [fetchUserContext, isClerkLoaded, isSignedIn])
+  }, [clearOrganizationMapping, fetchUserContext, isClerkLoaded, isSignedIn])
+
+  const resolveOrganizationId = useCallback(
+    (externalId: string) => organizationMap[externalId],
+    [organizationMap]
+  )
 
   const contextValue: ExtendedUserContext = {
     user,
     permissions,
     teamMemberships,
+    organizations,
+    organizationMap,
     isLoading,
     error,
 
@@ -226,13 +302,12 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
     isProductOwner,
     isSponsor,
     isManagingContributor,
+
+    // Organization helpers
+    resolveOrganizationId,
   }
 
-  return (
-    <UserContext.Provider value={contextValue}>
-      {children}
-    </UserContext.Provider>
-  )
+  return <UserContext.Provider value={contextValue}>{children}</UserContext.Provider>
 }
 
 // Hook to use user context
@@ -246,7 +321,8 @@ export function useUserContext() {
 
 // Hook for role-based permission checking
 export function usePermissions() {
-  const { permissions, canModifyBacklog, canAcceptStories, canTakeTaskOwnership, canManageTeam } = useUserContext()
+  const { permissions, canModifyBacklog, canAcceptStories, canTakeTaskOwnership, canManageTeam } =
+    useUserContext()
 
   return {
     permissions,
@@ -267,7 +343,7 @@ export function usePermissions() {
         default:
           return true
       }
-    }
+    },
   }
 }
 
@@ -283,9 +359,10 @@ export function useRoles() {
     isProductOwner,
     isSponsor,
     isManagingContributor,
-    getRoleDisplayName: () => user ? roleHelpers.getRoleDisplayName(user.role) : '',
-    getSpecialtyDisplayName: () => user?.specialty ? roleHelpers.getSpecialtyDisplayName(user.specialty) : '',
-    getRoleDescription: () => user ? roleHelpers.getRoleDescription(user.role) : '',
+    getRoleDisplayName: () => (user ? roleHelpers.getRoleDisplayName(user.role) : ''),
+    getSpecialtyDisplayName: () =>
+      user?.specialty ? roleHelpers.getSpecialtyDisplayName(user.specialty) : '',
+    getRoleDescription: () => (user ? roleHelpers.getRoleDescription(user.role) : ''),
   }
 }
 
@@ -296,11 +373,11 @@ export function useTeamContext() {
   return {
     teamMemberships,
     getTeamRole: (teamId: string) => {
-      const membership = teamMemberships.find(m => m.teamId === teamId)
+      const membership = teamMemberships.find((m) => m.teamId === teamId)
       return membership?.role
     },
     isTeamMember: (teamId: string) => {
-      return teamMemberships.some(m => m.teamId === teamId && m.isActive)
+      return teamMemberships.some((m) => m.teamId === teamId && m.isActive)
     },
     refreshTeams: refreshContext,
   }

@@ -1,11 +1,11 @@
 import { backlogClient } from './client'
-import { 
-  Story, 
-  Task, 
-  CreateStoryRequest, 
+import {
+  Story,
+  Task,
+  CreateStoryRequest,
   UpdateStoryRequest,
   CreateTaskRequest,
-  UpdateTaskRequest 
+  UpdateTaskRequest,
 } from '@/lib/types/story'
 
 export const storiesApi = {

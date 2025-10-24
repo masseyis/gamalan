@@ -14,7 +14,7 @@ export default defineConfig({
   reporter: [
     ['html', { outputFolder: 'test-results/cross-browser-report' }],
     ['json', { outputFile: 'test-results/cross-browser-results.json' }],
-    ['junit', { outputFile: 'test-results/cross-browser-junit.xml' }]
+    ['junit', { outputFile: 'test-results/cross-browser-junit.xml' }],
   ],
   globalTimeout: 30 * 60 * 1000, // 30 minutes for cross-browser suite
   timeout: 60 * 1000, // 60 seconds per test
@@ -110,7 +110,8 @@ export default defineConfig({
     stdout: 'pipe',
     env: {
       ...process.env,
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'pk_test_Y2xlcmtfdGVzdF9wdWJsaXNoYWJsZV9rZXkxMjM0NTY3ODkwYWJjZGVm',
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
+        'pk_test_Y2xlcmtfdGVzdF9wdWJsaXNoYWJsZV9rZXkxMjM0NTY3ODkwYWJjZGVm',
       CLERK_PUBLISHABLE_KEY: 'pk_test_Y2xlcmtfdGVzdF9wdWJsaXNoYWJsZV9rZXkxMjM0NTY3ODkwYWJjZGVm',
       CLERK_SECRET_KEY: 'sk_test_Y2xlcmtfdGVzdF9zZWNyZXRfa2V5MTIzNDU2Nzg5MGFiY2RlZg==',
       E2E_CLERK_USER_USERNAME: 'test@example.com',

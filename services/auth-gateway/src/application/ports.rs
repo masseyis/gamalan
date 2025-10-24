@@ -12,6 +12,8 @@ use uuid::Uuid;
 pub trait UserRepository: Send + Sync {
     async fn upsert_user(&self, user: &User) -> Result<(), AppError>;
     async fn get_user_by_external_id(&self, external_id: &str) -> Result<Option<User>, AppError>;
+    async fn get_user_by_id(&self, id: &Uuid) -> Result<Option<User>, AppError>;
+    async fn search_users(&self, query: &str, limit: usize) -> Result<Vec<User>, AppError>;
 }
 
 #[async_trait]

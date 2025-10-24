@@ -2,9 +2,7 @@ import { test, expect } from '@playwright/test'
 import { loginAs, createTestProject, createTestStory, createTestTask } from './helpers/test-utils'
 
 test.describe('Task Ownership Self-Selection Workflow', () => {
-
   test.describe('As a Contributor', () => {
-
     test('I can take ownership of an available task ("I\'m on it")', async ({ page }) => {
       // Given I am logged in as a contributor
       await loginAs(page, 'contributor')
@@ -32,7 +30,9 @@ test.describe('Task Ownership Self-Selection Workflow', () => {
       await expect(page.locator(`[data-testid="task-status-${taskId}"]`)).toContainText('Owned')
 
       // And I should see my name as the owner
-      await expect(page.locator(`[data-testid="task-owner-${taskId}"]`)).toContainText('Test Contributor')
+      await expect(page.locator(`[data-testid="task-owner-${taskId}"]`)).toContainText(
+        'Test Contributor'
+      )
 
       // And I should see a timestamp of when I took ownership
       await expect(page.locator(`[data-testid="task-owned-since-${taskId}"]`)).toBeVisible()
@@ -60,8 +60,9 @@ test.describe('Task Ownership Self-Selection Workflow', () => {
 
       // Then I should see a confirmation dialog
       await expect(page.locator('[data-testid="confirm-release-dialog"]')).toBeVisible()
-      await expect(page.locator('[data-testid="confirm-release-dialog"]'))
-        .toContainText('Are you sure you want to release ownership?')
+      await expect(page.locator('[data-testid="confirm-release-dialog"]')).toContainText(
+        'Are you sure you want to release ownership?'
+      )
 
       // When I confirm the release
       await page.locator('[data-testid="confirm-release-btn"]').click()
@@ -90,7 +91,9 @@ test.describe('Task Ownership Self-Selection Workflow', () => {
       await page.locator(`[data-testid="start-work-${taskId}"]`).click()
 
       // Then the task status should change to "In Progress"
-      await expect(page.locator(`[data-testid="task-status-${taskId}"]`)).toContainText('In Progress')
+      await expect(page.locator(`[data-testid="task-status-${taskId}"]`)).toContainText(
+        'In Progress'
+      )
 
       // And I should see work started timestamp
       await expect(page.locator(`[data-testid="task-in-progress-since-${taskId}"]`)).toBeVisible()
@@ -150,13 +153,13 @@ test.describe('Task Ownership Self-Selection Workflow', () => {
       await page.click('[data-testid="save-estimate-btn"]')
 
       // Then I should see a validation error
-      await expect(page.locator('[data-testid="estimate-error"]'))
-        .toContainText('Task cannot exceed 40 hours')
+      await expect(page.locator('[data-testid="estimate-error"]')).toContainText(
+        'Task cannot exceed 40 hours'
+      )
     })
   })
 
   test.describe('Workflow Restrictions', () => {
-
     test('Non-contributors cannot take task ownership', async ({ page }) => {
       // Given I am logged in as a sponsor (read-only role)
       await loginAs(page, 'sponsor')
@@ -173,8 +176,9 @@ test.describe('Task Ownership Self-Selection Workflow', () => {
 
       // And I should see a tooltip explaining the restriction
       await page.hover(`[data-testid="task-${taskId}"]`)
-      await expect(page.locator('[data-testid="ownership-restriction-tooltip"]'))
-        .toContainText('Only contributors can take task ownership')
+      await expect(page.locator('[data-testid="ownership-restriction-tooltip"]')).toContainText(
+        'Only contributors can take task ownership'
+      )
     })
 
     test('Users cannot take ownership of already owned tasks', async ({ page }) => {
@@ -199,8 +203,9 @@ test.describe('Task Ownership Self-Selection Workflow', () => {
 
       // And I should see a tooltip explaining why I can't take it
       await page.hover(`[data-testid="task-${taskId}"]`)
-      await expect(page.locator('[data-testid="task-owned-tooltip"]'))
-        .toContainText('This task is already owned by Alice')
+      await expect(page.locator('[data-testid="task-owned-tooltip"]')).toContainText(
+        'This task is already owned by Alice'
+      )
     })
 
     test('Users can only start/complete work on tasks they own', async ({ page }) => {
@@ -223,13 +228,14 @@ test.describe('Task Ownership Self-Selection Workflow', () => {
       await expect(page.locator(`[data-testid="complete-work-${taskId}"]`)).not.toBeVisible()
 
       // And the task should show as "In Progress" by Alice
-      await expect(page.locator(`[data-testid="task-status-${taskId}"]`)).toContainText('In Progress')
+      await expect(page.locator(`[data-testid="task-status-${taskId}"]`)).toContainText(
+        'In Progress'
+      )
       await expect(page.locator(`[data-testid="task-owner-${taskId}"]`)).toContainText('Alice')
     })
   })
 
   test.describe('User Guidance', () => {
-
     test('Shows tooltip explaining one task limitation', async ({ page }) => {
       // Given I am a contributor who already owns a task
       await loginAs(page, 'contributor')
@@ -245,8 +251,9 @@ test.describe('Task Ownership Self-Selection Workflow', () => {
       await page.hover(`[data-testid="take-ownership-${taskId2}"]`)
 
       // Then I should see guidance about the one-task limitation
-      await expect(page.locator('[data-testid="one-task-limit-tooltip"]'))
-        .toContainText('Complete your current task before taking ownership of another')
+      await expect(page.locator('[data-testid="one-task-limit-tooltip"]')).toContainText(
+        'Complete your current task before taking ownership of another'
+      )
 
       // And the button should be disabled
       await expect(page.locator(`[data-testid="take-ownership-${taskId2}"]`)).toBeDisabled()
@@ -266,8 +273,9 @@ test.describe('Task Ownership Self-Selection Workflow', () => {
       await page.hover(`[data-testid="task-workflow-help-${taskId}"]`)
 
       // Then I should see workflow guidance
-      await expect(page.locator('[data-testid="workflow-guidance-tooltip"]'))
-        .toContainText('Owned → Start Work → Complete')
+      await expect(page.locator('[data-testid="workflow-guidance-tooltip"]')).toContainText(
+        'Owned → Start Work → Complete'
+      )
     })
   })
 })

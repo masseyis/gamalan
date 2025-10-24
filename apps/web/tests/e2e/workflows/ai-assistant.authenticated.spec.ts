@@ -120,7 +120,8 @@ test.describe('AI Assistant Workflows', () => {
     test('should suggest acceptance criteria', async () => {
       await assistantPage.gotoAssistant()
 
-      const storyDescription = 'As a user, I want to log into the system so that I can access my projects'
+      const storyDescription =
+        'As a user, I want to log into the system so that I can access my projects'
       await assistantPage.generateAcceptanceCriteria(storyDescription)
 
       // AI should provide Given-When-Then format criteria
@@ -231,7 +232,7 @@ test.describe('AI Assistant Workflows', () => {
         'The feature is for user notifications',
         'It should support email and in-app notifications',
         'What user stories do I need?',
-        'How should I prioritize them?'
+        'How should I prioritize them?',
       ]
 
       for (const message of messages) {
@@ -266,7 +267,7 @@ test.describe('AI Assistant Workflows', () => {
       await assistantPage.gotoAssistant()
 
       // Simulate AI service failure
-      await assistantPage.page.route('**/api/ai/**', route => route.abort())
+      await assistantPage.page.route('**/api/ai/**', (route) => route.abort())
 
       await assistantPage.sendMessage('This should fail gracefully')
 
@@ -400,7 +401,9 @@ test.describe('AI Assistant Workflows', () => {
   // Cleanup after all tests
   test.afterAll(async ({ browser }) => {
     try {
-      const context = await browser.newContext({ storageState: 'tests/playwright/.clerk/user.json' })
+      const context = await browser.newContext({
+        storageState: 'tests/playwright/.clerk/user.json',
+      })
       const page = await context.newPage()
       const cleanupProjectsPage = new ProjectsPage(page)
 

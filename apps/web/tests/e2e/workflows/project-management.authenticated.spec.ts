@@ -249,7 +249,7 @@ test.describe('Project Management Workflows', () => {
       await projectsPage.gotoProjects()
 
       // Simulate network failure
-      await projectsPage.page.route('**/api/projects', route => route.abort())
+      await projectsPage.page.route('**/api/projects', (route) => route.abort())
 
       try {
         await projectsPage.createProject(projectName, testData.project.description)
@@ -266,7 +266,9 @@ test.describe('Project Management Workflows', () => {
       await projectsPage.newProjectButton.click()
 
       // Try to submit without required fields
-      const submitButton = projectsPage.page.locator('button:has-text("Create"), button[type="submit"]')
+      const submitButton = projectsPage.page.locator(
+        'button:has-text("Create"), button[type="submit"]'
+      )
       await submitButton.click()
 
       await projectsPage.expectError('Project name is required')

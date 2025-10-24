@@ -103,7 +103,9 @@ test.describe('Backlog Management Workflows', () => {
       await backlogPage.estimateStory(storyTitle, 8)
 
       // Verify estimation was applied
-      const storyCard = backlogPage.page.locator(`[data-testid="story-card"]:has-text("${storyTitle}")`)
+      const storyCard = backlogPage.page.locator(
+        `[data-testid="story-card"]:has-text("${storyTitle}")`
+      )
       const pointsIndicator = storyCard.locator('[data-testid="story-points"]:has-text("8")')
       await expect(pointsIndicator).toBeVisible()
     })
@@ -120,7 +122,9 @@ test.describe('Backlog Management Workflows', () => {
       await backlogPage.updateStoryPriority(storyTitle, 'high')
 
       // Verify priority indicator
-      const storyCard = backlogPage.page.locator(`[data-testid="story-card"]:has-text("${storyTitle}")`)
+      const storyCard = backlogPage.page.locator(
+        `[data-testid="story-card"]:has-text("${storyTitle}")`
+      )
       const priorityIndicator = storyCard.locator('[data-testid="priority-indicator"]')
       await expect(priorityIndicator).toHaveClass(/high/)
 
@@ -175,7 +179,9 @@ test.describe('Backlog Management Workflows', () => {
 
       // Verify task was updated
       await storyDetailPage.expectTaskExists(newTitle)
-      await storyDetailPage.page.locator(`[data-testid="task-item"]:has-text("${originalTitle}")`).waitFor({ state: 'hidden' })
+      await storyDetailPage.page
+        .locator(`[data-testid="task-item"]:has-text("${originalTitle}")`)
+        .waitFor({ state: 'hidden' })
     })
 
     test('should mark task as completed', async () => {
@@ -187,7 +193,9 @@ test.describe('Backlog Management Workflows', () => {
       await storyDetailPage.completeTask(taskTitle)
 
       // Verify task is marked as completed
-      const taskItem = storyDetailPage.page.locator(`[data-testid="task-item"]:has-text("${taskTitle}")`)
+      const taskItem = storyDetailPage.page.locator(
+        `[data-testid="task-item"]:has-text("${taskTitle}")`
+      )
       const checkbox = taskItem.locator('input[type="checkbox"]')
       await expect(checkbox).toBeChecked()
     })
@@ -215,20 +223,34 @@ test.describe('Backlog Management Workflows', () => {
       await backlogPage.gotoBacklog(projectId)
 
       const stories = [
-        { title: `High Priority ${testUtils.generateUniqueId()}`, priority: 'high', status: 'backlog' },
-        { title: `Medium Priority ${testUtils.generateUniqueId()}`, priority: 'medium', status: 'ready' },
-        { title: `Low Priority ${testUtils.generateUniqueId()}`, priority: 'low', status: 'in-progress' }
+        {
+          title: `High Priority ${testUtils.generateUniqueId()}`,
+          priority: 'high',
+          status: 'backlog',
+        },
+        {
+          title: `Medium Priority ${testUtils.generateUniqueId()}`,
+          priority: 'medium',
+          status: 'ready',
+        },
+        {
+          title: `Low Priority ${testUtils.generateUniqueId()}`,
+          priority: 'low',
+          status: 'in-progress',
+        },
       ]
 
       for (const story of stories) {
         await backlogPage.createStory(story.title, `Test story with ${story.priority} priority`)
         await backlogPage.gotoBacklog(projectId)
 
-        if (story.priority !== 'medium') { // medium is default
+        if (story.priority !== 'medium') {
+          // medium is default
           await backlogPage.updateStoryPriority(story.title, story.priority as any)
         }
 
-        if (story.status !== 'backlog') { // backlog is default
+        if (story.status !== 'backlog') {
+          // backlog is default
           await backlogPage.updateStoryStatus(story.title, story.status as any)
         }
       }
@@ -295,8 +317,12 @@ test.describe('Backlog Management Workflows', () => {
       await backlogPage.gotoBacklog(projectId)
 
       // Get story cards
-      const story1Card = backlogPage.page.locator(`[data-testid="story-card"]:has-text("${story1}")`)
-      const story2Card = backlogPage.page.locator(`[data-testid="story-card"]:has-text("${story2}")`)
+      const story1Card = backlogPage.page.locator(
+        `[data-testid="story-card"]:has-text("${story1}")`
+      )
+      const story2Card = backlogPage.page.locator(
+        `[data-testid="story-card"]:has-text("${story2}")`
+      )
 
       // Perform drag and drop to reorder
       await story2Card.dragTo(story1Card)
@@ -314,7 +340,10 @@ test.describe('Backlog Management Workflows', () => {
       // Create a new project for empty state test
       const emptyProjectName = `Empty ${testUtils.generateProjectName()}`
       await projectsPage.gotoProjects()
-      const emptyProjectId = await projectsPage.createProject(emptyProjectName, 'Project for empty backlog test')
+      const emptyProjectId = await projectsPage.createProject(
+        emptyProjectName,
+        'Project for empty backlog test'
+      )
 
       await backlogPage.gotoBacklog(emptyProjectId)
       await backlogPage.expectEmptyBacklog()
@@ -331,7 +360,9 @@ test.describe('Backlog Management Workflows', () => {
       await backlogPage.addStoryButton.click()
 
       // Try to submit without title
-      const submitButton = backlogPage.page.locator('button:has-text("Create"), button[type="submit"]')
+      const submitButton = backlogPage.page.locator(
+        'button:has-text("Create"), button[type="submit"]'
+      )
       await submitButton.click()
 
       await backlogPage.expectError('Story title is required')
@@ -341,7 +372,7 @@ test.describe('Backlog Management Workflows', () => {
       await backlogPage.gotoBacklog(projectId)
 
       // Simulate network failure for story creation
-      await backlogPage.page.route('**/api/stories', route => route.abort())
+      await backlogPage.page.route('**/api/stories', (route) => route.abort())
 
       try {
         await backlogPage.createStory('Network Error Test', 'This should fail')
@@ -369,7 +400,9 @@ test.describe('Backlog Management Workflows', () => {
   // Cleanup after all tests
   test.afterAll(async ({ browser }) => {
     try {
-      const context = await browser.newContext({ storageState: 'tests/playwright/.clerk/user.json' })
+      const context = await browser.newContext({
+        storageState: 'tests/playwright/.clerk/user.json',
+      })
       const page = await context.newPage()
       const cleanupProjectsPage = new ProjectsPage(page)
 

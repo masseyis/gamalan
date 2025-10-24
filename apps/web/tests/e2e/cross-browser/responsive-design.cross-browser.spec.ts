@@ -1,5 +1,12 @@
 import { test, expect } from '@playwright/test'
-import { AuthPage, ProjectsPage, BacklogPage, BoardPage, AssistantPage, testUtils } from '../page-objects'
+import {
+  AuthPage,
+  ProjectsPage,
+  BacklogPage,
+  BoardPage,
+  AssistantPage,
+  testUtils,
+} from '../page-objects'
 
 test.describe('Responsive Design Cross-Browser Tests', () => {
   let authPage: AuthPage
@@ -20,7 +27,7 @@ test.describe('Responsive Design Cross-Browser Tests', () => {
     test('should adapt navigation for mobile devices', async ({ page, browserName }) => {
       test.info().annotations.push({
         type: 'browser',
-        description: browserName
+        description: browserName,
       })
 
       // Already authenticated via global setup
@@ -49,7 +56,9 @@ test.describe('Responsive Design Cross-Browser Tests', () => {
         const desktopNav = page.locator('nav')
         await expect(desktopNav).toBeVisible()
 
-        const navItems = desktopNav.locator('a:has-text("Dashboard"), a:has-text("Projects"), a:has-text("Assistant")')
+        const navItems = desktopNav.locator(
+          'a:has-text("Dashboard"), a:has-text("Projects"), a:has-text("Assistant")'
+        )
         await expect(navItems.first()).toBeVisible()
       }
     })
@@ -71,7 +80,9 @@ test.describe('Responsive Design Cross-Browser Tests', () => {
         // Mobile might show simplified user menu
         const userMenu = page.locator('[data-testid="user-menu"], [role="menu"]')
         if (await userMenu.isVisible({ timeout: 3000 })) {
-          const signOutOption = userMenu.locator('button:has-text("Sign out"), button:has-text("Logout")')
+          const signOutOption = userMenu.locator(
+            'button:has-text("Sign out"), button:has-text("Logout")'
+          )
           await expect(signOutOption).toBeVisible()
         }
       }
@@ -111,7 +122,9 @@ test.describe('Responsive Design Cross-Browser Tests', () => {
       await projectsPage.gotoProjects()
 
       // Check projects grid layout
-      const projectsContainer = page.locator('[data-testid="projects-grid"], [data-testid="projects-list"]')
+      const projectsContainer = page.locator(
+        '[data-testid="projects-grid"], [data-testid="projects-list"]'
+      )
       await expect(projectsContainer).toBeVisible()
 
       const viewport = page.viewportSize()
@@ -190,7 +203,10 @@ test.describe('Responsive Design Cross-Browser Tests', () => {
       // Already authenticated via global setup
       projectName = testUtils.generateProjectName()
       await projectsPage.gotoProjects()
-      projectId = await projectsPage.createProject(projectName, 'Test project for backlog responsiveness')
+      projectId = await projectsPage.createProject(
+        projectName,
+        'Test project for backlog responsiveness'
+      )
     })
 
     test.afterEach(async () => {
@@ -202,14 +218,13 @@ test.describe('Responsive Design Cross-Browser Tests', () => {
       await backlogPage.gotoBacklog(projectId)
 
       // Create test stories
-      const stories = [
-        'Mobile Story 1',
-        'Mobile Story 2',
-        'Mobile Story 3'
-      ]
+      const stories = ['Mobile Story 1', 'Mobile Story 2', 'Mobile Story 3']
 
       for (const story of stories) {
-        await backlogPage.createStory(`${story} ${testUtils.generateUniqueId()}`, 'Test story for mobile layout')
+        await backlogPage.createStory(
+          `${story} ${testUtils.generateUniqueId()}`,
+          'Test story for mobile layout'
+        )
         await backlogPage.gotoBacklog(projectId)
       }
 
@@ -258,7 +273,9 @@ test.describe('Responsive Design Cross-Browser Tests', () => {
           }
         }
 
-        const descriptionInput = page.locator('textarea[name="description"], textarea[placeholder*="description"]')
+        const descriptionInput = page.locator(
+          'textarea[name="description"], textarea[placeholder*="description"]'
+        )
         if (await descriptionInput.isVisible({ timeout: 5000 })) {
           const textareaBox = await descriptionInput.boundingBox()
           if (textareaBox) {
@@ -285,7 +302,10 @@ test.describe('Responsive Design Cross-Browser Tests', () => {
       // Already authenticated via global setup
       projectName = testUtils.generateProjectName()
       await projectsPage.gotoProjects()
-      projectId = await projectsPage.createProject(projectName, 'Test project for board responsiveness')
+      projectId = await projectsPage.createProject(
+        projectName,
+        'Test project for board responsiveness'
+      )
     })
 
     test.afterEach(async () => {
@@ -308,7 +328,7 @@ test.describe('Responsive Design Cross-Browser Tests', () => {
         const todoColumn = page.locator('[data-testid="column-todo"]')
         const inProgressColumn = page.locator('[data-testid="column-in-progress"]')
 
-        if (await todoColumn.isVisible() && await inProgressColumn.isVisible()) {
+        if ((await todoColumn.isVisible()) && (await inProgressColumn.isVisible())) {
           const todoBox = await todoColumn.boundingBox()
           const inProgressBox = await inProgressColumn.boundingBox()
 
@@ -369,7 +389,9 @@ test.describe('Responsive Design Cross-Browser Tests', () => {
 
       if (isMobile) {
         // Chat input should be optimized for mobile
-        const chatInput = page.locator('textarea[placeholder*="Ask"], textarea[placeholder*="message"]')
+        const chatInput = page.locator(
+          'textarea[placeholder*="Ask"], textarea[placeholder*="message"]'
+        )
         await expect(chatInput).toBeVisible()
 
         const inputBox = await chatInput.boundingBox()
@@ -449,7 +471,7 @@ test.describe('Responsive Design Cross-Browser Tests', () => {
           'button:has-text("New")',
           '[data-testid="user-avatar"]',
           'a:has-text("Dashboard")',
-          'a:has-text("Projects")'
+          'a:has-text("Projects")',
         ]
 
         for (const selector of interactiveElements) {
@@ -489,10 +511,7 @@ test.describe('Responsive Design Cross-Browser Tests', () => {
       await projectsPage.gotoProjects()
 
       // Check text elements for minimum size
-      const textElements = [
-        'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-        'p', 'span', 'div'
-      ]
+      const textElements = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'span', 'div']
 
       for (const selector of textElements) {
         const elements = page.locator(selector)
@@ -501,7 +520,7 @@ test.describe('Responsive Design Cross-Browser Tests', () => {
         for (let i = 0; i < Math.min(count, 5); i++) {
           const element = elements.nth(i)
           if (await element.isVisible({ timeout: 1000 })) {
-            const fontSize = await element.evaluate(el => {
+            const fontSize = await element.evaluate((el) => {
               return window.getComputedStyle(el).fontSize
             })
 
@@ -516,8 +535,8 @@ test.describe('Responsive Design Cross-Browser Tests', () => {
   test.describe('Performance on Different Devices', () => {
     test('should load quickly on mobile connections', async ({ page }) => {
       // Simulate slow network for mobile testing
-      await page.route('**/*', route => {
-        return new Promise(resolve => {
+      await page.route('**/*', (route) => {
+        return new Promise((resolve) => {
           setTimeout(() => resolve(route.continue()), 100) // Add 100ms delay
         })
       })

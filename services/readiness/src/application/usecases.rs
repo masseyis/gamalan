@@ -84,8 +84,23 @@ impl ReadinessUsecases {
                 recommendations.push(
                     "Rewrite the story title to capture the user, action, and benefit".to_string(),
                 );
-            } else if !title.to_lowercase().contains(" as ") {
-                recommendations.push("Consider framing the title as 'As a <persona>, I want <action> so that <outcome>'".to_string());
+            } else {
+                let lower_title = title.to_lowercase();
+                let persona_pattern = lower_title.starts_with("as a ")
+                    || lower_title.starts_with("as an ")
+                    || lower_title.contains(" as a ")
+                    || lower_title.contains(" as an ");
+                if !persona_pattern {
+                    missing_items.push(
+                        "Story title does not describe a user persona, desired action, and outcome"
+                            .to_string(),
+                    );
+                    score -= 15;
+                    recommendations.push(
+                        "Reframe the title like 'As a <persona>, I want <action> so that <outcome>' to emphasise user value"
+                            .to_string(),
+                    );
+                }
             }
 
             match info.description.as_ref().map(|d| d.trim()) {
@@ -178,6 +193,91 @@ impl ReadinessUsecases {
             }
         }
 
+        if !criteria.is_empty() {
+            let doc_subject_keywords = [
+                "documentation",
+                "docs",
+                "wiki",
+                "confluence",
+                "notion",
+                "handbook",
+                "runbook",
+                "knowledge base",
+                "guide",
+                "manual",
+                "playbook",
+                "readme",
+                "faq",
+                "sop",
+                "spec document",
+                "spec doc",
+                "internal doc",
+                "release notes",
+                "meeting notes",
+            ];
+            let behaviour_keywords = [
+                "user",
+                "system",
+                "api",
+                "request",
+                "response",
+                "ui",
+                "button",
+                "click",
+                "screen",
+                "page",
+                "endpoint",
+                "service",
+                "email",
+                "notification",
+                "modal",
+                "field",
+                "form",
+                "validation",
+                "error",
+                "success",
+                "display",
+                "render",
+                "backend",
+                "database",
+            ];
+
+            let doc_like = criteria
+                .iter()
+                .filter(|criterion| {
+                    // Only mark ACs as doc-like when they explicitly reference documentation artefacts
+                    // and lack common indicators of observable system behaviour.
+                    let text = format!(
+                        "{} {} {}",
+                        criterion.given.to_lowercase(),
+                        criterion.when.to_lowercase(),
+                        criterion.then.to_lowercase()
+                    );
+                    let mentions_doc_subject =
+                        doc_subject_keywords.iter().any(|kw| text.contains(kw));
+                    let mentions_behaviour = behaviour_keywords.iter().any(|kw| text.contains(kw));
+                    mentions_doc_subject && !mentions_behaviour
+                })
+                .count();
+
+            if doc_like == criteria.len() {
+                missing_items.push(
+                    "Acceptance criteria focus on internal documentation rather than observable system behaviour"
+                        .to_string(),
+                );
+                score -= 15;
+                recommendations.push(
+                    "Rewrite the acceptance criteria to describe measurable product outcomes"
+                        .to_string(),
+                );
+            } else if doc_like > 0 && doc_like * 2 >= criteria.len() {
+                recommendations.push(
+                    "Several acceptance criteria read like internal tasks; consider reframing them in terms of system behaviour"
+                        .to_string(),
+                );
+            }
+        }
+
         // Check 2: All acceptance criteria must be covered by tasks
         if !criteria.is_empty() {
             let tasks = self
@@ -195,7 +295,22 @@ impl ReadinessUsecases {
 
             let uncovered: Vec<String> = story_ac_ids
                 .difference(&covered_ac_ids)
-                .map(|s| format!("AC '{}' not covered by any task", s))
+                .filter_map(|ac_id| {
+                    criteria
+                        .iter()
+                        .find(|criterion| &criterion.ac_id == ac_id)
+                        .map(|criterion| {
+                            let display = format_gwt_summary(
+                                &criterion.given,
+                                &criterion.when,
+                                &criterion.then,
+                            );
+                            format!(
+                                "Acceptance criterion \"{}\" is not covered by any task",
+                                display
+                            )
+                        })
+                })
                 .collect();
 
             if !uncovered.is_empty() {
@@ -224,6 +339,58 @@ impl ReadinessUsecases {
                 "Consider adding tasks so every acceptance criterion has dedicated coverage"
                     .to_string(),
             );
+        }
+
+        // Soft heuristics: encourage test coverage and measurement tasks
+        if !tasks.is_empty() {
+            let has_test_task = tasks.iter().any(|task| {
+                let haystack = task.title.to_lowercase();
+                haystack.contains("test")
+                    || haystack.contains("qa")
+                    || haystack.contains("verification")
+            });
+            if !has_test_task {
+                recommendations.push(
+                    "Add a task covering automated or acceptance tests so criteria can be validated"
+                        .to_string(),
+                );
+            }
+
+            let has_measure_task = tasks.iter().any(|task| {
+                let haystack = task.title.to_lowercase();
+                haystack.contains("metric")
+                    || haystack.contains("measure")
+                    || haystack.contains("performance")
+                    || haystack.contains("analytics")
+            });
+            if !has_measure_task {
+                recommendations.push(
+                    "Consider adding a task to capture before/after metrics or monitor impact"
+                        .to_string(),
+                );
+            }
+        }
+
+        if !criteria.is_empty() {
+            let has_measurable_ac = criteria.iter().any(|criterion| {
+                let text = format!(
+                    "{} {} {}",
+                    criterion.given.to_lowercase(),
+                    criterion.when.to_lowercase(),
+                    criterion.then.to_lowercase()
+                );
+                text.chars().any(|c| c.is_ascii_digit())
+                    || text.contains("seconds")
+                    || text.contains("percent")
+                    || text.contains("ms")
+                    || text.contains("throughput")
+            });
+            if !has_measurable_ac {
+                recommendations.push(
+                    "Add a measurable outcome to at least one acceptance criterion (e.g., SLA, count, or percentage)"
+                        .to_string(),
+                );
+            }
         }
 
         score = score.clamp(0, 100);
@@ -294,6 +461,46 @@ impl ReadinessUsecases {
             .collect();
 
         Ok(invalid_refs)
+    }
+}
+
+fn format_gwt_summary(given: &str, when_clause: &str, then_clause: &str) -> String {
+    let given = given.trim();
+    let when_clause = when_clause.trim();
+    let then_clause = then_clause.trim();
+
+    let summary = format!(
+        "Given {}, when {}, then {}",
+        if given.is_empty() {
+            "<unspecified context>"
+        } else {
+            given
+        },
+        if when_clause.is_empty() {
+            "<unspecified trigger>"
+        } else {
+            when_clause
+        },
+        if then_clause.is_empty() {
+            "<unspecified outcome>"
+        } else {
+            then_clause
+        }
+    );
+
+    const MAX_LEN: usize = 140;
+    if summary.chars().count() <= MAX_LEN {
+        summary
+    } else {
+        let mut truncated = String::with_capacity(MAX_LEN + 1);
+        for (idx, ch) in summary.chars().enumerate() {
+            if idx + 1 >= MAX_LEN {
+                break;
+            }
+            truncated.push(ch);
+        }
+        truncated.push('…');
+        truncated
     }
 }
 

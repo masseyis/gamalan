@@ -6,7 +6,7 @@ import { Page, expect } from '@playwright/test'
 export function getTestCredentials() {
   return {
     email: process.env.E2E_CLERK_USER_USERNAME || 'dummy+clerk_test@mock.com',
-    password: process.env.E2E_CLERK_USER_PASSWORD || 'punvyx-ceczIf-3remza'
+    password: process.env.E2E_CLERK_USER_PASSWORD || 'punvyx-ceczIf-3remza',
   }
 }
 
@@ -28,7 +28,9 @@ export async function ensureAuthenticated(page: Page) {
   await expect(page).not.toHaveURL(/.*\/sign-in.*/)
 
   // Verify some authenticated content is visible
-  await expect(page.locator('[data-testid="battra-logo"]').or(page.locator('h1')).first()).toBeVisible()
+  await expect(
+    page.locator('[data-testid="battra-logo"]').or(page.locator('h1')).first()
+  ).toBeVisible()
 }
 
 /**

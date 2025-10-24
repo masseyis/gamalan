@@ -22,6 +22,7 @@ tower-http = { workspace = true }
 async-trait = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }
+event-bus = { path = "../../libs/event-bus" }
 tracing = { workspace = true }
 reqwest = { version = "0.12.4", features = ["json"] }
 

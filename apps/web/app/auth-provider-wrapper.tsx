@@ -43,10 +43,10 @@ export const useMockUser = () => {
       id: '01234567-89ab-cdef-0123-456789abcdef',
       firstName: 'Test',
       lastName: 'User',
-      emailAddresses: [{ emailAddress: 'test@example.com' }]
+      emailAddresses: [{ emailAddress: 'test@example.com' }],
     },
     isSignedIn: true,
-    isLoaded: true
+    isLoaded: true,
   }
 }
 
@@ -55,13 +55,13 @@ export const useMockAuth = () => {
     userId: '01234567-89ab-cdef-0123-456789abcdef',
     isSignedIn: true,
     isLoaded: true,
-    getToken: () => Promise.resolve('valid-test-token')
+    getToken: () => Promise.resolve('valid-test-token'),
   }
 }
 
 export const useMockClerk = () => {
   return {
-    signOut: (_?: unknown) => Promise.resolve()
+    signOut: (_?: unknown) => Promise.resolve(),
   }
 }
 
@@ -69,8 +69,8 @@ export const useMockOrganization = () => {
   return {
     organization: {
       id: 'test-org-123',
-      name: 'Test Organization'
+      name: 'Test Organization',
     },
-    isLoaded: true
+    isLoaded: true,
   }
 }

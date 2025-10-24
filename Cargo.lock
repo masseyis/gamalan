@@ -65,12 +65,14 @@ name = "api-gateway"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "auth-gateway",
  "auth_clerk",
  "axum 0.8.4",
  "backlog",
  "common",
  "context-orchestrator",
+ "event-bus",
  "http-body-util",
  "projects",
  "prompt-builder",
@@ -80,6 +82,7 @@ dependencies = [
  "shuttle-axum",
  "shuttle-runtime",
  "shuttle-shared-db",
+ "sprint",
  "sqlx",
  "tokio",
  "tokio-test",
@@ -382,6 +385,7 @@ dependencies = [
  "axum 0.8.4",
  "chrono",
  "common",
+ "event-bus",
  "http-body-util",
  "jsonwebtoken",
  "proptest",
@@ -641,6 +645,7 @@ dependencies = [
  "axum 0.8.4",
  "chrono",
  "common",
+ "event-bus",
  "http-body-util",
  "qdrant-client",
  "reqwest",
@@ -1128,6 +1133,19 @@ dependencies = [
  "cfg-if",
  "home",
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "event-bus"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "pubsub",
+ "serde",
+ "serde_json",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]
@@ -2584,6 +2602,7 @@ dependencies = [
  "axum 0.8.4",
  "chrono",
  "common",
+ "event-bus",
  "reqwest",
  "serde",
  "serde_json",
@@ -2650,6 +2669,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "52c2c1bf36ddb1a1c396b3601a3cec27c2462e45f07c386894ec3ccf5332bd16"
 dependencies = [
  "prost",
+]
+
+[[package]]
+name = "pubsub"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7943ab27ead5ae69b4a0d28961a089fe55536e6e092856a9b0ae8dfc50275e8c"
+dependencies = [
+ "threadpool",
 ]
 
 [[package]]
@@ -2823,8 +2851,10 @@ dependencies = [
  "async-trait",
  "auth_clerk",
  "axum 0.8.4",
+ "backlog",
  "chrono",
  "common",
+ "event-bus",
  "reqwest",
  "serde",
  "serde_json",
@@ -3732,6 +3762,13 @@ name = "sprint"
 version = "0.1.0"
 dependencies = [
  "axum 0.8.4",
+ "chrono",
+ "common",
+ "serde",
+ "sqlx",
+ "tokio",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]
@@ -4144,6 +4181,12 @@ checksum = "f60246a4944f24f6e018aa17cdeffb7818b76356965d03b07d6a9886e8962185"
 dependencies = [
  "cfg-if",
 ]
+
+[[package]]
+name = "threadpool"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a63a15230070db3a9f599491c23c4bf38e86bd47c8f2d86ff1f8d3b2e85b0c70"
 
 [[package]]
 name = "time"

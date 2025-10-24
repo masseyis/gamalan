@@ -1,10 +1,10 @@
 // User role definitions matching backend auth-gateway
 import { TeamMembership } from './team'
 export type UserRole =
-  | 'sponsor'             // Can view progress, demos, forecasts (read-only)
-  | 'product_owner'       // Can manage backlog, prioritize stories, accept completed work
+  | 'sponsor' // Can view progress, demos, forecasts (read-only)
+  | 'product_owner' // Can manage backlog, prioritize stories, accept completed work
   | 'managing_contributor' // Technical leadership + mentorship (same capabilities as Contributor)
-  | 'contributor'         // Self-organize work, take task ownership, implement solutions
+  | 'contributor' // Self-organize work, take task ownership, implement solutions
 
 export type ContributorSpecialty =
   | 'frontend'
@@ -19,7 +19,7 @@ export interface User {
   externalId: string
   email: string
   role: UserRole
-  specialty?: ContributorSpecialty  // Only relevant for contributors
+  specialty?: ContributorSpecialty // Only relevant for contributors
   createdAt: string
   updatedAt: string
 }
@@ -31,6 +31,18 @@ export interface RolePermissions {
   canTakeTaskOwnership: boolean
   isContributor: boolean
   canViewProjectData: boolean
+}
+
+export type OrganizationMembershipRole = 'owner' | 'admin' | 'member'
+
+export interface UserOrganization {
+  id: string
+  externalId: string
+  name: string
+  slug: string
+  description?: string | null
+  imageUrl?: string | null
+  role: OrganizationMembershipRole
 }
 
 // Helper function to get permissions for a role

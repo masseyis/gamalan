@@ -5,15 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { useAssistantStore } from '@/lib/stores/assistant'
-import { 
-  Send, 
-  Loader2, 
-  Sparkles, 
-  Mic, 
-  MicOff, 
-  AlertCircle,
-  Command
-} from 'lucide-react'
+import { Send, Loader2, Sparkles, Mic, MicOff, AlertCircle, Command } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 
@@ -59,43 +51,46 @@ export function AssistantBar() {
     setUtterance,
     submitUtterance,
     clearError,
-    utteranceHistory
+    utteranceHistory,
   } = useAssistantStore()
 
   // Initialize speech recognition
   useEffect(() => {
-    if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
+    if (
+      typeof window !== 'undefined' &&
+      ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)
+    ) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
       if (SpeechRecognition) {
         const recognition = new SpeechRecognition()
-      
-      recognition.continuous = false
-      recognition.interimResults = true
-      recognition.lang = 'en-US'
-      
-      recognition.onresult = (event: SpeechRecognitionEvent) => {
-        const transcript = Array.from(event.results)
-          .map((result: SpeechRecognitionResult) => result[0])
-          .map((result: SpeechRecognitionAlternative) => result.transcript)
-          .join('')
-        
-        setUtterance(transcript)
-      }
-      
-      recognition.onend = () => {
-        setIsListening(false)
-      }
-      
-      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-        setIsListening(false)
-        toast({
-          title: 'Speech Recognition Error',
-          description: 'Unable to process speech input. Please try typing instead.',
-          variant: 'destructive'
-        })
-      }
-      
-      setRecognition(recognition)
+
+        recognition.continuous = false
+        recognition.interimResults = true
+        recognition.lang = 'en-US'
+
+        recognition.onresult = (event: SpeechRecognitionEvent) => {
+          const transcript = Array.from(event.results)
+            .map((result: SpeechRecognitionResult) => result[0])
+            .map((result: SpeechRecognitionAlternative) => result.transcript)
+            .join('')
+
+          setUtterance(transcript)
+        }
+
+        recognition.onend = () => {
+          setIsListening(false)
+        }
+
+        recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+          setIsListening(false)
+          toast({
+            title: 'Speech Recognition Error',
+            description: 'Unable to process speech input. Please try typing instead.',
+            variant: 'destructive',
+          })
+        }
+
+        setRecognition(recognition)
       }
     }
   }, [setUtterance, toast])
@@ -108,22 +103,22 @@ export function AssistantBar() {
         event.preventDefault()
         textareaRef.current?.focus()
       }
-      
+
       // Escape to clear error
       if (event.key === 'Escape' && error) {
         clearError()
       }
     }
-    
+
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [error, clearError])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!currentUtterance.trim() || isProcessing) return
-    
+
     try {
       await submitUtterance(currentUtterance.trim())
     } catch (error) {
@@ -136,7 +131,7 @@ export function AssistantBar() {
       e.preventDefault()
       handleSubmit(e)
     }
-    
+
     // Navigate history with up/down arrows when textarea is empty
     if (currentUtterance === '' && utteranceHistory.length > 0) {
       if (e.key === 'ArrowUp') {
@@ -151,11 +146,11 @@ export function AssistantBar() {
       toast({
         title: 'Speech Recognition Not Available',
         description: 'Your browser does not support speech recognition.',
-        variant: 'destructive'
+        variant: 'destructive',
       })
       return
     }
-    
+
     if (isListening) {
       recognition.stop()
       setIsListening(false)
@@ -167,7 +162,7 @@ export function AssistantBar() {
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setUtterance(e.target.value)
-    
+
     // Auto-resize textarea
     const textarea = e.target
     textarea.style.height = 'auto'
@@ -213,7 +208,7 @@ export function AssistantBar() {
                 <span>+ K to focus</span>
               </div>
             </div>
-            
+
             <Textarea
               ref={textareaRef}
               value={currentUtterance}
@@ -235,26 +230,14 @@ export function AssistantBar() {
                 size="sm"
                 onClick={toggleListening}
                 disabled={isProcessing}
-                className={cn(
-                  "h-10 w-10 p-0",
-                  isListening && "bg-primary/10 text-primary"
-                )}
+                className={cn('h-10 w-10 p-0', isListening && 'bg-primary/10 text-primary')}
               >
-                {isListening ? (
-                  <MicOff className="h-4 w-4" />
-                ) : (
-                  <Mic className="h-4 w-4" />
-                )}
+                {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
               </Button>
             )}
 
             {/* Submit Button */}
-            <Button
-              type="submit"
-              size="sm"
-              disabled={!canSubmit}
-              className="h-10 px-4"
-            >
+            <Button type="submit" size="sm" disabled={!canSubmit} className="h-10 px-4">
               {isProcessing ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
@@ -282,7 +265,7 @@ export function AssistantBar() {
               '"I finished the authentication task"',
               '"Split the user registration story"',
               '"What should I demo this sprint?"',
-              '"Check if story ABC-123 is ready"'
+              '"Check if story ABC-123 is ready"',
             ].map((example, i) => (
               <Button
                 key={i}

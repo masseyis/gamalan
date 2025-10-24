@@ -37,7 +37,9 @@ setup('authenticate', async ({ page }) => {
   await page.waitForURL(/.*\/(dashboard|assistant).*/, { timeout: 15000 })
 
   // Verify we're authenticated by checking for user navigation or dashboard content
-  await expect(page.locator('[data-testid="battra-logo"]').or(page.locator('h1')).first()).toBeVisible()
+  await expect(
+    page.locator('[data-testid="battra-logo"]').or(page.locator('h1')).first()
+  ).toBeVisible()
 
   // Save signed-in state
   await page.context().storageState({ path: authFile })

@@ -55,6 +55,7 @@ pnpm playwright install
 ### Environment Setup
 
 1. **Test Environment Variables** (`.env.test`):
+
 ```bash
 # Clerk test keys
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
@@ -69,6 +70,7 @@ NEXT_PUBLIC_ENABLE_AI_FEATURES=true
 ```
 
 2. **API Endpoints**:
+
 ```bash
 NEXT_PUBLIC_PROJECTS_API_URL=http://localhost:8001
 NEXT_PUBLIC_BACKLOG_API_URL=http://localhost:8002
@@ -110,12 +112,14 @@ pnpm test:staging
 ### 2. Core Workflow Tests (`workflows/`)
 
 #### Project Management (`project-management.authenticated.spec.ts`)
+
 - ✅ Project creation, editing, deletion
 - ✅ Project navigation and settings
 - ✅ Team member management
 - ✅ Project archiving and restoration
 
 #### Backlog Management (`backlog-management.authenticated.spec.ts`)
+
 - ✅ User story creation with acceptance criteria
 - ✅ Story status workflow (backlog → ready → in-progress → done)
 - ✅ Story estimation and prioritization
@@ -123,6 +127,7 @@ pnpm test:staging
 - ✅ Backlog filtering and search
 
 #### Sprint Board (`sprint-board.authenticated.spec.ts`)
+
 - ✅ Sprint creation and management
 - ✅ Task board operations (drag & drop)
 - ✅ Task assignment and status updates
@@ -130,6 +135,7 @@ pnpm test:staging
 - ✅ Sprint completion and retrospective
 
 #### AI Assistant (`ai-assistant.authenticated.spec.ts`)
+
 - ✅ Chat interface and conversation flows
 - ✅ Context-aware assistance
 - ✅ Story and task generation from AI
@@ -139,12 +145,14 @@ pnpm test:staging
 ### 3. Cross-Browser Tests (`cross-browser/`)
 
 #### Responsive Design (`responsive-design.cross-browser.spec.ts`)
+
 - ✅ Mobile navigation adaptation
 - ✅ Touch-friendly interface elements
 - ✅ Responsive layouts across breakpoints
 - ✅ Accessibility compliance (WCAG AA)
 
 #### Browser Compatibility (`browser-compatibility.cross-browser.spec.ts`)
+
 - ✅ JavaScript execution across browsers
 - ✅ CSS layout compatibility
 - ✅ Form handling and validation
@@ -153,12 +161,14 @@ pnpm test:staging
 ### 4. Edge Cases and Error Handling (`edge-cases/`)
 
 #### Error Handling (`error-handling.spec.ts`)
+
 - ✅ Network failures and API errors
 - ✅ Input validation and edge cases
 - ✅ Security vulnerability prevention
 - ✅ State management failures
 
 #### Performance and Stress (`performance-stress.spec.ts`)
+
 - ✅ Page load performance metrics
 - ✅ Memory usage monitoring
 - ✅ Large dataset handling
@@ -169,7 +179,9 @@ pnpm test:staging
 Our tests use the Page Object Model pattern for maintainability and reusability:
 
 ### Base Page (`base-page.ts`)
+
 Common functionality shared across all pages:
+
 ```typescript
 class BasePage {
   async goto(path: string)
@@ -181,7 +193,9 @@ class BasePage {
 ```
 
 ### Specialized Pages
+
 Each major application section has its own page object:
+
 - `AuthPage` - Authentication flows
 - `ProjectsPage` - Project management
 - `BacklogPage` - Story and backlog operations
@@ -189,6 +203,7 @@ Each major application section has its own page object:
 - `AssistantPage` - AI assistant interactions
 
 ### Test Utilities
+
 ```typescript
 // Generate unique test data
 const projectName = testUtils.generateProjectName()
@@ -206,6 +221,7 @@ const testData = {
 ## 🔒 Authentication Strategy
 
 ### Clerk Integration
+
 We use Clerk's official testing approach with real authentication:
 
 1. **Global Setup** (`global.setup.ts`):
@@ -228,12 +244,14 @@ We use Clerk's official testing approach with real authentication:
 ## 🌐 Cross-Browser Testing
 
 ### Supported Browsers
+
 - **Desktop**: Chrome, Firefox, Safari
 - **Mobile**: Chrome (Android), Safari (iOS)
 - **Tablets**: iPad Pro
 - **High DPI**: Retina displays
 
 ### Browser-Specific Configurations
+
 ```typescript
 // Desktop browsers
 { name: 'chromium', use: { ...devices['Desktop Chrome'] } }
@@ -248,9 +266,11 @@ We use Clerk's official testing approach with real authentication:
 ## 📊 CI/CD Integration
 
 ### GitHub Actions Workflow
+
 **File**: `.github/workflows/e2e-tests.yml`
 
 **Jobs**:
+
 1. **E2E Tests** (Chrome) - Main test suite
 2. **Cross-Browser Tests** - Multi-browser validation
 3. **Performance Tests** - Load and stress testing
@@ -258,11 +278,13 @@ We use Clerk's official testing approach with real authentication:
 5. **Test Summary** - Aggregate results
 
 **Triggers**:
+
 - Push to `main`/`develop` branches
 - Pull requests
 - Daily scheduled runs (2 AM UTC)
 
 ### Test Reporting
+
 - **HTML Reports** with screenshots and videos
 - **JUnit XML** for CI integration
 - **GitHub Annotations** for inline PR feedback
@@ -271,6 +293,7 @@ We use Clerk's official testing approach with real authentication:
 ## 📈 Performance Standards
 
 ### Acceptance Criteria
+
 - **Page Load**: < 5 seconds
 - **First Contentful Paint**: < 3 seconds
 - **JavaScript Bundle**: < 2MB total
@@ -279,7 +302,9 @@ We use Clerk's official testing approach with real authentication:
 - **API Response**: < 10 seconds max
 
 ### Performance Monitoring
+
 Tests include automatic performance tracking:
+
 ```typescript
 test('should load within performance budget', async ({ page }) => {
   const startTime = Date.now()
@@ -293,6 +318,7 @@ test('should load within performance budget', async ({ page }) => {
 ## 🛡️ Security Testing
 
 ### Vulnerability Prevention
+
 - **XSS Protection**: Input sanitization validation
 - **CSRF Protection**: Token validation
 - **Authentication**: Session management security
@@ -300,6 +326,7 @@ test('should load within performance budget', async ({ page }) => {
 - **File Upload**: Malicious file prevention
 
 ### Security Test Examples
+
 ```typescript
 test('should prevent XSS attacks', async ({ page }) => {
   const xssPayload = '<script>alert("xss")</script>'
@@ -316,6 +343,7 @@ test('should prevent XSS attacks', async ({ page }) => {
 ### Common Issues
 
 1. **Authentication Failures**:
+
    ```bash
    # Check Clerk credentials
    echo $E2E_CLERK_USER_USERNAME
@@ -326,6 +354,7 @@ test('should prevent XSS attacks', async ({ page }) => {
    ```
 
 2. **Timeout Issues**:
+
    ```bash
    # Run with debug mode
    DEBUG=pw:api pnpm playwright test
@@ -335,6 +364,7 @@ test('should prevent XSS attacks', async ({ page }) => {
    ```
 
 3. **Flaky Tests**:
+
    ```bash
    # Run specific test multiple times
    pnpm playwright test auth.spec.ts --repeat-each=5
@@ -344,6 +374,7 @@ test('should prevent XSS attacks', async ({ page }) => {
    ```
 
 ### Debug Tools
+
 - **Playwright Inspector**: Visual debugging
 - **Trace Viewer**: Timeline analysis
 - **Video Recording**: Test execution replay
@@ -365,6 +396,7 @@ pnpm playwright show-report
 ### Best Practices
 
 1. **Use Page Objects**:
+
    ```typescript
    // ✅ Good
    await projectsPage.createProject(name, description)
@@ -374,6 +406,7 @@ pnpm playwright show-report
    ```
 
 2. **Descriptive Test Names**:
+
    ```typescript
    test('should create project and navigate to backlog successfully', async () => {
      // Test implementation
@@ -381,6 +414,7 @@ pnpm playwright show-report
    ```
 
 3. **Proper Cleanup**:
+
    ```typescript
    test.afterEach(async () => {
      if (createdProjectName) {
@@ -390,6 +424,7 @@ pnpm playwright show-report
    ```
 
 4. **Stable Selectors**:
+
    ```typescript
    // ✅ Good - Use data-testid
    page.locator('[data-testid="project-card"]')
@@ -399,6 +434,7 @@ pnpm playwright show-report
    ```
 
 ### Test Structure Template
+
 ```typescript
 import { test, expect } from '@playwright/test'
 import { ProjectsPage, testUtils } from '../page-objects'
@@ -431,6 +467,7 @@ test.describe('Feature Name Tests', () => {
 ## 🤝 Contributing
 
 ### Code Review Checklist
+
 - [ ] Tests follow Page Object Model pattern
 - [ ] Proper error handling and cleanup
 - [ ] Cross-browser compatibility considered
@@ -439,6 +476,7 @@ test.describe('Feature Name Tests', () => {
 - [ ] Documentation updated
 
 ### Pull Request Requirements
+
 - All E2E tests must pass
 - New features require corresponding E2E tests
 - Performance regressions are not allowed

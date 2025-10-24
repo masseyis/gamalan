@@ -4,18 +4,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useAssistantStore } from '@/lib/stores/assistant'
-import { 
-  Zap, 
-  CheckCircle2, 
-  FileText, 
-  Calendar, 
+import {
+  Zap,
+  CheckCircle2,
+  FileText,
+  Calendar,
   Presentation,
   ListTodo,
   TrendingUp,
   AlertCircle,
   Lightbulb,
   Target,
-  Clock
+  Clock,
 } from 'lucide-react'
 
 interface QuickAction {
@@ -54,7 +54,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     utterance: 'Generate acceptance criteria for my story',
     category: 'common',
   },
-  
+
   // Planning Actions
   {
     id: 'split-story',
@@ -80,7 +80,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     utterance: 'What should I demo this sprint?',
     category: 'planning',
   },
-  
+
   // Analysis Actions
   {
     id: 'velocity-analysis',
@@ -105,7 +105,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     icon: ListTodo,
     utterance: 'Check our backlog health',
     category: 'analysis',
-    badge: 'Beta'
+    badge: 'Beta',
   },
 ]
 
@@ -128,7 +128,7 @@ const CATEGORY_CONFIG = {
 }
 
 function QuickActionCard({ action }: { action: QuickAction }) {
-  const setUtterance = useAssistantStore(state => state.setUtterance)
+  const setUtterance = useAssistantStore((state) => state.setUtterance)
   const Icon = action.icon
 
   const handleClick = () => {
@@ -155,9 +155,7 @@ function QuickActionCard({ action }: { action: QuickAction }) {
                 </Badge>
               )}
             </div>
-            <p className="text-xs text-muted-foreground mb-2">
-              {action.description}
-            </p>
+            <p className="text-xs text-muted-foreground mb-2">{action.description}</p>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <span>&ldquo;</span>
               <span className="italic">{action.utterance}</span>
@@ -171,12 +169,12 @@ function QuickActionCard({ action }: { action: QuickAction }) {
 }
 
 export function QuickActions() {
-  const isProcessing = useAssistantStore(state => state.isProcessing)
+  const isProcessing = useAssistantStore((state) => state.isProcessing)
 
   const groupedActions = Object.entries(CATEGORY_CONFIG).map(([category, config]) => ({
     ...config,
     category: category as keyof typeof CATEGORY_CONFIG,
-    actions: QUICK_ACTIONS.filter(action => action.category === category)
+    actions: QUICK_ACTIONS.filter((action) => action.category === category),
   }))
 
   return (
@@ -195,9 +193,9 @@ export function QuickActions() {
       </Card>
 
       {/* Action Categories */}
-      {groupedActions.map(category => {
+      {groupedActions.map((category) => {
         const CategoryIcon = category.icon
-        
+
         return (
           <div key={category.category} className="space-y-3">
             <Card>
@@ -206,18 +204,13 @@ export function QuickActions() {
                   <CategoryIcon className="h-4 w-4" />
                   {category.title}
                 </CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  {category.description}
-                </p>
+                <p className="text-sm text-muted-foreground">{category.description}</p>
               </CardHeader>
             </Card>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {category.actions.map(action => (
-                <QuickActionCard 
-                  key={action.id} 
-                  action={action} 
-                />
+              {category.actions.map((action) => (
+                <QuickActionCard key={action.id} action={action} />
               ))}
             </div>
           </div>
@@ -243,7 +236,8 @@ export function QuickActions() {
             <strong>💡 Pro tip:</strong> You can also type custom requests directly
           </p>
           <p>
-            Try being specific with IDs like &ldquo;Mark task ABC-123 as complete&rdquo; or &ldquo;Check if story XYZ-456 is ready&rdquo;
+            Try being specific with IDs like &ldquo;Mark task ABC-123 as complete&rdquo; or
+            &ldquo;Check if story XYZ-456 is ready&rdquo;
           </p>
         </CardContent>
       </Card>

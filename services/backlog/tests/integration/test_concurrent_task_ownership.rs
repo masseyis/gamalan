@@ -1,6 +1,7 @@
 use axum::{
     body::{to_bytes, Body},
     http::{Method, Request, StatusCode},
+    Router,
 };
 use serde_json::{json, Value};
 use serial_test::serial;
@@ -10,19 +11,11 @@ use tokio::task::JoinSet;
 use tower::ServiceExt;
 use uuid::Uuid;
 
-use auth_clerk::JwtVerifier;
-use backlog::adapters::http::routes::create_backlog_router_with_readiness;
-
-use tokio::sync::Mutex;
-
 // Import the common test setup
-use crate::common::setup_test_db;
+use crate::common::{build_backlog_router_for_tests, setup_test_db};
 
-async fn setup_test_app(pool: PgPool) -> axum::Router {
-    // Create a mock JWT verifier for testing
-    let verifier = Arc::new(Mutex::new(JwtVerifier::new_test_verifier()));
-
-    create_backlog_router_with_readiness(pool, verifier).await
+async fn setup_test_app(pool: PgPool) -> Router {
+    build_backlog_router_for_tests(pool).await
 }
 
 async fn create_test_task(app: &axum::Router) -> (Uuid, Uuid, Uuid) {

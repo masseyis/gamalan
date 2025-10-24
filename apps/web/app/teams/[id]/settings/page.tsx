@@ -17,12 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ArrowLeft, Save, Trash2, AlertTriangle, Users } from 'lucide-react'
 import Link from 'next/link'
 import { teamsApi } from '@/lib/api/teams'
@@ -61,21 +56,20 @@ export default function TeamSettingsPage() {
   })
 
   const updateTeamMutation = useMutation({
-    mutationFn: (data: { name: string; description?: string }) =>
-      teamsApi.updateTeam(teamId, data),
+    mutationFn: (data: { name: string; description?: string }) => teamsApi.updateTeam(teamId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teams'] })
       queryClient.invalidateQueries({ queryKey: ['teams', teamId] })
       toast({
-        title: "Team updated",
-        description: "Team settings have been saved successfully",
+        title: 'Team updated',
+        description: 'Team settings have been saved successfully',
       })
     },
     onError: (error) => {
       toast({
-        title: "Failed to update team",
-        description: error instanceof Error ? error.message : "An error occurred",
-        variant: "destructive",
+        title: 'Failed to update team',
+        description: error instanceof Error ? error.message : 'An error occurred',
+        variant: 'destructive',
       })
     },
   })
@@ -85,16 +79,16 @@ export default function TeamSettingsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teams'] })
       toast({
-        title: "Team deleted",
-        description: "Team has been permanently deleted",
+        title: 'Team deleted',
+        description: 'Team has been permanently deleted',
       })
       router.push('/teams')
     },
     onError: (error) => {
       toast({
-        title: "Failed to delete team",
-        description: error instanceof Error ? error.message : "An error occurred",
-        variant: "destructive",
+        title: 'Failed to delete team',
+        description: error instanceof Error ? error.message : 'An error occurred',
+        variant: 'destructive',
       })
     },
   })
@@ -102,9 +96,9 @@ export default function TeamSettingsPage() {
   const handleUpdateTeam = () => {
     if (!teamName.trim()) {
       toast({
-        title: "Validation error",
-        description: "Team name is required",
-        variant: "destructive",
+        title: 'Validation error',
+        description: 'Team name is required',
+        variant: 'destructive',
       })
       return
     }
@@ -138,7 +132,10 @@ export default function TeamSettingsPage() {
       <div className="min-h-screen bg-background">
         <div className="container mx-auto py-8">
           <div className="mb-8">
-            <Link href="/teams" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4">
+            <Link
+              href="/teams"
+              className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4"
+            >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Teams
             </Link>
@@ -154,35 +151,38 @@ export default function TeamSettingsPage() {
   const canDelete = !hasMembers // Can only delete if no members
 
   return (
-    <ManagerOnly fallback={
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto py-8">
-          <div className="text-center py-12">
-            <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-              <Users className="h-12 w-12 text-gray-400" />
+    <ManagerOnly
+      fallback={
+        <div className="min-h-screen bg-background">
+          <div className="container mx-auto py-8">
+            <div className="text-center py-12">
+              <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                <Users className="h-12 w-12 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Access Restricted</h3>
+              <p className="text-gray-500 mb-4">
+                Only Product Owners and Managing Contributors can manage team settings.
+              </p>
+              <Link href={`/teams/${teamId}`}>
+                <Button>Back to Team</Button>
+              </Link>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Access Restricted</h3>
-            <p className="text-gray-500 mb-4">
-              Only Product Owners and Managing Contributors can manage team settings.
-            </p>
-            <Link href={`/teams/${teamId}`}>
-              <Button>Back to Team</Button>
-            </Link>
           </div>
         </div>
-      </div>
-    }>
+      }
+    >
       <div className="min-h-screen bg-background">
         <div className="container mx-auto py-8 max-w-2xl">
           <div className="mb-8">
-            <Link href={`/teams/${teamId}`} className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4">
+            <Link
+              href={`/teams/${teamId}`}
+              className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4"
+            >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to {team.name}
             </Link>
             <h1 className="text-3xl font-bold">Team Settings</h1>
-            <p className="text-muted-foreground mt-2">
-              Manage team configuration and preferences
-            </p>
+            <p className="text-muted-foreground mt-2">Manage team configuration and preferences</p>
           </div>
 
           <div className="space-y-6">
@@ -190,9 +190,7 @@ export default function TeamSettingsPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Basic Information</CardTitle>
-                <CardDescription>
-                  Update team name and description
-                </CardDescription>
+                <CardDescription>Update team name and description</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
@@ -211,7 +209,7 @@ export default function TeamSettingsPage() {
                     id="team-description"
                     value={teamDescription}
                     onChange={(e) => setTeamDescription(e.target.value)}
-                    placeholder="Brief description of the team&apos;s focus or responsibilities"
+                    placeholder="Brief description of the team's focus or responsibilities"
                     rows={3}
                     data-testid="team-description-input"
                   />
@@ -233,9 +231,7 @@ export default function TeamSettingsPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Team Statistics</CardTitle>
-                <CardDescription>
-                  Current team metrics and information
-                </CardDescription>
+                <CardDescription>Current team metrics and information</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 gap-4 text-sm">
@@ -253,9 +249,12 @@ export default function TeamSettingsPage() {
                     <span className="text-muted-foreground">Velocity:</span>
                     <span className="font-medium">
                       {team.velocityHistory && team.velocityHistory.length > 0
-                        ? Math.round(team.velocityHistory.reduce((sum, v) => sum + v, 0) / team.velocityHistory.length)
-                        : 0
-                      } pts/sprint
+                        ? Math.round(
+                            team.velocityHistory.reduce((sum, v) => sum + v, 0) /
+                              team.velocityHistory.length
+                          )
+                        : 0}{' '}
+                      pts/sprint
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -311,20 +310,19 @@ export default function TeamSettingsPage() {
                           <DialogHeader>
                             <DialogTitle>Delete Team</DialogTitle>
                             <DialogDescription>
-                              Are you sure you want to delete &quot;{team.name}&quot;?
-                              This action cannot be undone and will permanently remove:
-                              <ul className="list-disc list-inside mt-2 text-sm">
+                              Are you sure you want to delete &quot;{team.name}&quot;? This action
+                              cannot be undone and will permanently remove the following team data.
+                            </DialogDescription>
+                            <div className="mt-3 text-sm text-muted-foreground">
+                              <ul className="list-disc list-inside space-y-1">
                                 <li>Team configuration and settings</li>
                                 <li>Sprint history and velocity data</li>
                                 <li>Team membership records</li>
                               </ul>
-                            </DialogDescription>
+                            </div>
                           </DialogHeader>
                           <DialogFooter>
-                            <Button
-                              variant="outline"
-                              onClick={() => setDeleteDialogOpen(false)}
-                            >
+                            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
                               Cancel
                             </Button>
                             <Button

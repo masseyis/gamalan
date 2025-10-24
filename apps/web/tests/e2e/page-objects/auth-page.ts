@@ -50,7 +50,12 @@ export class AuthPage extends BasePage {
     await this.expectAuthenticated()
   }
 
-  async signUp(email: string, password: string, firstName: string = 'Test', lastName: string = 'User') {
+  async signUp(
+    email: string,
+    password: string,
+    firstName: string = 'Test',
+    lastName: string = 'User'
+  ) {
     await this.gotoSignUp()
 
     // Fill registration form

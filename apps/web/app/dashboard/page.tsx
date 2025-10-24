@@ -17,5 +17,11 @@ export default async function DashboardPage() {
   const recentActivity: any[] = []
   const userPerformance: any[] = []
 
-  return <ClientPage projects={projectsWithStories} recentActivity={recentActivity} userPerformance={userPerformance} />
+  return (
+    <ClientPage
+      projects={projectsWithStories}
+      recentActivity={recentActivity}
+      userPerformance={userPerformance}
+    />
+  )
 }

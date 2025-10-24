@@ -15,32 +15,33 @@ export const testData = {
     email: process.env.E2E_CLERK_USER_USERNAME || 'dummy+clerk_test@mock.com',
     password: process.env.E2E_CLERK_USER_PASSWORD || 'punvyx-ceczIf-3remza',
     firstName: 'Test',
-    lastName: 'User'
+    lastName: 'User',
   },
 
   project: {
     name: 'E2E Test Project',
-    description: 'A project created during E2E testing'
+    description: 'A project created during E2E testing',
   },
 
   story: {
     title: 'Test User Story',
-    description: 'As a user, I want to test the application so that I can verify it works correctly',
+    description:
+      'As a user, I want to test the application so that I can verify it works correctly',
     acceptanceCriteria: [
       'Given I am a logged-in user, When I navigate to the application, Then I should see the dashboard',
-      'Given I am on the dashboard, When I click create project, Then I should see the project creation form'
-    ]
+      'Given I am on the dashboard, When I click create project, Then I should see the project creation form',
+    ],
   },
 
   task: {
     title: 'Test Task',
-    description: 'Implementation task for testing'
+    description: 'Implementation task for testing',
   },
 
   sprint: {
     name: 'Test Sprint',
-    duration: 14
-  }
+    duration: 14,
+  },
 }
 
 // Test utilities
@@ -55,9 +56,9 @@ export const testUtils = {
 
   generateTaskTitle: () => `Test Task ${testUtils.generateUniqueId()}`,
 
-  wait: (ms: number) => new Promise(resolve => setTimeout(resolve, ms)),
+  wait: (ms: number) => new Promise((resolve) => setTimeout(resolve, ms)),
 
   getCurrentTimestamp: () => new Date().toISOString(),
 
-  formatDate: (date: Date) => date.toISOString().split('T')[0]
+  formatDate: (date: Date) => date.toISOString().split('T')[0],
 }

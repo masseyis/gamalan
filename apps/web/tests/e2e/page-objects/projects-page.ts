@@ -10,7 +10,9 @@ export class ProjectsPage extends BasePage {
 
   constructor(page: Page) {
     super(page)
-    this.newProjectButton = page.locator('button:has-text("New Project"), button:has-text("Create Project")')
+    this.newProjectButton = page.locator(
+      'button:has-text("New Project"), button:has-text("Create Project")'
+    )
     this.projectsList = page.locator('[data-testid="projects-list"]')
     this.searchInput = page.locator('input[placeholder*="Search"]')
     this.filterButton = page.locator('button:has-text("Filter")')
@@ -33,7 +35,9 @@ export class ProjectsPage extends BasePage {
         await nameInput.fill(name)
 
         if (description) {
-          const descInput = this.page.locator('textarea[name="description"], textarea[placeholder*="description"]')
+          const descInput = this.page.locator(
+            'textarea[name="description"], textarea[placeholder*="description"]'
+          )
           if (await descInput.isVisible({ timeout: 2000 })) {
             await descInput.fill(description)
           }
@@ -81,7 +85,7 @@ export class ProjectsPage extends BasePage {
       'button:has-text("Delete")',
       'button[aria-label*="Delete"]',
       '[data-testid*="delete"]',
-      '.delete-button'
+      '.delete-button',
     ]
 
     let deleteButton = null
@@ -135,8 +139,12 @@ export class ProjectsPage extends BasePage {
     try {
       await Promise.race([
         this.projectsList.waitFor({ state: 'visible', timeout: 10000 }),
-        this.page.locator('[data-testid="empty-projects"]').waitFor({ state: 'visible', timeout: 10000 }),
-        this.page.locator('text=No projects, text=empty, text=Create your first').waitFor({ state: 'visible', timeout: 10000 })
+        this.page
+          .locator('[data-testid="empty-projects"]')
+          .waitFor({ state: 'visible', timeout: 10000 }),
+        this.page
+          .locator('text=No projects, text=empty, text=Create your first')
+          .waitFor({ state: 'visible', timeout: 10000 }),
       ])
     } catch {
       // Fallback - just verify we're on the projects page

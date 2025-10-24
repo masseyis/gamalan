@@ -4,9 +4,9 @@ This service evaluates the readiness of stories and generates BDD criteria.
 
 ## Endpoints
 
--   `POST /readiness/{storyId}/evaluate`: Evaluate the readiness of a story.
--   `POST /criteria/{storyId}/generate`: Generate BDD criteria for a story.
--   `GET /criteria/{storyId}`: Get the BDD criteria for a story.
+- `POST /readiness/{storyId}/evaluate`: Evaluate the readiness of a story.
+- `POST /criteria/{storyId}/generate`: Generate BDD criteria for a story.
+- `GET /criteria/{storyId}`: Get the BDD criteria for a story.
 
 ## Local Development
 

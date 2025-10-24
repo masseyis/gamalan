@@ -17,7 +17,7 @@ async function buildClient(baseURL: string) {
 
   client.setUserContext({
     userId: authResult.userId,
-    organizationId: authResult.orgId,
+    organizationExternalId: authResult.orgId,
   })
 
   if (token) {
@@ -43,7 +43,9 @@ export const getAuthenticatedPromptBuilderClient = async () =>
   buildClient(process.env.NEXT_PUBLIC_PROMPT_BUILDER_API_URL || 'http://localhost:8000/api/v1')
 
 export const getAuthenticatedOrchestratorClient = async () =>
-  buildClient(process.env.NEXT_PUBLIC_ORCHESTRATOR_API_URL || 'http://localhost:8000/api/v1/context')
+  buildClient(
+    process.env.NEXT_PUBLIC_ORCHESTRATOR_API_URL || 'http://localhost:8000/api/v1/context'
+  )
 
 export const getAuthenticatedAuthGatewayClient = async () =>
   buildClient(process.env.NEXT_PUBLIC_AUTH_GATEWAY_API_URL || 'http://localhost:8000/api/v1')

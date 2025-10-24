@@ -1,3 +1,4 @@
+use crate::projections;
 use common::AppError;
 use shuttle_axum::axum::extract::{Query, State};
 use shuttle_axum::axum::response::Json;
@@ -12,6 +13,7 @@ use shuttle_axum::axum::{
 // use crate::AppState; // Comment out since AppState is in main.rs
 use auth_clerk::JwtVerifier;
 use chrono::Utc;
+use event_bus::EventBus;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, PgPool};
 use std::collections::HashMap;
@@ -161,9 +163,12 @@ pub fn create_routes(state: OrchestratorState) -> Router<OrchestratorState> {
 pub async fn create_context_orchestrator_router(
     pool: PgPool,
     verifier: Arc<Mutex<JwtVerifier>>,
+    event_bus: Arc<EventBus>,
 ) -> shuttle_axum::axum::Router {
     // TODO: Initialize repositories and use cases when they're implemented
     // For now, use the basic route structure
+
+    projections::SprintProjectionWorker::spawn(Arc::new(pool.clone()), event_bus);
 
     let state = OrchestratorState { pool };
 

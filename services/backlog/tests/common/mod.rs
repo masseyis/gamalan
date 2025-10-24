@@ -1,5 +1,17 @@
+use auth_clerk::JwtVerifier;
+use axum::{
+    routing::{delete, get, patch, post, put},
+    Extension, Router,
+};
+use backlog::adapters::http::handlers as backlog_handlers;
+use event_bus::{EventBus, EventPublisher};
 use sqlx::PgPool;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
+use tokio::sync::Mutex;
+use tower_http::trace::TraceLayer;
 
 /// Setup test database with targeted data cleanup
 /// This function connects to the TEST_DATABASE_URL and ensures clean test state without being too aggressive
@@ -35,6 +47,100 @@ async fn enable_database_extensions(pool: &PgPool) -> Result<(), sqlx::Error> {
         .ok(); // Ignore errors, extension might already exist
 
     Ok(())
+}
+
+pub async fn build_backlog_router_for_tests(pool: PgPool) -> Router {
+    let verifier =
+        Arc::new(Mutex::new(JwtVerifier::new_test_verifier())) as Arc<Mutex<JwtVerifier>>;
+    let event_bus = Arc::new(EventBus::new());
+    let event_publisher: Arc<dyn EventPublisher> = event_bus.clone();
+    let usecases = backlog::build_usecases(pool, event_publisher);
+
+    Router::new()
+        .route(
+            "/api/v1/projects/{project_id}/stories",
+            post(backlog_handlers::create_story),
+        )
+        .route(
+            "/api/v1/projects/{project_id}/stories",
+            get(backlog_handlers::get_stories_by_project),
+        )
+        .route("/api/v1/stories/{id}", get(backlog_handlers::get_story))
+        .route(
+            "/api/v1/stories/{id}",
+            patch(backlog_handlers::update_story),
+        )
+        .route(
+            "/api/v1/stories/{id}",
+            delete(backlog_handlers::delete_story),
+        )
+        .route(
+            "/api/v1/stories/{id}/ready-override",
+            put(backlog_handlers::override_story_ready),
+        )
+        .route(
+            "/api/v1/stories/{id}/tasks",
+            post(backlog_handlers::create_task),
+        )
+        .route(
+            "/api/v1/stories/{id}/tasks",
+            get(backlog_handlers::get_tasks_by_story),
+        )
+        .route(
+            "/api/v1/stories/{id}/tasks/available",
+            get(backlog_handlers::get_available_tasks),
+        )
+        .route(
+            "/api/v1/stories/{id}/status",
+            patch(backlog_handlers::update_story_status),
+        )
+        .route(
+            "/api/v1/stories/{id}/acceptance-criteria",
+            get(backlog_handlers::get_acceptance_criteria),
+        )
+        .route(
+            "/api/v1/stories/{id}/acceptance-criteria",
+            post(backlog_handlers::create_acceptance_criterion),
+        )
+        .route(
+            "/api/v1/stories/{id}/acceptance-criteria/{criterion_id}",
+            patch(backlog_handlers::update_acceptance_criterion),
+        )
+        .route(
+            "/api/v1/stories/{id}/acceptance-criteria/{criterion_id}",
+            delete(backlog_handlers::delete_acceptance_criterion),
+        )
+        .route(
+            "/api/v1/tasks/owned",
+            get(backlog_handlers::get_user_owned_tasks),
+        )
+        .route(
+            "/api/v1/tasks/{task_id}/ownership",
+            put(backlog_handlers::take_task_ownership),
+        )
+        .route(
+            "/api/v1/tasks/{task_id}/ownership",
+            delete(backlog_handlers::release_task_ownership),
+        )
+        .route(
+            "/api/v1/tasks/{task_id}/work/start",
+            post(backlog_handlers::start_task_work),
+        )
+        .route(
+            "/api/v1/tasks/{task_id}/work/complete",
+            post(backlog_handlers::complete_task_work),
+        )
+        .route(
+            "/api/v1/tasks/{task_id}/status",
+            patch(backlog_handlers::update_task_status),
+        )
+        .route(
+            "/api/v1/tasks/{task_id}/estimate",
+            patch(backlog_handlers::set_task_estimate),
+        )
+        .with_state(usecases)
+        .layer(Extension(verifier))
+        .layer(TraceLayer::new_for_http())
 }
 
 async fn clean_test_data(pool: &PgPool) -> Result<(), sqlx::Error> {

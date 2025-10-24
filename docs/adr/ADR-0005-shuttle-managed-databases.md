@@ -2,7 +2,7 @@
 
 **Date:** 2025-09-07  
 **Status:** Accepted  
-**Supersedes:** Previous external database dependencies  
+**Supersedes:** Previous external database dependencies
 
 ## Context
 
@@ -22,10 +22,11 @@ This violates the core architectural principle of having no external infrastruct
    - No external database providers (AWS RDS, Neon, etc.) are used
 
 2. **Code Pattern**
+
    ```rust
    #[shuttle_runtime::main]
    async fn main(
-       #[Postgres(local_uri = "postgres://postgres:password@localhost:5432/gamalan")] 
+       #[Postgres(local_uri = "postgres://postgres:password@localhost:5432/gamalan")]
        db_uri: String,
        #[shuttle_runtime::Secrets] secrets: shuttle_runtime::SecretStore,
    ) -> ShuttleAxum {
@@ -46,6 +47,7 @@ This violates the core architectural principle of having no external infrastruct
 ## Consequences
 
 ### Positive
+
 - ✅ **Zero External Dependencies**: Complete infrastructure managed by Shuttle
 - ✅ **Simplified CI/CD**: No DATABASE_URL secrets needed in workflows
 - ✅ **Automatic Scaling**: Shuttle manages database scaling and backups
@@ -53,31 +55,36 @@ This violates the core architectural principle of having no external infrastruct
 - ✅ **Consistent Environment**: Same database technology across all environments
 
 ### Negative
+
 - ⚠️ **Shuttle Lock-in**: Tied to Shuttle's database offerings
 - ⚠️ **Limited Database Options**: Must use PostgreSQL (acceptable for our use case)
 
 ## Compliance Rules
 
 ### ✅ DO
+
 - Use `#[Postgres]` annotation for all database needs
 - Rely on Shuttle's automatic database provisioning
 - Store only authentication secrets (Clerk) in GitHub Actions
 
 ### ❌ DON'T
+
 - Add DATABASE_URL to GitHub Actions workflows
 - Use external database providers
 - Manually configure database connections in deployment workflows
 
 ## Prevention of Regression
 
-This ADR establishes database management as a **permanent architectural decision** that must not be changed without explicit architectural review. 
+This ADR establishes database management as a **permanent architectural decision** that must not be changed without explicit architectural review.
 
 Any attempt to introduce external database dependencies must:
+
 1. Create a new ADR explaining the technical necessity
 2. Document the trade-offs against this decision
 3. Get explicit approval from the architecture review process
 
 ## References
+
 - [Shuttle Database Documentation](https://docs.shuttle.rs/resources/shared-databases)
 - ADR-0001: Overall Architecture Decision
 - Related: `services/api-gateway/src/main.rs:18` for implementation example

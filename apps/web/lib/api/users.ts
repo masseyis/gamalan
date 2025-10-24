@@ -6,6 +6,7 @@ import {
   RolePermissions,
   UserContext,
   ApiResponse,
+  UserOrganization,
 } from '../types'
 
 // User Management API
@@ -34,6 +35,13 @@ export const usersApi = {
   // Get user context (user + permissions + team memberships)
   async getUserContext(): Promise<UserContext> {
     return authGatewayClient.get<UserContext>('/users/me/context')
+  },
+
+  async getMyOrganizations(): Promise<UserOrganization[]> {
+    const response = await authGatewayClient.get<{ organizations: UserOrganization[] }>(
+      '/users/me/organizations'
+    )
+    return response.organizations
   },
 
   // Search users (for team invitations, etc.)
@@ -135,7 +143,10 @@ export const roleHelpers = {
   },
 
   // Validate role and specialty combination
-  validateRoleSpecialty(role: UserRole, specialty?: ContributorSpecialty): {
+  validateRoleSpecialty(
+    role: UserRole,
+    specialty?: ContributorSpecialty
+  ): {
     isValid: boolean
     error?: string
   } {

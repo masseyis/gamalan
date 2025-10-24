@@ -2,9 +2,7 @@ import { test, expect } from '@playwright/test'
 import { loginAs, createTestOrganization } from './helpers/test-utils'
 
 test.describe('Team Management', () => {
-
   test.describe('Team Creation and Management', () => {
-
     test('Product Owner can create a team', async ({ page }) => {
       // Given I am logged in as a Product Owner
       await loginAs(page, 'product_owner')
@@ -42,8 +40,9 @@ test.describe('Team Management', () => {
       await page.click('[data-testid="save-team-btn"]')
 
       // Then I should see a validation error
-      await expect(page.locator('[data-testid="team-name-error"]'))
-        .toContainText('Team name "Alpha Team" already exists in this organization')
+      await expect(page.locator('[data-testid="team-name-error"]')).toContainText(
+        'Team name "Alpha Team" already exists in this organization'
+      )
     })
 
     test('Team displays velocity history', async ({ page }) => {
@@ -60,8 +59,9 @@ test.describe('Team Management', () => {
 
       // Then I should see velocity chart (initially empty)
       await expect(page.locator('[data-testid="velocity-chart"]')).toBeVisible()
-      await expect(page.locator('[data-testid="velocity-empty-state"]'))
-        .toContainText('Complete your first sprint to see velocity data')
+      await expect(page.locator('[data-testid="velocity-empty-state"]')).toContainText(
+        'Complete your first sprint to see velocity data'
+      )
 
       // And I should see velocity metrics
       await expect(page.locator('[data-testid="average-velocity"]')).toContainText('0')
@@ -70,7 +70,6 @@ test.describe('Team Management', () => {
   })
 
   test.describe('Team Membership', () => {
-
     test('Contributors can join existing teams', async ({ page }) => {
       // Given there is an existing team
       await loginAs(page, 'product_owner')
@@ -99,7 +98,9 @@ test.describe('Team Management', () => {
 
       // And when I view team details, I should see myself listed
       await page.click('[data-testid="team-dev-team"]')
-      await expect(page.locator('[data-testid="team-members"]')).toContainText('Contributor (Fullstack)')
+      await expect(page.locator('[data-testid="team-members"]')).toContainText(
+        'Contributor (Fullstack)'
+      )
     })
 
     test('Role and specialty constraints are enforced', async ({ page }) => {
@@ -113,8 +114,9 @@ test.describe('Team Management', () => {
 
       // Then specialty should be required
       await page.click('[data-testid="confirm-join-btn"]')
-      await expect(page.locator('[data-testid="specialty-error"]'))
-        .toContainText('Contributors must specify a specialty')
+      await expect(page.locator('[data-testid="specialty-error"]')).toContainText(
+        'Contributors must specify a specialty'
+      )
 
       // When I select a non-contributor role
       await page.selectOption('[data-testid="role-select"]', 'sponsor')
@@ -123,8 +125,9 @@ test.describe('Team Management', () => {
       await expect(page.locator('[data-testid="specialty-select"]')).toBeDisabled()
 
       // And I should see explanation
-      await expect(page.locator('[data-testid="specialty-help"]'))
-        .toContainText('Only contributors have specialties')
+      await expect(page.locator('[data-testid="specialty-help"]')).toContainText(
+        'Only contributors have specialties'
+      )
     })
 
     test('Team members can view other members with roles', async ({ page }) => {
@@ -137,18 +140,24 @@ test.describe('Team Management', () => {
 
       // Then I should see all team members with their roles
       await expect(page.locator('[data-testid="member-alice"]')).toContainText('Product Owner')
-      await expect(page.locator('[data-testid="member-bob"]')).toContainText('Contributor (Backend)')
-      await expect(page.locator('[data-testid="member-charlie"]')).toContainText('Contributor (Frontend)')
-      await expect(page.locator('[data-testid="member-diana"]')).toContainText('Managing Contributor (QA)')
+      await expect(page.locator('[data-testid="member-bob"]')).toContainText(
+        'Contributor (Backend)'
+      )
+      await expect(page.locator('[data-testid="member-charlie"]')).toContainText(
+        'Contributor (Frontend)'
+      )
+      await expect(page.locator('[data-testid="member-diana"]')).toContainText(
+        'Managing Contributor (QA)'
+      )
 
       // And I should see team composition summary
-      await expect(page.locator('[data-testid="team-composition"]'))
-        .toContainText('1 Product Owner, 3 Contributors')
+      await expect(page.locator('[data-testid="team-composition"]')).toContainText(
+        '1 Product Owner, 3 Contributors'
+      )
     })
   })
 
   test.describe('Team Restrictions and Guidance', () => {
-
     test('Teams can only have one active sprint at a time', async ({ page }) => {
       // Given I have a team with an active sprint
       await loginAs(page, 'product_owner')
@@ -159,8 +168,9 @@ test.describe('Team Management', () => {
       await page.click('[data-testid="create-sprint-btn"]')
 
       // Then I should see a restriction message
-      await expect(page.locator('[data-testid="active-sprint-restriction"]'))
-        .toContainText('Team already has an active sprint. Complete or close the current sprint first.')
+      await expect(page.locator('[data-testid="active-sprint-restriction"]')).toContainText(
+        'Team already has an active sprint. Complete or close the current sprint first.'
+      )
 
       // And the create button should be disabled
       await expect(page.locator('[data-testid="create-sprint-btn"]')).toBeDisabled()
@@ -169,8 +179,9 @@ test.describe('Team Management', () => {
       await page.hover('[data-testid="create-sprint-btn"]')
 
       // Then I should see helpful guidance
-      await expect(page.locator('[data-testid="one-sprint-tooltip"]'))
-        .toContainText('Teams focus on one sprint at a time for maximum effectiveness')
+      await expect(page.locator('[data-testid="one-sprint-tooltip"]')).toContainText(
+        'Teams focus on one sprint at a time for maximum effectiveness'
+      )
     })
 
     test('Shows guidance about team composition', async ({ page }) => {
@@ -182,18 +193,21 @@ test.describe('Team Management', () => {
       await page.hover('[data-testid="team-composition-help"]')
 
       // Then I should see guidance about optimal team structure
-      await expect(page.locator('[data-testid="team-structure-tooltip"]'))
-        .toContainText('Recommended: 1 Product Owner, 3-7 Contributors with diverse specialties')
+      await expect(page.locator('[data-testid="team-structure-tooltip"]')).toContainText(
+        'Recommended: 1 Product Owner, 3-7 Contributors with diverse specialties'
+      )
 
       // When the team is too small
       await page.goto('/teams/small-team')
-      await expect(page.locator('[data-testid="team-size-warning"]'))
-        .toContainText('Consider adding more contributors for better velocity')
+      await expect(page.locator('[data-testid="team-size-warning"]')).toContainText(
+        'Consider adding more contributors for better velocity'
+      )
 
       // When the team is too large
       await page.goto('/teams/large-team')
-      await expect(page.locator('[data-testid="team-size-warning"]'))
-        .toContainText('Large teams may benefit from splitting into smaller, focused teams')
+      await expect(page.locator('[data-testid="team-size-warning"]')).toContainText(
+        'Large teams may benefit from splitting into smaller, focused teams'
+      )
     })
 
     test('Team member roles determine available actions', async ({ page }) => {
@@ -223,8 +237,9 @@ test.describe('Team Management', () => {
       await expect(page.locator('[data-testid="edit-team-btn"]')).not.toBeVisible()
 
       // And I should see explanation of my read-only access
-      await expect(page.locator('[data-testid="sponsor-team-access"]'))
-        .toContainText('You have read-only access to view team progress and metrics')
+      await expect(page.locator('[data-testid="sponsor-team-access"]')).toContainText(
+        'You have read-only access to view team progress and metrics'
+      )
     })
   })
 })

@@ -62,7 +62,7 @@ beforeAll(() => {
   Object.assign(process.env, {
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'pk_test_bW9jay1rZXktZm9yLXRlc3RpbmctcHVycG9zZXMtb25seQ==',
     CLERK_SECRET_KEY: 'sk_test_bW9jay1rZXktZm9yLXRlc3RpbmctcHVycG9zZXMtb25seQ==',
-    NODE_ENV: 'test'
+    NODE_ENV: 'test',
   })
 
   // Start mock server

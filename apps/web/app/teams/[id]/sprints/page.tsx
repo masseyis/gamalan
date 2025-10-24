@@ -15,12 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   ArrowLeft,
   Plus,
@@ -77,7 +72,10 @@ export default function TeamSprintsPage() {
       <div className="min-h-screen bg-background">
         <div className="container mx-auto py-8">
           <div className="mb-8">
-            <Link href="/teams" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4">
+            <Link
+              href="/teams"
+              className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4"
+            >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Teams
             </Link>
@@ -146,9 +144,7 @@ export default function TeamSprintsPage() {
             </div>
           </Badge>
         </div>
-        {sprint.goal && (
-          <CardDescription className="text-sm">{sprint.goal}</CardDescription>
-        )}
+        {sprint.goal && <CardDescription className="text-sm">{sprint.goal}</CardDescription>}
       </CardHeader>
 
       <CardContent className="space-y-4">
@@ -160,7 +156,9 @@ export default function TeamSprintsPage() {
           </div>
           <div className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-gray-500" />
-            <span>{sprint.completedPoints}/{sprint.committedPoints} points</span>
+            <span>
+              {sprint.completedPoints}/{sprint.committedPoints} points
+            </span>
           </div>
         </div>
 
@@ -184,7 +182,7 @@ export default function TeamSprintsPage() {
         <div className="flex items-center gap-2 text-sm text-gray-600">
           <Calendar className="h-4 w-4" />
           <span>
-            {new Date(sprint.startDate).toLocaleDateString()} - {' '}
+            {new Date(sprint.startDate).toLocaleDateString()} -{' '}
             {new Date(sprint.endDate).toLocaleDateString()}
           </span>
         </div>
@@ -212,7 +210,10 @@ export default function TeamSprintsPage() {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto py-8">
         <div className="mb-8">
-          <Link href={`/teams/${teamId}`} className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4">
+          <Link
+            href={`/teams/${teamId}`}
+            className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4"
+          >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to {team.name}
           </Link>
@@ -232,21 +233,23 @@ export default function TeamSprintsPage() {
               )}
             </div>
 
-            <ManagerOnly fallback={
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button disabled>
-                      <Plus className="h-4 w-4 mr-2" />
-                      New Sprint
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Only Product Owners and Managing Contributors can create sprints</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            }>
+            <ManagerOnly
+              fallback={
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button disabled>
+                        <Plus className="h-4 w-4 mr-2" />
+                        New Sprint
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Only Product Owners and Managing Contributors can create sprints</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              }
+            >
               <Link href={`/teams/${teamId}/sprints/new`}>
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
@@ -316,7 +319,9 @@ export default function TeamSprintsPage() {
             {/* Completed Sprints */}
             {completedSprints.length > 0 && (
               <div>
-                <h2 className="text-xl font-semibold mb-4">Completed ({completedSprints.length})</h2>
+                <h2 className="text-xl font-semibold mb-4">
+                  Completed ({completedSprints.length})
+                </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {completedSprints.slice(0, 6).map((sprint) => (
                     <SprintCard key={sprint.id} sprint={sprint} />
@@ -342,10 +347,21 @@ export default function TeamSprintsPage() {
               <div className="flex-1">
                 <h3 className="font-medium text-blue-900 mb-2">Sprint Management Guide</h3>
                 <div className="text-sm text-blue-800 space-y-1">
-                  <p>• <strong>Planning:</strong> Set capacity, define goals, and prepare stories before starting</p>
-                  <p>• <strong>Active:</strong> Track progress daily, manage scope changes carefully</p>
-                  <p>• <strong>Review:</strong> Demo completed work and gather feedback before closing</p>
-                  <p>• <strong>Velocity:</strong> Use completed points to improve future sprint planning</p>
+                  <p>
+                    • <strong>Planning:</strong> Set capacity, define goals, and prepare stories
+                    before starting
+                  </p>
+                  <p>
+                    • <strong>Active:</strong> Track progress daily, manage scope changes carefully
+                  </p>
+                  <p>
+                    • <strong>Review:</strong> Demo completed work and gather feedback before
+                    closing
+                  </p>
+                  <p>
+                    • <strong>Velocity:</strong> Use completed points to improve future sprint
+                    planning
+                  </p>
                 </div>
               </div>
             </div>

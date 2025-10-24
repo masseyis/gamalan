@@ -1,10 +1,24 @@
 'use client'
 
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { CheckCircle2, Copy, ThumbsUp, ThumbsDown, Lightbulb, FileText, MessageSquare } from 'lucide-react'
+import {
+  CheckCircle2,
+  Copy,
+  ThumbsUp,
+  ThumbsDown,
+  Lightbulb,
+  FileText,
+  MessageSquare,
+} from 'lucide-react'
 import { useState } from 'react'
 import { useToast } from '@/hooks/use-toast'
 
@@ -30,22 +44,22 @@ interface AISuggestionsModalProps {
 const suggestionTypeConfig = {
   'acceptance-criteria': {
     icon: FileText,
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-50',
-    borderColor: 'border-blue-200'
+    color: 'text-blue-700 dark:text-blue-200',
+    bgColor: 'bg-blue-50 dark:bg-blue-900/30',
+    borderColor: 'border-blue-200 dark:border-blue-700/60',
   },
   'story-breakdown': {
     icon: Lightbulb,
-    color: 'text-yellow-600',
-    bgColor: 'bg-yellow-50',
-    borderColor: 'border-yellow-200'
+    color: 'text-yellow-700 dark:text-yellow-200',
+    bgColor: 'bg-yellow-50 dark:bg-yellow-900/30',
+    borderColor: 'border-yellow-200 dark:border-yellow-700/60',
   },
   'task-clarification': {
     icon: MessageSquare,
-    color: 'text-green-600',
-    bgColor: 'bg-green-50',
-    borderColor: 'border-green-200'
-  }
+    color: 'text-green-600 dark:text-green-200',
+    bgColor: 'bg-green-50 dark:bg-green-900/30',
+    borderColor: 'border-green-200 dark:border-green-700/60',
+  },
 }
 
 export function AISuggestionsModal({
@@ -54,7 +68,7 @@ export function AISuggestionsModal({
   suggestions,
   title,
   description,
-  onApplySuggestion
+  onApplySuggestion,
 }: AISuggestionsModalProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const { toast } = useToast()
@@ -65,14 +79,14 @@ export function AISuggestionsModal({
       setCopiedId(suggestion.id)
       toast({
         title: 'Copied to clipboard',
-        description: 'Suggestion content has been copied to your clipboard.'
+        description: 'Suggestion content has been copied to your clipboard.',
       })
       setTimeout(() => setCopiedId(null), 2000)
     } catch (error) {
       toast({
         title: 'Failed to copy',
         description: 'Unable to copy to clipboard. Please try again.',
-        variant: 'destructive'
+        variant: 'destructive',
       })
     }
   }
@@ -81,7 +95,7 @@ export function AISuggestionsModal({
     onApplySuggestion?.(suggestion)
     toast({
       title: 'Suggestion applied',
-      description: 'The AI suggestion has been applied to your project.'
+      description: 'The AI suggestion has been applied to your project.',
     })
   }
 
@@ -96,12 +110,12 @@ export function AISuggestionsModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-primary" />
+          <DialogTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+            <CheckCircle2 className="h-5 w-5 text-primary dark:text-primary" />
             {title}
           </DialogTitle>
           {description && (
-            <DialogDescription className="text-base">
+            <DialogDescription className="text-base text-slate-600 dark:text-slate-300">
               {description}
             </DialogDescription>
           )}
@@ -111,8 +125,12 @@ export function AISuggestionsModal({
           {suggestions.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Lightbulb className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p className="text-lg font-medium">No suggestions generated</p>
-              <p className="text-sm">Try running the AI assistant again or check your input.</p>
+              <p className="text-lg font-medium text-slate-700 dark:text-slate-200">
+                No suggestions generated
+              </p>
+              <p className="text-sm text-slate-600 dark:text-slate-300">
+                Try running the AI assistant again or check your input.
+              </p>
             </div>
           ) : (
             suggestions.map((suggestion, index) => {
@@ -121,21 +139,23 @@ export function AISuggestionsModal({
               const isCopied = copiedId === suggestion.id
 
               return (
-                <Card 
-                  key={suggestion.id} 
-                  className={`${config.borderColor} ${config.bgColor} border-2`}
+                <Card
+                  key={suggestion.id}
+                  className={`${config.borderColor} ${config.bgColor} border text-slate-900 dark:text-slate-100`}
                 >
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2">
                         <Icon className={`h-5 w-5 ${config.color}`} />
-                        <CardTitle className="text-lg">{suggestion.title}</CardTitle>
+                        <CardTitle className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                          {suggestion.title}
+                        </CardTitle>
                         <Badge variant="outline" className="text-xs">
                           #{index + 1}
                         </Badge>
                         {suggestion.confidence && (
-                          <Badge 
-                            variant="secondary" 
+                          <Badge
+                            variant="secondary"
                             className={getConfidenceColor(suggestion.confidence)}
                           >
                             {suggestion.confidence}% confidence
@@ -147,7 +167,7 @@ export function AISuggestionsModal({
                           variant="ghost"
                           size="sm"
                           onClick={() => handleCopy(suggestion)}
-                          className="h-8"
+                          className="h-8 text-slate-700 dark:text-slate-200"
                         >
                           {isCopied ? (
                             <CheckCircle2 className="h-4 w-4 text-green-600" />
@@ -160,7 +180,7 @@ export function AISuggestionsModal({
                             variant="outline"
                             size="sm"
                             onClick={() => handleApply(suggestion)}
-                            className="h-8"
+                            className="h-8 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200"
                           >
                             Apply
                           </Button>
@@ -168,21 +188,27 @@ export function AISuggestionsModal({
                       </div>
                     </div>
                     {suggestion.description && (
-                      <CardDescription>{suggestion.description}</CardDescription>
+                      <CardDescription className="text-sm text-slate-600 dark:text-slate-300">
+                        {suggestion.description}
+                      </CardDescription>
                     )}
                   </CardHeader>
                   <CardContent className="pt-0">
-                    <div className="bg-white rounded-lg p-4 border">
-                      <pre className="whitespace-pre-wrap text-sm font-mono leading-relaxed">
+                    <div className="bg-white dark:bg-slate-900/40 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+                      <pre className="whitespace-pre-wrap text-sm font-mono leading-relaxed text-slate-800 dark:text-slate-100">
                         {suggestion.content}
                       </pre>
                     </div>
-                    
+
                     {suggestion.metadata && Object.keys(suggestion.metadata).length > 0 && (
-                      <div className="mt-3 pt-3 border-t">
+                      <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
                         <div className="flex flex-wrap gap-2">
                           {Object.entries(suggestion.metadata).map(([key, value]) => (
-                            <Badge key={key} variant="secondary" className="text-xs">
+                            <Badge
+                              key={key}
+                              variant="secondary"
+                              className="text-xs bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                            >
                               {key}: {String(value)}
                             </Badge>
                           ))}
@@ -191,8 +217,10 @@ export function AISuggestionsModal({
                     )}
 
                     {/* Feedback buttons */}
-                    <div className="flex items-center gap-2 mt-3 pt-3 border-t">
-                      <span className="text-xs text-muted-foreground">Was this helpful?</span>
+                    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+                      <span className="text-xs text-slate-600 dark:text-slate-300">
+                        Was this helpful?
+                      </span>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -220,16 +248,16 @@ export function AISuggestionsModal({
             Close
           </Button>
           {suggestions.length > 0 && (
-            <Button 
+            <Button
               onClick={() => {
                 // Copy all suggestions to clipboard
-                const allContent = suggestions.map((s, i) => 
-                  `${i + 1}. ${s.title}\n${s.content}\n`
-                ).join('\n')
+                const allContent = suggestions
+                  .map((s, i) => `${i + 1}. ${s.title}\n${s.content}\n`)
+                  .join('\n')
                 navigator.clipboard.writeText(allContent)
                 toast({
                   title: 'All suggestions copied',
-                  description: 'All AI suggestions have been copied to your clipboard.'
+                  description: 'All AI suggestions have been copied to your clipboard.',
                 })
               }}
             >

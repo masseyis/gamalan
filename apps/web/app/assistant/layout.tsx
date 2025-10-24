@@ -20,9 +20,7 @@ export default function AssistantLayout({ children }: AssistantLayoutProps) {
       </div>
 
       {/* Main content area */}
-      <div className="flex-1 overflow-hidden">
-        {children}
-      </div>
+      <div className="flex-1 overflow-hidden">{children}</div>
 
       {/* Global dialogs */}
       <CandidatePickerDialog />

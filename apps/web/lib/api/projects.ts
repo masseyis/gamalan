@@ -35,7 +35,7 @@ export const projectsApi = {
 
   // Update a project
   async updateProject(id: string, data: UpdateProjectRequest): Promise<void> {
-    return projectsClient.patch<void>(`/projects/${id}`, data)
+    return projectsClient.put<void>(`/projects/${id}`, data)
   },
 
   // Delete a project

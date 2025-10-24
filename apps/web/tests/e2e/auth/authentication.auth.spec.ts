@@ -76,7 +76,7 @@ test.describe('Authentication Workflows', () => {
         email: testUtils.generateTestEmail(),
         password: 'SecurePassword123!',
         firstName: 'Test',
-        lastName: 'User'
+        lastName: 'User',
       }
 
       await authPage.signUp(newUser.email, newUser.password, newUser.firstName, newUser.lastName)
@@ -291,8 +291,8 @@ test.describe('Authentication Workflows', () => {
       const response = await authPage.page.request.post('/api/auth/signin', {
         data: {
           email: testData.user.email,
-          password: testData.user.password
-        }
+          password: testData.user.password,
+        },
       })
 
       // Should reject request without proper headers/tokens

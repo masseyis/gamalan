@@ -35,6 +35,6 @@ export function useOrganizationContext() {
       }
 
       return headers
-    }
+    },
   }
 }

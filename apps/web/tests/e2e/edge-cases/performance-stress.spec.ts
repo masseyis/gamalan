@@ -1,5 +1,12 @@
 import { test, expect } from '@playwright/test'
-import { AuthPage, ProjectsPage, BacklogPage, BoardPage, AssistantPage, testUtils } from '../page-objects'
+import {
+  AuthPage,
+  ProjectsPage,
+  BacklogPage,
+  BoardPage,
+  AssistantPage,
+  testUtils,
+} from '../page-objects'
 
 test.describe('Performance and Stress Tests', () => {
   let authPage: AuthPage
@@ -23,7 +30,7 @@ test.describe('Performance and Stress Tests', () => {
       const pages = [
         { name: 'Projects', action: () => projectsPage.gotoProjects() },
         { name: 'Assistant', action: () => assistantPage.gotoAssistant() },
-        { name: 'Dashboard', action: () => authPage.navigateTo('Dashboard') }
+        { name: 'Dashboard', action: () => authPage.navigateTo('Dashboard') },
       ]
 
       for (const pageTest of pages) {
@@ -39,7 +46,7 @@ test.describe('Performance and Stress Tests', () => {
 
         test.info().annotations.push({
           type: 'performance',
-          description: `${pageTest.name} loaded in ${loadTime}ms`
+          description: `${pageTest.name} loaded in ${loadTime}ms`,
         })
       }
     })
@@ -51,7 +58,7 @@ test.describe('Performance and Stress Tests', () => {
         return new Promise<number>((resolve) => {
           new PerformanceObserver((list) => {
             const entries = list.getEntries()
-            const fcpEntry = entries.find(entry => entry.name === 'first-contentful-paint')
+            const fcpEntry = entries.find((entry) => entry.name === 'first-contentful-paint')
             if (fcpEntry) {
               resolve(fcpEntry.startTime)
             }
@@ -68,7 +75,7 @@ test.describe('Performance and Stress Tests', () => {
 
         test.info().annotations.push({
           type: 'performance',
-          description: `First Contentful Paint: ${fcpTime}ms`
+          description: `First Contentful Paint: ${fcpTime}ms`,
         })
       }
     })
@@ -76,7 +83,7 @@ test.describe('Performance and Stress Tests', () => {
     test('should load with reasonable bundle sizes', async ({ page }) => {
       const resourceSizes = new Map<string, number>()
 
-      page.on('response', response => {
+      page.on('response', (response) => {
         const url = response.url()
         const size = parseInt(response.headers()['content-length'] || '0')
 
@@ -108,7 +115,7 @@ test.describe('Performance and Stress Tests', () => {
 
       test.info().annotations.push({
         type: 'performance',
-        description: `JS: ${Math.round(totalJSSize / 1024)}KB, CSS: ${Math.round(totalCSSSize / 1024)}KB`
+        description: `JS: ${Math.round(totalJSSize / 1024)}KB, CSS: ${Math.round(totalCSSSize / 1024)}KB`,
       })
     })
   })
@@ -120,7 +127,7 @@ test.describe('Performance and Stress Tests', () => {
           if ((performance as any).memory) {
             return {
               used: (performance as any).memory.usedJSHeapSize,
-              total: (performance as any).memory.totalJSHeapSize
+              total: (performance as any).memory.totalJSHeapSize,
             }
           }
           return null
@@ -147,7 +154,7 @@ test.describe('Performance and Stress Tests', () => {
 
         test.info().annotations.push({
           type: 'memory',
-          description: `Memory increase: ${Math.round(increasePercentage)}%`
+          description: `Memory increase: ${Math.round(increasePercentage)}%`,
         })
       }
     })
@@ -217,7 +224,7 @@ test.describe('Performance and Stress Tests', () => {
 
       test.info().annotations.push({
         type: 'dom',
-        description: `DOM nodes increased by ${nodeIncrease}`
+        description: `DOM nodes increased by ${nodeIncrease}`,
       })
 
       // Clear chat to test cleanup
@@ -237,18 +244,18 @@ test.describe('Performance and Stress Tests', () => {
       // Track API call timing
       const apiCalls: { url: string; startTime: number; endTime?: number }[] = []
 
-      page.on('request', request => {
+      page.on('request', (request) => {
         if (request.url().includes('/api/')) {
           apiCalls.push({
             url: request.url(),
-            startTime: Date.now()
+            startTime: Date.now(),
           })
         }
       })
 
-      page.on('response', response => {
+      page.on('response', (response) => {
         if (response.url().includes('/api/')) {
-          const call = apiCalls.find(c => c.url === response.url() && !c.endTime)
+          const call = apiCalls.find((c) => c.url === response.url() && !c.endTime)
           if (call) {
             call.endTime = Date.now()
           }
@@ -271,17 +278,17 @@ test.describe('Performance and Stress Tests', () => {
           await assistantPage.gotoAssistant()
           await assistantPage.sendMessage('Concurrent AI request')
           return 'ai-request'
-        }
+        },
       ]
 
-      const results = await Promise.allSettled(operations.map(op => op()))
+      const results = await Promise.allSettled(operations.map((op) => op()))
 
       // Most operations should succeed
-      const successCount = results.filter(r => r.status === 'fulfilled').length
+      const successCount = results.filter((r) => r.status === 'fulfilled').length
       expect(successCount).toBeGreaterThanOrEqual(2)
 
       // API calls should complete within reasonable time
-      const completedCalls = apiCalls.filter(c => c.endTime)
+      const completedCalls = apiCalls.filter((c) => c.endTime)
       for (const call of completedCalls) {
         const duration = call.endTime! - call.startTime
         expect(duration).toBeLessThan(10000) // Less than 10 seconds
@@ -290,7 +297,11 @@ test.describe('Performance and Stress Tests', () => {
       // Cleanup created projects
       await projectsPage.gotoProjects()
       for (const result of results) {
-        if (result.status === 'fulfilled' && typeof result.value === 'string' && result.value.includes('Concurrent')) {
+        if (
+          result.status === 'fulfilled' &&
+          typeof result.value === 'string' &&
+          result.value.includes('Concurrent')
+        ) {
           try {
             await projectsPage.deleteProject(result.value)
           } catch {
@@ -370,7 +381,10 @@ test.describe('Performance and Stress Tests', () => {
       await projectsPage.gotoProjects()
 
       const projectName = `Large Data Test ${testUtils.generateUniqueId()}`
-      const projectId = await projectsPage.createProject(projectName, 'Project for large data testing')
+      const projectId = await projectsPage.createProject(
+        projectName,
+        'Project for large data testing'
+      )
 
       await backlogPage.gotoBacklog(projectId)
 
@@ -438,7 +452,10 @@ test.describe('Performance and Stress Tests', () => {
       await projectsPage.gotoProjects()
 
       const projectName = `Board Stress Test ${testUtils.generateUniqueId()}`
-      const projectId = await projectsPage.createProject(projectName, 'Project for board stress testing')
+      const projectId = await projectsPage.createProject(
+        projectName,
+        'Project for board stress testing'
+      )
 
       // Create story with multiple tasks
       await backlogPage.gotoBacklog(projectId)
@@ -503,7 +520,7 @@ test.describe('Performance and Stress Tests', () => {
     test('should handle image loading efficiently', async ({ page }) => {
       const imageLoadTimes: number[] = []
 
-      page.on('response', async response => {
+      page.on('response', async (response) => {
         if (response.url().match(/\.(jpg|jpeg|png|gif|svg|webp)$/i)) {
           // Get security details which includes timing info
           const securityDetails = await response.securityDetails()
@@ -553,7 +570,7 @@ test.describe('Performance and Stress Tests', () => {
       // Check that text is readable (no invisible text)
       const textElement = page.locator('h1, h2, p').first()
       if (await textElement.isVisible({ timeout: 5000 })) {
-        const fontSize = await textElement.evaluate(el => {
+        const fontSize = await textElement.evaluate((el) => {
           return window.getComputedStyle(el).fontSize
         })
 

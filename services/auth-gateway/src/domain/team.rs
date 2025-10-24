@@ -8,6 +8,7 @@ use uuid::Uuid;
 pub struct Team {
     pub id: Uuid,
     pub name: String,
+    pub description: Option<String>,
     pub organization_id: Uuid,
     pub active_sprint_id: Option<Uuid>, // Only one sprint at a time
     pub velocity_history: Vec<u32>,     // Historical points completed per sprint
@@ -38,6 +39,7 @@ impl Team {
         Ok(Self {
             id: Uuid::new_v4(),
             name: name.trim().to_string(),
+            description: None,
             organization_id,
             active_sprint_id: None,
             velocity_history: Vec::new(),
@@ -138,6 +140,7 @@ impl TeamMembership {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateTeamRequest {
     pub name: String,
+    pub description: Option<String>,
     pub organization_id: Uuid,
 }
 

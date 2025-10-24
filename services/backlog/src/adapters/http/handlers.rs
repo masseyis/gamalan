@@ -2,7 +2,7 @@ use crate::application::BacklogUsecases;
 use crate::domain::{AcceptanceCriteria, Story, StoryStatus, Task, TaskStatus};
 use auth_clerk::AuthenticatedWithOrg;
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
     Json,
@@ -76,6 +76,11 @@ pub struct UpdateTaskStatusRequest {
 pub struct TaskOwnershipResponse {
     pub success: bool,
     pub message: String,
+}
+
+#[derive(Debug, Deserialize, Default)]
+pub struct StoriesQuery {
+    pub status: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -613,15 +618,81 @@ pub async fn delete_story(
     }
 }
 
+#[derive(Debug, Deserialize)]
+pub struct CreateSprintRequest {
+    pub name: String,
+    pub goal: String,
+    pub stories: Vec<Uuid>,
+    #[serde(default)]
+    pub capacity_points: Option<u32>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CreateSprintResponse {
+    pub sprint_id: Uuid,
+}
+
+pub async fn create_sprint(
+    AuthenticatedWithOrg { org_context, auth }: AuthenticatedWithOrg,
+    Path(project_id): Path<Uuid>,
+    State(usecases): State<Arc<BacklogUsecases>>,
+    Json(payload): Json<CreateSprintRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    let org_id = org_context.effective_organization_uuid();
+    info!(%project_id, org_id = ?org_id, user_id = %auth.sub, "Creating sprint");
+
+    let result = usecases
+        .create_sprint(
+            project_id,
+            org_id,
+            payload.name,
+            payload.goal,
+            payload.stories,
+            payload.capacity_points,
+        )
+        .await;
+
+    match result {
+        Ok(sprint_id) => {
+            info!(%project_id, %sprint_id, org_id = ?org_id, user_id = %auth.sub, "Sprint created");
+            Ok((
+                StatusCode::CREATED,
+                Json(CreateSprintResponse { sprint_id }),
+            ))
+        }
+        Err(err) => {
+            error!(%project_id, org_id = ?org_id, user_id = %auth.sub, error = %err, "Failed to create sprint");
+            Err(err)
+        }
+    }
+}
+
 pub async fn get_stories_by_project(
     AuthenticatedWithOrg { org_context, auth }: AuthenticatedWithOrg,
     Path(project_id): Path<Uuid>,
+    Query(query): Query<StoriesQuery>,
     State(usecases): State<Arc<BacklogUsecases>>,
 ) -> Result<impl IntoResponse, AppError> {
     let org_id = org_context.effective_organization_uuid();
     info!(%project_id, org_id = ?org_id, user_id = %auth.sub, "Fetching project stories");
 
-    let result = usecases.get_stories_by_project(project_id, org_id).await;
+    let status_filter = if let Some(ref value) = query.status {
+        match StoryStatus::from_str(value) {
+            Some(status) => Some(status),
+            None => {
+                return Err(AppError::BadRequest(format!(
+                    "Invalid status filter: {}",
+                    value
+                )))
+            }
+        }
+    } else {
+        None
+    };
+
+    let result = usecases
+        .get_stories_by_project(project_id, org_id, status_filter)
+        .await;
 
     match result {
         Ok(stories) => {

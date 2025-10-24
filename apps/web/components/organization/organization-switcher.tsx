@@ -7,7 +7,8 @@ export function OrganizationSwitcher() {
     <ClerkOrganizationSwitcher
       appearance={{
         elements: {
-          organizationSwitcherTrigger: 'border border-border/60 bg-card hover:bg-card/80 transition-colors',
+          organizationSwitcherTrigger:
+            'border border-border/60 bg-card hover:bg-card/80 transition-colors',
         },
       }}
       hidePersonal={false}

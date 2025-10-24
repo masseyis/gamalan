@@ -13,12 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -47,6 +42,7 @@ interface TaskOwnershipProps {
   className?: string
   storyStatus?: StoryStatus
   sprintId?: string | null
+  projectId: string
 }
 
 export function TaskOwnership({
@@ -57,6 +53,7 @@ export function TaskOwnership({
   className = '',
   storyStatus,
   sprintId,
+  projectId,
 }: TaskOwnershipProps) {
   const [estimateDialogOpen, setEstimateDialogOpen] = useState(false)
   const [releaseDialogOpen, setReleaseDialogOpen] = useState(false)
@@ -87,21 +84,26 @@ export function TaskOwnership({
   const canDisplayOwnership = canTakeTaskOwnership && isStoryEligibleForOwnership
 
   // Task ownership mutations
+  const invalidateTaskQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ['tasks', projectId, task.storyId] })
+    queryClient.invalidateQueries({ queryKey: ['stories', projectId, task.storyId] })
+    queryClient.invalidateQueries({ queryKey: ['story-readiness', projectId, task.storyId] })
+  }
+
   const takeOwnershipMutation = useMutation({
     mutationFn: () => backlogApi.takeTaskOwnership(task.id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] })
-      queryClient.invalidateQueries({ queryKey: ['story', task.storyId] })
+      invalidateTaskQueries()
       toast({
-        title: "Task ownership taken",
-        description: "You are now responsible for this task",
+        title: 'Task ownership taken',
+        description: 'You are now responsible for this task',
       })
     },
     onError: (error) => {
       toast({
-        title: "Failed to take ownership",
-        description: error instanceof Error ? error.message : "An error occurred",
-        variant: "destructive",
+        title: 'Failed to take ownership',
+        description: error instanceof Error ? error.message : 'An error occurred',
+        variant: 'destructive',
       })
     },
   })
@@ -109,19 +111,18 @@ export function TaskOwnership({
   const releaseOwnershipMutation = useMutation({
     mutationFn: () => backlogApi.releaseTaskOwnership(task.id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] })
-      queryClient.invalidateQueries({ queryKey: ['story', task.storyId] })
+      invalidateTaskQueries()
       setReleaseDialogOpen(false)
       toast({
-        title: "Ownership released",
-        description: "Task is now available for others to take",
+        title: 'Ownership released',
+        description: 'Task is now available for others to take',
       })
     },
     onError: (error) => {
       toast({
-        title: "Failed to release ownership",
-        description: error instanceof Error ? error.message : "An error occurred",
-        variant: "destructive",
+        title: 'Failed to release ownership',
+        description: error instanceof Error ? error.message : 'An error occurred',
+        variant: 'destructive',
       })
     },
   })
@@ -129,18 +130,17 @@ export function TaskOwnership({
   const startWorkMutation = useMutation({
     mutationFn: () => backlogApi.startTaskWork(task.id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] })
-      queryClient.invalidateQueries({ queryKey: ['story', task.storyId] })
+      invalidateTaskQueries()
       toast({
-        title: "Work started",
-        description: "Task is now in progress",
+        title: 'Work started',
+        description: 'Task is now in progress',
       })
     },
     onError: (error) => {
       toast({
-        title: "Failed to start work",
-        description: error instanceof Error ? error.message : "An error occurred",
-        variant: "destructive",
+        title: 'Failed to start work',
+        description: error instanceof Error ? error.message : 'An error occurred',
+        variant: 'destructive',
       })
     },
   })
@@ -148,18 +148,17 @@ export function TaskOwnership({
   const completeWorkMutation = useMutation({
     mutationFn: () => backlogApi.completeTaskWork(task.id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] })
-      queryClient.invalidateQueries({ queryKey: ['story', task.storyId] })
+      invalidateTaskQueries()
       toast({
-        title: "Task completed",
-        description: "Great work! Task has been marked as complete",
+        title: 'Task completed',
+        description: 'Great work! Task has been marked as complete',
       })
     },
     onError: (error) => {
       toast({
-        title: "Failed to complete task",
-        description: error instanceof Error ? error.message : "An error occurred",
-        variant: "destructive",
+        title: 'Failed to complete task',
+        description: error instanceof Error ? error.message : 'An error occurred',
+        variant: 'destructive',
       })
     },
   })
@@ -168,17 +167,16 @@ export function TaskOwnership({
     mutationFn: (hours: number | undefined) =>
       backlogApi.setTaskEstimate(task.id, { estimatedHours: hours }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] })
-      queryClient.invalidateQueries({ queryKey: ['story', task.storyId] })
+      invalidateTaskQueries()
       setEstimateDialogOpen(false)
       setEstimateError('')
       toast({
-        title: "Estimate updated",
-        description: "Task estimate has been saved",
+        title: 'Estimate updated',
+        description: 'Task estimate has been saved',
       })
     },
     onError: (error) => {
-      setEstimateError(error instanceof Error ? error.message : "An error occurred")
+      setEstimateError(error instanceof Error ? error.message : 'An error occurred')
     },
   })
 
@@ -189,25 +187,25 @@ export function TaskOwnership({
         icon: Clock,
         label: 'Available',
         color: 'bg-gray-100 text-gray-800 border-gray-200',
-        description: 'Ready for someone to take ownership'
+        description: 'Ready for someone to take ownership',
       },
       owned: {
         icon: UserCheck,
         label: 'Owned',
         color: 'bg-blue-100 text-blue-800 border-blue-200',
-        description: 'Claimed but work not started'
+        description: 'Claimed but work not started',
       },
       inprogress: {
         icon: Zap,
         label: 'In Progress',
         color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-        description: 'Work is actively in progress'
+        description: 'Work is actively in progress',
       },
       completed: {
         icon: CheckCircle,
         label: 'Completed',
         color: 'bg-green-100 text-green-800 border-green-200',
-        description: 'Work has been completed'
+        description: 'Work has been completed',
       },
     }
     return configs[status]
@@ -298,9 +296,7 @@ export function TaskOwnership({
           {task.ownedAt && (
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4" />
-              <span>
-                Owned {formatDistanceToNow(new Date(task.ownedAt), { addSuffix: true })}
-              </span>
+              <span>Owned {formatDistanceToNow(new Date(task.ownedAt), { addSuffix: true })}</span>
             </div>
           )}
 
@@ -356,10 +352,11 @@ export function TaskOwnership({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  {isStoryEligibleForOwnership
-                    ? <p>Only contributors can take task ownership</p>
-                    : <p>Tasks can only be claimed once the story is in an active sprint</p>
-                  }
+                  {isStoryEligibleForOwnership ? (
+                    <p>Only contributors can take task ownership</p>
+                  ) : (
+                    <p>Tasks can only be claimed once the story is in an active sprint</p>
+                  )}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -380,11 +377,7 @@ export function TaskOwnership({
 
               <Dialog open={releaseDialogOpen} onOpenChange={setReleaseDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    data-testid={`release-ownership-${task.id}`}
-                  >
+                  <Button size="sm" variant="outline" data-testid={`release-ownership-${task.id}`}>
                     <UserMinus className="w-4 h-4 mr-1" />
                     Release
                   </Button>
@@ -393,15 +386,12 @@ export function TaskOwnership({
                   <DialogHeader>
                     <DialogTitle>Release Task Ownership</DialogTitle>
                     <DialogDescription>
-                      Are you sure you want to release ownership of this task?
-                      It will become available for other contributors to take.
+                      Are you sure you want to release ownership of this task? It will become
+                      available for other contributors to take.
                     </DialogDescription>
                   </DialogHeader>
                   <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => setReleaseDialogOpen(false)}
-                    >
+                    <Button variant="outline" onClick={() => setReleaseDialogOpen(false)}>
                       Cancel
                     </Button>
                     <Button
@@ -434,11 +424,7 @@ export function TaskOwnership({
           {(task.status === 'owned' || task.status === 'inprogress') && isOwner && showEstimate && (
             <Dialog open={estimateDialogOpen} onOpenChange={setEstimateDialogOpen}>
               <DialogTrigger asChild>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  data-testid={`estimate-hours-${task.id}`}
-                >
+                <Button size="sm" variant="outline" data-testid={`estimate-hours-${task.id}`}>
                   <Timer className="w-4 h-4 mr-1" />
                   {task.estimatedHours ? 'Update' : 'Add'} Estimate
                 </Button>
@@ -509,9 +495,12 @@ export function TaskOwnership({
                 </TooltipTrigger>
                 <TooltipContent data-testid="workflow-guidance-tooltip">
                   <p>
-                    1. Take ownership (&quot;I&apos;m on it&quot;)<br />
-                    2. Set estimate (optional)<br />
-                    3. Start work<br />
+                    1. Take ownership (&quot;I&apos;m on it&quot;)
+                    <br />
+                    2. Set estimate (optional)
+                    <br />
+                    3. Start work
+                    <br />
                     4. Complete task
                   </p>
                 </TooltipContent>

@@ -1,19 +1,81 @@
-use crate::application::ports::{StoryRepository, TaskRepository};
+use crate::adapters::persistence::repo;
 use crate::domain::{AcceptanceCriteria, Story, StoryStatus, Task, TaskStatus};
 use common::AppError;
+use event_bus::{
+    AcceptanceCriterionRecord, BacklogEvent, DomainEvent, EventPublisher, SprintEvent,
+    SprintRecord, StoryRecord, TaskRecord,
+};
+use sqlx::PgPool;
 use std::sync::Arc;
 use uuid::Uuid;
 
 pub struct BacklogUsecases {
-    story_repo: Arc<dyn StoryRepository>,
-    task_repo: Arc<dyn TaskRepository>,
+    pool: Arc<PgPool>,
+    events: Arc<dyn EventPublisher>,
 }
 
 impl BacklogUsecases {
-    pub fn new(story_repo: Arc<dyn StoryRepository>, task_repo: Arc<dyn TaskRepository>) -> Self {
-        Self {
-            story_repo,
-            task_repo,
+    pub fn new(pool: Arc<PgPool>, events: Arc<dyn EventPublisher>) -> Self {
+        Self { pool, events }
+    }
+
+    async fn publish(&self, event: DomainEvent) {
+        self.events.publish(event).await;
+    }
+
+    fn acceptance_record(story_id: Uuid, ac: &AcceptanceCriteria) -> AcceptanceCriterionRecord {
+        AcceptanceCriterionRecord {
+            id: ac.id,
+            story_id,
+            description: ac.description.clone(),
+            given: ac.given.clone(),
+            when: ac.when.clone(),
+            then: ac.then.clone(),
+            created_at: ac.created_at,
+        }
+    }
+
+    fn story_record(story: &Story) -> StoryRecord {
+        StoryRecord {
+            id: story.id,
+            project_id: story.project_id,
+            organization_id: story.organization_id,
+            title: story.title.clone(),
+            description: story.description.clone(),
+            status: story.status.to_string(),
+            labels: story.labels.clone(),
+            acceptance_criteria: story
+                .acceptance_criteria
+                .iter()
+                .map(|ac| Self::acceptance_record(story.id, ac))
+                .collect(),
+            story_points: story.story_points,
+            sprint_id: story.sprint_id,
+            assigned_to_user_id: story.assigned_to_user_id,
+            readiness_override: story.readiness_override,
+            readiness_override_by: story.readiness_override_by,
+            readiness_override_reason: story.readiness_override_reason.clone(),
+            readiness_override_at: story.readiness_override_at,
+            created_at: story.created_at,
+            updated_at: story.updated_at,
+        }
+    }
+
+    fn task_record(task: &Task) -> TaskRecord {
+        TaskRecord {
+            id: task.id,
+            story_id: task.story_id,
+            organization_id: task.organization_id,
+            title: task.title.clone(),
+            description: task.description.clone(),
+            acceptance_criteria_refs: task.acceptance_criteria_refs.clone(),
+            status: task.status.to_string(),
+            owner_user_id: task.owner_user_id,
+            estimated_hours: task.estimated_hours,
+            created_at: task.created_at,
+            updated_at: task.updated_at,
+            owned_at: task.owned_at,
+            completed_at: task.completed_at,
         }
     }
 
@@ -29,7 +91,13 @@ impl BacklogUsecases {
         for label in labels {
             story.add_label(label);
         }
-        self.story_repo.create_story(&story).await
+        repo::create_story(&self.pool, &story).await?;
+        let record = Self::story_record(&story);
+        self.publish(DomainEvent::Backlog(BacklogEvent::StoryCreated {
+            story: record,
+        }))
+        .await;
+        Ok(story.id)
     }
 
     pub async fn get_story(
@@ -37,7 +105,7 @@ impl BacklogUsecases {
         id: Uuid,
         organization_id: Option<Uuid>,
     ) -> Result<Option<Story>, AppError> {
-        self.story_repo.get_story(id, organization_id).await
+        repo::get_story(&self.pool, id, organization_id).await
     }
 
     pub async fn update_story(
@@ -50,13 +118,18 @@ impl BacklogUsecases {
         story_points: Option<u32>,
     ) -> Result<(), AppError> {
         let mut story = self
-            .story_repo
             .get_story(id, organization_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Story not found".to_string()))?;
 
         story.update(title, description, labels, story_points)?;
-        self.story_repo.update_story(&story).await
+        repo::update_story(&self.pool, &story).await?;
+        let record = Self::story_record(&story);
+        self.publish(DomainEvent::Backlog(BacklogEvent::StoryUpdated {
+            story: record,
+        }))
+        .await;
+        Ok(())
     }
 
     pub async fn override_story_ready(
@@ -67,13 +140,17 @@ impl BacklogUsecases {
         reason: Option<String>,
     ) -> Result<Story, AppError> {
         let mut story = self
-            .story_repo
             .get_story(id, organization_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Story not found".to_string()))?;
 
         story.apply_readiness_override(user_id, reason);
-        self.story_repo.update_story(&story).await?;
+        repo::update_story(&self.pool, &story).await?;
+        let record = Self::story_record(&story);
+        self.publish(DomainEvent::Backlog(BacklogEvent::StoryUpdated {
+            story: record,
+        }))
+        .await;
         Ok(story)
     }
 
@@ -84,13 +161,18 @@ impl BacklogUsecases {
         status: StoryStatus,
     ) -> Result<(), AppError> {
         let mut story = self
-            .story_repo
             .get_story(id, organization_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Story not found".to_string()))?;
 
         story.update_status(status)?;
-        self.story_repo.update_story(&story).await
+        repo::update_story(&self.pool, &story).await?;
+        let record = Self::story_record(&story);
+        self.publish(DomainEvent::Backlog(BacklogEvent::StoryUpdated {
+            story: record,
+        }))
+        .await;
+        Ok(())
     }
 
     pub async fn delete_story(
@@ -98,17 +180,154 @@ impl BacklogUsecases {
         id: Uuid,
         organization_id: Option<Uuid>,
     ) -> Result<(), AppError> {
-        self.story_repo.delete_story(id, organization_id).await
+        repo::delete_story(&self.pool, id, organization_id).await?;
+        self.publish(DomainEvent::Backlog(BacklogEvent::StoryDeleted {
+            story_id: id,
+            organization_id,
+        }))
+        .await;
+        Ok(())
+    }
+
+    pub async fn create_sprint(
+        &self,
+        project_id: Uuid,
+        organization_id: Option<Uuid>,
+        name: String,
+        goal: String,
+        stories: Vec<Uuid>,
+        capacity_points: Option<u32>,
+    ) -> Result<Uuid, AppError> {
+        let project = repo::get_project(&self.pool, project_id, organization_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
+
+        let team_id = project.team_id.ok_or_else(|| {
+            AppError::BadRequest(
+                "Project is missing a team assignment; assign a team before creating sprints."
+                    .to_string(),
+            )
+        })?;
+
+        if let Some(current_sprint) = repo::get_team_active_sprint(&self.pool, team_id).await? {
+            return Err(AppError::BadRequest(format!(
+                "Team already has an active sprint ({})",
+                current_sprint
+            )));
+        }
+
+        let effective_org_id = organization_id.or(project.organization_id);
+
+        // Default sprint configuration until UI surfaces advanced controls.
+        const DEFAULT_SPRINT_CAPACITY: u32 = 40;
+        const DEFAULT_SPRINT_DURATION_DAYS: i64 = 14;
+        let capacity_points = capacity_points.unwrap_or(DEFAULT_SPRINT_CAPACITY);
+        if capacity_points == 0 {
+            return Err(AppError::BadRequest(
+                "Sprint capacity must be greater than 0".to_string(),
+            ));
+        }
+
+        let start_date = chrono::Utc::now();
+        let end_date = start_date + chrono::Duration::days(DEFAULT_SPRINT_DURATION_DAYS);
+
+        let mut stories_to_commit: Vec<Story> = Vec::new();
+        for story_id in &stories {
+            let story = self
+                .get_story(*story_id, organization_id)
+                .await?
+                .ok_or_else(|| AppError::NotFound("Story not found".to_string()))?;
+            stories_to_commit.push(story);
+        }
+
+        let committed_points: u32 = stories_to_commit
+            .iter()
+            .map(|story| story.story_points.unwrap_or(0))
+            .sum();
+
+        if committed_points > capacity_points {
+            return Err(AppError::BadRequest(format!(
+                "Committed story points ({}) exceed sprint capacity ({})",
+                committed_points, capacity_points
+            )));
+        }
+
+        let goal = goal.trim().to_string();
+        let sprint_id = repo::create_sprint(
+            &self.pool,
+            project_id,
+            team_id,
+            effective_org_id,
+            name.clone(),
+            goal.clone(),
+            capacity_points,
+            "active",
+            start_date,
+            end_date,
+            committed_points,
+            0,
+        )
+        .await?;
+
+        for mut story in stories_to_commit {
+            story.assign_to_sprint(sprint_id)?;
+            story.update_status(StoryStatus::Committed)?;
+            repo::update_story(&self.pool, &story).await?;
+            let record = Self::story_record(&story);
+            self.publish(DomainEvent::Backlog(BacklogEvent::StoryUpdated {
+                story: record,
+            }))
+            .await;
+        }
+
+        repo::set_team_active_sprint(&self.pool, team_id, sprint_id).await?;
+
+        self.publish(DomainEvent::Sprint(SprintEvent::Created {
+            sprint: SprintRecord {
+                id: sprint_id,
+                team_id,
+                organization_id: effective_org_id,
+                name,
+                goal: if goal.is_empty() { None } else { Some(goal) },
+                capacity_points: Some(capacity_points),
+                status: "Active".to_string(),
+                start_date: Some(start_date),
+                end_date: Some(end_date),
+                committed_points: Some(committed_points),
+                completed_points: Some(0),
+                created_at: start_date,
+                updated_at: start_date,
+            },
+        }))
+        .await;
+
+        Ok(sprint_id)
     }
 
     pub async fn get_stories_by_project(
         &self,
         project_id: Uuid,
         organization_id: Option<Uuid>,
+        status: Option<StoryStatus>,
     ) -> Result<Vec<Story>, AppError> {
-        self.story_repo
-            .get_stories_by_project(project_id, organization_id)
-            .await
+        let stories = repo::get_stories_by_project(&self.pool, project_id, organization_id).await?;
+
+        if let Some(status_filter) = status {
+            Ok(stories
+                .into_iter()
+                .filter(|story| story.status == status_filter)
+                .collect())
+        } else {
+            Ok(stories)
+        }
+    }
+
+    pub async fn get_task(
+        &self,
+        task_id: Uuid,
+        organization_id: Option<Uuid>,
+    ) -> Result<Option<Task>, AppError> {
+        repo::get_task(&self.pool, task_id, organization_id).await
     }
 
     pub async fn create_task(
@@ -126,7 +345,12 @@ impl BacklogUsecases {
             description,
             acceptance_criteria_refs,
         )?;
-        self.task_repo.create_task(&task).await?;
+        repo::create_task(&self.pool, &task).await?;
+        let record = Self::task_record(&task);
+        self.publish(DomainEvent::Backlog(BacklogEvent::TaskCreated {
+            task: record,
+        }))
+        .await;
         Ok(task.id)
     }
 
@@ -135,9 +359,7 @@ impl BacklogUsecases {
         story_id: Uuid,
         organization_id: Option<Uuid>,
     ) -> Result<Vec<Task>, AppError> {
-        self.task_repo
-            .get_tasks_by_story(story_id, organization_id)
-            .await
+        repo::get_tasks_by_story(&self.pool, story_id, organization_id).await
     }
 
     pub async fn get_available_tasks(
@@ -145,10 +367,7 @@ impl BacklogUsecases {
         story_id: Uuid,
         organization_id: Option<Uuid>,
     ) -> Result<Vec<Task>, AppError> {
-        let tasks = self
-            .task_repo
-            .get_tasks_by_story(story_id, organization_id)
-            .await?;
+        let tasks = repo::get_tasks_by_story(&self.pool, story_id, organization_id).await?;
         let available_tasks = tasks
             .into_iter()
             .filter(|task| task.is_available_for_ownership())
@@ -161,9 +380,7 @@ impl BacklogUsecases {
         user_id: Uuid,
         organization_id: Option<Uuid>,
     ) -> Result<Vec<Task>, AppError> {
-        self.task_repo
-            .get_tasks_by_owner(user_id, organization_id)
-            .await
+        repo::get_tasks_by_owner(&self.pool, user_id, organization_id).await
     }
 
     pub async fn take_task_ownership(
@@ -173,13 +390,18 @@ impl BacklogUsecases {
         user_id: Uuid,
     ) -> Result<(), AppError> {
         let mut task = self
-            .task_repo
             .get_task(task_id, organization_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Task not found".to_string()))?;
 
         task.take_ownership(user_id)?;
-        self.task_repo.update_task(&task).await
+        repo::update_task(&self.pool, &task).await?;
+        let record = Self::task_record(&task);
+        self.publish(DomainEvent::Backlog(BacklogEvent::TaskUpdated {
+            task: record,
+        }))
+        .await;
+        Ok(())
     }
 
     pub async fn release_task_ownership(
@@ -189,13 +411,18 @@ impl BacklogUsecases {
         user_id: Uuid,
     ) -> Result<(), AppError> {
         let mut task = self
-            .task_repo
             .get_task(task_id, organization_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Task not found".to_string()))?;
 
         task.release_ownership(user_id)?;
-        self.task_repo.update_task(&task).await
+        repo::update_task(&self.pool, &task).await?;
+        let record = Self::task_record(&task);
+        self.publish(DomainEvent::Backlog(BacklogEvent::TaskUpdated {
+            task: record,
+        }))
+        .await;
+        Ok(())
     }
 
     pub async fn start_task_work(
@@ -205,13 +432,18 @@ impl BacklogUsecases {
         user_id: Uuid,
     ) -> Result<(), AppError> {
         let mut task = self
-            .task_repo
             .get_task(task_id, organization_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Task not found".to_string()))?;
 
         task.start_work(user_id)?;
-        self.task_repo.update_task(&task).await
+        repo::update_task(&self.pool, &task).await?;
+        let record = Self::task_record(&task);
+        self.publish(DomainEvent::Backlog(BacklogEvent::TaskUpdated {
+            task: record,
+        }))
+        .await;
+        Ok(())
     }
 
     pub async fn complete_task_work(
@@ -221,13 +453,18 @@ impl BacklogUsecases {
         user_id: Uuid,
     ) -> Result<(), AppError> {
         let mut task = self
-            .task_repo
             .get_task(task_id, organization_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Task not found".to_string()))?;
 
         task.complete(user_id)?;
-        self.task_repo.update_task(&task).await
+        repo::update_task(&self.pool, &task).await?;
+        let record = Self::task_record(&task);
+        self.publish(DomainEvent::Backlog(BacklogEvent::TaskUpdated {
+            task: record,
+        }))
+        .await;
+        Ok(())
     }
 
     pub async fn update_task_status(
@@ -238,13 +475,17 @@ impl BacklogUsecases {
         status: TaskStatus,
     ) -> Result<Task, AppError> {
         let mut task = self
-            .task_repo
             .get_task(task_id, organization_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Task not found".to_string()))?;
 
         task.transition_to_status(status, user_id)?;
-        self.task_repo.update_task(&task).await?;
+        repo::update_task(&self.pool, &task).await?;
+        let record = Self::task_record(&task);
+        self.publish(DomainEvent::Backlog(BacklogEvent::TaskUpdated {
+            task: record,
+        }))
+        .await;
 
         Ok(task)
     }
@@ -257,13 +498,18 @@ impl BacklogUsecases {
         estimated_hours: Option<u32>,
     ) -> Result<(), AppError> {
         let mut task = self
-            .task_repo
             .get_task(task_id, organization_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Task not found".to_string()))?;
 
         task.set_estimated_hours(estimated_hours)?;
-        self.task_repo.update_task(&task).await
+        repo::update_task(&self.pool, &task).await?;
+        let record = Self::task_record(&task);
+        self.publish(DomainEvent::Backlog(BacklogEvent::TaskUpdated {
+            task: record,
+        }))
+        .await;
+        Ok(())
     }
 
     pub async fn get_acceptance_criteria(
@@ -272,7 +518,6 @@ impl BacklogUsecases {
         organization_id: Option<Uuid>,
     ) -> Result<Vec<AcceptanceCriteria>, AppError> {
         let story = self
-            .story_repo
             .get_story(story_id, organization_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Story not found".to_string()))?;
@@ -289,7 +534,6 @@ impl BacklogUsecases {
         then: String,
     ) -> Result<Uuid, AppError> {
         let mut story = self
-            .story_repo
             .get_story(story_id, organization_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Story not found".to_string()))?;
@@ -298,7 +542,12 @@ impl BacklogUsecases {
         let ac = AcceptanceCriteria::new(description, given, when, then)?;
         let ac_id = ac.id;
         story.add_acceptance_criteria(ac);
-        self.story_repo.update_story(&story).await?;
+        repo::update_story(&self.pool, &story).await?;
+        let record = Self::story_record(&story);
+        self.publish(DomainEvent::Backlog(BacklogEvent::StoryUpdated {
+            story: record,
+        }))
+        .await;
         Ok(ac_id)
     }
 
@@ -312,7 +561,6 @@ impl BacklogUsecases {
         then: Option<String>,
     ) -> Result<(), AppError> {
         let mut story = self
-            .story_repo
             .get_story(story_id, organization_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Story not found".to_string()))?;
@@ -335,7 +583,13 @@ impl BacklogUsecases {
 
         ac.description = format!("Given {}, when {}, then {}", ac.given, ac.when, ac.then);
 
-        self.story_repo.update_story(&story).await
+        repo::update_story(&self.pool, &story).await?;
+        let record = Self::story_record(&story);
+        self.publish(DomainEvent::Backlog(BacklogEvent::StoryUpdated {
+            story: record,
+        }))
+        .await;
+        Ok(())
     }
 
     pub async fn delete_acceptance_criterion(
@@ -345,12 +599,17 @@ impl BacklogUsecases {
         organization_id: Option<Uuid>,
     ) -> Result<(), AppError> {
         let mut story = self
-            .story_repo
             .get_story(story_id, organization_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Story not found".to_string()))?;
 
         story.remove_acceptance_criteria(criterion_id)?;
-        self.story_repo.update_story(&story).await
+        repo::update_story(&self.pool, &story).await?;
+        let record = Self::story_record(&story);
+        self.publish(DomainEvent::Backlog(BacklogEvent::StoryUpdated {
+            story: record,
+        }))
+        .await;
+        Ok(())
     }
 }

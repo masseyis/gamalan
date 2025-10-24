@@ -32,12 +32,14 @@ __tests__/integration/
 ## Key Features
 
 ### Real Clerk Authentication
+
 - Uses `@clerk/testing` package for realistic test scenarios
 - Tests actual Clerk hooks (`useAuth`, `useUser`, `useOrganization`)
 - Validates JWT token flows and session management
 - No custom mock authentication systems
 
 ### Comprehensive Coverage
+
 - **API Authentication**: Tests all API clients with proper Clerk JWT tokens
 - **Component Integration**: Tests React components using Clerk hooks
 - **Middleware Protection**: Tests Next.js middleware authentication
@@ -45,6 +47,7 @@ __tests__/integration/
 - **Error Handling**: Tests authentication failures and edge cases
 
 ### Production-Ready Tests
+
 - Tests real user workflows and authentication patterns
 - Validates error boundaries and graceful degradation
 - Tests concurrent requests and session refresh
@@ -53,21 +56,25 @@ __tests__/integration/
 ## Running Tests
 
 ### All Integration Tests
+
 ```bash
 pnpm test:integration
 ```
 
 ### Watch Mode
+
 ```bash
 pnpm test:integration:watch
 ```
 
 ### With Coverage
+
 ```bash
 pnpm test:integration:coverage
 ```
 
 ### Specific Test Files
+
 ```bash
 # API client tests
 pnpm test:integration api/client.integration.test.ts
@@ -82,6 +89,7 @@ pnpm test:integration auth/middleware.integration.test.ts
 ## Test Configuration
 
 ### Environment Variables
+
 The tests use the following environment variables from `.env.test`:
 
 ```env
@@ -93,14 +101,17 @@ NODE_ENV=test
 ```
 
 **Important**: The current test keys are placeholder base64 strings. In a real environment, you would:
+
 1. Create a Clerk test instance
 2. Generate actual test environment keys
 3. Replace the placeholder keys with real ones
 
 ### Vitest Configuration
+
 Integration tests use a separate config file: `vitest.integration.config.ts`
 
 Key settings:
+
 - Environment: `jsdom`
 - Setup: `src/test-setup-integration.ts`
 - Timeout: 15 seconds (for Clerk initialization)
@@ -109,6 +120,7 @@ Key settings:
 ## Test Patterns
 
 ### 1. API Client Authentication Tests
+
 ```typescript
 describe('API Client Integration', () => {
   const mockClerk = createClerkMock({
@@ -130,6 +142,7 @@ describe('API Client Integration', () => {
 ```
 
 ### 2. Component Integration Tests
+
 ```typescript
 describe('Navigation Component', () => {
   const TestWrapper = ({ children }) => (
@@ -153,6 +166,7 @@ describe('Navigation Component', () => {
 ```
 
 ### 3. Middleware Authentication Tests
+
 ```typescript
 describe('Middleware Integration', () => {
   it('should protect private routes', async () => {
@@ -178,7 +192,9 @@ server.use(
       return new HttpResponse(null, { status: 401 })
     }
 
-    return HttpResponse.json([/* projects */])
+    return HttpResponse.json([
+      /* projects */
+    ])
   })
 )
 ```
@@ -186,6 +202,7 @@ server.use(
 ## Best Practices
 
 ### ✅ Do
+
 - Use `@clerk/testing` for Clerk mocks
 - Test real authentication flows
 - Verify error handling paths
@@ -194,6 +211,7 @@ server.use(
 - Test concurrent requests
 
 ### ❌ Don't
+
 - Use custom auth mocking systems
 - Skip error scenarios
 - Test only happy paths
@@ -204,6 +222,7 @@ server.use(
 ## Debugging Tests
 
 ### View Test Output
+
 ```bash
 # Verbose output
 pnpm test:integration --reporter=verbose
@@ -220,7 +239,9 @@ pnpm test:integration --debug
 4. **Mock conflicts**: Ensure proper cleanup in `afterEach`
 
 ### Console Logging
+
 Tests include detailed console output for debugging:
+
 - Auth token generation
 - API request/response cycles
 - Organization context changes
@@ -251,6 +272,7 @@ Target coverage for integration tests:
 ## Current Status
 
 ### ✅ Completed
+
 - **Test Infrastructure**: Vitest configuration for integration tests
 - **API Client Tests**: Authentication flow testing with mock Clerk tokens
 - **Middleware Tests**: Next.js middleware authentication verification
@@ -259,12 +281,15 @@ Target coverage for integration tests:
 - **Documentation**: Comprehensive test patterns and examples
 
 ### ⚠️ Known Issues
+
 1. **Clerk Test Keys**: Current placeholder keys need to be replaced with real Clerk test environment keys
 2. **Component Mocking**: Some complex component tests need refinement for better isolation
 3. **Environment Cleanup**: Window object cleanup between tests needs improvement
 
 ### 🔧 Next Steps for Production Use
+
 1. **Set up real Clerk test environment**:
+
    ```bash
    # Get real test keys from Clerk dashboard
    export NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="pk_test_real_key_here"
@@ -297,6 +322,7 @@ Planned improvements:
 The integration test suite demonstrates:
 
 ### ✅ Quality Standards Met
+
 - **Test Pyramid**: Proper separation of unit vs integration tests
 - **Authentication Coverage**: Comprehensive auth flow testing
 - **Error Handling**: Tests for failure scenarios and edge cases
@@ -304,6 +330,7 @@ The integration test suite demonstrates:
 - **Performance**: Load testing for concurrent requests
 
 ### 📈 Quality Improvements Needed
+
 - **Coverage**: Increase test coverage to target 90%+
 - **Real Environment**: Replace mock keys with real test environment
 - **CI/CD Integration**: Ensure tests run reliably in pipeline

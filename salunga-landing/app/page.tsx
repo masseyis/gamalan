@@ -1,7 +1,7 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
 
 export default function SpecMintHero() {
   const [copied, setCopied] = useState(false)
@@ -52,8 +52,8 @@ public void testCreateUser_ValidInput() {
 
               {/* Subhead */}
               <p className="text-xl lg:text-2xl text-gray-300 leading-relaxed max-w-2xl">
-                SpecMint turns OpenAPI into valid, boundary, and negative cases plus JUnit, Postman, WireMock, and
-                CSV/SQL artifacts.
+                SpecMint turns OpenAPI into valid, boundary, and negative cases plus JUnit, Postman,
+                WireMock, and CSV/SQL artifacts.
               </p>
             </div>
 
@@ -105,7 +105,12 @@ public void testCreateUser_ValidInput() {
                 >
                   {copied ? (
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                   ) : (
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -124,31 +129,34 @@ public void testCreateUser_ValidInput() {
               <div className="p-6 font-mono text-sm leading-relaxed overflow-x-auto">
                 <pre className="text-gray-300">
                   <span className="text-purple-400">@Test</span>
-                  {"\n"}
-                  <span className="text-blue-400">public void</span>{" "}
-                  <span className="text-yellow-400">testCreateUser_ValidInput</span>() {"{"}
-                  {"\n    "}
-                  <span className="text-blue-400">User</span> user = <span className="text-blue-400">new</span>{" "}
+                  {'\n'}
+                  <span className="text-blue-400">public void</span>{' '}
+                  <span className="text-yellow-400">testCreateUser_ValidInput</span>() {'{'}
+                  {'\n    '}
+                  <span className="text-blue-400">User</span> user ={' '}
+                  <span className="text-blue-400">new</span>{' '}
                   <span className="text-yellow-400">User</span>(
-                  <span className="text-green-400">"john.doe@example.com"</span>,{" "}
+                  <span className="text-green-400">"john.doe@example.com"</span>,{' '}
                   <span className="text-green-400">"John Doe"</span>);
-                  {"\n    "}
-                  {"\n    "}
+                  {'\n    '}
+                  {'\n    '}
                   <span className="text-yellow-400">given</span>()
-                  {"\n        "}.<span className="text-yellow-400">contentType</span>(
-                  <span className="text-blue-400">ContentType</span>.<span className="text-teal-400">JSON</span>)
-                  {"\n        "}.<span className="text-yellow-400">body</span>(user)
-                  {"\n    "}.<span className="text-yellow-400">when</span>()
-                  {"\n        "}.<span className="text-yellow-400">post</span>(
-                  <span className="text-green-400">"/api/users"</span>){"\n    "}.
+                  {'\n        '}.<span className="text-yellow-400">contentType</span>(
+                  <span className="text-blue-400">ContentType</span>.
+                  <span className="text-teal-400">JSON</span>){'\n        '}.
+                  <span className="text-yellow-400">body</span>(user)
+                  {'\n    '}.<span className="text-yellow-400">when</span>()
+                  {'\n        '}.<span className="text-yellow-400">post</span>(
+                  <span className="text-green-400">"/api/users"</span>){'\n    '}.
                   <span className="text-yellow-400">then</span>()
-                  {"\n        "}.<span className="text-yellow-400">statusCode</span>(
-                  <span className="text-orange-400">201</span>){"\n        "}.
-                  <span className="text-yellow-400">body</span>(<span className="text-green-400">"email"</span>,{" "}
+                  {'\n        '}.<span className="text-yellow-400">statusCode</span>(
+                  <span className="text-orange-400">201</span>){'\n        '}.
+                  <span className="text-yellow-400">body</span>(
+                  <span className="text-green-400">"email"</span>,{' '}
                   <span className="text-yellow-400">equalTo</span>(
                   <span className="text-green-400">"john.doe@example.com"</span>));
-                  {"\n"}
-                  {"}"}
+                  {'\n'}
+                  {'}'}
                 </pre>
               </div>
             </div>
