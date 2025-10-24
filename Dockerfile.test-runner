@@ -1,7 +1,7 @@
 # Test Runner Dockerfile
 # Container for running integration and contract tests against the unified gateway
 
-FROM rust:1.79-slim
+FROM rust:latest
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \

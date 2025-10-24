@@ -1,25 +1,81 @@
-use crate::application::ports::{ReadinessService, StoryRepository, TaskRepository};
-use crate::domain::{Story, StoryStatus, Task};
+use crate::adapters::persistence::repo;
+use crate::domain::{AcceptanceCriteria, Story, StoryStatus, Task, TaskStatus};
 use common::AppError;
+use event_bus::{
+    AcceptanceCriterionRecord, BacklogEvent, DomainEvent, EventPublisher, SprintEvent,
+    SprintRecord, StoryRecord, TaskRecord,
+};
+use sqlx::{PgPool, Postgres, Transaction};
 use std::sync::Arc;
 use uuid::Uuid;
 
 pub struct BacklogUsecases {
-    story_repo: Arc<dyn StoryRepository>,
-    task_repo: Arc<dyn TaskRepository>,
-    readiness_service: Arc<dyn ReadinessService>,
+    pool: Arc<PgPool>,
+    events: Arc<dyn EventPublisher>,
 }
 
 impl BacklogUsecases {
-    pub fn new(
-        story_repo: Arc<dyn StoryRepository>,
-        task_repo: Arc<dyn TaskRepository>,
-        readiness_service: Arc<dyn ReadinessService>,
-    ) -> Self {
-        Self {
-            story_repo,
-            task_repo,
-            readiness_service,
+    pub fn new(pool: Arc<PgPool>, events: Arc<dyn EventPublisher>) -> Self {
+        Self { pool, events }
+    }
+
+    async fn publish(&self, event: DomainEvent) {
+        self.events.publish(event).await;
+    }
+
+    fn acceptance_record(story_id: Uuid, ac: &AcceptanceCriteria) -> AcceptanceCriterionRecord {
+        AcceptanceCriterionRecord {
+            id: ac.id,
+            story_id,
+            description: ac.description.clone(),
+            given: ac.given.clone(),
+            when: ac.when.clone(),
+            then: ac.then.clone(),
+            created_at: ac.created_at,
+        }
+    }
+
+    fn story_record(story: &Story) -> StoryRecord {
+        StoryRecord {
+            id: story.id,
+            project_id: story.project_id,
+            organization_id: story.organization_id,
+            title: story.title.clone(),
+            description: story.description.clone(),
+            status: story.status.to_string(),
+            labels: story.labels.clone(),
+            acceptance_criteria: story
+                .acceptance_criteria
+                .iter()
+                .map(|ac| Self::acceptance_record(story.id, ac))
+                .collect(),
+            story_points: story.story_points,
+            sprint_id: story.sprint_id,
+            assigned_to_user_id: story.assigned_to_user_id,
+            readiness_override: story.readiness_override,
+            readiness_override_by: story.readiness_override_by,
+            readiness_override_reason: story.readiness_override_reason.clone(),
+            readiness_override_at: story.readiness_override_at,
+            created_at: story.created_at,
+            updated_at: story.updated_at,
+        }
+    }
+
+    fn task_record(task: &Task) -> TaskRecord {
+        TaskRecord {
+            id: task.id,
+            story_id: task.story_id,
+            organization_id: task.organization_id,
+            title: task.title.clone(),
+            description: task.description.clone(),
+            acceptance_criteria_refs: task.acceptance_criteria_refs.clone(),
+            status: task.status.to_string(),
+            owner_user_id: task.owner_user_id,
+            estimated_hours: task.estimated_hours,
+            created_at: task.created_at,
+            updated_at: task.updated_at,
+            owned_at: task.owned_at,
+            completed_at: task.completed_at,
         }
     }
 
@@ -35,8 +91,12 @@ impl BacklogUsecases {
         for label in labels {
             story.add_label(label);
         }
-
-        self.story_repo.create_story(&story).await?;
+        repo::create_story(&self.pool, &story).await?;
+        let record = Self::story_record(&story);
+        self.publish(DomainEvent::Backlog(BacklogEvent::StoryCreated {
+            story: record,
+        }))
+        .await;
         Ok(story.id)
     }
 
@@ -45,17 +105,7 @@ impl BacklogUsecases {
         id: Uuid,
         organization_id: Option<Uuid>,
     ) -> Result<Option<Story>, AppError> {
-        self.story_repo.get_story(id, organization_id).await
-    }
-
-    pub async fn get_stories_by_project(
-        &self,
-        project_id: Uuid,
-        organization_id: Option<Uuid>,
-    ) -> Result<Vec<Story>, AppError> {
-        self.story_repo
-            .get_stories_by_project(project_id, organization_id)
-            .await
+        repo::get_story(&self.pool, id, organization_id).await
     }
 
     pub async fn update_story(
@@ -63,26 +113,45 @@ impl BacklogUsecases {
         id: Uuid,
         organization_id: Option<Uuid>,
         title: Option<String>,
-        description: Option<String>,
+        description: Option<Option<String>>,
         labels: Option<Vec<String>>,
+        story_points: Option<u32>,
     ) -> Result<(), AppError> {
         let mut story = self
-            .story_repo
             .get_story(id, organization_id)
             .await?
-            .ok_or_else(|| AppError::NotFound(format!("Story with id {} not found", id)))?;
+            .ok_or_else(|| AppError::NotFound("Story not found".to_string()))?;
 
-        if let Some(title) = title {
-            story.title = title;
-        }
-        if let Some(description) = description {
-            story.description = Some(description);
-        }
-        if let Some(labels) = labels {
-            story.labels = labels;
-        }
+        story.update(title, description, labels, story_points)?;
+        repo::update_story(&self.pool, &story).await?;
+        let record = Self::story_record(&story);
+        self.publish(DomainEvent::Backlog(BacklogEvent::StoryUpdated {
+            story: record,
+        }))
+        .await;
+        Ok(())
+    }
 
-        self.story_repo.update_story(&story).await
+    pub async fn override_story_ready(
+        &self,
+        id: Uuid,
+        organization_id: Option<Uuid>,
+        user_id: Uuid,
+        reason: Option<String>,
+    ) -> Result<Story, AppError> {
+        let mut story = self
+            .get_story(id, organization_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Story not found".to_string()))?;
+
+        story.apply_readiness_override(user_id, reason);
+        repo::update_story(&self.pool, &story).await?;
+        let record = Self::story_record(&story);
+        self.publish(DomainEvent::Backlog(BacklogEvent::StoryUpdated {
+            story: record,
+        }))
+        .await;
+        Ok(story)
     }
 
     pub async fn update_story_status(
@@ -92,13 +161,18 @@ impl BacklogUsecases {
         status: StoryStatus,
     ) -> Result<(), AppError> {
         let mut story = self
-            .story_repo
             .get_story(id, organization_id)
             .await?
-            .ok_or_else(|| AppError::NotFound(format!("Story with id {} not found", id)))?;
+            .ok_or_else(|| AppError::NotFound("Story not found".to_string()))?;
 
-        story.update_status(status);
-        self.story_repo.update_story(&story).await
+        story.update_status(status)?;
+        repo::update_story(&self.pool, &story).await?;
+        let record = Self::story_record(&story);
+        self.publish(DomainEvent::Backlog(BacklogEvent::StoryUpdated {
+            story: record,
+        }))
+        .await;
+        Ok(())
     }
 
     pub async fn delete_story(
@@ -106,13 +180,173 @@ impl BacklogUsecases {
         id: Uuid,
         organization_id: Option<Uuid>,
     ) -> Result<(), AppError> {
-        // Check if story exists
-        self.story_repo
-            .get_story(id, organization_id)
-            .await?
-            .ok_or_else(|| AppError::NotFound(format!("Story with id {} not found", id)))?;
+        repo::delete_story(&self.pool, id, organization_id).await?;
+        self.publish(DomainEvent::Backlog(BacklogEvent::StoryDeleted {
+            story_id: id,
+            organization_id,
+        }))
+        .await;
+        Ok(())
+    }
 
-        self.story_repo.delete_story(id, organization_id).await
+    pub async fn create_sprint(
+        &self,
+        project_id: Uuid,
+        organization_id: Option<Uuid>,
+        name: String,
+        goal: String,
+        stories: Vec<Uuid>,
+        capacity_points: Option<u32>,
+    ) -> Result<Uuid, AppError> {
+        let project = repo::get_project(&self.pool, project_id, organization_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
+
+        let team_id = project.team_id.ok_or_else(|| {
+            AppError::BadRequest(
+                "Project is missing a team assignment; assign a team before creating sprints."
+                    .to_string(),
+            )
+        })?;
+
+        if let Some(current_sprint) = repo::get_team_active_sprint(&self.pool, team_id).await? {
+            return Err(AppError::BadRequest(format!(
+                "Team already has an active sprint ({})",
+                current_sprint
+            )));
+        }
+
+        let effective_org_id = organization_id.or(project.organization_id);
+
+        // Default sprint configuration until UI surfaces advanced controls.
+        const DEFAULT_SPRINT_CAPACITY: u32 = 40;
+        const DEFAULT_SPRINT_DURATION_DAYS: i64 = 14;
+        let capacity_points = capacity_points.unwrap_or(DEFAULT_SPRINT_CAPACITY);
+        if capacity_points == 0 {
+            return Err(AppError::BadRequest(
+                "Sprint capacity must be greater than 0".to_string(),
+            ));
+        }
+
+        let start_date = chrono::Utc::now();
+        let end_date = start_date + chrono::Duration::days(DEFAULT_SPRINT_DURATION_DAYS);
+
+        let mut stories_to_commit: Vec<Story> = Vec::new();
+        for story_id in &stories {
+            let story = self
+                .get_story(*story_id, organization_id)
+                .await?
+                .ok_or_else(|| AppError::NotFound("Story not found".to_string()))?;
+            stories_to_commit.push(story);
+        }
+
+        let committed_points: u32 = stories_to_commit
+            .iter()
+            .map(|story| story.story_points.unwrap_or(0))
+            .sum();
+
+        if committed_points > capacity_points {
+            return Err(AppError::BadRequest(format!(
+                "Committed story points ({}) exceed sprint capacity ({})",
+                committed_points, capacity_points
+            )));
+        }
+
+        let goal = goal.trim().to_string();
+
+        // Start a transaction to ensure all operations succeed or fail together
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|_| AppError::InternalServerError)?;
+
+        let sprint_id = repo::create_sprint_with_transaction(
+            &mut tx,
+            project_id,
+            team_id,
+            effective_org_id,
+            name.clone(),
+            goal.clone(),
+            capacity_points,
+            "active",
+            start_date,
+            end_date,
+            committed_points,
+            0,
+        )
+        .await?;
+
+        // Update all stories within the same transaction
+        for mut story in stories_to_commit {
+            story.assign_to_sprint(sprint_id)?;
+            story.update_status(StoryStatus::Committed)?;
+            repo::update_story_with_transaction(&mut tx, &story).await?;
+        }
+
+        // Set team active sprint within the same transaction
+        repo::set_team_active_sprint_with_transaction(&mut tx, team_id, sprint_id).await?;
+
+        // Commit the transaction - if any operation failed, this will rollback everything
+        tx.commit()
+            .await
+            .map_err(|_| AppError::InternalServerError)?;
+
+        // Publish events after successful transaction commit
+        for story in &stories_to_commit {
+            let record = Self::story_record(story);
+            self.publish(DomainEvent::Backlog(BacklogEvent::StoryUpdated {
+                story: record,
+            }))
+            .await;
+        }
+
+        self.publish(DomainEvent::Sprint(SprintEvent::Created {
+            sprint: SprintRecord {
+                id: sprint_id,
+                team_id,
+                organization_id: effective_org_id,
+                name,
+                goal: if goal.is_empty() { None } else { Some(goal) },
+                capacity_points: Some(capacity_points),
+                status: "Active".to_string(),
+                start_date: Some(start_date),
+                end_date: Some(end_date),
+                committed_points: Some(committed_points),
+                completed_points: Some(0),
+                created_at: start_date,
+                updated_at: start_date,
+            },
+        }))
+        .await;
+
+        Ok(sprint_id)
+    }
+
+    pub async fn get_stories_by_project(
+        &self,
+        project_id: Uuid,
+        organization_id: Option<Uuid>,
+        status: Option<StoryStatus>,
+    ) -> Result<Vec<Story>, AppError> {
+        let stories = repo::get_stories_by_project(&self.pool, project_id, organization_id).await?;
+
+        if let Some(status_filter) = status {
+            Ok(stories
+                .into_iter()
+                .filter(|story| story.status == status_filter)
+                .collect())
+        } else {
+            Ok(stories)
+        }
+    }
+
+    pub async fn get_task(
+        &self,
+        task_id: Uuid,
+        organization_id: Option<Uuid>,
+    ) -> Result<Option<Task>, AppError> {
+        repo::get_task(&self.pool, task_id, organization_id).await
     }
 
     pub async fn create_task(
@@ -123,25 +357,6 @@ impl BacklogUsecases {
         description: Option<String>,
         acceptance_criteria_refs: Vec<String>,
     ) -> Result<Uuid, AppError> {
-        // Verify story exists
-        self.story_repo
-            .get_story(story_id, organization_id)
-            .await?
-            .ok_or_else(|| AppError::NotFound(format!("Story with id {} not found", story_id)))?;
-
-        // Validate AC refs against the story's acceptance criteria
-        let invalid_refs = self
-            .readiness_service
-            .validate_acceptance_criteria_refs(story_id, &acceptance_criteria_refs)
-            .await?;
-
-        if !invalid_refs.is_empty() {
-            return Err(AppError::BadRequest(format!(
-                "Invalid acceptance criteria references: {}",
-                invalid_refs.join(", ")
-            )));
-        }
-
         let task = Task::new(
             story_id,
             organization_id,
@@ -149,7 +364,12 @@ impl BacklogUsecases {
             description,
             acceptance_criteria_refs,
         )?;
-        self.task_repo.create_task(&task).await?;
+        repo::create_task(&self.pool, &task).await?;
+        let record = Self::task_record(&task);
+        self.publish(DomainEvent::Backlog(BacklogEvent::TaskCreated {
+            task: record,
+        }))
+        .await;
         Ok(task.id)
     }
 
@@ -158,273 +378,257 @@ impl BacklogUsecases {
         story_id: Uuid,
         organization_id: Option<Uuid>,
     ) -> Result<Vec<Task>, AppError> {
-        self.task_repo
-            .get_tasks_by_story(story_id, organization_id)
-            .await
+        repo::get_tasks_by_story(&self.pool, story_id, organization_id).await
     }
 
-    #[allow(dead_code)]
-    pub async fn get_task(
+    pub async fn get_available_tasks(
         &self,
-        id: Uuid,
+        story_id: Uuid,
         organization_id: Option<Uuid>,
-    ) -> Result<Option<Task>, AppError> {
-        self.task_repo.get_task(id, organization_id).await
+    ) -> Result<Vec<Task>, AppError> {
+        let tasks = repo::get_tasks_by_story(&self.pool, story_id, organization_id).await?;
+        let available_tasks = tasks
+            .into_iter()
+            .filter(|task| task.is_available_for_ownership())
+            .collect();
+        Ok(available_tasks)
     }
 
-    #[allow(dead_code)]
-    pub async fn update_task(
+    pub async fn get_user_owned_tasks(
         &self,
-        id: Uuid,
+        user_id: Uuid,
         organization_id: Option<Uuid>,
-        title: Option<String>,
-        description: Option<String>,
-        acceptance_criteria_refs: Option<Vec<String>>,
+    ) -> Result<Vec<Task>, AppError> {
+        repo::get_tasks_by_owner(&self.pool, user_id, organization_id).await
+    }
+
+    pub async fn take_task_ownership(
+        &self,
+        task_id: Uuid,
+        organization_id: Option<Uuid>,
+        user_id: Uuid,
     ) -> Result<(), AppError> {
         let mut task = self
-            .task_repo
-            .get_task(id, organization_id)
+            .get_task(task_id, organization_id)
             .await?
-            .ok_or_else(|| AppError::NotFound(format!("Task with id {} not found", id)))?;
+            .ok_or_else(|| AppError::NotFound("Task not found".to_string()))?;
 
-        if let Some(title) = title {
-            task.title = title;
-        }
-        if let Some(description) = description {
-            task.description = Some(description);
-        }
-        if let Some(ac_refs) = acceptance_criteria_refs {
-            // Validate AC refs against the story's acceptance criteria
-            let invalid_refs = self
-                .readiness_service
-                .validate_acceptance_criteria_refs(task.story_id, &ac_refs)
-                .await?;
-
-            if !invalid_refs.is_empty() {
-                return Err(AppError::BadRequest(format!(
-                    "Invalid acceptance criteria references: {}",
-                    invalid_refs.join(", ")
-                )));
-            }
-
-            task.update_acceptance_criteria_refs(ac_refs)?;
-        }
-
-        self.task_repo.update_task(&task).await
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use async_trait::async_trait;
-    use std::collections::HashMap;
-    use std::sync::Mutex;
-
-    #[derive(Default)]
-    struct MockStoryRepository {
-        stories: Mutex<HashMap<Uuid, Story>>,
+        task.take_ownership(user_id)?;
+        repo::update_task(&self.pool, &task).await?;
+        let record = Self::task_record(&task);
+        self.publish(DomainEvent::Backlog(BacklogEvent::TaskUpdated {
+            task: record,
+        }))
+        .await;
+        Ok(())
     }
 
-    #[async_trait]
-    impl StoryRepository for MockStoryRepository {
-        async fn create_story(&self, story: &Story) -> Result<(), AppError> {
-            let mut stories = self.stories.lock().unwrap();
-            stories.insert(story.id, story.clone());
-            Ok(())
-        }
+    pub async fn release_task_ownership(
+        &self,
+        task_id: Uuid,
+        organization_id: Option<Uuid>,
+        user_id: Uuid,
+    ) -> Result<(), AppError> {
+        let mut task = self
+            .get_task(task_id, organization_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Task not found".to_string()))?;
 
-        async fn get_story(
-            &self,
-            id: Uuid,
-            _organization_id: Option<Uuid>,
-        ) -> Result<Option<Story>, AppError> {
-            let stories = self.stories.lock().unwrap();
-            Ok(stories.get(&id).cloned())
-        }
-
-        async fn update_story(&self, story: &Story) -> Result<(), AppError> {
-            let mut stories = self.stories.lock().unwrap();
-            stories.insert(story.id, story.clone());
-            Ok(())
-        }
-
-        async fn delete_story(
-            &self,
-            id: Uuid,
-            _organization_id: Option<Uuid>,
-        ) -> Result<(), AppError> {
-            let mut stories = self.stories.lock().unwrap();
-            stories.remove(&id);
-            Ok(())
-        }
-
-        async fn get_stories_by_project(
-            &self,
-            project_id: Uuid,
-            _organization_id: Option<Uuid>,
-        ) -> Result<Vec<Story>, AppError> {
-            let stories = self.stories.lock().unwrap();
-            Ok(stories
-                .values()
-                .filter(|s| s.project_id == project_id)
-                .cloned()
-                .collect())
-        }
+        task.release_ownership(user_id)?;
+        repo::update_task(&self.pool, &task).await?;
+        let record = Self::task_record(&task);
+        self.publish(DomainEvent::Backlog(BacklogEvent::TaskUpdated {
+            task: record,
+        }))
+        .await;
+        Ok(())
     }
 
-    #[derive(Default)]
-    struct MockTaskRepository {
-        tasks: Mutex<HashMap<Uuid, Task>>,
+    pub async fn start_task_work(
+        &self,
+        task_id: Uuid,
+        organization_id: Option<Uuid>,
+        user_id: Uuid,
+    ) -> Result<(), AppError> {
+        let mut task = self
+            .get_task(task_id, organization_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Task not found".to_string()))?;
+
+        task.start_work(user_id)?;
+        repo::update_task(&self.pool, &task).await?;
+        let record = Self::task_record(&task);
+        self.publish(DomainEvent::Backlog(BacklogEvent::TaskUpdated {
+            task: record,
+        }))
+        .await;
+        Ok(())
     }
 
-    #[async_trait]
-    impl TaskRepository for MockTaskRepository {
-        async fn create_task(&self, task: &Task) -> Result<(), AppError> {
-            let mut tasks = self.tasks.lock().unwrap();
-            tasks.insert(task.id, task.clone());
-            Ok(())
-        }
+    pub async fn complete_task_work(
+        &self,
+        task_id: Uuid,
+        organization_id: Option<Uuid>,
+        user_id: Uuid,
+    ) -> Result<(), AppError> {
+        let mut task = self
+            .get_task(task_id, organization_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Task not found".to_string()))?;
 
-        async fn get_task(
-            &self,
-            id: Uuid,
-            _organization_id: Option<Uuid>,
-        ) -> Result<Option<Task>, AppError> {
-            let tasks = self.tasks.lock().unwrap();
-            Ok(tasks.get(&id).cloned())
-        }
-
-        async fn get_tasks_by_story(
-            &self,
-            story_id: Uuid,
-            _organization_id: Option<Uuid>,
-        ) -> Result<Vec<Task>, AppError> {
-            let tasks = self.tasks.lock().unwrap();
-            Ok(tasks
-                .values()
-                .filter(|t| t.story_id == story_id)
-                .cloned()
-                .collect())
-        }
-
-        async fn update_task(&self, task: &Task) -> Result<(), AppError> {
-            let mut tasks = self.tasks.lock().unwrap();
-            tasks.insert(task.id, task.clone());
-            Ok(())
-        }
-
-        async fn delete_task(
-            &self,
-            id: Uuid,
-            _organization_id: Option<Uuid>,
-        ) -> Result<(), AppError> {
-            let mut tasks = self.tasks.lock().unwrap();
-            tasks.remove(&id);
-            Ok(())
-        }
+        task.complete(user_id)?;
+        repo::update_task(&self.pool, &task).await?;
+        let record = Self::task_record(&task);
+        self.publish(DomainEvent::Backlog(BacklogEvent::TaskUpdated {
+            task: record,
+        }))
+        .await;
+        Ok(())
     }
 
-    struct MockReadinessService;
+    pub async fn update_task_status(
+        &self,
+        task_id: Uuid,
+        organization_id: Option<Uuid>,
+        user_id: Uuid,
+        status: TaskStatus,
+    ) -> Result<Task, AppError> {
+        let mut task = self
+            .get_task(task_id, organization_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Task not found".to_string()))?;
 
-    #[async_trait]
-    impl ReadinessService for MockReadinessService {
-        async fn validate_acceptance_criteria_refs(
-            &self,
-            _story_id: Uuid,
-            ac_refs: &[String],
-        ) -> Result<Vec<String>, AppError> {
-            // For testing, assume AC1, AC2, AC3 are valid
-            let valid_refs = ["AC1", "AC2", "AC3"];
-            let invalid = ac_refs
-                .iter()
-                .filter(|r| !valid_refs.contains(&r.as_str()))
-                .cloned()
-                .collect();
-            Ok(invalid)
+        task.transition_to_status(status, user_id)?;
+        repo::update_task(&self.pool, &task).await?;
+        let record = Self::task_record(&task);
+        self.publish(DomainEvent::Backlog(BacklogEvent::TaskUpdated {
+            task: record,
+        }))
+        .await;
+
+        Ok(task)
+    }
+
+    pub async fn set_task_estimate(
+        &self,
+        task_id: Uuid,
+        organization_id: Option<Uuid>,
+        _user_id: Uuid,
+        estimated_hours: Option<u32>,
+    ) -> Result<(), AppError> {
+        let mut task = self
+            .get_task(task_id, organization_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Task not found".to_string()))?;
+
+        task.set_estimated_hours(estimated_hours)?;
+        repo::update_task(&self.pool, &task).await?;
+        let record = Self::task_record(&task);
+        self.publish(DomainEvent::Backlog(BacklogEvent::TaskUpdated {
+            task: record,
+        }))
+        .await;
+        Ok(())
+    }
+
+    pub async fn get_acceptance_criteria(
+        &self,
+        story_id: Uuid,
+        organization_id: Option<Uuid>,
+    ) -> Result<Vec<AcceptanceCriteria>, AppError> {
+        let story = self
+            .get_story(story_id, organization_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Story not found".to_string()))?;
+
+        Ok(story.acceptance_criteria)
+    }
+
+    pub async fn create_acceptance_criterion(
+        &self,
+        story_id: Uuid,
+        organization_id: Option<Uuid>,
+        given: String,
+        when: String,
+        then: String,
+    ) -> Result<Uuid, AppError> {
+        let mut story = self
+            .get_story(story_id, organization_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Story not found".to_string()))?;
+
+        let description = format!("Given {}, when {}, then {}", given, when, then);
+        let ac = AcceptanceCriteria::new(description, given, when, then)?;
+        let ac_id = ac.id;
+        story.add_acceptance_criteria(ac);
+        repo::update_story(&self.pool, &story).await?;
+        let record = Self::story_record(&story);
+        self.publish(DomainEvent::Backlog(BacklogEvent::StoryUpdated {
+            story: record,
+        }))
+        .await;
+        Ok(ac_id)
+    }
+
+    pub async fn update_acceptance_criterion(
+        &self,
+        criterion_id: Uuid,
+        story_id: Uuid,
+        organization_id: Option<Uuid>,
+        given: Option<String>,
+        when: Option<String>,
+        then: Option<String>,
+    ) -> Result<(), AppError> {
+        let mut story = self
+            .get_story(story_id, organization_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Story not found".to_string()))?;
+
+        let ac = story
+            .acceptance_criteria
+            .iter_mut()
+            .find(|ac| ac.id == criterion_id)
+            .ok_or_else(|| AppError::NotFound("Acceptance criterion not found".to_string()))?;
+
+        if let Some(given) = given {
+            ac.given = given;
         }
+        if let Some(when) = when {
+            ac.when = when;
+        }
+        if let Some(then) = then {
+            ac.then = then;
+        }
+
+        ac.description = format!("Given {}, when {}, then {}", ac.given, ac.when, ac.then);
+
+        repo::update_story(&self.pool, &story).await?;
+        let record = Self::story_record(&story);
+        self.publish(DomainEvent::Backlog(BacklogEvent::StoryUpdated {
+            story: record,
+        }))
+        .await;
+        Ok(())
     }
 
-    fn setup_usecases() -> BacklogUsecases {
-        let story_repo = Arc::new(MockStoryRepository::default());
-        let task_repo = Arc::new(MockTaskRepository::default());
-        let readiness_service = Arc::new(MockReadinessService);
-        BacklogUsecases::new(story_repo, task_repo, readiness_service)
-    }
+    pub async fn delete_acceptance_criterion(
+        &self,
+        criterion_id: Uuid,
+        story_id: Uuid,
+        organization_id: Option<Uuid>,
+    ) -> Result<(), AppError> {
+        let mut story = self
+            .get_story(story_id, organization_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Story not found".to_string()))?;
 
-    #[tokio::test]
-    async fn test_create_and_get_story() {
-        let usecases = setup_usecases();
-        let project_id = Uuid::new_v4();
-
-        let story_id = usecases
-            .create_story(
-                project_id,
-                None,
-                "Test story".to_string(),
-                Some("Description".to_string()),
-                vec!["label1".to_string()],
-            )
-            .await
-            .unwrap();
-
-        let story = usecases.get_story(story_id, None).await.unwrap().unwrap();
-        assert_eq!(story.title, "Test story");
-        assert_eq!(story.project_id, project_id);
-        assert!(story.labels.contains(&"label1".to_string()));
-    }
-
-    #[tokio::test]
-    async fn test_create_task_with_valid_ac_refs() {
-        let usecases = setup_usecases();
-        let project_id = Uuid::new_v4();
-
-        // First create a story
-        let story_id = usecases
-            .create_story(project_id, None, "Test story".to_string(), None, vec![])
-            .await
-            .unwrap();
-
-        // Create task with valid AC refs
-        let task_id = usecases
-            .create_task(
-                story_id,
-                None,
-                "Test task".to_string(),
-                None,
-                vec!["AC1".to_string(), "AC2".to_string()],
-            )
-            .await
-            .unwrap();
-
-        let task = usecases.get_task(task_id, None).await.unwrap().unwrap();
-        assert_eq!(task.title, "Test task");
-        assert_eq!(task.acceptance_criteria_refs, vec!["AC1", "AC2"]);
-    }
-
-    #[tokio::test]
-    async fn test_create_task_with_invalid_ac_refs() {
-        let usecases = setup_usecases();
-        let project_id = Uuid::new_v4();
-
-        // First create a story
-        let story_id = usecases
-            .create_story(project_id, None, "Test story".to_string(), None, vec![])
-            .await
-            .unwrap();
-
-        // Try to create task with invalid AC refs
-        let result = usecases
-            .create_task(
-                story_id,
-                None,
-                "Test task".to_string(),
-                None,
-                vec!["INVALID_AC".to_string()],
-            )
-            .await;
-
-        assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), AppError::BadRequest(_)));
+        story.remove_acceptance_criteria(criterion_id)?;
+        repo::update_story(&self.pool, &story).await?;
+        let record = Self::story_record(&story);
+        self.publish(DomainEvent::Backlog(BacklogEvent::StoryUpdated {
+            story: record,
+        }))
+        .await;
+        Ok(())
     }
 }

@@ -169,15 +169,11 @@ dev-down:
 	docker-compose down
 
 migrate:
-	@echo "Running database migrations for consolidated API Gateway..."
-	cargo install sqlx-cli --no-default-features --features "postgres,uuid,tls-rustls"
-	@echo "All services use single database through api-gateway"
-	# Run all migrations in sequence against single database
-	sqlx migrate run --source services/auth-gateway/migrations --database-url $$DATABASE_URL
-	sqlx migrate run --source services/projects/migrations --database-url $$DATABASE_URL
-	sqlx migrate run --source services/backlog/migrations --database-url $$DATABASE_URL
-	sqlx migrate run --source services/readiness/migrations --database-url $$DATABASE_URL
-	sqlx migrate run --source services/prompt-builder/migrations --database-url $$DATABASE_URL
+	@echo "Running database migrations..."
+	cargo install sqlx-cli --no-default-features --features "postgres"
+	sqlx migrate run --source db/migrations --database-url $$DATABASE_URL
+	@echo "Seeding test data..."
+	psql -d $$DATABASE_URL -f scripts/db/test-init.sql
 
 deploy-all:
 	@echo "Deploying consolidated API Gateway to Shuttle..."
@@ -296,8 +292,8 @@ clean:
 
 reset-db:
 	@echo "Resetting all databases..."
-	docker-compose down -v
-	docker-compose up -d
+	docker-compose -f docker-compose.test.yml down -v
+	docker-compose -f docker-compose.test.yml up -d
 	sleep 10
 	$(MAKE) migrate
 

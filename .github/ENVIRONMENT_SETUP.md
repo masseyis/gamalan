@@ -5,8 +5,9 @@ This document provides comprehensive instructions for setting up staging and pro
 ## Overview
 
 The platform consists of:
+
 - **Backend Services**: 7 Rust microservices deployed on Shuttle
-- **Frontend**: Next.js application deployed on Vercel  
+- **Frontend**: Next.js application deployed on Vercel
 - **Database**: PostgreSQL instances for each service
 - **Authentication**: Clerk for user authentication and authorization
 
@@ -41,15 +42,17 @@ The platform consists of:
 Each service has environment-specific Shuttle configurations:
 
 #### Production Services
+
 - `api-gateway-production`
 - `auth-gateway-production`
 - `projects-production`
-- `backlog-production` 
+- `backlog-production`
 - `readiness-production`
 - `prompt-builder-production`
 - `context-orchestrator-production`
 
 #### Staging Services
+
 - `api-gateway-staging`
 - `auth-gateway-staging`
 - `projects-staging`
@@ -63,6 +66,7 @@ Each service has environment-specific Shuttle configurations:
 Each service requires its own PostgreSQL database:
 
 #### Production Databases
+
 ```sql
 -- Execute on production PostgreSQL server
 CREATE DATABASE salunga_projects_prod;
@@ -90,6 +94,7 @@ CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 ```
 
 #### Staging Databases
+
 ```sql
 -- Execute on staging PostgreSQL server (can be same server with different databases)
 CREATE DATABASE salunga_projects_staging;
@@ -107,6 +112,7 @@ CREATE USER salunga_service_staging WITH PASSWORD 'secure_staging_password';
 ### 3. Environment Variables Configuration
 
 #### Production Environment Variables
+
 ```bash
 # Service Configuration
 ENVIRONMENT=production
@@ -138,6 +144,7 @@ SERVICE_API_KEY=production_internal_service_key
 ```
 
 #### Staging Environment Variables
+
 ```bash
 # Service Configuration
 ENVIRONMENT=staging
@@ -173,6 +180,7 @@ SERVICE_API_KEY=staging_internal_service_key
 ### 1. GitHub Actions Environment Setup
 
 #### Repository Secrets
+
 Set these in GitHub repository → Settings → Secrets and variables → Actions:
 
 ```bash
@@ -217,11 +225,13 @@ SERVICE_API_KEY=your_internal_service_key
 Create GitHub environments with protection rules:
 
 **Production Environment:**
+
 - Requires manual approval for deployments
 - Only main branch can deploy
 - Requires all status checks to pass
 
 **Staging Environment:**
+
 - Automatic deployment on PR merge to main
 - No manual approval required
 - All status checks must pass
@@ -229,6 +239,7 @@ Create GitHub environments with protection rules:
 ### 2. Vercel Environment Setup
 
 #### Production Environment
+
 ```bash
 # Domain: https://app.salunga.com
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_production_key
@@ -242,7 +253,8 @@ NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard
 NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/onboarding
 ```
 
-#### Staging Environment  
+#### Staging Environment
+
 ```bash
 # Domain: https://staging.salunga.com
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_development_key
@@ -280,6 +292,7 @@ NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/onboarding
 ### 2. Database Migration Process
 
 #### Production Migration
+
 ```bash
 # 1. Backup existing data
 pg_dump -h prod-db-host -U salunga_service salunga_projects_prod > backup-projects-$(date +%Y%m%d).sql
@@ -297,6 +310,7 @@ cd services/context-orchestrator && sqlx migrate run --database-url $DATABASE_UR
 ```
 
 #### Staging Migration
+
 ```bash
 # Run staging migrations (similar process with staging URLs)
 ./scripts/migrate-staging.sh
@@ -306,6 +320,7 @@ cd services/context-orchestrator && sqlx migrate run --database-url $DATABASE_UR
 ### 3. Service Deployment
 
 #### Deploy All Services to Staging
+
 ```bash
 # Deploy via GitHub Actions
 gh workflow run deploy.yml --ref main -f environment=staging -f services=all
@@ -321,6 +336,7 @@ shuttle deploy --name context-orchestrator-staging services/context-orchestrator
 ```
 
 #### Deploy All Services to Production
+
 ```bash
 # Deploy via GitHub Actions (requires approval)
 gh workflow run deploy.yml --ref main -f environment=production -f services=all
@@ -351,12 +367,14 @@ curl https://auth-gateway-production.shuttleapp.rs/health
 ### Monitoring Setup
 
 #### Application Metrics
+
 - **Logs**: Structured logging via `tracing` and `serde_json`
 - **Metrics**: Custom metrics per service
 - **Tracing**: Request correlation IDs across service boundaries
 - **Health**: `/health` and `/ready` endpoints for Kubernetes-style health checks
 
 #### Infrastructure Monitoring
+
 - **Database**: Connection pool metrics, query performance
 - **Network**: Service-to-service communication latency
 - **Resources**: Memory usage, CPU utilization per service
@@ -366,6 +384,7 @@ curl https://auth-gateway-production.shuttleapp.rs/health
 ### 1. Network Security
 
 #### CORS Configuration
+
 ```rust
 // API Gateway CORS setup
 let cors = CorsLayer::new()
@@ -380,6 +399,7 @@ let cors = CorsLayer::new()
 ```
 
 #### Service-to-Service Authentication
+
 - **API Keys**: Internal service communication
 - **JWT Validation**: Clerk JWT verification with proper key rotation
 - **TLS**: All communications over HTTPS
@@ -387,11 +407,13 @@ let cors = CorsLayer::new()
 ### 2. Database Security
 
 #### Connection Security
+
 - **SSL Mode**: Require SSL for all database connections
 - **User Permissions**: Least privilege access per service
 - **Network**: Database servers on private networks only
 
 #### Backup and Recovery
+
 ```bash
 # Daily automated backups
 0 2 * * * pg_dump -h prod-db-host -U salunga_service salunga_projects_prod | gzip > /backups/projects-$(date +%Y%m%d).sql.gz
@@ -407,6 +429,7 @@ archive_command = 'cp %p /archive/%f'
 ### Common Issues
 
 #### 1. Service Deployment Failures
+
 ```bash
 # Check Shuttle logs
 shuttle logs --name api-gateway-production
@@ -419,6 +442,7 @@ curl https://api-gateway-production.shuttleapp.rs/health
 ```
 
 #### 2. Database Connection Issues
+
 ```bash
 # Test direct connection
 psql "postgresql://salunga_service:password@prod-db-host:5432/salunga_projects_prod" -c "SELECT version();"
@@ -428,6 +452,7 @@ curl https://projects-production.shuttleapp.rs/ready
 ```
 
 #### 3. Authentication Issues
+
 ```bash
 # Validate Clerk JWKS endpoint
 curl -s "https://your-clerk-instance.clerk.accounts.dev/.well-known/jwks.json" | jq
@@ -439,6 +464,7 @@ curl -H "Authorization: Bearer $JWT_TOKEN" https://api-gateway-production.shuttl
 ### Rollback Procedures
 
 #### Service Rollback
+
 ```bash
 # Rollback to previous deployment
 shuttle deployment rollback --name api-gateway-production
@@ -448,6 +474,7 @@ gh workflow run rollback.yml --ref main -f environment=production -f service=api
 ```
 
 #### Database Rollback
+
 ```bash
 # Stop services
 shuttle deployment stop --name projects-production
@@ -464,12 +491,14 @@ shuttle deployment start --name projects-production
 ### 1. Regular Maintenance
 
 #### Weekly Tasks
+
 - Review service logs for errors
 - Check database performance metrics
 - Verify backup integrity
 - Update dependencies (security patches)
 
 #### Monthly Tasks
+
 - Rotate API keys and secrets
 - Review access logs
 - Performance optimization review
@@ -478,6 +507,7 @@ shuttle deployment start --name projects-production
 ### 2. Scaling Procedures
 
 #### Horizontal Scaling
+
 ```bash
 # Scale Shuttle services (if supported)
 shuttle scale --name api-gateway-production --instances 3
@@ -487,6 +517,7 @@ psql -h prod-db-host -U postgres -c "SELECT * FROM pg_create_physical_replicatio
 ```
 
 #### Performance Tuning
+
 ```sql
 -- Database performance tuning
 ALTER DATABASE salunga_projects_prod SET shared_preload_libraries = 'pg_stat_statements';

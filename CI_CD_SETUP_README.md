@@ -58,10 +58,12 @@ The CI/CD pipeline includes:
 ### 1. Repository Configuration
 
 **Files Created:**
+
 - `.github/SECRETS_SETUP.md` - Comprehensive secrets documentation
 - `scripts/setup-branch-protection.sh` - Branch protection configuration
 
 **What it does:**
+
 - Sets up main branch protection requiring PR reviews and status checks
 - Configures GitHub Actions secrets for all environments
 - Creates environment protection rules for staging/production
@@ -69,11 +71,13 @@ The CI/CD pipeline includes:
 ### 2. Deployment Infrastructure
 
 **Files Created:**
+
 - `scripts/setup-shuttle-projects.sh` - Shuttle project setup
 - `scripts/setup-vercel-project.sh` - Vercel project configuration
 - `.github/ENVIRONMENT_SETUP.md` - Environment configuration guide
 
 **What it does:**
+
 - Creates Shuttle projects for all 7 Rust services (staging + production)
 - Configures Vercel project for Next.js frontend
 - Sets up environment-specific configuration
@@ -81,10 +85,12 @@ The CI/CD pipeline includes:
 ### 3. Testing Infrastructure
 
 **Files Created:**
+
 - `docker-compose.test.yml` - CI testing environment
 - `scripts/init-test-db.sh` - Test database initialization
 
 **What it does:**
+
 - Provides isolated PostgreSQL instances for testing
 - Creates separate test databases for each service
 - Enables parallel test execution without conflicts
@@ -92,10 +98,12 @@ The CI/CD pipeline includes:
 ### 4. Validation
 
 **Files Created:**
+
 - `scripts/validate-setup.sh` - Comprehensive validation script
 - `scripts/master-setup.sh` - Interactive setup orchestrator
 
 **What it does:**
+
 - Validates all GitHub Actions workflows and secrets
 - Checks branch protection rules and environment configurations
 - Verifies Docker, Rust toolchain, and CLI tools
@@ -134,6 +142,7 @@ Run the master setup script for guided configuration:
 ```
 
 This provides an interactive menu with options:
+
 1. **Full Setup** - Complete pipeline configuration
 2. **GitHub Configuration Only** - Secrets and branch protection
 3. **Deployment Infrastructure Only** - Shuttle and Vercel setup
@@ -181,6 +190,7 @@ echo $?
 Set these secrets in your GitHub repository (Settings → Secrets and variables → Actions):
 
 **Essential Secrets:**
+
 ```bash
 SHUTTLE_API_KEY              # Shuttle deployment authentication
 CLERK_WEBHOOK_SECRET         # Clerk webhook verification
@@ -192,12 +202,14 @@ VERCEL_PROJECT_ID          # Vercel project identifier
 ```
 
 **Environment-Specific Secrets:**
+
 - Production: `DATABASE_URL_PROJECTS`, `DATABASE_URL_BACKLOG`, etc.
 - Staging: `DATABASE_URL_PROJECTS_STAGING`, `DATABASE_URL_BACKLOG_STAGING`, etc.
 
 ### Branch Protection Rules
 
 Main branch protection includes:
+
 - **Required status checks**: CI, Frontend CI, Contract Tests
 - **Required reviews**: 1 approving review
 - **Dismiss stale reviews**: Enabled
@@ -208,6 +220,7 @@ Main branch protection includes:
 ### Service Configuration
 
 **Shuttle Services (7 total):**
+
 - `api-gateway-{staging|production}`
 - `auth-gateway-{staging|production}`
 - `projects-{staging|production}`
@@ -217,6 +230,7 @@ Main branch protection includes:
 - `context-orchestrator-{staging|production}`
 
 **Vercel Project:**
+
 - Production: `https://app.salunga.com`
 - Staging: `https://staging.salunga.com`
 
@@ -313,18 +327,21 @@ vercel project list
 ## Security Considerations
 
 ### Secrets Management
+
 - Never commit secrets to version control
 - Use GitHub repository secrets for CI/CD
 - Rotate secrets regularly (90-day schedule recommended)
 - Use environment-specific secrets (staging vs production)
 
 ### Network Security
+
 - All services communicate over HTTPS
 - Database connections require SSL
 - CORS properly configured for frontend/backend communication
 - JWT validation with proper JWKS key rotation
 
 ### Access Control
+
 - Branch protection enforces code review
 - Environment protection rules for production deployments
 - Least privilege access for service accounts
@@ -335,11 +352,13 @@ vercel project list
 ### Regular Maintenance Tasks
 
 **Weekly:**
+
 - Review service logs for errors
 - Check deployment success rates
 - Verify backup integrity
 
 **Monthly:**
+
 - Rotate API keys and secrets
 - Review and update dependencies
 - Performance optimization review
@@ -372,6 +391,6 @@ This CI/CD pipeline provides:
 ✅ **Comprehensive testing** - unit, integration, contract tests  
 ✅ **Multi-environment support** - staging and production  
 ✅ **Easy maintenance** - validation scripts, health checks  
-✅ **Security best practices** - least privilege, audit logging  
+✅ **Security best practices** - least privilege, audit logging
 
 The pipeline is production-ready and follows industry best practices for CI/CD, security, and maintainability.

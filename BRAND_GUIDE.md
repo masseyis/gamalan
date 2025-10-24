@@ -85,34 +85,34 @@ Our dark theme color system draws inspiration from the Battra kaiju, featuring d
 
 #### Brand Colors
 
-| Color             | Hex       | HSL                   | Usage                                   |
-| ----------------- | --------- | --------------------- | --------------------------------------- |
-| **Background**    | `#0a0a0a` | `hsl(0 0% 4%)`       | Primary dark background                 |
-| **Card**          | `#141414` | `hsl(0 0% 8%)`       | Card backgrounds, elevated surfaces     |
-| **Primary**       | `#ffcc00` | `hsl(45 100% 50%)`   | Main CTAs, branding, primary actions   |
-| **Accent**        | `#b91c1c` | `hsl(0 74% 42%)`     | Destructive actions, alerts, warnings  |
-| **Secondary**     | `#1f1f1f` | `hsl(0 0% 12%)`      | Secondary buttons, muted elements       |
-| **Muted**         | `#292929` | `hsl(0 0% 16%)`      | Borders, dividers, disabled states     |
-| **Foreground**    | `#fafafa` | `hsl(0 0% 98%)`      | Primary text, icons                     |
+| Color          | Hex       | HSL                | Usage                                 |
+| -------------- | --------- | ------------------ | ------------------------------------- |
+| **Background** | `#0a0a0a` | `hsl(0 0% 4%)`     | Primary dark background               |
+| **Card**       | `#141414` | `hsl(0 0% 8%)`     | Card backgrounds, elevated surfaces   |
+| **Primary**    | `#ffcc00` | `hsl(45 100% 50%)` | Main CTAs, branding, primary actions  |
+| **Accent**     | `#b91c1c` | `hsl(0 74% 42%)`   | Destructive actions, alerts, warnings |
+| **Secondary**  | `#1f1f1f` | `hsl(0 0% 12%)`    | Secondary buttons, muted elements     |
+| **Muted**      | `#292929` | `hsl(0 0% 16%)`    | Borders, dividers, disabled states    |
+| **Foreground** | `#fafafa` | `hsl(0 0% 98%)`    | Primary text, icons                   |
 
 #### Special Effects
 
-| Effect            | CSS Class         | Usage                                      |
-| ----------------- | ----------------- | ------------------------------------------ |
-| **Yellow Glow**   | `.glow-yellow`    | Highlight active elements, CTAs            |
-| **Red Glow**      | `.glow-red`       | Error states, destructive actions          |
-| **Pulse Glow**    | `.pulse-glow`     | Animated attention-drawing elements        |
-| **Kaiju Pattern** | `.kaiju-pattern`  | Subtle background texture with gradients   |
-| **Battra Gradient** | `.battra-gradient` | Card backgrounds with depth               |
+| Effect              | CSS Class          | Usage                                    |
+| ------------------- | ------------------ | ---------------------------------------- |
+| **Yellow Glow**     | `.glow-yellow`     | Highlight active elements, CTAs          |
+| **Red Glow**        | `.glow-red`        | Error states, destructive actions        |
+| **Pulse Glow**      | `.pulse-glow`      | Animated attention-drawing elements      |
+| **Kaiju Pattern**   | `.kaiju-pattern`   | Subtle background texture with gradients |
+| **Battra Gradient** | `.battra-gradient` | Card backgrounds with depth              |
 
 #### Typography
 
-| Element         | Font Family | Weight | Usage                           |
-| --------------- | ----------- | ------ | ------------------------------- |
-| **Headings**    | Inter       | 600-700| Page titles, section headers   |
-| **Body Text**   | Inter       | 400-500| Paragraph text, descriptions   |
-| **UI Text**     | Inter       | 500    | Buttons, labels, navigation     |
-| **Monospace**   | JetBrains Mono | 400 | Code snippets, technical data   |
+| Element       | Font Family    | Weight  | Usage                         |
+| ------------- | -------------- | ------- | ----------------------------- |
+| **Headings**  | Inter          | 600-700 | Page titles, section headers  |
+| **Body Text** | Inter          | 400-500 | Paragraph text, descriptions  |
+| **UI Text**   | Inter          | 500     | Buttons, labels, navigation   |
+| **Monospace** | JetBrains Mono | 400     | Code snippets, technical data |
 
 #### Neutral Colors
 

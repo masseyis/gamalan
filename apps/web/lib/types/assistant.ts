@@ -63,7 +63,12 @@ export interface ActionResult {
 
 export interface AISuggestion {
   id: string
-  type: 'story-readiness' | 'task-completion' | 'sprint-planning' | 'demo-prep' | 'backlog-refinement'
+  type:
+    | 'story-readiness'
+    | 'task-completion'
+    | 'sprint-planning'
+    | 'demo-prep'
+    | 'backlog-refinement'
   title: string
   description: string
   priority: 'low' | 'medium' | 'high' | 'urgent'
@@ -83,42 +88,46 @@ export interface SuggestionAction {
 }
 
 export interface AssistantState {
+  activeProjectId: string | null
+  isFetchingSuggestions: boolean
+  suggestionsProjectId: string | null
   // Input state
   currentUtterance: string
   isProcessing: boolean
   error: string | null
-  
+
   // Intent & candidate state
   lastIntentResult: IntentResult | null
   selectedCandidate: EntityMatch | null
   pendingAction: ActionCommand | null
-  
+
   // Suggestions state
   suggestions: AISuggestion[]
   dismissedSuggestions: Set<string>
   suggestionsLastFetched: string | null
-  
+
   // History
   utteranceHistory: string[]
   recentActions: ActionResult[]
 }
 
 export interface AssistantActions {
+  setActiveProjectId: (projectId: string | null) => void
   // Input actions
   setUtterance: (utterance: string) => void
   submitUtterance: (utterance: string) => Promise<void>
   clearError: () => void
-  
+
   // Candidate selection
   selectCandidate: (candidate: EntityMatch) => void
   confirmAction: () => Promise<void>
   cancelAction: () => void
-  
+
   // Suggestions
-  fetchSuggestions: () => Promise<void>
+  fetchSuggestions: (projectId?: string) => Promise<void>
   applySuggestionAction: (action: SuggestionAction) => Promise<void>
   dismissSuggestion: (suggestionId: string) => void
-  
+
   // History
   addToHistory: (utterance: string) => void
   clearHistory: () => void

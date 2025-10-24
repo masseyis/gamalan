@@ -5,6 +5,7 @@ This document summarizes the comprehensive test infrastructure improvements comp
 ## 🎯 Summary of Achievements
 
 ### ✅ Backend Integration Tests with Local PostgreSQL
+
 - **PostgreSQL 15.14** installed and configured locally
 - **Test database** `gamalan_test` created with proper user permissions
 - **New Makefile targets** for local database testing:
@@ -13,6 +14,7 @@ This document summarizes the comprehensive test infrastructure improvements comp
   - `make test-all-local` - Complete backend test suite with local DB
 
 ### ✅ Frontend E2E Tests with Clerk Authentication
+
 - **@clerk/testing package** installed for proper authentication handling
 - **Playwright global setup** for Clerk auth state management
 - **Environment configuration** with `.env.test.local` template
@@ -20,6 +22,7 @@ This document summarizes the comprehensive test infrastructure improvements comp
 - **Sample test files** demonstrating both authenticated and public flows
 
 ### ✅ Test Results Summary
+
 - **70 backend unit tests** passing ✅
 - **2 backend integration tests** passing with local PostgreSQL ✅
 - **18 frontend unit tests** passing ✅
@@ -28,15 +31,19 @@ This document summarizes the comprehensive test infrastructure improvements comp
 ## 🚀 Quick Start
 
 ### 1. Automated Setup
+
 Run the setup script to configure everything:
+
 ```bash
 ./scripts/setup-test-env.sh
 ```
 
 ### 2. Manual Setup (if needed)
+
 If you prefer manual setup or the script doesn't work:
 
 #### Backend Setup
+
 ```bash
 # Install PostgreSQL (if not already installed)
 brew install postgresql@15
@@ -49,6 +56,7 @@ psql -d postgres -c "CREATE USER postgres WITH SUPERUSER;"
 ```
 
 #### Frontend Setup
+
 ```bash
 # Install Clerk testing package
 cd apps/web
@@ -62,6 +70,7 @@ cp .env.test.local.example .env.test.local
 ## 🧪 Available Test Commands
 
 ### Backend Tests
+
 ```bash
 # Unit tests only
 make test-unit
@@ -83,6 +92,7 @@ make test-contract
 ```
 
 ### Frontend Tests
+
 ```bash
 cd apps/web
 
@@ -102,28 +112,34 @@ pnpm test:e2e
 ## 📁 New Files Created
 
 ### Configuration Files
+
 - `apps/web/.env.test.local` - Template for E2E test environment variables
 - `apps/web/tests/global.setup.ts` - Playwright global setup with Clerk auth
 - `apps/web/playwright.config.ts` - Updated with auth projects and dependencies
 
 ### Test Files
+
 - `apps/web/tests/e2e/dashboard.authenticated.spec.ts` - Sample authenticated E2E tests
 - `apps/web/tests/e2e/landing.public.spec.ts` - Sample public E2E tests
 
 ### Scripts
+
 - `scripts/setup-test-env.sh` - Automated setup script for entire test environment
 
 ### Documentation
+
 - `TEST_INFRASTRUCTURE_README.md` - This summary document
 
 ## 🔧 Clerk E2E Test Setup
 
 ### Prerequisites
+
 1. **Clerk Development Instance** - You need a Clerk development (not production) instance
 2. **Username/Password Auth** - Enable in your Clerk dashboard: Configure → Authentication → Email, Username & Phone → Enable username
 3. **Test User** - Create a test user account in your Clerk dashboard with username/password
 
 ### Environment Variables
+
 Update `apps/web/.env.test.local` with your actual Clerk credentials:
 
 ```env
@@ -137,6 +153,7 @@ E2E_CLERK_USER_PASSWORD=TestPassword123!
 ```
 
 ### Authentication State Management
+
 - **Global Setup**: Clerk authentication runs once per test session
 - **State Caching**: Authentication state is saved to `tests/playwright/.clerk/user.json` (gitignored)
 - **Project Separation**:
@@ -147,16 +164,19 @@ E2E_CLERK_USER_PASSWORD=TestPassword123!
 ## 🎯 Benefits
 
 ### Local Development
+
 - **Faster feedback** - No Docker container startup time
 - **Better debugging** - Direct database access for inspection
 - **Consistent environment** - Same PostgreSQL version as production
 
 ### E2E Testing
+
 - **Real authentication** - Tests actual Clerk integration, not mocks
 - **Session reuse** - Fast test execution through auth state caching
 - **Separation of concerns** - Public vs authenticated test isolation
 
 ### CI/CD Ready
+
 - **Docker support** - Existing Docker-based tests still work for CI
 - **Parallel execution** - Different test types can run independently
 - **Comprehensive coverage** - Unit → Integration → E2E test pipeline
@@ -164,6 +184,7 @@ E2E_CLERK_USER_PASSWORD=TestPassword123!
 ## 🔍 Troubleshooting
 
 ### PostgreSQL Issues
+
 ```bash
 # Check if PostgreSQL is running
 brew services list | grep postgresql
@@ -177,11 +198,13 @@ psql -d gamalan_test -c "SELECT version();"
 ```
 
 ### Clerk E2E Issues
+
 - **Invalid publishable key**: Verify you're using development (not production) keys
 - **Test user not found**: Create the test user in your Clerk dashboard
 - **Authentication timeout**: Check username/password auth is enabled in Clerk
 
 ### General Test Issues
+
 ```bash
 # Clean rebuild
 cargo clean && cargo build

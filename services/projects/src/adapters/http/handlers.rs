@@ -21,6 +21,7 @@ pub struct ListProjectsQuery {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ProjectResponse {
     pub id: Uuid,
     pub organization_id: Option<Uuid>,
@@ -46,6 +47,7 @@ impl From<Project> for ProjectResponse {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ProjectSettingsResponse {
     pub id: Uuid,
     pub project_id: Uuid,

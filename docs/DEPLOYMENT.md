@@ -36,13 +36,14 @@ All services are deployed as a **single API Gateway binary** while maintaining c
 ```
 api-gateway (Single Deployment)
 ├── /api/v1/projects/*          → Projects service
-├── /api/v1/backlog/*           → Backlog service  
+├── /api/v1/backlog/*           → Backlog service
 ├── /api/v1/readiness/*         → Readiness service
 ├── /api/v1/prompt-builder/*    → Prompt Builder service
 └── /api/v1/context-orchestrator/* → Context Orchestrator service
 ```
 
 **Benefits:**
+
 - **Cost Efficiency**: Uses only 3 Shuttle projects (fits free tier)
 - **Deployment Simplicity**: Single binary to deploy and monitor
 - **Development Speed**: Faster local development and testing
@@ -81,7 +82,7 @@ Production uses a controlled canary deployment process:
 # Trigger production canary (5% traffic)
 make deploy-prod
 
-# Monitor canary status  
+# Monitor canary status
 make canary-deploy
 
 # Promote canary to full production
@@ -99,7 +100,7 @@ gh workflow run deploy.yml --field promote_canary=true
 
 1. **Pre-flight Checks** (2 min)
    - Code formatting (`cargo fmt`)
-   - Linting (`cargo clippy`) 
+   - Linting (`cargo clippy`)
    - Dependency vulnerability scan (`cargo audit`)
 
 2. **Parallel Build & Test** (8 min)
@@ -135,12 +136,12 @@ make pre-push
 #### Pipeline Stages
 
 1. **Change Detection** (1 min)
-   - Backend changes: `services/**, libs/**, Cargo.*`  
+   - Backend changes: `services/**, libs/**, Cargo.*`
    - Frontend changes: `apps/web/**`
 
 2. **Artifact Build** (10 min)
    - **Backend**: Single consolidated API Gateway release build (contains all services)
-   - **Frontend**: Production Next.js build  
+   - **Frontend**: Production Next.js build
    - **SBOM Generation**: Security bill of materials for consolidated binary
 
 3. **Staging Deploy** (8 min)
@@ -176,7 +177,7 @@ make health-check
 
 ```
 Phase 1: 5% traffic  → 30min soak → Metrics validation
-Phase 2: 25% traffic → 20min soak → Metrics validation  
+Phase 2: 25% traffic → 20min soak → Metrics validation
 Phase 3: 50% traffic → 15min soak → Metrics validation
 Phase 4: 100% traffic → Deployment complete
 ```
@@ -233,7 +234,7 @@ make rollback
 #### Rollback Targets
 
 - **Canary**: Abort canary deployment, route to stable
-- **Staging**: Revert to previous staging deployment  
+- **Staging**: Revert to previous staging deployment
 - **Production**: Full production rollback to last known good
 
 #### Pipeline Stages
@@ -273,7 +274,7 @@ Set environment variables for local development:
 
 ```bash
 export FEATURE_FLAG_ENABLE_AI_FEATURES=true
-export FEATURE_FLAG_ENABLE_CONTEXT_ORCHESTRATOR=false  
+export FEATURE_FLAG_ENABLE_CONTEXT_ORCHESTRATOR=false
 export FEATURE_FLAG_ENABLE_DEBUG_LOGGING=true
 export FEATURE_FLAG_CONSOLIDATED_SERVICES=true
 ```
@@ -317,7 +318,7 @@ echo "FEATURE_FLAG_ENABLE_AI_FEATURES=true" >> .env.local
 ### Test Coverage Requirements
 
 - **Backend**: ≥85% line coverage
-- **Frontend**: ≥80% line coverage  
+- **Frontend**: ≥80% line coverage
 - **Integration**: ≥90% critical path coverage
 
 ### Performance SLAs
@@ -409,7 +410,7 @@ gh run list --workflow=deploy.yml --json status,conclusion,createdAt
 # Format issues
 cargo fmt --all
 
-# Linting errors  
+# Linting errors
 cargo clippy --all-targets --all-features -- -D warnings
 
 # Test failures
@@ -451,7 +452,7 @@ gh run view --workflow=deploy.yml --log
 # Immediate rollback
 make rollback
 
-# Check system health  
+# Check system health
 make health-check
 
 # Disable problematic features
@@ -491,7 +492,7 @@ make reset-db
 ### Vulnerability Management
 
 - **Automated Scanning**: `cargo audit` in CI pipeline
-- **Dependency Updates**: Renovate bot for security patches  
+- **Dependency Updates**: Renovate bot for security patches
 - **Runtime Protection**: Shuttle sandboxing + TLS
 
 ## Support & Escalation
@@ -499,7 +500,7 @@ make reset-db
 ### Team Contacts
 
 - **DevOps**: @devops-team (infrastructure, CI/CD)
-- **QA**: @qa-team (testing, quality gates)  
+- **QA**: @qa-team (testing, quality gates)
 - **Architecture**: @arch-team (system design, ADRs)
 - **On-Call**: PagerDuty escalation for production incidents
 

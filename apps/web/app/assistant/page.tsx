@@ -9,14 +9,15 @@ import { RecentActions } from '@/components/assistant/recent-actions'
 import { QuickActions } from '@/components/assistant/quick-actions'
 import { useApiClient } from '@/lib/api/client'
 import { useEffect } from 'react'
-import { useUser } from '@clerk/nextjs'
+import { useAuth } from '@clerk/nextjs'
 
 export default function AssistantPage() {
-  const { isLoaded } = useUser()
+  const { isLoaded } = useAuth()
   const { setupClients } = useApiClient()
-  const suggestions = useAssistantStore(state => state.suggestions)
-  const recentActions = useAssistantStore(state => state.recentActions)
-  
+  const suggestions = useAssistantStore((state) => state.suggestions)
+  const recentActions = useAssistantStore((state) => state.recentActions)
+  const setActiveProjectId = useAssistantStore((state) => state.setActiveProjectId)
+
   // Auto-fetch suggestions when component mounts
   useAutoFetchSuggestions()
 
@@ -26,6 +27,10 @@ export default function AssistantPage() {
       setupClients()
     }
   }, [setupClients, isLoaded])
+
+  useEffect(() => {
+    setActiveProjectId(null)
+  }, [setActiveProjectId])
 
   // Show loading until Clerk is ready
   if (!isLoaded) {
@@ -88,9 +93,7 @@ export default function AssistantPage() {
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
                 <p className="text-lg">No recent activity</p>
-                <p className="text-sm mt-2">
-                  Your recent actions and completions will appear here
-                </p>
+                <p className="text-sm mt-2">Your recent actions and completions will appear here</p>
               </CardContent>
             </Card>
           )}

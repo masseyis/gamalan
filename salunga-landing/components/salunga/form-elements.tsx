@@ -1,5 +1,5 @@
-import type React from "react"
-import { cn } from "@/lib/utils"
+import type React from 'react'
+import { cn } from '@/lib/utils'
 
 interface SalungaInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string
@@ -26,12 +26,12 @@ export function SalungaInput({ label, error, helperText, className, ...props }: 
       {label && <label className="block text-sm font-medium text-salunga-fg">{label}</label>}
       <input
         className={cn(
-          "w-full px-3 py-2 bg-salunga-input border border-salunga-input-border rounded-salunga-md",
-          "text-salunga-fg placeholder:text-salunga-fg-muted",
-          "focus:outline-none focus:ring-2 focus:ring-salunga-primary focus:border-transparent",
-          "disabled:opacity-50 disabled:cursor-not-allowed",
-          error && "border-salunga-danger focus:ring-salunga-danger",
-          className,
+          'w-full px-3 py-2 bg-salunga-input border border-salunga-input-border rounded-salunga-md',
+          'text-salunga-fg placeholder:text-salunga-fg-muted',
+          'focus:outline-none focus:ring-2 focus:ring-salunga-primary focus:border-transparent',
+          'disabled:opacity-50 disabled:cursor-not-allowed',
+          error && 'border-salunga-danger focus:ring-salunga-danger',
+          className
         )}
         {...props}
       />
@@ -41,18 +41,24 @@ export function SalungaInput({ label, error, helperText, className, ...props }: 
   )
 }
 
-export function SalungaTextarea({ label, error, helperText, className, ...props }: SalungaTextareaProps) {
+export function SalungaTextarea({
+  label,
+  error,
+  helperText,
+  className,
+  ...props
+}: SalungaTextareaProps) {
   return (
     <div className="space-y-2">
       {label && <label className="block text-sm font-medium text-salunga-fg">{label}</label>}
       <textarea
         className={cn(
-          "w-full px-3 py-2 bg-salunga-input border border-salunga-input-border rounded-salunga-md",
-          "text-salunga-fg placeholder:text-salunga-fg-muted resize-vertical",
-          "focus:outline-none focus:ring-2 focus:ring-salunga-primary focus:border-transparent",
-          "disabled:opacity-50 disabled:cursor-not-allowed",
-          error && "border-salunga-danger focus:ring-salunga-danger",
-          className,
+          'w-full px-3 py-2 bg-salunga-input border border-salunga-input-border rounded-salunga-md',
+          'text-salunga-fg placeholder:text-salunga-fg-muted resize-vertical',
+          'focus:outline-none focus:ring-2 focus:ring-salunga-primary focus:border-transparent',
+          'disabled:opacity-50 disabled:cursor-not-allowed',
+          error && 'border-salunga-danger focus:ring-salunga-danger',
+          className
         )}
         rows={4}
         {...props}
@@ -63,18 +69,25 @@ export function SalungaTextarea({ label, error, helperText, className, ...props 
   )
 }
 
-export function SalungaSelect({ label, error, helperText, options, className, ...props }: SalungaSelectProps) {
+export function SalungaSelect({
+  label,
+  error,
+  helperText,
+  options,
+  className,
+  ...props
+}: SalungaSelectProps) {
   return (
     <div className="space-y-2">
       {label && <label className="block text-sm font-medium text-salunga-fg">{label}</label>}
       <select
         className={cn(
-          "w-full px-3 py-2 bg-salunga-input border border-salunga-input-border rounded-salunga-md",
-          "text-salunga-fg",
-          "focus:outline-none focus:ring-2 focus:ring-salunga-primary focus:border-transparent",
-          "disabled:opacity-50 disabled:cursor-not-allowed",
-          error && "border-salunga-danger focus:ring-salunga-danger",
-          className,
+          'w-full px-3 py-2 bg-salunga-input border border-salunga-input-border rounded-salunga-md',
+          'text-salunga-fg',
+          'focus:outline-none focus:ring-2 focus:ring-salunga-primary focus:border-transparent',
+          'disabled:opacity-50 disabled:cursor-not-allowed',
+          error && 'border-salunga-danger focus:ring-salunga-danger',
+          className
         )}
         {...props}
       >
@@ -111,11 +124,11 @@ export function FormShowcase() {
           <SalungaSelect
             label="Project Status"
             options={[
-              { value: "", label: "Select status" },
-              { value: "planning", label: "Planning" },
-              { value: "in-progress", label: "In Progress" },
-              { value: "review", label: "Under Review" },
-              { value: "completed", label: "Completed" },
+              { value: '', label: 'Select status' },
+              { value: 'planning', label: 'Planning' },
+              { value: 'in-progress', label: 'In Progress' },
+              { value: 'review', label: 'Under Review' },
+              { value: 'completed', label: 'Completed' },
             ]}
             helperText="Current status of the project"
           />

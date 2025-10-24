@@ -14,17 +14,17 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useAssistantStore } from '@/lib/stores/assistant'
 import { ActionCommand } from '@/lib/types/assistant'
-import { 
-  CheckCircle2, 
-  AlertTriangle, 
-  AlertCircle, 
-  FileText, 
-  CheckSquare, 
-  Calendar, 
+import {
+  CheckCircle2,
+  AlertTriangle,
+  AlertCircle,
+  FileText,
+  CheckSquare,
+  Calendar,
   Loader2,
   Shield,
   Zap,
-  Clock
+  Clock,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -34,22 +34,22 @@ const RISK_CONFIG = {
     color: 'text-green-600',
     bgColor: 'bg-green-50 border-green-200',
     badge: 'bg-green-100 text-green-800',
-    description: 'This action is safe and easily reversible.'
+    description: 'This action is safe and easily reversible.',
   },
   medium: {
     icon: AlertTriangle,
     color: 'text-yellow-600',
     bgColor: 'bg-yellow-50 border-yellow-200',
     badge: 'bg-yellow-100 text-yellow-800',
-    description: 'This action may affect multiple items. Review carefully.'
+    description: 'This action may affect multiple items. Review carefully.',
   },
   high: {
     icon: AlertCircle,
     color: 'text-red-600',
     bgColor: 'bg-red-50 border-red-200',
     badge: 'bg-red-100 text-red-800',
-    description: 'This action cannot be easily undone. Proceed with caution.'
-  }
+    description: 'This action cannot be easily undone. Proceed with caution.',
+  },
 } as const
 
 const ACTION_ICONS = {
@@ -60,12 +60,12 @@ const ACTION_ICONS = {
   update_status: Clock,
   assign_task: CheckSquare,
   create_sprint: Calendar,
-  default: Zap
+  default: Zap,
 } as const
 
 function ActionSummary({ action, entityTitle }: { action: ActionCommand; entityTitle?: string }) {
   const ActionIcon = ACTION_ICONS[action.type as keyof typeof ACTION_ICONS] || ACTION_ICONS.default
-  
+
   return (
     <Card className="border-0 bg-muted/30">
       <CardContent className="p-4">
@@ -74,9 +74,7 @@ function ActionSummary({ action, entityTitle }: { action: ActionCommand; entityT
             <ActionIcon className="h-4 w-4 text-muted-foreground" />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-sm mb-1">
-              {action.description}
-            </h3>
+            <h3 className="font-semibold text-sm mb-1">{action.description}</h3>
             {entityTitle && (
               <p className="text-sm text-muted-foreground">
                 Target: <span className="font-medium">{entityTitle}</span>
@@ -104,21 +102,19 @@ function ActionSummary({ action, entityTitle }: { action: ActionCommand; entityT
 function RiskAssessment({ riskLevel }: { riskLevel: ActionCommand['riskLevel'] }) {
   const config = RISK_CONFIG[riskLevel]
   const RiskIcon = config.icon
-  
+
   return (
-    <Alert className={cn("border", config.bgColor)}>
+    <Alert className={cn('border', config.bgColor)}>
       <div className="flex items-center gap-2">
-        <RiskIcon className={cn("h-4 w-4", config.color)} />
+        <RiskIcon className={cn('h-4 w-4', config.color)} />
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-sm font-medium">Risk Level</span>
-            <Badge className={cn("text-xs", config.badge)} variant="secondary">
+            <Badge className={cn('text-xs', config.badge)} variant="secondary">
               {riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1)}
             </Badge>
           </div>
-          <AlertDescription className="text-xs">
-            {config.description}
-          </AlertDescription>
+          <AlertDescription className="text-xs">{config.description}</AlertDescription>
         </div>
       </div>
     </Alert>
@@ -126,13 +122,8 @@ function RiskAssessment({ riskLevel }: { riskLevel: ActionCommand['riskLevel'] }
 }
 
 export function ConfirmActionDialog() {
-  const {
-    pendingAction,
-    selectedCandidate,
-    isProcessing,
-    confirmAction,
-    cancelAction,
-  } = useAssistantStore()
+  const { pendingAction, selectedCandidate, isProcessing, confirmAction, cancelAction } =
+    useAssistantStore()
 
   // Only show if there's a pending action but no draft (draft case is handled by ActionPreviewDialog)
   const isOpen = !!pendingAction && !pendingAction.draft
@@ -166,9 +157,7 @@ export function ConfirmActionDialog() {
             <Shield className="h-5 w-5" />
             Confirm Action
           </DialogTitle>
-          <DialogDescription>
-            Please review the action details before proceeding.
-          </DialogDescription>
+          <DialogDescription>Please review the action details before proceeding.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -195,19 +184,13 @@ export function ConfirmActionDialog() {
         </div>
 
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={cancelAction}
-            disabled={isProcessing}
-          >
+          <Button variant="outline" onClick={cancelAction} disabled={isProcessing}>
             Cancel
           </Button>
           <Button
             onClick={handleConfirm}
             disabled={isProcessing}
-            className={cn(
-              pendingAction.riskLevel === 'high' && "bg-red-600 hover:bg-red-700"
-            )}
+            className={cn(pendingAction.riskLevel === 'high' && 'bg-red-600 hover:bg-red-700')}
           >
             {isProcessing ? (
               <>

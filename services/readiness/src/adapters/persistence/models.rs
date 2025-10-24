@@ -34,6 +34,8 @@ pub struct ReadinessEvaluationRow {
     pub organization_id: Option<Uuid>,
     pub score: i32,
     pub missing_items: Vec<String>,
+    pub summary: String,
+    pub recommendations: Vec<String>,
 }
 
 impl From<ReadinessEvaluationRow> for ReadinessEvaluation {
@@ -44,6 +46,8 @@ impl From<ReadinessEvaluationRow> for ReadinessEvaluation {
             organization_id: row.organization_id,
             score: row.score,
             missing_items: row.missing_items,
+            summary: row.summary,
+            recommendations: row.recommendations,
         }
     }
 }

@@ -1,12 +1,14 @@
-import { useOrganization, useUser } from '@clerk/nextjs'
+import { useUser, useOrganization } from '@clerk/nextjs'
+import { normalizeUserId } from '@/lib/utils/uuid'
 
 /**
  * Hook to get the current organization context for API calls
  * Returns the current organization ID or user ID for personal workspace
  */
 export function useOrganizationContext() {
-  const { organization } = useOrganization()
+  // Use standard Clerk hooks
   const { user } = useUser()
+  const { organization } = useOrganization()
 
   // For API calls, we need to determine the context:
   // - If in an organization, use the organization ID
@@ -22,10 +24,17 @@ export function useOrganizationContext() {
     organization,
     user,
     // Helper to get headers for API calls
-    getApiHeaders: () => ({
-      'X-Organization-Id': organization?.id || '',
-      'X-User-Id': user?.id || '',
-      'X-Context-Type': contextType
-    })
+    getApiHeaders: () => {
+      const headers: Record<string, string> = {
+        'X-User-Id': normalizeUserId(user?.id),
+        'X-Context-Type': contextType,
+      }
+
+      if (organization?.id) {
+        headers['X-Organization-Id'] = organization.id
+      }
+
+      return headers
+    },
   }
 }

@@ -22,6 +22,7 @@ tower-http = { workspace = true }
 async-trait = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }
+event-bus = { path = "../../libs/event-bus" }
 tracing = { workspace = true }
 reqwest = { version = "0.12.4", features = ["json"] }
 
@@ -32,3 +33,5 @@ http-body-util = { workspace = true }
 proptest = "1.4"
 testcontainers = "0.15"
 testcontainers-modules = { version = "0.3", features = ["postgres"] }
+serial_test = "3.0"
+jsonwebtoken = "10.0.0"

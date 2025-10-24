@@ -6,9 +6,25 @@ import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Kanban, List, Settings, Plus, Clock, CheckCircle, AlertCircle } from 'lucide-react'
+import {
+  ArrowLeft,
+  Kanban,
+  List,
+  Settings,
+  Plus,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  Sparkles,
+  RefreshCw,
+  Loader2,
+  Users,
+} from 'lucide-react'
 import { projectsApi } from '@/lib/api/projects'
 import { backlogApi } from '@/lib/api/backlog'
+import { useProjectSuggestions } from '@/lib/stores/assistant'
+import { teamsApi } from '@/lib/api/teams'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 export default function ProjectDetailPage() {
   const params = useParams()
@@ -19,11 +35,27 @@ export default function ProjectDetailPage() {
     queryFn: () => projectsApi.getProject(projectId),
   })
 
+  const {
+    data: team,
+    isLoading: teamLoading,
+  } = useQuery({
+    queryKey: ['team', project?.teamId],
+    queryFn: () => teamsApi.getTeam(project!.teamId!),
+    enabled: !!project?.teamId,
+  })
+
   const { data: stories, isLoading: storiesLoading } = useQuery({
     queryKey: ['stories', projectId],
     queryFn: () => backlogApi.getStories(projectId),
     enabled: !!projectId,
   })
+
+  const {
+    suggestions: projectSuggestions,
+    isFetching: isFetchingSuggestions,
+    refresh: refreshSuggestions,
+    lastFetched: suggestionsLastFetched,
+  } = useProjectSuggestions(projectId)
 
   if (projectLoading) {
     return (
@@ -54,13 +86,17 @@ export default function ProjectDetailPage() {
 
   const storyStats = {
     total: stories?.length || 0,
-    backlog: stories?.filter(s => s.status === 'backlog').length || 0,
-    ready: stories?.filter(s => s.status === 'backlog').length || 0,
-    inProgress: stories?.filter(s => s.status === 'in-progress').length || 0,
-    done: stories?.filter(s => s.status === 'done').length || 0,
+    draft: stories?.filter((s) => ['draft', 'needsrefinement'].includes(s.status)).length || 0,
+    ready: stories?.filter((s) => s.status === 'ready').length || 0,
+    inProgress:
+      stories?.filter((s) =>
+        ['committed', 'inprogress', 'taskscomplete', 'deployed'].includes(s.status)
+      ).length || 0,
+    done: stories?.filter((s) => ['awaitingacceptance', 'accepted'].includes(s.status)).length || 0,
   }
 
   const totalPoints = stories?.reduce((sum, story) => sum + (story.storyPoints || 0), 0) || 0
+  const missingTeam = !project.teamId
 
   return (
     <div className="min-h-screen bg-background">
@@ -75,10 +111,72 @@ export default function ProjectDetailPage() {
           </Link>
         </div>
 
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">{project.name}</h1>
-          <p className="text-muted-foreground">{project.description}</p>
+        <div className="mb-6 space-y-4">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground mb-2">{project.name}</h1>
+            {project.description ? (
+              <p className="text-muted-foreground">{project.description}</p>
+            ) : (
+              <p className="text-muted-foreground">No description provided yet.</p>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <Badge
+              variant={team ? 'secondary' : 'outline'}
+              className={
+                team
+                  ? 'bg-primary/10 text-primary border-0'
+                  : 'border-dashed border-amber-400 text-amber-700'
+              }
+            >
+              <span className="flex items-center gap-2">
+                <Users className="h-3 w-3" />
+                {teamLoading ? (
+                  <span className="flex items-center gap-1">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Loading team...
+                  </span>
+                ) : team ? (
+                  <>
+                    <span className="font-medium">Team</span>
+                    <span>{team.name}</span>
+                  </>
+                ) : (
+                  'No team assigned'
+                )}
+              </span>
+            </Badge>
+            {team && (
+              <Link
+                href={`/teams/${team.id}`}
+                className="text-primary transition-colors hover:text-primary/80"
+              >
+                View team workspace
+              </Link>
+            )}
+            {missingTeam && (
+              <Link
+                href={`/projects/${projectId}/settings`}
+                className="text-primary transition-colors hover:text-primary/80"
+              >
+                Assign team
+              </Link>
+            )}
+          </div>
         </div>
+
+        {missingTeam && (
+          <Alert className="mb-8 border-amber-200 bg-amber-50">
+            <AlertTitle className="flex items-center gap-2 text-amber-900">
+              <AlertCircle className="h-4 w-4" />
+              Assign a team before planning sprints
+            </AlertTitle>
+            <AlertDescription className="mt-2 text-amber-900/90">
+              This project isn&apos;t linked to a delivery team. Sprints can only be planned once a
+              team owns the backlog.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -92,9 +190,7 @@ export default function ProjectDetailPage() {
               </CardHeader>
               <CardContent className="pt-0">
                 <div className="text-2xl font-bold">{storyStats.total}</div>
-                <div className="text-xs text-muted-foreground">
-                  {totalPoints} story points
-                </div>
+                <div className="text-xs text-muted-foreground">{totalPoints} story points</div>
               </CardContent>
             </Card>
           </Link>
@@ -123,9 +219,7 @@ export default function ProjectDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="text-sm text-muted-foreground">
-                  Configure project
-                </div>
+                <div className="text-sm text-muted-foreground">Configure project</div>
               </CardContent>
             </Card>
           </Link>
@@ -139,9 +233,7 @@ export default function ProjectDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="text-sm text-muted-foreground">
-                  Add to backlog
-                </div>
+                <div className="text-sm text-muted-foreground">Add to backlog</div>
               </CardContent>
             </Card>
           </Link>
@@ -164,9 +256,9 @@ export default function ProjectDetailPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       <div className="w-3 h-3 rounded-full bg-gray-400 mr-3"></div>
-                      <span>Backlog</span>
+                      <span>Draft</span>
                     </div>
-                    <Badge variant="secondary">{storyStats.backlog}</Badge>
+                    <Badge variant="secondary">{storyStats.draft}</Badge>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
@@ -207,13 +299,18 @@ export default function ProjectDetailPage() {
               ) : stories && stories.length > 0 ? (
                 <div className="space-y-4">
                   {stories.slice(0, 5).map((story) => (
-                    <div key={story.id} className="flex items-start space-x-3 p-3 rounded-lg border">
+                    <div
+                      key={story.id}
+                      className="flex items-start space-x-3 p-3 rounded-lg border"
+                    >
                       <div className="flex-shrink-0 mt-1">
-                        {story.status === 'done' ? (
+                        {story.status === 'accepted' ? (
                           <CheckCircle className="h-4 w-4 text-green-500" />
-                        ) : story.status === 'in-progress' ? (
+                        ) : ['committed', 'inprogress', 'taskscomplete', 'deployed'].includes(
+                            story.status
+                          ) ? (
                           <Clock className="h-4 w-4 text-salunga-accent" />
-                        ) : story.status === 'backlog' ? (
+                        ) : story.status === 'ready' ? (
                           <AlertCircle className="h-4 w-4 text-blue-500" />
                         ) : (
                           <div className="w-4 h-4 rounded-full bg-gray-400" />
@@ -229,13 +326,16 @@ export default function ProjectDetailPage() {
                           <Badge variant="outline" className="text-xs">
                             {story.storyPoints} pts
                           </Badge>
-                          <Badge 
-                            variant="outline" 
+                          <Badge
+                            variant="outline"
                             className={`text-xs ${
-                              story.priority === 'critical' ? 'border-red-500 text-red-500' :
-                              story.priority === 'high' ? 'border-orange-500 text-orange-500' :
-                              story.priority === 'medium' ? 'border-blue-500 text-blue-500' :
-                              'border-gray-500 text-gray-500'
+                              story.priority === 'critical'
+                                ? 'border-red-500 text-red-500'
+                                : story.priority === 'high'
+                                  ? 'border-orange-500 text-orange-500'
+                                  : story.priority === 'medium'
+                                    ? 'border-blue-500 text-blue-500'
+                                    : 'border-gray-500 text-gray-500'
                             }`}
                           >
                             {story.priority}
@@ -261,6 +361,74 @@ export default function ProjectDetailPage() {
                       Create Story
                     </Button>
                   </Link>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="lg:col-span-2">
+            <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Sparkles className="h-4 w-4 text-salunga-primary" />
+                  AI Suggestions
+                </CardTitle>
+                <CardDescription>Assistant insights tailored to this project</CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => refreshSuggestions()}
+                disabled={isFetchingSuggestions}
+              >
+                {isFetchingSuggestions ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                )}
+                Refresh
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {isFetchingSuggestions && projectSuggestions.length === 0 ? (
+                <div className="flex items-center justify-center gap-2 py-10 text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Generating suggestions...</span>
+                </div>
+              ) : projectSuggestions.length > 0 ? (
+                <div className="space-y-4">
+                  {projectSuggestions.slice(0, 3).map((suggestion) => (
+                    <div key={suggestion.id} className="p-4 border rounded-lg bg-muted/30">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{suggestion.title}</p>
+                          <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                            {suggestion.description}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="capitalize">
+                          {suggestion.priority}
+                        </Badge>
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-3 flex flex-wrap gap-x-4 gap-y-1">
+                        <span>Confidence: {Math.round(suggestion.confidence * 100)}%</span>
+                        <span>Updated {new Date(suggestion.createdAt).toLocaleString()}</span>
+                      </div>
+                    </div>
+                  ))}
+                  <p className="text-xs text-muted-foreground">
+                    {suggestionsLastFetched
+                      ? `Last checked ${new Date(suggestionsLastFetched).toLocaleTimeString()}`
+                      : 'Suggestions refresh automatically every few minutes.'}
+                  </p>
+                </div>
+              ) : (
+                <div className="text-center py-10 text-muted-foreground space-y-2">
+                  <Sparkles className="h-8 w-8 mx-auto opacity-40" />
+                  <p>No suggestions yet</p>
+                  <p className="text-sm">
+                    Refresh to pull the latest AI insights for this project.
+                  </p>
                 </div>
               )}
             </CardContent>

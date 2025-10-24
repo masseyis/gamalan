@@ -4,12 +4,12 @@ This service manages stories and tasks.
 
 ## Endpoints
 
--   `POST /stories`: Create a new story.
--   `GET /stories/{id}`: Get story details.
--   `PATCH /stories/{id}`: Update a story.
--   `DELETE /stories/{id}`: Delete a story.
--   `POST /stories/{id}/tasks`: Create a new task for a story.
--   `PATCH /stories/{id}/status`: Update the status of a story.
+- `POST /stories`: Create a new story.
+- `GET /stories/{id}`: Get story details.
+- `PATCH /stories/{id}`: Update a story.
+- `DELETE /stories/{id}`: Delete a story.
+- `POST /stories/{id}/tasks`: Create a new task for a story.
+- `PATCH /stories/{id}/status`: Update the status of a story.
 
 ## Local Development
 

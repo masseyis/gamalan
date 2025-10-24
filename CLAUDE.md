@@ -1,4 +1,3 @@
-
 # CLAUDE.MD — Battra AI Engineering Charter for Claude Code
 
 > **Purpose**
@@ -9,6 +8,7 @@
 ## 1) Architectural Design Plan (Source of Truth)
 
 ### 1.1 Overall style
+
 - **Language:** Rust (2021/1.79+)
 - **Architecture:** **Hexagonal / Clean Architecture (Ports & Adapters)**
 - **Services (microservices):** `auth-gateway`, `projects`, `backlog`, `readiness`, `prompt-builder`, (later) `gh-integrator`, `sprint`, `demo`, `analytics`, `coach`
@@ -20,6 +20,7 @@
 - **Observability:** structured logs + correlation id; `/health` & `/ready` endpoints in every service
 
 ### 1.2 Hexagonal boundaries (strict)
+
 - `domain/` — entities, value objects, invariants; **no** async, **no** IO, **no** frameworks
 - `application/` — use-cases, orchestration, DTOs, **ports** (traits) needed by domain/use-cases
 - `adapters/http/` — Axum routes/handlers; request/response mapping; auth extractors
@@ -28,6 +29,7 @@
 - **Rule:** dependencies **point inward only**. Adapters depend on application/domain; domain depends on nothing.
 
 ### 1.3 Key product flows (context)
+
 - **Backlog** → Ready stories w/ ACs (G/W/T)
 - **Prompt-builder**:
   - **Plan Pack** (story-level slicing; AC map with `ac_id`)
@@ -41,6 +43,7 @@
 ## 2) Non-Negotiables (Quality Gates & Behaviors)
 
 ### 2.1 Testing & quality (MUST)
+
 - **TDD/BDD first**: write/extend tests before or alongside code.
 - **Test types per service**:
   - Unit tests for `domain/` and `application/`
@@ -51,6 +54,7 @@
 - **No** breaking of hexagonal boundaries to “make it easier”.
 
 ### 2.2 Lint/format (MUST)
+
 - **On every push & PR**:
   - `cargo fmt --all --check`
   - `cargo clippy --all-targets --all-features -- -D warnings`
@@ -58,17 +62,20 @@
 - PRs that fail any of the above **must not** be merged.
 
 ### 2.3 OpenAPI fidelity (MUST)
+
 - If an endpoint/DTO changes:
   - Update `docs/openapi.yaml`
   - Update/generate contract tests
   - Keep examples current in service README
 
 ### 2.4 Security & secrets
+
 - **Do not** hardcode secrets or tokens.
 - Use env vars; document in `.env.example` and service README.
 - JWT verification must check `iss`, `aud`, `exp`, and JWKS `kid`.
 
 ### 2.5 Dependencies & crates
+
 - Justify **new** third-party crates in an ADR; prefer std + well-known crates.
 - Pin versions; deny unknown licenses if license policy is set.
 
@@ -77,7 +84,9 @@
 ## 3) CI/CD Best Practices (Required)
 
 ### 3.1 CI workflow (GitHub Actions)
+
 **On PR + push:**
+
 1. `cargo fmt --check`
 2. `cargo clippy -D warnings`
 3. Build (workspace)
@@ -87,10 +96,12 @@
 7. **Coverage** (`tarpaulin`) ≥ 85%
 
 **On deploy (tags/manual):**
+
 - `cargo shuttle deploy -p services/<name>` for each deployable service
 - Required secrets: `SHUTTLE_API_KEY`, `CLERK_*`, service DB URLs
 
 ### 3.2 Local dev convenience
+
 - Pre-push hook (suggested): run fmt, clippy, test locally before pushing.
 - `Makefile` targets: `fmt`, `lint`, `test`, `test-int`, `test-contract`, `coverage`, `dev-up`, `migrate`, `deploy-<svc>`
 
@@ -99,14 +110,16 @@
 ## 4) Living Architecture: Document Every Change
 
 ### 4.1 Files of record
+
 - **ADRs:** `docs/adr/ADR-XXXX-*.md` (one per significant decision)
 - **Living doc:** `docs/adr/LIVING_ARCHITECTURE.md` (running summary/changelog)
 
 ### 4.2 What Claude must do after changes
+
 After implementing or proposing architectural work (endpoints, modules, boundaries, data models, dependencies), **summarize the diff and update docs**:
 
 1. Produce a diff summary:
-   - Run:  
+   - Run:
      ```bash
      git fetch origin
      git diff --name-status origin/main...HEAD
@@ -137,6 +150,7 @@ After implementing or proposing architectural work (endpoints, modules, boundari
 ---
 
 ## 6) Monorepo Structure Contract (Do not drift)
+
 /docs
 /adr
 ADR-0001-architecture.md
@@ -156,7 +170,6 @@ LIVING_ARCHITECTURE.md
 /analytics (later)
 /coach (later)
 
-
 - Each service contains: `docs/openapi.yaml`, `src/{domain,application,adapters/...}`, `migrations/`, `tests/{unit,integration,contract}`, `Shuttle.toml`, `README.md`.
 - Keep **ports** in `application/ports.rs` (or module); **adapters** implement them.
 
@@ -175,10 +188,10 @@ LIVING_ARCHITECTURE.md
 
 ## 8) Don’ts (Hard Rules)
 
-- ❌ Don’t silence or weaken tests/lints to land code.  
-- ❌ Don’t bypass ports (e.g., HTTP adapter talking straight to DB).  
-- ❌ Don’t add endpoints without OpenAPI updates & contract tests.  
-- ❌ Don’t commit secrets or disable auth checks.  
+- ❌ Don’t silence or weaken tests/lints to land code.
+- ❌ Don’t bypass ports (e.g., HTTP adapter talking straight to DB).
+- ❌ Don’t add endpoints without OpenAPI updates & contract tests.
+- ❌ Don’t commit secrets or disable auth checks.
 - ❌ Don't introduce new crates without ADR justification.
 - ❌ Don't use external database providers (AWS RDS, Neon, etc.) — **ONLY** use Shuttle-managed Postgres.
 - ❌ Don't add DATABASE_URL to GitHub Actions workflows — databases are provided by Shuttle automatically.
@@ -198,19 +211,21 @@ LIVING_ARCHITECTURE.md
 
 ## 10) How to Propose Architectural Change (Claude workflow)
 
-1. Draft change → write **tests first** (or concurrently)  
-2. Update OpenAPI + contract tests as needed  
-3. Implement within hexagonal boundaries  
-4. Run local quality suite:  
+1. Draft change → write **tests first** (or concurrently)
+2. Update OpenAPI + contract tests as needed
+3. Implement within hexagonal boundaries
+4. Run local quality suite:
    ```bash
    cargo fmt --all --check
    cargo clippy --all-targets --all-features -- -D warnings
    cargo test --all --locked
    make coverage   # ensure ≥ 85%
+   ```
 
 Generate diff summary & update docs/adr/LIVING_ARCHITECTURE.md (+ ADR if substantive)
 Open PR with architecture summary + links; ensure CI is green
-11) CI/CD Goals
+
+## 11) CI/CD Goals
 Fast feedback, reproducible builds, deterministic tests
 Enforced gates (fmt, clippy, tests, coverage, contract conformance)
 Automated deploys to Shuttle on tags/manual approval

@@ -1,0 +1,73 @@
+version = 1
+
+[tools.battra-mcp]
+description = "Bridge to the Battra API via the MCP server"
+command = "pnpm"
+args = ["--filter", "@battra/mcp-server", "start"]
+workdir = "tools/battra-mcp-server"
+
+[tools.battra-mcp.env]
+BATTRA_API_BASE = "http://localhost:8000/api/v1"
+BATTRA_USER_ID = "user_34NgtsMnbjCImgtbQ7gRac27Uyx"
+BATTRA_ORG_ID = "org_33F8RYQBCb26heNI8AjkgfTvGC0"
+BATTRA_API_KEY = "battra-local-key-1"
+
+[tools.battra-mcp-dev]
+description = "Run Battra MCP as Dev persona"
+command = "pnpm"
+args = ["--filter", "@battra/mcp-server", "start"]
+workdir = "tools/battra-mcp-server"
+
+[tools.battra-mcp-dev.env]
+BATTRA_API_BASE = "http://localhost:8000/api/v1"
+BATTRA_USER_ID = "user_34QaKB6nN5tBHsV4bBsd75d08LH"
+BATTRA_ORG_ID = "org_33F8RYQBCb26heNI8AjkgfTvGC0"
+BATTRA_API_KEY = "battra-dev-key-1"
+
+[tools.battra-mcp-po]
+description = "Run Battra MCP as Product Owner persona"
+command = "pnpm"
+args = ["--filter", "@battra/mcp-server", "start"]
+workdir = "tools/battra-mcp-server"
+
+[tools.battra-mcp-po.env]
+BATTRA_API_BASE = "http://localhost:8000/api/v1"
+BATTRA_USER_ID = "user_34QabGsiYcHLPWbC2cRLgSGRotR"
+BATTRA_ORG_ID = "org_33F8RYQBCb26heNI8AjkgfTvGC0"
+BATTRA_API_KEY = "battra-po-key-1"
+
+[tools.battra-mcp-sm]
+description = "Run Battra MCP as Scrum Master persona"
+command = "pnpm"
+args = ["--filter", "@battra/mcp-server", "start"]
+workdir = "tools/battra-mcp-server"
+
+[tools.battra-mcp-sm.env]
+BATTRA_API_BASE = "http://localhost:8000/api/v1"
+BATTRA_USER_ID = "user_34QaOWGrFQFYuPpTLjYsiqIId35"
+BATTRA_ORG_ID = "org_33F8RYQBCb26heNI8AjkgfTvGC0"
+BATTRA_API_KEY = "battra-sm-key-1"
+
+[tools.battra-mcp-sponsor]
+description = "Run Battra MCP as Sponsor persona"
+command = "pnpm"
+args = ["--filter", "@battra/mcp-server", "start"]
+workdir = "tools/battra-mcp-server"
+
+[tools.battra-mcp-sponsor.env]
+BATTRA_API_BASE = "http://localhost:8000/api/v1"
+BATTRA_USER_ID = "user_34QaTNLLe08bibyuetnykiAqUnc"
+BATTRA_ORG_ID = "org_33F8RYQBCb26heNI8AjkgfTvGC0"
+BATTRA_API_KEY = "battra-sponsor-key-1"
+
+[tools.battra-mcp-qa]
+description = "Run Battra MCP as QA persona"
+command = "pnpm"
+args = ["--filter", "@battra/mcp-server", "start"]
+workdir = "tools/battra-mcp-server"
+
+[tools.battra-mcp-qa.env]
+BATTRA_API_BASE = "http://localhost:8000/api/v1"
+BATTRA_USER_ID = "user_34QaXwzFFW1CVkZXQ4nUDNwS3TN"
+BATTRA_ORG_ID = "org_33F8RYQBCb26heNI8AjkgfTvGC0"
+BATTRA_API_KEY = "battra-qa-key-1"

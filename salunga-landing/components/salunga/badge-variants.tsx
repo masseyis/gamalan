@@ -1,32 +1,39 @@
-import type React from "react"
-import { cn } from "@/lib/utils"
+import type React from 'react'
+import { cn } from '@/lib/utils'
 
 interface SalungaBadgeProps {
   children: React.ReactNode
-  variant?: "info" | "success" | "warning" | "error" | "primary" | "secondary"
-  size?: "sm" | "md" | "lg"
+  variant?: 'info' | 'success' | 'warning' | 'error' | 'primary' | 'secondary'
+  size?: 'sm' | 'md' | 'lg'
   className?: string
 }
 
-export function SalungaBadge({ children, variant = "primary", size = "md", className }: SalungaBadgeProps) {
-  const baseStyles = "inline-flex items-center font-medium rounded-full"
+export function SalungaBadge({
+  children,
+  variant = 'primary',
+  size = 'md',
+  className,
+}: SalungaBadgeProps) {
+  const baseStyles = 'inline-flex items-center font-medium rounded-full'
 
   const variants = {
-    primary: "bg-salunga-primary-light text-salunga-primary-dark border border-salunga-primary/20",
-    secondary: "bg-salunga-bg-muted text-salunga-fg-secondary border border-salunga-border",
-    info: "bg-salunga-primary-light text-salunga-primary-dark border border-salunga-primary/20",
-    success: "bg-salunga-success-light text-salunga-success border border-salunga-success/20",
-    warning: "bg-salunga-warning-light text-salunga-warning border border-salunga-warning/20",
-    error: "bg-salunga-danger-light text-salunga-danger border border-salunga-danger/20",
+    primary: 'bg-salunga-primary-light text-salunga-primary-dark border border-salunga-primary/20',
+    secondary: 'bg-salunga-bg-muted text-salunga-fg-secondary border border-salunga-border',
+    info: 'bg-salunga-primary-light text-salunga-primary-dark border border-salunga-primary/20',
+    success: 'bg-salunga-success-light text-salunga-success border border-salunga-success/20',
+    warning: 'bg-salunga-warning-light text-salunga-warning border border-salunga-warning/20',
+    error: 'bg-salunga-danger-light text-salunga-danger border border-salunga-danger/20',
   }
 
   const sizes = {
-    sm: "px-2 py-0.5 text-xs",
-    md: "px-2.5 py-1 text-sm",
-    lg: "px-3 py-1.5 text-base",
+    sm: 'px-2 py-0.5 text-xs',
+    md: 'px-2.5 py-1 text-sm',
+    lg: 'px-3 py-1.5 text-base',
   }
 
-  return <span className={cn(baseStyles, variants[variant], sizes[size], className)}>{children}</span>
+  return (
+    <span className={cn(baseStyles, variants[variant], sizes[size], className)}>{children}</span>
+  )
 }
 
 // Example usage component

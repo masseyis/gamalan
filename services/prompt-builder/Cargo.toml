@@ -24,3 +24,4 @@ uuid = { workspace = true }
 reqwest = { version = "0.12.4", features = ["json"] }
 chrono = { workspace = true }
 tracing = { workspace = true }
+event-bus = { path = "../../libs/event-bus" }

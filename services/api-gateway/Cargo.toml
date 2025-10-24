@@ -7,6 +7,8 @@ edition = "2021"
 name = "api-gateway"
 path = "src/main.rs"
 
+
+
 [dependencies]
 # Workspace dependencies for core functionality
 common = { path = "../../libs/common" }
@@ -16,9 +18,12 @@ auth_clerk = { path = "../../libs/auth_clerk" }
 auth-gateway = { path = "../auth-gateway" }
 projects = { path = "../projects" }
 backlog = { path = "../backlog" }
+sprint = { path = "../sprint" }
 readiness = { path = "../readiness" }
+
 prompt-builder = { path = "../prompt-builder" }
 context-orchestrator = { path = "../context-orchestrator" }
+event-bus = { path = "../../libs/event-bus" }
 
 # Shuttle and HTTP dependencies
 shuttle-runtime = { workspace = true }
@@ -33,6 +38,9 @@ sqlx = { workspace = true }
 anyhow = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+tracing = { workspace = true }
+async-trait = { workspace = true }
+uuid = { workspace = true }
 
 [dev-dependencies]
 tower = "0.4"

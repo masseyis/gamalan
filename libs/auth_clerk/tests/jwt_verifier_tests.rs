@@ -66,6 +66,11 @@ impl TestJwtSetup {
             iat: 1000000000,
             email: Some("test@example.com".to_string()),
             orgs: Some(vec!["org123".to_string()]),
+            org_id: Some("org_123".to_string()),
+            org_slug: Some("org-123".to_string()),
+            org_role: Some("admin".to_string()),
+            org_name: Some("Test Org".to_string()),
+            org: None,
         };
         self.create_token_with_claims(&claims)
     }
@@ -79,6 +84,11 @@ impl TestJwtSetup {
             iat: 1000000000,
             email: Some("test@example.com".to_string()),
             orgs: Some(vec!["org123".to_string()]),
+            org_id: Some("org_123".to_string()),
+            org_slug: Some("org-123".to_string()),
+            org_role: Some("admin".to_string()),
+            org_name: Some("Test Org".to_string()),
+            org: None,
         };
         self.create_token_with_claims(&claims)
     }

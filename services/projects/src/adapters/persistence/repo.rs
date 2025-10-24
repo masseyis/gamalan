@@ -10,18 +10,8 @@ use common::AppError;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-pub struct ProjectRepositoryImpl {
-    pool: PgPool,
-}
-
-impl ProjectRepositoryImpl {
-    pub fn new(pool: PgPool) -> Self {
-        Self { pool }
-    }
-}
-
 #[async_trait]
-impl ProjectRepository for ProjectRepositoryImpl {
+impl ProjectRepository for PgPool {
     async fn create_project(
         &self,
         request: &CreateProjectRequest,
@@ -32,7 +22,6 @@ impl ProjectRepository for ProjectRepositoryImpl {
 
         // Start transaction
         let mut tx = self
-            .pool
             .begin()
             .await
             .map_err(|_| AppError::InternalServerError)?;
@@ -116,7 +105,7 @@ impl ProjectRepository for ProjectRepositoryImpl {
         )
         .bind(id)
         .bind(organization_id)
-        .fetch_optional(&self.pool)
+        .fetch_optional(self)
         .await
         .map_err(|_| AppError::InternalServerError)?;
 
@@ -143,7 +132,7 @@ impl ProjectRepository for ProjectRepositoryImpl {
         .bind(organization_id)
         .bind(limit)
         .bind(offset)
-        .fetch_all(&self.pool)
+        .fetch_all(self)
         .await
         .map_err(|_| AppError::InternalServerError)?;
 
@@ -175,7 +164,7 @@ impl ProjectRepository for ProjectRepositoryImpl {
         .bind(&request.description)
         .bind(request.team_id)
         .bind(now)
-        .fetch_one(&self.pool)
+        .fetch_one(self)
         .await
         .map_err(|e| {
             tracing::error!("Failed to update project: {}", e);
@@ -198,7 +187,7 @@ impl ProjectRepository for ProjectRepositoryImpl {
         )
         .bind(id)
         .bind(organization_id)
-        .execute(&self.pool)
+        .execute(self)
         .await
         .map_err(|_| AppError::InternalServerError)?;
 
@@ -210,18 +199,8 @@ impl ProjectRepository for ProjectRepositoryImpl {
     }
 }
 
-pub struct ProjectSettingsRepositoryImpl {
-    pool: PgPool,
-}
-
-impl ProjectSettingsRepositoryImpl {
-    pub fn new(pool: PgPool) -> Self {
-        Self { pool }
-    }
-}
-
 #[async_trait]
-impl ProjectSettingsRepository for ProjectSettingsRepositoryImpl {
+impl ProjectSettingsRepository for PgPool {
     async fn get_settings_by_project_id(
         &self,
         project_id: &Uuid,
@@ -236,7 +215,7 @@ impl ProjectSettingsRepository for ProjectSettingsRepositoryImpl {
         )
         .bind(project_id)
         .bind(organization_id)
-        .fetch_optional(&self.pool)
+        .fetch_optional(self)
         .await
         .map_err(|_| AppError::InternalServerError)?;
 
@@ -268,7 +247,7 @@ impl ProjectSettingsRepository for ProjectSettingsRepositoryImpl {
         )
         .bind(project_id)
         .bind(organization_id)
-        .fetch_one(&self.pool)
+        .fetch_one(self)
         .await
         .map_err(|_| AppError::InternalServerError)?;
 
@@ -303,7 +282,7 @@ impl ProjectSettingsRepository for ProjectSettingsRepositoryImpl {
         .bind(estimation_scale_str)
         .bind(dor_template_json)
         .bind(now)
-        .fetch_one(&self.pool)
+        .fetch_one(self)
         .await
         .map_err(|e| {
             tracing::error!("Failed to update project settings: {}", e);

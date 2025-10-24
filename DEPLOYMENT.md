@@ -5,6 +5,7 @@ This document explains how to set up CI/CD and deployments for the Salunga proje
 ## Overview
 
 The project uses a dual-deployment strategy:
+
 - **Backend Services (Rust)**: Deployed to Shuttle.rs
 - **Frontend (Next.js)**: Deployed to Vercel
 
@@ -15,6 +16,7 @@ The project uses a dual-deployment strategy:
 Add these secrets to your GitHub repository settings:
 
 #### Shuttle.rs Deployment
+
 ```
 SHUTTLE_API_KEY=your_shuttle_api_key_here
 CLERK_WEBHOOK_SECRET=your_clerk_webhook_secret
@@ -26,6 +28,7 @@ CLERK_JWT_AUDIENCE=your-application-id
 **Note:** `DATABASE_URL` is NOT needed - Shuttle automatically provides managed PostgreSQL databases for each service.
 
 #### Vercel Deployment
+
 ```
 VERCEL_TOKEN=your_vercel_token
 VERCEL_ORG_ID=your_vercel_org_id
@@ -74,6 +77,7 @@ NEXT_PUBLIC_ENABLE_MOCK_DATA=false
 **No setup required!** 🎉
 
 Shuttle automatically provides managed PostgreSQL databases for each service. The databases are:
+
 - Created automatically on first deployment
 - Isolated per service for security
 - Migrations run automatically on startup
@@ -108,11 +112,13 @@ Each service gets its own database instance, so you don't need to manage any dat
 ### Manual Deployments
 
 #### Deploy specific Shuttle service:
+
 ```bash
 gh workflow run shuttle-deploy.yml -f service=backlog
 ```
 
 #### Deploy frontend manually:
+
 ```bash
 gh workflow run vercel-deploy.yml
 ```
@@ -131,6 +137,7 @@ After deployment, your services will be available at:
 ## Environment Variables
 
 ### Development (.env.local for frontend)
+
 ```env
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_xxxxxxxxxx
 CLERK_SECRET_KEY=sk_test_xxxxxxxxxx
@@ -143,6 +150,7 @@ NEXT_PUBLIC_ENABLE_MOCK_DATA=true
 ```
 
 ### Production
+
 - All environment variables are set through GitHub secrets
 - Services automatically pick up environment variables from Shuttle
 - Frontend gets environment variables during Vercel build process

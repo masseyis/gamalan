@@ -173,6 +173,98 @@ impl BacklogServiceClient for HttpBacklogClient {
         })
     }
 
+    async fn take_task_ownership(
+        &self,
+        tenant_id: Uuid,
+        task_id: Uuid,
+        _user_id: Uuid,
+    ) -> Result<ServiceResult, AppError> {
+        let response: ServiceResponse = self
+            .make_request(
+                reqwest::Method::PUT,
+                &format!("/tasks/{}/ownership", task_id),
+                None::<()>,
+                tenant_id,
+            )
+            .await?;
+
+        Ok(ServiceResult {
+            success: response.success,
+            message: response.message,
+            affected_entities: response.affected_entities,
+            data: response.data,
+        })
+    }
+
+    async fn release_task_ownership(
+        &self,
+        tenant_id: Uuid,
+        task_id: Uuid,
+        _user_id: Uuid,
+    ) -> Result<ServiceResult, AppError> {
+        let response: ServiceResponse = self
+            .make_request(
+                reqwest::Method::DELETE,
+                &format!("/tasks/{}/ownership", task_id),
+                None::<()>,
+                tenant_id,
+            )
+            .await?;
+
+        Ok(ServiceResult {
+            success: response.success,
+            message: response.message,
+            affected_entities: response.affected_entities,
+            data: response.data,
+        })
+    }
+
+    async fn start_task_work(
+        &self,
+        tenant_id: Uuid,
+        task_id: Uuid,
+        _user_id: Uuid,
+    ) -> Result<ServiceResult, AppError> {
+        let response: ServiceResponse = self
+            .make_request(
+                reqwest::Method::POST,
+                &format!("/tasks/{}/start", task_id),
+                None::<()>,
+                tenant_id,
+            )
+            .await?;
+
+        Ok(ServiceResult {
+            success: response.success,
+            message: response.message,
+            affected_entities: response.affected_entities,
+            data: response.data,
+        })
+    }
+
+    async fn complete_task_work(
+        &self,
+        tenant_id: Uuid,
+        task_id: Uuid,
+        _user_id: Uuid,
+    ) -> Result<ServiceResult, AppError> {
+        let response: ServiceResponse = self
+            .make_request(
+                reqwest::Method::POST,
+                &format!("/tasks/{}/complete", task_id),
+                None::<()>,
+                tenant_id,
+            )
+            .await?;
+
+        Ok(ServiceResult {
+            success: response.success,
+            message: response.message,
+            affected_entities: response.affected_entities,
+            data: response.data,
+        })
+    }
+
     async fn update_priority(
         &self,
         tenant_id: Uuid,

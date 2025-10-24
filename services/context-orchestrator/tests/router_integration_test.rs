@@ -3,6 +3,7 @@
 
 use auth_clerk::JwtVerifier;
 use context_orchestrator::create_context_orchestrator_router;
+use event_bus::EventBus;
 use shuttle_axum::axum::Router;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -31,7 +32,8 @@ async fn test_router_signature_compiles() {
 
     // Only run the actual test if we can create a pool (skip in CI environments)
     if let Ok(pool) = pool_result {
-        let _router: Router = create_context_orchestrator_router(pool, verifier).await;
+        let event_bus = Arc::new(EventBus::new());
+        let _router: Router = create_context_orchestrator_router(pool, verifier, event_bus).await;
     }
 
     // The fact that this compiles means the integration is successful

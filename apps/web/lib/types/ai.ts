@@ -1,16 +1,9 @@
 export interface ReadinessEvaluation {
-  storyId: string
-  isReady: boolean
   score: number
-  checks: ReadinessCheck[]
-  suggestions: string[]
-  createdAt: string
-}
-
-export interface ReadinessCheck {
-  type: 'AcceptanceCriteria' | 'TaskCoverage' | 'StorySize' | 'Dependencies'
-  passed: boolean
-  message: string
+  missingItems: string[]
+  recommendations: string[]
+  summary: string
+  isReady: boolean
 }
 
 export interface PlanPack {

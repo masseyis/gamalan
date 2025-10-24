@@ -3,40 +3,33 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useAssistantStore } from '@/lib/stores/assistant'
-import { 
-  Sparkles, 
-  MessageSquare, 
-  Zap, 
-  Target,
-  ArrowRight,
-  Lightbulb
-} from 'lucide-react'
+import { Sparkles, MessageSquare, Zap, Target, ArrowRight, Lightbulb } from 'lucide-react'
 
 const EXAMPLE_UTTERANCES = [
   {
-    text: "I finished the authentication task",
-    description: "Mark a task as completed",
-    icon: Target
+    text: 'I finished the authentication task',
+    description: 'Mark a task as completed',
+    icon: Target,
   },
   {
-    text: "Split the user onboarding story",
-    description: "Break down a large story into smaller ones",
-    icon: Lightbulb
+    text: 'Split the user onboarding story',
+    description: 'Break down a large story into smaller ones',
+    icon: Lightbulb,
   },
   {
-    text: "What should I demo this sprint?",
-    description: "Get demo suggestions from completed work",
-    icon: Sparkles
+    text: 'What should I demo this sprint?',
+    description: 'Get demo suggestions from completed work',
+    icon: Sparkles,
   },
   {
-    text: "Check if story ABC-123 is ready",
-    description: "Analyze story readiness for development",
-    icon: Zap
-  }
+    text: 'Check if story ABC-123 is ready',
+    description: 'Analyze story readiness for development',
+    icon: Zap,
+  },
 ]
 
 export function AssistantWelcome() {
-  const setUtterance = useAssistantStore(state => state.setUtterance)
+  const setUtterance = useAssistantStore((state) => state.setUtterance)
 
   const handleExampleClick = (utterance: string) => {
     setUtterance(utterance)
@@ -56,8 +49,8 @@ export function AssistantWelcome() {
           </div>
           <h1 className="text-2xl font-bold mb-2">Welcome to Your AI Assistant</h1>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            I&apos;m here to help you stay on track with your agile workflow. Simply tell me what you want to do in natural language, 
-            and I&apos;ll help you get it done efficiently.
+            I&apos;m here to help you stay on track with your agile workflow. Simply tell me what
+            you want to do in natural language, and I&apos;ll help you get it done efficiently.
           </p>
         </CardContent>
       </Card>
@@ -74,10 +67,10 @@ export function AssistantWelcome() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {EXAMPLE_UTTERANCES.map((example, index) => {
             const Icon = example.icon
-            
+
             return (
-              <Card 
-                key={index} 
+              <Card
+                key={index}
                 className="cursor-pointer hover:shadow-md transition-all duration-200 hover:border-primary/30"
                 onClick={() => handleExampleClick(example.text)}
               >
@@ -89,12 +82,8 @@ export function AssistantWelcome() {
                     <div className="flex-1">
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <p className="font-medium text-sm mb-1">
-                            &ldquo;{example.text}&rdquo;
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {example.description}
-                          </p>
+                          <p className="font-medium text-sm mb-1">&ldquo;{example.text}&rdquo;</p>
+                          <p className="text-xs text-muted-foreground">{example.description}</p>
                         </div>
                         <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                       </div>
@@ -146,10 +135,13 @@ export function AssistantWelcome() {
       {/* Quick Tips */}
       <div className="text-center text-sm text-muted-foreground space-y-2">
         <p>
-          💡 <strong>Tip:</strong> Use <kbd className="px-2 py-1 bg-muted rounded text-xs">Cmd+K</kbd> to quickly focus the assistant bar from anywhere
+          💡 <strong>Tip:</strong> Use{' '}
+          <kbd className="px-2 py-1 bg-muted rounded text-xs">Cmd+K</kbd> to quickly focus the
+          assistant bar from anywhere
         </p>
         <p>
-          🎯 <strong>Be specific:</strong> The more context you provide, the more accurate I&apos;ll be
+          🎯 <strong>Be specific:</strong> The more context you provide, the more accurate I&apos;ll
+          be
         </p>
       </div>
     </div>

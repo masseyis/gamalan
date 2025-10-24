@@ -1,7 +1,7 @@
 # Test Dockerfile for Unified API Gateway
 # Builds the consolidated gateway for testing
 
-FROM rust:1.79-slim as builder
+FROM rust:latest as builder
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \

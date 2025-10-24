@@ -13,16 +13,16 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { useAssistantStore } from '@/lib/stores/assistant'
 import { EntityMatch, EvidenceChip } from '@/lib/types/assistant'
-import { 
-  FileText, 
-  CheckSquare, 
-  Calendar, 
+import {
+  FileText,
+  CheckSquare,
+  Calendar,
   GitPullRequest,
   GitCommit,
   User,
   Clock,
   MessageSquare,
-  ChevronRight
+  ChevronRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -43,7 +43,7 @@ const ENTITY_ICONS = {
 
 function EvidenceChipComponent({ evidence }: { evidence: EvidenceChip }) {
   const Icon = EVIDENCE_ICONS[evidence.type] || MessageSquare
-  
+
   return (
     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
       <Icon className="h-3 w-3" />
@@ -53,68 +53,69 @@ function EvidenceChipComponent({ evidence }: { evidence: EvidenceChip }) {
   )
 }
 
-function CandidateCard({ 
-  candidate, 
-  isSelected, 
+function CandidateCard({
+  candidate,
+  isSelected,
   onClick,
-  showConfidence = true 
-}: { 
+  showConfidence = true,
+}: {
   candidate: EntityMatch
   isSelected: boolean
   onClick: () => void
-  showConfidence?: boolean 
+  showConfidence?: boolean
 }) {
   const Icon = ENTITY_ICONS[candidate.type] || FileText
-  
-  const confidenceColor = candidate.confidence >= 0.8 ? 'text-green-600' : 
-                          candidate.confidence >= 0.6 ? 'text-yellow-600' : 
-                          'text-red-600'
-  
+
+  const confidenceColor =
+    candidate.confidence >= 0.8
+      ? 'text-green-600'
+      : candidate.confidence >= 0.6
+        ? 'text-yellow-600'
+        : 'text-red-600'
+
   return (
-    <Card 
+    <Card
       className={cn(
-        "cursor-pointer transition-all duration-200 hover:shadow-md",
-        isSelected && "ring-2 ring-primary bg-primary/5"
+        'cursor-pointer transition-all duration-200 hover:shadow-md',
+        isSelected && 'ring-2 ring-primary bg-primary/5'
       )}
       onClick={onClick}
       data-testid="candidate-card"
     >
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
-          <div className={cn(
-            "p-2 rounded-lg",
-            isSelected ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
-          )}>
+          <div
+            className={cn(
+              'p-2 rounded-lg',
+              isSelected ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'
+            )}
+          >
             <Icon className="h-4 w-4" />
           </div>
-          
+
           <div className="flex-1 min-w-0 space-y-2">
             <div className="flex items-start justify-between gap-2">
               <div>
-                <h3 className="font-semibold text-sm leading-tight">
-                  {candidate.title}
-                </h3>
+                <h3 className="font-semibold text-sm leading-tight">{candidate.title}</h3>
                 <Badge variant="outline" className="mt-1 text-xs capitalize">
                   {candidate.type}
                 </Badge>
               </div>
-              
+
               {showConfidence && (
                 <div className="text-right flex-shrink-0">
-                  <div className={cn("text-sm font-medium", confidenceColor)}>
+                  <div className={cn('text-sm font-medium', confidenceColor)}>
                     {Math.round(candidate.confidence * 100)}%
                   </div>
                   <div className="text-xs text-muted-foreground">match</div>
                 </div>
               )}
             </div>
-            
+
             {candidate.description && (
-              <p className="text-xs text-muted-foreground line-clamp-2">
-                {candidate.description}
-              </p>
+              <p className="text-xs text-muted-foreground line-clamp-2">{candidate.description}</p>
             )}
-            
+
             {candidate.evidence.length > 0 && (
               <div className="space-y-1">
                 <div className="text-xs font-medium text-muted-foreground">Evidence:</div>
@@ -131,11 +132,13 @@ function CandidateCard({
               </div>
             )}
           </div>
-          
-          <ChevronRight className={cn(
-            "h-4 w-4 transition-transform duration-200",
-            isSelected && "rotate-90 text-primary"
-          )} />
+
+          <ChevronRight
+            className={cn(
+              'h-4 w-4 transition-transform duration-200',
+              isSelected && 'rotate-90 text-primary'
+            )}
+          />
         </div>
       </CardContent>
     </Card>
@@ -144,13 +147,8 @@ function CandidateCard({
 
 export function CandidatePickerDialog() {
   const [selectedIndex, setSelectedIndex] = useState(0)
-  
-  const {
-    lastIntentResult,
-    selectedCandidate,
-    selectCandidate,
-    cancelAction,
-  } = useAssistantStore()
+
+  const { lastIntentResult, selectedCandidate, selectCandidate, cancelAction } = useAssistantStore()
 
   const isOpen = lastIntentResult?.ambiguous && !selectedCandidate
   const candidates = useMemo(() => lastIntentResult?.entities || [], [lastIntentResult?.entities])
@@ -169,10 +167,10 @@ export function CandidatePickerDialog() {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'ArrowDown') {
         event.preventDefault()
-        setSelectedIndex(prev => Math.min(prev + 1, candidates.length - 1))
+        setSelectedIndex((prev) => Math.min(prev + 1, candidates.length - 1))
       } else if (event.key === 'ArrowUp') {
         event.preventDefault()
-        setSelectedIndex(prev => Math.max(prev - 1, 0))
+        setSelectedIndex((prev) => Math.max(prev - 1, 0))
       } else if (event.key === 'Enter') {
         event.preventDefault()
         if (candidates[selectedIndex]) {
@@ -197,8 +195,8 @@ export function CandidatePickerDialog() {
 
   return (
     <Dialog open={isOpen} onOpenChange={() => cancelAction()}>
-      <DialogContent 
-        className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col" 
+      <DialogContent
+        className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col"
         data-testid="candidate-picker-dialog"
       >
         <DialogHeader>
@@ -207,8 +205,8 @@ export function CandidatePickerDialog() {
             Which one did you mean?
           </DialogTitle>
           <DialogDescription>
-            I found {candidates.length} possible matches for your request. 
-            Please select the one you meant.
+            I found {candidates.length} possible matches for your request. Please select the one you
+            meant.
           </DialogDescription>
         </DialogHeader>
 
@@ -228,10 +226,7 @@ export function CandidatePickerDialog() {
             Use ↑↓ arrows and Enter to select, Esc to cancel
           </div>
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={cancelAction}
-            >
+            <Button variant="outline" onClick={cancelAction}>
               Cancel
             </Button>
             <Button

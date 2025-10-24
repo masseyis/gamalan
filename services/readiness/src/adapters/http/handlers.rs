@@ -1,5 +1,6 @@
 use crate::application::ReadinessUsecases;
 use crate::domain::{AcceptanceCriterion, ReadinessEvaluation};
+use crate::rebuild_projections;
 use auth_clerk::organization::AuthenticatedWithOrg;
 use axum::{
     extract::{Path, State},
@@ -9,8 +10,16 @@ use axum::{
 };
 use common::AppError;
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
 use std::sync::Arc;
+use tracing::{error, info, warn};
 use uuid::Uuid;
+
+#[derive(Clone)]
+pub struct ReadinessAppState {
+    pub usecases: Arc<ReadinessUsecases>,
+    pub pool: Arc<PgPool>,
+}
 
 #[derive(Debug, Deserialize)]
 pub struct AddCriteriaRequest {
@@ -51,14 +60,31 @@ impl From<AcceptanceCriterion> for AcceptanceCriterionResponse {
 #[derive(Debug, Serialize)]
 pub struct ReadinessEvaluationResponse {
     pub score: i32,
+    #[serde(rename = "missingItems")]
     pub missing_items: Vec<String>,
+    pub recommendations: Vec<String>,
+    pub summary: String,
+    #[serde(rename = "isReady")]
+    pub is_ready: bool,
 }
 
 impl From<ReadinessEvaluation> for ReadinessEvaluationResponse {
     fn from(eval: ReadinessEvaluation) -> Self {
+        let is_ready = eval.is_ready();
+        let ReadinessEvaluation {
+            score,
+            missing_items,
+            recommendations,
+            summary,
+            ..
+        } = eval;
+
         Self {
-            score: eval.score,
-            missing_items: eval.missing_items,
+            score,
+            missing_items,
+            recommendations,
+            summary,
+            is_ready,
         }
     }
 }
@@ -66,24 +92,84 @@ impl From<ReadinessEvaluation> for ReadinessEvaluationResponse {
 pub async fn evaluate_readiness(
     auth: AuthenticatedWithOrg,
     Path(story_id): Path<Uuid>,
-    State(usecases): State<Arc<ReadinessUsecases>>,
+    State(state): State<ReadinessAppState>,
 ) -> Result<impl IntoResponse, AppError> {
+    let usecases = state.usecases.clone();
     let organization_id = auth.org_context.effective_organization_uuid();
-    let evaluation = usecases
+    info!(
+        %story_id,
+        org_id = ?organization_id,
+        user = %auth.auth.sub,
+        "Evaluating story readiness"
+    );
+
+    let evaluation = match usecases
         .evaluate_story_readiness(story_id, organization_id)
-        .await?;
+        .await
+    {
+        Ok(value) => value,
+        Err(err) => {
+            warn!(
+                %story_id,
+                org_id = ?organization_id,
+                user = %auth.auth.sub,
+                error = %err,
+                "Story readiness evaluation failed"
+            );
+            return Err(err);
+        }
+    };
+
+    info!(
+        %story_id,
+        org_id = ?organization_id,
+        user = %auth.auth.sub,
+        score = evaluation.score,
+        missing_items = evaluation.missing_items.len(),
+        "Story readiness evaluation completed"
+    );
+
     Ok(Json(ReadinessEvaluationResponse::from(evaluation)))
 }
 
 pub async fn generate_criteria(
     auth: AuthenticatedWithOrg,
     Path(story_id): Path<Uuid>,
-    State(usecases): State<Arc<ReadinessUsecases>>,
+    State(state): State<ReadinessAppState>,
 ) -> Result<impl IntoResponse, AppError> {
+    let usecases = state.usecases.clone();
     let organization_id = auth.org_context.effective_organization_uuid();
-    let criteria = usecases
+    info!(
+        %story_id,
+        org_id = ?organization_id,
+        user = %auth.auth.sub,
+        "Generating acceptance criteria"
+    );
+
+    let criteria = match usecases
         .generate_acceptance_criteria(story_id, organization_id)
-        .await?;
+        .await
+    {
+        Ok(value) => value,
+        Err(err) => {
+            error!(
+                %story_id,
+                org_id = ?organization_id,
+                user = %auth.auth.sub,
+                error = %err,
+                "Acceptance criteria generation failed"
+            );
+            return Err(err);
+        }
+    };
+
+    info!(
+        %story_id,
+        org_id = ?organization_id,
+        generated = criteria.len(),
+        "Generated acceptance criteria"
+    );
+
     let responses: Vec<AcceptanceCriterionResponse> = criteria
         .into_iter()
         .map(AcceptanceCriterionResponse::from)
@@ -94,12 +180,34 @@ pub async fn generate_criteria(
 pub async fn get_criteria(
     auth: AuthenticatedWithOrg,
     Path(story_id): Path<Uuid>,
-    State(usecases): State<Arc<ReadinessUsecases>>,
+    State(state): State<ReadinessAppState>,
 ) -> Result<impl IntoResponse, AppError> {
+    let usecases = state.usecases.clone();
     let organization_id = auth.org_context.effective_organization_uuid();
-    let criteria = usecases
+    info!(
+        %story_id,
+        org_id = ?organization_id,
+        user = %auth.auth.sub,
+        "Fetching acceptance criteria"
+    );
+
+    let criteria = match usecases
         .get_criteria_for_story(story_id, organization_id)
-        .await?;
+        .await
+    {
+        Ok(value) => value,
+        Err(err) => {
+            error!(
+                %story_id,
+                org_id = ?organization_id,
+                user = %auth.auth.sub,
+                error = %err,
+                "Failed to fetch acceptance criteria"
+            );
+            return Err(err);
+        }
+    };
+
     let responses: Vec<AcceptanceCriterionResponse> = criteria
         .into_iter()
         .map(AcceptanceCriterionResponse::from)
@@ -110,9 +218,10 @@ pub async fn get_criteria(
 pub async fn add_criteria(
     auth: AuthenticatedWithOrg,
     Path(story_id): Path<Uuid>,
-    State(usecases): State<Arc<ReadinessUsecases>>,
+    State(state): State<ReadinessAppState>,
     Json(payload): Json<AddCriteriaRequest>,
 ) -> Result<impl IntoResponse, AppError> {
+    let usecases = state.usecases.clone();
     let organization_id = auth.org_context.effective_organization_uuid();
     let criteria_tuples: Vec<(String, String, String, String)> = payload
         .criteria
@@ -129,4 +238,12 @@ pub async fn add_criteria(
         .collect();
 
     Ok((StatusCode::CREATED, Json(responses)))
+}
+
+pub async fn rehydrate_projections(
+    AuthenticatedWithOrg { .. }: AuthenticatedWithOrg,
+    State(state): State<ReadinessAppState>,
+) -> Result<impl IntoResponse, AppError> {
+    rebuild_projections(state.pool.clone()).await;
+    Ok(StatusCode::ACCEPTED)
 }

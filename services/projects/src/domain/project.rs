@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Project {
     pub id: Uuid,
     pub organization_id: Option<Uuid>, // None for personal projects
@@ -14,6 +15,7 @@ pub struct Project {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ProjectSettings {
     pub id: Uuid,
     pub project_id: Uuid,
@@ -57,6 +59,7 @@ impl Default for DorTemplate {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateProjectRequest {
     pub name: String,
     pub description: Option<String>,
@@ -66,6 +69,7 @@ pub struct CreateProjectRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateProjectRequest {
     pub name: Option<String>,
     pub description: Option<String>,

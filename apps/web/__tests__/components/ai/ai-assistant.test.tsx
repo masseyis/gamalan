@@ -8,7 +8,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({
     toast: vi.fn(),
-  })
+  }),
 }))
 
 // Mock the API
@@ -18,7 +18,7 @@ vi.mock('@/lib/api/ai', () => ({
     generateAcceptanceCriteria: vi.fn(),
     suggestStoryBreakdown: vi.fn(),
     clarifyTaskRequirements: vi.fn(),
-  }
+  },
 }))
 
 const createWrapper = () => {
@@ -28,11 +28,9 @@ const createWrapper = () => {
       mutations: { retry: false },
     },
   })
-  
+
   return ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
 }
 
@@ -43,7 +41,7 @@ describe('AIAssistant', () => {
 
   it('renders with collapsed state by default', () => {
     const Wrapper = createWrapper()
-    
+
     render(
       <Wrapper>
         <AIAssistant projectId="test-project" context="general" />
@@ -58,7 +56,7 @@ describe('AIAssistant', () => {
   it('expands when expand button is clicked', async () => {
     const user = userEvent.setup()
     const Wrapper = createWrapper()
-    
+
     render(
       <Wrapper>
         <AIAssistant projectId="test-project" storyId="test-story" context="story" />
@@ -72,7 +70,7 @@ describe('AIAssistant', () => {
   it('shows story-specific actions when context is story', async () => {
     const user = userEvent.setup()
     const Wrapper = createWrapper()
-    
+
     render(
       <Wrapper>
         <AIAssistant projectId="test-project" storyId="test-story" context="story" />
@@ -80,7 +78,7 @@ describe('AIAssistant', () => {
     )
 
     await user.click(screen.getByText('Expand'))
-    
+
     expect(screen.getByText('Check Readiness')).toBeInTheDocument()
     expect(screen.getByText('Generate Acceptance Criteria')).toBeInTheDocument()
     expect(screen.getByText('Suggest Breakdown')).toBeInTheDocument()
@@ -89,27 +87,27 @@ describe('AIAssistant', () => {
   it('shows task-specific actions when context is task', async () => {
     const user = userEvent.setup()
     const Wrapper = createWrapper()
-    
+
     render(
       <Wrapper>
-        <AIAssistant 
-          projectId="test-project" 
+        <AIAssistant
+          projectId="test-project"
           storyId="test-story"
           taskId="test-task"
-          context="task" 
+          context="task"
         />
       </Wrapper>
     )
 
     await user.click(screen.getByText('Expand'))
-    
+
     expect(screen.getByText('Clarify Requirements')).toBeInTheDocument()
   })
 
   it('shows beta warning message', async () => {
     const user = userEvent.setup()
     const Wrapper = createWrapper()
-    
+
     render(
       <Wrapper>
         <AIAssistant projectId="test-project" storyId="test-story" context="story" />
@@ -117,13 +115,13 @@ describe('AIAssistant', () => {
     )
 
     await user.click(screen.getByText('Expand'))
-    
+
     expect(screen.getByText(/AI features are in beta/i)).toBeInTheDocument()
   })
 
   it('does not render when no actions are available', () => {
     const Wrapper = createWrapper()
-    
+
     const { container } = render(
       <Wrapper>
         <AIAssistant projectId="test-project" context="task" />

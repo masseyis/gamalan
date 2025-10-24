@@ -1,10 +1,44 @@
-import { 
-  InterpretRequest, 
-  InterpretResponse, 
-  ActionRequest, 
-  ActionResponse, 
-  SuggestionsResponse 
+import {
+  InterpretRequest,
+  InterpretResponse,
+  ActionRequest,
+  ActionResponse,
+  SuggestionsResponse,
 } from '@/lib/types/assistant'
+
+const DEFAULT_ORCHESTRATOR_BASE = 'http://localhost:8000/api/v1/context'
+
+const normalizeBaseUrl = (input?: string): string => {
+  if (!input) {
+    return DEFAULT_ORCHESTRATOR_BASE
+  }
+
+  const trimmed = input.replace(/\/+$/, '')
+
+  // Check if both /api/v1 and /context are present in the correct order
+  const hasApiV1 = trimmed.includes('/api/v1')
+  const hasContext = trimmed.includes('/context')
+  
+  if (hasApiV1 && hasContext) {
+    // Both are present, return as-is
+    return trimmed
+  }
+  
+  if (hasApiV1 && !hasContext) {
+    // Has /api/v1 but missing /context, append it
+    return `${trimmed}/context`
+  }
+  
+  if (!hasApiV1 && hasContext) {
+    // Has /context but missing /api/v1, insert /api/v1 before /context
+    const contextIndex = trimmed.indexOf('/context')
+    const baseUrl = trimmed.substring(0, contextIndex)
+    return `${baseUrl}/api/v1/context`
+  }
+  
+  // Neither is present, append both
+  return `${trimmed}/api/v1/context`
+}
 
 // Create orchestrator client
 class OrchestratorClient {
@@ -12,7 +46,7 @@ class OrchestratorClient {
   private timeout: number
 
   constructor() {
-    this.baseURL = process.env.NEXT_PUBLIC_ORCHESTRATOR_API_URL || 'http://localhost:8005'
+    this.baseURL = normalizeBaseUrl(process.env.NEXT_PUBLIC_ORCHESTRATOR_API_URL)
     this.timeout = 15000 // 15 seconds for LLM processing
   }
 
@@ -82,7 +116,7 @@ class OrchestratorClient {
     if (cursor) {
       params.append('cursor', cursor)
     }
-    
+
     return this.request<SuggestionsResponse>(`/suggestions?${params}`)
   }
 
@@ -105,13 +139,17 @@ class OrchestratorClient {
 const mockOrchestrator = {
   async interpretUtterance(request: InterpretRequest): Promise<InterpretResponse> {
     // Simulate processing delay
-    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000))
+    await new Promise((resolve) => setTimeout(resolve, 1000 + Math.random() * 2000))
 
     // Mock different intent scenarios based on utterance content
     const { utterance } = request
     const lowerUtterance = utterance.toLowerCase()
 
-    if (lowerUtterance.includes('finished') || lowerUtterance.includes('done') || lowerUtterance.includes('completed')) {
+    if (
+      lowerUtterance.includes('finished') ||
+      lowerUtterance.includes('done') ||
+      lowerUtterance.includes('completed')
+    ) {
       return {
         intent: 'mark_task_complete',
         confidence: 0.92,
@@ -127,8 +165,8 @@ const mockOrchestrator = {
             evidence: [
               { type: 'assignment', label: 'Assigned to you', value: 'Current assignee' },
               { type: 'pr', label: 'Recent PR', value: '#42', url: '/pr/42' },
-              { type: 'time', label: 'Last modified', value: '2 hours ago' }
-            ]
+              { type: 'time', label: 'Last modified', value: '2 hours ago' },
+            ],
           },
           {
             id: 'task-456',
@@ -138,9 +176,9 @@ const mockOrchestrator = {
             confidence: 0.78,
             evidence: [
               { type: 'commit', label: 'Recent commit', value: 'abc123' },
-              { type: 'mention', label: 'Mentioned in standup', value: 'Yesterday' }
-            ]
-          }
+              { type: 'mention', label: 'Mentioned in standup', value: 'Yesterday' },
+            ],
+          },
         ],
         suggestedAction: {
           type: 'mark_complete',
@@ -151,46 +189,49 @@ const mockOrchestrator = {
           description: 'Mark task as completed and update story progress',
           confirmationRequired: true,
           draft: {
-            summary: 'I will mark the "Implement user authentication" task as completed and update its parent story status.',
+            summary:
+              'I will mark the "Implement user authentication" task as completed and update its parent story status.',
             steps: [
               {
                 id: 'step-1',
                 description: 'Validate that the task exists and is assigned to you',
                 type: 'validation',
                 details: 'Check task ID "task-123" in the backlog service',
-                canSkip: false
+                canSkip: false,
               },
               {
-                id: 'step-2', 
+                id: 'step-2',
                 description: 'Update task status to "completed"',
                 type: 'api_call',
                 details: 'Call PATCH /tasks/task-123 with status: "completed"',
-                canSkip: false
+                canSkip: false,
               },
               {
                 id: 'step-3',
                 description: 'Check if parent story can advance',
                 type: 'validation',
                 details: 'Analyze if all story tasks are complete to move story to "In Review"',
-                canSkip: false
+                canSkip: false,
               },
               {
                 id: 'step-4',
                 description: 'Send completion notification',
                 type: 'send_notification',
                 details: 'Notify team members about task completion',
-                canSkip: true
-              }
+                canSkip: true,
+              },
             ],
-            reasoning: 'Based on your message "I finished the authentication task", I identified this refers to the user authentication implementation task assigned to you. Marking it complete will help track progress and potentially advance the parent story.',
-            expectedOutcome: 'Task will be marked as complete, story progress will update, and team will be notified of the completion.',
+            reasoning:
+              'Based on your message "I finished the authentication task", I identified this refers to the user authentication implementation task assigned to you. Marking it complete will help track progress and potentially advance the parent story.',
+            expectedOutcome:
+              'Task will be marked as complete, story progress will update, and team will be notified of the completion.',
             potentialIssues: [
               'If there are unfinished subtasks, the story may not advance automatically',
-              'Team members may expect a demo or code review before marking complete'
+              'Team members may expect a demo or code review before marking complete',
             ],
-            estimatedTime: '< 5 seconds'
-          }
-        }
+            estimatedTime: '< 5 seconds',
+          },
+        },
       }
     }
 
@@ -209,9 +250,9 @@ const mockOrchestrator = {
             confidence: 0.95,
             evidence: [
               { type: 'assignment', label: 'Your story', value: 'Primary assignee' },
-              { type: 'time', label: 'Recently viewed', value: '5 minutes ago' }
-            ]
-          }
+              { type: 'time', label: 'Recently viewed', value: '5 minutes ago' },
+            ],
+          },
         ],
         suggestedAction: {
           type: 'generate_story_breakdown',
@@ -222,47 +263,50 @@ const mockOrchestrator = {
           description: 'Generate AI-powered story breakdown suggestions',
           confirmationRequired: true,
           draft: {
-            summary: 'I will analyze the "User onboarding flow" story and break it into smaller, manageable stories with acceptance criteria.',
+            summary:
+              'I will analyze the "User onboarding flow" story and break it into smaller, manageable stories with acceptance criteria.',
             steps: [
               {
                 id: 'step-1',
                 description: 'Analyze the current story scope and requirements',
                 type: 'validation',
                 details: 'Review story description, existing tasks, and acceptance criteria',
-                canSkip: false
+                canSkip: false,
               },
               {
                 id: 'step-2',
                 description: 'Generate story breakdown suggestions using AI',
                 type: 'api_call',
                 details: 'Call prompt-builder service to create vertical story slices',
-                canSkip: false
+                canSkip: false,
               },
               {
                 id: 'step-3',
                 description: 'Create acceptance criteria for each new story',
                 type: 'api_call',
                 details: 'Generate Given/When/Then criteria for each story slice',
-                canSkip: false
+                canSkip: false,
               },
               {
                 id: 'step-4',
                 description: 'Present breakdown options for your review',
                 type: 'validation',
                 details: 'Show suggested stories with estimates and priorities for approval',
-                canSkip: false
-              }
+                canSkip: false,
+              },
             ],
-            reasoning: 'The current story appears large and complex. Breaking it down will make it easier to estimate, develop, and test in smaller increments while maintaining business value.',
-            expectedOutcome: 'You will receive 3-5 smaller story suggestions, each with clear acceptance criteria and estimated complexity.',
+            reasoning:
+              'The current story appears large and complex. Breaking it down will make it easier to estimate, develop, and test in smaller increments while maintaining business value.',
+            expectedOutcome:
+              'You will receive 3-5 smaller story suggestions, each with clear acceptance criteria and estimated complexity.',
             potentialIssues: [
               'AI suggestions may not capture all business nuances',
               'Some suggested stories might still need further breakdown',
-              'Dependencies between new stories will need to be considered'
+              'Dependencies between new stories will need to be considered',
             ],
-            estimatedTime: '10-15 seconds'
-          }
-        }
+            estimatedTime: '10-15 seconds',
+          },
+        },
       }
     }
 
@@ -272,14 +316,14 @@ const mockOrchestrator = {
       confidence: 0.45,
       autoSelect: false,
       ambiguous: true,
-      entities: []
+      entities: [],
     }
   },
 
   async executeAction(request: ActionRequest): Promise<ActionResponse> {
     // Simulate action execution
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+
     const { action } = request
     const success = Math.random() > 0.1 // 90% success rate
 
@@ -289,60 +333,63 @@ const mockOrchestrator = {
         message: `Successfully executed ${action.type} for ${action.entityType} ${action.entityId}`,
         data: {
           entityId: action.entityId,
-          newStatus: action.parameters.status || 'updated'
-        }
+          newStatus: action.parameters.status || 'updated',
+        },
       }
     } else {
       return {
         success: false,
         message: 'Failed to execute action',
-        errors: ['Service temporarily unavailable', 'Please try again in a moment']
+        errors: ['Service temporarily unavailable', 'Please try again in a moment'],
       }
     }
   },
 
   async getSuggestions(projectId: string): Promise<SuggestionsResponse> {
-    await new Promise(resolve => setTimeout(resolve, 800))
-    
+    await new Promise((resolve) => setTimeout(resolve, 800))
+
     return {
       suggestions: [
         {
           id: 'sugg-1',
           type: 'story-readiness',
           title: 'Story needs acceptance criteria',
-          description: 'Story "User profile page" lacks detailed acceptance criteria. Would you like me to generate some?',
+          description:
+            'Story "User profile page" lacks detailed acceptance criteria. Would you like me to generate some?',
           priority: 'high',
           confidence: 0.92,
           actionable: true,
           entityId: 'story-456',
           entityType: 'story',
           suggestedAction: 'generate_acceptance_criteria',
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
         },
         {
           id: 'sugg-2',
           type: 'sprint-planning',
           title: 'Sprint capacity recommendation',
-          description: 'Based on team velocity, consider reducing sprint scope by 2-3 story points to improve predictability.',
+          description:
+            'Based on team velocity, consider reducing sprint scope by 2-3 story points to improve predictability.',
           priority: 'medium',
           confidence: 0.78,
           actionable: true,
           suggestedAction: 'adjust_sprint_capacity',
-          createdAt: new Date(Date.now() - 3600000).toISOString()
+          createdAt: new Date(Date.now() - 3600000).toISOString(),
         },
         {
           id: 'sugg-3',
           type: 'demo-prep',
           title: 'Demo pack ready for review',
-          description: 'Your demo pack for Sprint 12 is ready with 4 completed stories. Review and approve for stakeholder presentation.',
+          description:
+            'Your demo pack for Sprint 12 is ready with 4 completed stories. Review and approve for stakeholder presentation.',
           priority: 'medium',
           confidence: 0.85,
           actionable: true,
           suggestedAction: 'review_demo_pack',
-          createdAt: new Date(Date.now() - 1800000).toISOString()
-        }
+          createdAt: new Date(Date.now() - 1800000).toISOString(),
+        },
       ],
-      hasMore: false
+      hasMore: false,
     }
   },
 
@@ -351,11 +398,11 @@ const mockOrchestrator = {
   },
 
   async getReadiness(): Promise<{ ready: boolean; services: Record<string, boolean> }> {
-    return { 
-      ready: true, 
-      services: { llm: true, vector_db: true, services: true } 
+    return {
+      ready: true,
+      services: { llm: true, vector_db: true, services: true },
     }
-  }
+  },
 }
 
 // Always use real orchestrator client in production

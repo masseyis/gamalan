@@ -11,84 +11,111 @@ import {
   Users,
   Settings,
   Bell,
-  Search,
   Plus,
   Sparkles,
   Command,
-  Zap
+  Zap,
 } from 'lucide-react'
 
-import { useUser, useClerk } from '@clerk/nextjs'
+import { useClerk, useUser, SignInButton, SignedIn, SignedOut } from '@clerk/nextjs'
+import { useUserContext } from '@/components/providers/UserContextProvider'
 import { OrganizationSwitcher } from '@/components/organization/organization-switcher'
-
-function ClerkAuthWrapper({ children }: { children: (authData: any) => React.ReactNode }) {
-  const { user, isSignedIn, isLoaded } = useUser()
-  const { signOut } = useClerk()
-  
-  // Wait for Clerk to load
-  if (!isLoaded) {
-    return children({ isSignedIn: false, user: null, signOut: () => {}, loading: true })
-  }
-  
-  return children({ isSignedIn, user, signOut, loading: false })
-}
 
 export function Navigation() {
   const pathname = usePathname()
+  const { user: clerkUser, isLoaded: isClerkLoaded, isSignedIn } = useUser()
+  const { signOut } = useClerk()
+  const { user: appUser, isLoading } = useUserContext()
+
+  const loading = !isClerkLoaded || isLoading
+
+  const resolvedEmail =
+    appUser?.email ||
+    clerkUser?.primaryEmailAddress?.emailAddress ||
+    clerkUser?.emailAddresses?.[0]?.emailAddress ||
+    ''
+
+  const resolvedName =
+    clerkUser?.fullName || clerkUser?.firstName || resolvedEmail.split('@')[0] || 'User'
+
+  const initials =
+    resolvedName
+      .split(' ')
+      .map((part) => part[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase() || 'U'
 
   return (
-    <ClerkAuthWrapper>
-      {({ isSignedIn, user, signOut, loading }) => (
-        <NavigationContent 
-          pathname={pathname}
-          isSignedIn={isSignedIn}
-          user={user}
-          signOut={signOut}
-          loading={loading}
-        />
-      )}
-    </ClerkAuthWrapper>
+    <NavigationContent
+      pathname={pathname}
+      isSignedIn={Boolean(isSignedIn)}
+      user={{
+        name: resolvedName,
+        email: resolvedEmail,
+        initials,
+      }}
+      signOut={() => signOut({ redirectUrl: '/sign-in' })}
+      loading={loading}
+    />
   )
 }
 
-function NavigationContent({ pathname, isSignedIn, user, signOut, loading }: any) {
+interface NavigationContentProps {
+  pathname: string
+  isSignedIn: boolean
+  user: {
+    name: string
+    email: string
+    initials: string
+  }
+  signOut: () => void | Promise<void>
+  loading: boolean
+}
+
+function NavigationContent({
+  pathname,
+  isSignedIn,
+  user,
+  signOut,
+  loading,
+}: NavigationContentProps) {
   const navigation = [
     {
       name: 'Dashboard',
       href: '/dashboard',
       icon: LayoutDashboard,
-      current: pathname === '/dashboard'
+      current: pathname === '/dashboard',
     },
     {
       name: 'Projects',
       href: '/projects',
       icon: FolderOpen,
-      current: pathname.startsWith('/projects')
+      current: pathname.startsWith('/projects'),
     },
     {
-      name: 'Team',
-      href: '/team',
+      name: 'Teams',
+      href: '/teams',
       icon: Users,
-      current: pathname === '/team'
+      current: pathname.startsWith('/teams'),
     },
     {
       name: 'Reports',
       href: '/reports',
       icon: Settings,
-      current: pathname === '/reports'
+      current: pathname === '/reports',
     },
     {
       name: 'Assistant',
       href: '/assistant',
       icon: Sparkles,
       current: pathname === '/assistant',
-      isPrimary: true
-    }
+      isPrimary: true,
+    },
   ]
 
-  const userInitials = user?.firstName && user?.lastName 
-    ? `${user.firstName[0]}${user.lastName[0]}`
-    : user?.emailAddresses?.[0]?.emailAddress?.[0]?.toUpperCase() || 'U'
+  const displayName = user.name || 'User'
+  const displayEmail = user.email || 'user@example.com'
 
   return (
     <nav className="border-b border-border bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/50 sticky top-0 z-50">
@@ -96,18 +123,23 @@ function NavigationContent({ pathname, isSignedIn, user, signOut, loading }: any
         <div className="flex justify-between items-center h-16">
           {/* Left side: Logo + Organization Switcher */}
           <div className="flex items-center gap-6">
-            <Link href="/assistant" className="flex items-center gap-3 group" prefetch={false} data-testid="battra-logo">
+            <Link
+              href="/assistant"
+              className="flex items-center gap-3 group"
+              prefetch={false}
+              data-testid="battra-logo"
+            >
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center group-hover:glow-yellow transition-all duration-200">
                 <Zap className="text-primary-foreground w-4 h-4" data-testid="zap-icon" />
               </div>
-              <span className="text-xl font-bold text-primary">
-                Battra AI
-              </span>
+              <span className="text-xl font-bold text-primary">Battra AI</span>
             </Link>
 
             {/* Organization Switcher (only show when signed in) */}
-            {isSignedIn && !loading && (
-              <OrganizationSwitcher />
+            {!loading && (
+              <SignedIn>
+                <OrganizationSwitcher />
+              </SignedIn>
             )}
           </div>
 
@@ -118,21 +150,20 @@ function NavigationContent({ pathname, isSignedIn, user, signOut, loading }: any
               return (
                 <Link key={item.name} href={item.href} prefetch={false}>
                   <Button
-                    variant={item.current ? "default" : "ghost"}
+                    variant={item.current ? 'default' : 'ghost'}
                     className={`
                       gap-2 transition-all duration-200
-                      ${item.current 
-                        ? "bg-primary text-primary-foreground shadow-soft" 
-                        : "hover:bg-primary/10 hover:text-primary"
+                      ${
+                        item.current
+                          ? 'bg-primary text-primary-foreground shadow-soft'
+                          : 'hover:bg-primary/10 hover:text-primary'
                       }
-                      ${item.isPrimary ? "font-semibold" : ""}
+                      ${item.isPrimary ? 'font-semibold' : ''}
                     `}
                   >
                     <Icon className="h-4 w-4" />
                     {item.name}
-                    {item.isPrimary && (
-                      <div className="h-1.5 w-1.5 bg-primary rounded-full ml-1" />
-                    )}
+                    {item.isPrimary && <div className="h-1.5 w-1.5 bg-primary rounded-full ml-1" />}
                   </Button>
                 </Link>
               )
@@ -142,8 +173,8 @@ function NavigationContent({ pathname, isSignedIn, user, signOut, loading }: any
           {/* Right side actions */}
           <div className="flex items-center gap-3">
             {/* Assistant Trigger - replaces search */}
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               className="hidden sm:flex hover:bg-primary/10 hover:text-primary gap-2 text-sm"
               onClick={() => {
                 if (pathname !== '/assistant') {
@@ -161,7 +192,11 @@ function NavigationContent({ pathname, isSignedIn, user, signOut, loading }: any
             </Button>
 
             {/* Notifications */}
-            <Button variant="ghost" size="icon" className="hover:bg-primary/10 hover:text-primary relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hover:bg-primary/10 hover:text-primary relative"
+            >
               <Bell className="h-4 w-4" />
               <div className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full text-xs flex items-center justify-center text-white">
                 <div className="h-1.5 w-1.5 bg-white rounded-full"></div>
@@ -169,7 +204,10 @@ function NavigationContent({ pathname, isSignedIn, user, signOut, loading }: any
             </Button>
 
             {/* Quick create */}
-            <Button size="sm" className="gap-2 shadow-soft hover:shadow-elevated transition-all duration-200">
+            <Button
+              size="sm"
+              className="gap-2 shadow-soft hover:shadow-elevated transition-all duration-200"
+            >
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">New</span>
             </Button>
@@ -178,28 +216,26 @@ function NavigationContent({ pathname, isSignedIn, user, signOut, loading }: any
             {isSignedIn ? (
               <div className="flex items-center gap-3 pl-3 border-l border-border/50">
                 <div className="hidden sm:block text-right">
-                  <div className="text-sm font-medium text-foreground">
-                    {user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : 'User'}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {user?.emailAddresses?.[0]?.emailAddress || 'user@example.com'}
-                  </div>
+                  <div className="text-sm font-medium text-foreground">{displayName}</div>
+                  <div className="text-xs text-muted-foreground">{displayEmail}</div>
                 </div>
-                <Avatar 
+                <Avatar
                   className="h-8 w-8 ring-2 ring-primary/20 hover:ring-primary/40 transition-all cursor-pointer"
                   onClick={() => signOut()}
                   title="Click to sign out"
                 >
                   <AvatarFallback className="bg-gradient-primary text-white text-sm font-semibold">
-                    {userInitials}
+                    {user.initials}
                   </AvatarFallback>
                 </Avatar>
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <Link href="/sign-in" prefetch={false}>
-                  <Button size="sm">Sign In</Button>
-                </Link>
+                <SignedOut>
+                  <SignInButton mode="modal">
+                    <Button size="sm">Sign In</Button>
+                  </SignInButton>
+                </SignedOut>
               </div>
             )}
           </div>

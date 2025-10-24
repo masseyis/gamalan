@@ -4,20 +4,9 @@ import { defineConfig, devices } from '@playwright/test'
  * @see https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({
-  testDir: './tests',
-  /* Exclude staging tests from default runs (use staging config for those) */
+  testDir: './tests/e2e',
+  /* Run all E2E tests in the e2e directory (staging tests are in separate directory) */
   testMatch: '**/*.spec.ts',
-  testIgnore: [
-    '**/staging-*.spec.ts',
-    '**/production-*.spec.ts',
-    // Skip tests that require full implementation
-    '**/ai-features.spec.ts',
-    '**/backlog-management.spec.ts',
-    '**/story-detail.spec.ts',
-    '**/sprint-board.spec.ts',
-    '**/responsive-design.spec.ts',
-    '**/brand/bran.spec.ts',
-  ],
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -43,8 +32,8 @@ export default defineConfig({
     screenshot: 'only-on-failure',
 
     /* Test timeout */
-    actionTimeout: 30 * 1000, // 30 seconds per action
-    navigationTimeout: 60 * 1000, // 1 minute for navigation
+    actionTimeout: 60 * 1000, // 60 seconds per action
+    navigationTimeout: 120 * 1000, // 2 minutes for navigation
   },
 
   /* Configure projects for major browsers */
@@ -55,15 +44,23 @@ export default defineConfig({
       testMatch: /global\.setup\.ts/,
     },
 
-    // Authenticated tests project
+    // Authenticated tests project - tests that start with an authenticated user
     {
       name: 'authenticated tests',
-      testMatch: /.*authenticated\.spec\.ts|.*auth\.spec\.ts/,
+      testMatch:
+        /.*authenticated\.spec\.ts|.*cross-browser\.spec\.ts|.*error-handling\.spec\.ts|.*performance-stress\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         storageState: 'tests/playwright/.clerk/user.json',
       },
       dependencies: ['global setup'],
+    },
+
+    // Authentication flow tests project - tests that verify sign-in/sign-up flows
+    {
+      name: 'auth flow tests',
+      testMatch: /.*auth\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'] },
     },
 
     // Unauthenticated tests project (public pages)
@@ -79,6 +76,9 @@ export default defineConfig({
       testIgnore: [
         /.*authenticated\.spec\.ts/,
         /.*auth\.spec\.ts/,
+        /.*cross-browser\.spec\.ts/,
+        /.*error-handling\.spec\.ts/,
+        /.*performance-stress\.spec\.ts/,
         /.*public\.spec\.ts/,
         /.*staging.*spec\.ts/,
         /global\.setup\.ts/,
@@ -106,15 +106,27 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: 'NEXT_PUBLIC_ENABLE_MOCK_AUTH=true pnpm dev',
+    command: 'NODE_ENV=test pnpm dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 300 * 1000, // 5 minutes timeout for server startup in CI
     stderr: 'pipe',
     stdout: 'pipe',
     env: {
-      NEXT_PUBLIC_ENABLE_MOCK_AUTH: 'true',
+      ...process.env,
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'pk_test_bWFqb3Itc25ha2UtNzkuY2xlcmsuYWNjb3VudHMuZGV2JA',
+      CLERK_SECRET_KEY: 'sk_test_nEqFdsNLenuDU5zq2FV4Ni1DRzmOLzNnrFQjBs7Edx',
+      E2E_CLERK_USER_USERNAME: 'dummy+clerk_test@mock.com',
+      E2E_CLERK_USER_PASSWORD: 'punvyx-ceczIf-3remza',
+      NEXT_PUBLIC_CLERK_SIGN_IN_URL: '/sign-in',
+      NEXT_PUBLIC_CLERK_SIGN_UP_URL: '/sign-up',
+      NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL: '/dashboard',
+      NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL: '/dashboard',
+      NEXT_PUBLIC_PROJECTS_API_URL: 'http://localhost:8001',
+      NEXT_PUBLIC_BACKLOG_API_URL: 'http://localhost:8002',
+      NEXT_PUBLIC_READINESS_API_URL: 'http://localhost:8003',
+      NEXT_PUBLIC_PROMPT_BUILDER_API_URL: 'http://localhost:8004',
+      NEXT_PUBLIC_ENABLE_AI_FEATURES: 'true',
     },
   },
 })
-

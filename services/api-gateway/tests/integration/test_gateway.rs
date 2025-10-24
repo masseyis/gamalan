@@ -15,6 +15,7 @@ use tower_http::{
 use uuid::Uuid;
 
 use auth_clerk::JwtVerifier;
+use event_bus::{EventBus, EventPublisher};
 
 async fn create_test_app() -> Router {
     use axum::routing::get;
@@ -70,6 +71,17 @@ async fn create_test_app() -> Router {
     .execute(&pool)
     .await;
 
+    // Insert test membership (ignore error if table doesn't exist)
+    let _ = sqlx::query(
+        "INSERT INTO organization_memberships (organization_id, user_id, role, created_at, updated_at)
+         VALUES ($1, $2, $3, NOW(), NOW())",
+    )
+    .bind(test_org_id)
+    .bind(test_user_id)
+    .bind("owner")
+    .execute(&pool)
+    .await;
+
     // Create a test JWT verifier
     let verifier = Arc::new(Mutex::new(JwtVerifier::new(
         "https://test.jwks.url".to_string(),
@@ -77,17 +89,45 @@ async fn create_test_app() -> Router {
         Some("test-audience".to_string()),
     )));
 
+    let event_bus = Arc::new(EventBus::new());
+    let event_publisher: Arc<dyn EventPublisher> = event_bus.clone();
+    let backlog_usecases = backlog::build_usecases(pool.clone(), event_publisher);
+    let readiness_llm: Arc<dyn readiness::application::ports::LlmService> =
+        Arc::new(readiness::adapters::integrations::MockLlmService);
+    let readiness_usecases =
+        readiness::build_usecases(pool.clone(), event_bus.clone(), readiness_llm);
+
+    let prompt_backlog_service = Arc::new(api_gateway::PromptBacklogServiceAdapter {
+        backlog: backlog_usecases.clone(),
+    });
+    let prompt_readiness_service = Arc::new(api_gateway::PromptReadinessServiceAdapter {
+        readiness: readiness_usecases.clone(),
+    });
+    let prompt_llm: Arc<dyn prompt_builder::application::ports::LlmService> =
+        Arc::new(prompt_builder::adapters::integrations::MockLlmService);
+    let prompt_builder_usecases = prompt_builder::build_usecases(
+        pool.clone(),
+        event_bus.clone(),
+        prompt_backlog_service,
+        prompt_readiness_service,
+        prompt_llm,
+    );
+
     // Create actual service routers with shared resources (matching production structure)
     let auth_router = auth_gateway::create_auth_router(pool.clone(), verifier.clone()).await;
 
     let projects_router = projects::create_projects_router(pool.clone(), verifier.clone()).await;
-    let backlog_router = backlog::create_backlog_router(pool.clone(), verifier.clone()).await;
-    let readiness_router = readiness::create_readiness_router(pool.clone(), verifier.clone()).await;
+    let backlog_router = api_gateway::build_backlog_router(backlog_usecases, verifier.clone());
+    let readiness_router =
+        api_gateway::build_readiness_router(pool.clone(), readiness_usecases, verifier.clone());
     let prompt_builder_router =
-        prompt_builder::create_prompt_builder_router(pool.clone(), verifier.clone()).await;
-    let context_orchestrator_router =
-        context_orchestrator::create_context_orchestrator_router(pool.clone(), verifier.clone())
-            .await;
+        api_gateway::build_prompt_builder_router(prompt_builder_usecases, verifier.clone());
+    let context_orchestrator_router = context_orchestrator::create_context_orchestrator_router(
+        pool.clone(),
+        verifier.clone(),
+        event_bus.clone(),
+    )
+    .await;
 
     // Create unified router exactly matching production
     Router::new()
@@ -95,10 +135,10 @@ async fn create_test_app() -> Router {
         .route("/ready", get(|| async { "READY" }))
         .nest("/auth", auth_router)
         .nest("/api/v1", projects_router)
-        .nest("/api/v1", backlog_router)
-        .nest("/api/v1", readiness_router)
-        .nest("/api/v1", prompt_builder_router)
         .nest("/api/v1/context", context_orchestrator_router)
+        .merge(backlog_router)
+        .merge(readiness_router)
+        .merge(prompt_builder_router)
         // Add CORS and tracing layers like production
         .layer(
             CorsLayer::new()

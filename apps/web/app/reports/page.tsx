@@ -3,16 +3,16 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { 
-  BarChart3, 
-  TrendingUp, 
-  Clock, 
-  Target, 
-  Users, 
+import {
+  BarChart3,
+  TrendingUp,
+  Clock,
+  Target,
+  Users,
   Calendar,
   Download,
   Filter,
-  RefreshCw
+  RefreshCw,
 } from 'lucide-react'
 
 const mockMetrics = {
@@ -21,7 +21,7 @@ const mockMetrics = {
   inProgressStories: 8,
   totalStoryPoints: 156,
   averageVelocity: 42,
-  teamUtilization: 85
+  teamUtilization: 85,
 }
 
 const mockReports = [
@@ -30,22 +30,22 @@ const mockReports = [
     title: 'Sprint Velocity Report',
     description: 'Track team velocity over time',
     lastGenerated: '2025-09-01',
-    type: 'velocity'
+    type: 'velocity',
   },
   {
     id: '2',
     title: 'Burndown Chart',
     description: 'Sprint progress tracking',
     lastGenerated: '2025-09-01',
-    type: 'burndown'
+    type: 'burndown',
   },
   {
     id: '3',
     title: 'Story Completion Report',
     description: 'Story delivery metrics',
     lastGenerated: '2025-08-31',
-    type: 'completion'
-  }
+    type: 'completion',
+  },
 ]
 
 export default function ReportsPage() {
@@ -80,9 +80,7 @@ export default function ReportsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{mockMetrics.totalProjects}</div>
-              <p className="text-xs text-muted-foreground">
-                +2 from last month
-              </p>
+              <p className="text-xs text-muted-foreground">+2 from last month</p>
             </CardContent>
           </Card>
 
@@ -93,9 +91,7 @@ export default function ReportsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{mockMetrics.completedStories}</div>
-              <p className="text-xs text-muted-foreground">
-                +12% from last sprint
-              </p>
+              <p className="text-xs text-muted-foreground">+12% from last sprint</p>
             </CardContent>
           </Card>
 
@@ -106,9 +102,7 @@ export default function ReportsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{mockMetrics.averageVelocity}</div>
-              <p className="text-xs text-muted-foreground">
-                Story points per sprint
-              </p>
+              <p className="text-xs text-muted-foreground">Story points per sprint</p>
             </CardContent>
           </Card>
 
@@ -119,9 +113,7 @@ export default function ReportsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{mockMetrics.inProgressStories}</div>
-              <p className="text-xs text-muted-foreground">
-                Stories currently active
-              </p>
+              <p className="text-xs text-muted-foreground">Stories currently active</p>
             </CardContent>
           </Card>
 
@@ -132,9 +124,7 @@ export default function ReportsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{mockMetrics.totalStoryPoints}</div>
-              <p className="text-xs text-muted-foreground">
-                Total delivered this quarter
-              </p>
+              <p className="text-xs text-muted-foreground">Total delivered this quarter</p>
             </CardContent>
           </Card>
 
@@ -145,9 +135,7 @@ export default function ReportsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{mockMetrics.teamUtilization}%</div>
-              <p className="text-xs text-muted-foreground">
-                Capacity utilization
-              </p>
+              <p className="text-xs text-muted-foreground">Capacity utilization</p>
             </CardContent>
           </Card>
         </div>
@@ -158,9 +146,7 @@ export default function ReportsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle>Available Reports</CardTitle>
-                <CardDescription>
-                  Generate and download detailed analytics reports
-                </CardDescription>
+                <CardDescription>Generate and download detailed analytics reports</CardDescription>
               </div>
               <Button variant="outline" size="icon">
                 <RefreshCw className="h-4 w-4" />
@@ -170,7 +156,7 @@ export default function ReportsPage() {
           <CardContent>
             <div className="space-y-4">
               {mockReports.map((report) => (
-                <div 
+                <div
                   key={report.id}
                   className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
                 >
@@ -180,16 +166,14 @@ export default function ReportsPage() {
                     </div>
                     <div>
                       <h4 className="font-semibold">{report.title}</h4>
-                      <p className="text-sm text-muted-foreground">
-                        {report.description}
-                      </p>
+                      <p className="text-sm text-muted-foreground">{report.description}</p>
                       <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                         <Calendar className="h-3 w-3" />
                         Last generated: {new Date(report.lastGenerated).toLocaleDateString()}
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-3">
                     <Badge variant="outline" className="capitalize">
                       {report.type}
@@ -202,7 +186,7 @@ export default function ReportsPage() {
                 </div>
               ))}
             </div>
-            
+
             {mockReports.length === 0 && (
               <div className="text-center py-8">
                 <div className="p-4 bg-primary/10 rounded-full w-fit mx-auto mb-4">

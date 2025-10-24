@@ -7,12 +7,14 @@ This document describes the comprehensive testing infrastructure designed for ou
 ## Architecture Changes
 
 ### Before: Individual Service Testing
+
 - Each service deployed separately
 - Independent test suites
 - Service-specific databases
 - Individual health checks
 
 ### After: Consolidated Gateway Testing
+
 - Single binary deployment (api-gateway)
 - Unified test infrastructure
 - Shared database resources
@@ -34,24 +36,28 @@ Unit Tests (Domain + Application)
 ```
 
 #### Unit Tests (Base Layer)
+
 - **Location**: `services/*/tests/unit/`
 - **Target**: Domain logic, business rules
 - **Coverage**: ≥85% for all domain/application layers
 - **Isolation**: No I/O, no async, pure functions
 
 #### Integration Tests (Middle Layer)
+
 - **Location**: `services/api-gateway/tests/integration/`
 - **Target**: HTTP handlers, database interactions, service boundaries
 - **Coverage**: All API endpoints through gateway
 - **Database**: Shared PostgreSQL instance
 
 #### Contract Tests (API Layer)
+
 - **Location**: `services/api-gateway/tests/contract/`
 - **Target**: OpenAPI compliance, schema validation
 - **Coverage**: All service endpoints through gateway paths
 - **Validation**: Request/response schemas, HTTP status codes
 
 #### End-to-End Tests (Top Layer)
+
 - **Location**: `apps/web/tests/e2e/`
 - **Target**: Critical user journeys
 - **Coverage**: Complete workflows through web interface
@@ -64,20 +70,22 @@ Unit Tests (Domain + Application)
 
 ```yaml
 services:
-  postgres:          # Shared database for all services
-  mock-clerk:        # Authentication mock
-  api-gateway-test:  # Unified gateway for testing
-  test-runner:       # Container for running tests
+  postgres: # Shared database for all services
+  mock-clerk: # Authentication mock
+  api-gateway-test: # Unified gateway for testing
+  test-runner: # Container for running tests
 ```
 
 ### 2. Test Dockerfiles
 
 #### `Dockerfile.test`
+
 - Builds unified API Gateway for testing
 - Includes all service migrations
 - Health check endpoints
 
 #### `Dockerfile.test-runner`
+
 - Test execution environment
 - Coverage tools (cargo-tarpaulin)
 - Database utilities (sqlx-cli)
@@ -117,6 +125,7 @@ coverage:                  # Test coverage analysis
 ### Health Check Endpoints
 
 All services accessible through gateway:
+
 - `/api/v1/projects/health`
 - `/api/v1/backlog/health`
 - `/api/v1/readiness/health`
@@ -133,7 +142,7 @@ make test-gateway-full
 
 # Run specific test types
 make test-gateway-unit
-make test-gateway-integration  
+make test-gateway-integration
 make test-gateway-contract
 make test-cross-service
 ```
@@ -210,17 +219,20 @@ docker-compose -f docker-compose.test.yml down
 ## Quality Gates
 
 ### Coverage Requirements
+
 - **Minimum**: 85% code coverage
 - **Target**: 90%+ for critical paths
 - **Validation**: Automated in CI/CD pipeline
 
 ### Performance Requirements
+
 - **Health checks**: <100ms response time
 - **API endpoints**: <500ms response time
 - **Concurrent users**: Support 50+ simultaneous
 - **Database queries**: <200ms average
 
 ### Security Requirements
+
 - **Authentication**: JWT validation on protected endpoints
 - **Authorization**: Role-based access control
 - **Headers**: Security headers present
@@ -258,6 +270,7 @@ chmod +x .git/hooks/pre-push
 ## Monitoring and Observability
 
 ### Test Metrics Tracked
+
 - ✅ Test execution time
 - ✅ Coverage percentage
 - ✅ Success/failure rates
@@ -265,6 +278,7 @@ chmod +x .git/hooks/pre-push
 - ✅ Error patterns
 
 ### Logging in Tests
+
 - Structured logging with correlation IDs
 - Test-specific log levels
 - Performance timing logs
@@ -275,6 +289,7 @@ chmod +x .git/hooks/pre-push
 ### Common Issues
 
 #### Database Connection Failures
+
 ```bash
 # Check PostgreSQL status
 docker-compose -f docker-compose.test.yml ps postgres
@@ -288,6 +303,7 @@ docker-compose -f docker-compose.test.yml up -d postgres
 ```
 
 #### Test Infrastructure Startup Issues
+
 ```bash
 # Check all services
 docker-compose -f docker-compose.test.yml ps
@@ -300,6 +316,7 @@ docker-compose -f docker-compose.test.yml up -d --build
 ```
 
 #### Port Conflicts
+
 ```bash
 # Check port usage
 lsof -i :5433  # PostgreSQL test port
@@ -334,6 +351,7 @@ RUST_LOG="debug"
 ### Backward Compatibility
 
 During transition period:
+
 - ✅ Both individual and gateway tests can run
 - ✅ Gradual migration of test suites
 - ✅ Feature flags for new vs old behavior
@@ -342,13 +360,15 @@ During transition period:
 ## Future Enhancements
 
 ### Planned Improvements
+
 - 🔄 Property-based testing with `proptest`
 - 🔄 Chaos engineering tests
-- 🔄 Multi-region deployment testing  
+- 🔄 Multi-region deployment testing
 - 🔄 Advanced performance profiling
 - 🔄 Security penetration testing
 
 ### Scalability Considerations
+
 - Load balancer testing
 - Database replication validation
 - Cache layer testing

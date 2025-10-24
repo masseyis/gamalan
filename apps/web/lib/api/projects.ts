@@ -6,6 +6,11 @@ export const projectsApi = {
   async getProjects(): Promise<Project[]> {
     try {
       const result = await projectsClient.get<Project[]>('/projects')
+      // Handle case where result is not an array (malformed response)
+      if (!Array.isArray(result)) {
+        console.warn('Projects API returned non-array result, returning empty array:', result)
+        return []
+      }
       return result || []
     } catch (error) {
       console.warn('Failed to fetch projects, returning empty array:', error)
@@ -30,7 +35,7 @@ export const projectsApi = {
 
   // Update a project
   async updateProject(id: string, data: UpdateProjectRequest): Promise<void> {
-    return projectsClient.patch<void>(`/projects/${id}`, data)
+    return projectsClient.put<void>(`/projects/${id}`, data)
   },
 
   // Delete a project
