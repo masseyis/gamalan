@@ -414,43 +414,30 @@ export async function setupAuthenticatedClients() {
   }
 
   try {
-    // Auth setup is handled by the API client interceptors
-    console.log('Auth setup skipped - handled by interceptors')
+    // Check if we're in test mode
+    const isTestMode = process.env.NEXT_PUBLIC_ENABLE_MOCK_AUTH === 'true'
+
+    if (isTestMode) {
+      // In test mode, set mock token on all clients
+      const mockToken = 'mock-test-token'
+      projectsClient.setAuthToken(mockToken)
+      backlogClient.setAuthToken(mockToken)
+      readinessClient.setAuthToken(mockToken)
+      promptBuilderClient.setAuthToken(mockToken)
+      orchestratorClient.setAuthToken(mockToken)
+      authGatewayClient.setAuthToken(mockToken)
+    } else {
+      // In production, use Clerk via interceptors
+      // The interceptor will handle auth automatically
+      console.debug('Authentication will be handled by API client interceptors')
+    }
   } catch (error) {
     console.error('Failed to setup auth:', error)
   }
 }
 
 // Hook to setup authenticated clients (client-side only)
+// Returns a stable function reference suitable for useEffect deps
 export function useApiClient() {
-  const setupClients = async () => {
-    if (typeof window === 'undefined') {
-      // Server side, skip
-      return
-    }
-
-    try {
-      // Check if we're in test mode
-      const isTestMode = process.env.NEXT_PUBLIC_ENABLE_MOCK_AUTH === 'true'
-
-      if (isTestMode) {
-        // In test mode, set mock token
-        const mockToken = 'mock-test-token'
-        projectsClient.setAuthToken(mockToken)
-        backlogClient.setAuthToken(mockToken)
-        readinessClient.setAuthToken(mockToken)
-        promptBuilderClient.setAuthToken(mockToken)
-        orchestratorClient.setAuthToken(mockToken)
-        authGatewayClient.setAuthToken(mockToken)
-      } else {
-        // In production, use Clerk via interceptors
-        // The interceptor will handle auth automatically
-        console.debug('Authentication will be handled by API client interceptors')
-      }
-    } catch (error) {
-      console.error('Failed to setup auth:', error)
-    }
-  }
-
-  return { setupClients }
+  return { setupClients: setupAuthenticatedClients }
 }
