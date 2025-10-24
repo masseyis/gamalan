@@ -12,8 +12,7 @@ ALTER TABLE users ADD COLUMN specialty TEXT
 ALTER TABLE users ADD CONSTRAINT check_specialty_only_for_contributors
     CHECK (
         (role IN ('contributor', 'managing_contributor') AND specialty IS NOT NULL) OR
-        (role IN ('sponsor', 'product_owner') AND specialty IS NULL) OR
-        specialty IS NULL
+        (role IN ('sponsor', 'product_owner') AND specialty IS NULL)
     );
 
 -- Create indexes for performance
