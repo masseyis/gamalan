@@ -4,6 +4,7 @@ use shuttle_axum::axum::extract::{Query, State};
 use shuttle_axum::axum::response::Json;
 use shuttle_axum::axum::{
     body::to_bytes,
+    http::StatusCode,
     middleware::{self, Next},
     response::IntoResponse,
     routing::{get, post},
@@ -20,6 +21,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use uuid::Uuid;
+
+// Maximum request body size for logging (10MB)
+const MAX_REQUEST_BODY_SIZE: usize = 10 * 1024 * 1024;
 
 #[derive(Clone)]
 pub struct OrchestratorState {
@@ -188,10 +192,20 @@ async fn log_request_body(
     next: Next,
 ) -> impl IntoResponse {
     let (parts, body) = request.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-    tracing::info!(body = ?String::from_utf8_lossy(&bytes));
-    let request = axum::http::Request::from_parts(parts, axum::body::Body::from(bytes));
-    next.run(request).await
+    
+    // Limit request body size to prevent DoS attacks
+    match to_bytes(body, MAX_REQUEST_BODY_SIZE).await {
+        Ok(bytes) => {
+            tracing::info!(body = ?String::from_utf8_lossy(&bytes));
+            let request = axum::http::Request::from_parts(parts, axum::body::Body::from(bytes));
+            next.run(request).await
+        }
+        Err(_) => {
+            tracing::warn!("Request body too large, rejecting request");
+            // Return a 413 Payload Too Large response
+            (StatusCode::PAYLOAD_TOO_LARGE, "Request body too large").into_response()
+        }
+    }
 }
 
 #[derive(Debug, FromRow)]
