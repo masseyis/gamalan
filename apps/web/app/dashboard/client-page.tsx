@@ -24,7 +24,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { UserGuide, RoleExplanation } from '@/components/ui/user-guide'
 import { useRoles } from '@/components/providers/UserContextProvider'
 import { Project } from '@/lib/types/project'
-import { Story, Task } from '@/lib/types/story'
+import { Story, Task, StoryStatus } from '@/lib/types/story'
 import { Sprint } from '@/lib/types/team'
 import { backlogApi } from '@/lib/api/backlog'
 import { sprintApi } from '@/lib/api/sprint'
@@ -240,6 +240,7 @@ function ContributorDashboard({
   recentActivity?: any[]
   userPerformance?: any[]
 }) {
+  const { isLoaded: authLoaded } = useAuth()
   const projectIds = useMemo(() => projects.map((project) => project.id), [projects])
   const storyLookup = useMemo(() => buildStoryLookup(projects), [projects])
 
@@ -247,6 +248,7 @@ function ContributorDashboard({
     queries: projectIds.map((projectId) => ({
       queryKey: ['dashboard', 'active-sprint', projectId],
       queryFn: () => sprintApi.getActiveSprint(projectId),
+      enabled: authLoaded,
       staleTime: 30 * 1000,
     })),
   })
@@ -267,8 +269,9 @@ function ContributorDashboard({
   const activeSprintLoading = activeSprintQueries.some((result) => result.isLoading)
   const activeSprintFetching = activeSprintQueries.some((result) => result.isFetching)
   const activeSprintQueriesLoaded =
-    projectIds.length === 0 ||
-    activeSprintQueries.every((result) => result.isSuccess || result.isFetched)
+    authLoaded &&
+    (projectIds.length === 0 ||
+      activeSprintQueries.every((result) => result.isSuccess || result.isFetched))
 
   const sprintStoryQueries = useQueries({
     queries: projectIds.map((projectId) => ({
@@ -297,6 +300,7 @@ function ContributorDashboard({
   } = useQuery({
     queryKey: ['dashboard', 'owned-tasks'],
     queryFn: () => backlogApi.getUserOwnedTasks(),
+    enabled: authLoaded,
     staleTime: 30 * 1000,
   })
 
@@ -393,6 +397,7 @@ function ContributorDashboard({
   }, [sprintTaskBuckets, contextUser?.id])
 
   const loading =
+    !authLoaded ||
     ownedLoading ||
     ownedFetching ||
     sprintTasksLoading ||

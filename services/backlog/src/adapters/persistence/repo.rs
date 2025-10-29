@@ -229,7 +229,7 @@ pub async fn update_story_with_transaction(
     .bind(&story.readiness_override_reason)
     .bind(story.readiness_override_at)
     .bind(story.organization_id)
-    .execute(tx)
+    .execute(&mut **tx)
     .await
     .map_err(|e| {
         tracing::error!(error = %e, "SQL error updating story");
@@ -238,7 +238,7 @@ pub async fn update_story_with_transaction(
 
     sqlx::query("DELETE FROM acceptance_criteria WHERE story_id = $1")
         .bind(story.id)
-        .execute(tx)
+        .execute(&mut **tx)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "SQL error deleting acceptance criteria");
@@ -257,7 +257,7 @@ pub async fn update_story_with_transaction(
         .bind(&ac.when)
         .bind(&ac.then)
         .bind(ac.created_at)
-        .execute(tx)
+        .execute(&mut **tx)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "SQL error inserting acceptance criterion");
@@ -361,7 +361,7 @@ pub async fn create_sprint_with_transaction(
     .bind(end_date)
     .bind(committed_points as i32)
     .bind(completed_points as i32)
-    .execute(tx)
+    .execute(&mut **tx)
     .await
     .map_err(|e| {
         tracing::error!(error = %e, "SQL error creating sprint");
@@ -420,7 +420,7 @@ pub async fn set_team_active_sprint_with_transaction(
     sqlx::query("UPDATE teams SET active_sprint_id = $2, updated_at = NOW() WHERE id = $1")
         .bind(team_id)
         .bind(sprint_id)
-        .execute(tx)
+        .execute(&mut **tx)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "SQL error updating team active sprint");
@@ -646,6 +646,81 @@ pub async fn get_tasks_by_owner(
     .await
     .map_err(|e| {
         tracing::error!(error = %e, "SQL error fetching tasks by owner");
+        AppError::InternalServerError
+    })?;
+
+    Ok(task_rows.into_iter().map(Task::from).collect())
+}
+
+pub async fn get_tasks_by_sprint(
+    pool: &PgPool,
+    sprint_id: Uuid,
+    organization_id: Option<Uuid>,
+) -> Result<Vec<Task>, AppError> {
+    let task_rows = sqlx::query_as::<_, TaskRow>(
+        "SELECT t.* FROM tasks t
+         INNER JOIN stories s ON t.story_id = s.id
+         WHERE s.sprint_id = $1
+         AND (t.organization_id = $2 OR ($2 IS NULL AND t.organization_id IS NULL))
+         ORDER BY t.created_at DESC",
+    )
+    .bind(sprint_id)
+    .bind(organization_id)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| {
+        tracing::error!(error = %e, "SQL error getting tasks by sprint");
+        AppError::InternalServerError
+    })?;
+
+    Ok(task_rows.into_iter().map(Task::from).collect())
+}
+
+pub async fn get_tasks_by_project(
+    pool: &PgPool,
+    project_id: Uuid,
+    organization_id: Option<Uuid>,
+) -> Result<Vec<Task>, AppError> {
+    let task_rows = sqlx::query_as::<_, TaskRow>(
+        "SELECT t.* FROM tasks t
+         INNER JOIN stories s ON t.story_id = s.id
+         WHERE s.project_id = $1
+         AND (t.organization_id = $2 OR ($2 IS NULL AND t.organization_id IS NULL))
+         ORDER BY t.created_at DESC",
+    )
+    .bind(project_id)
+    .bind(organization_id)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| {
+        tracing::error!(error = %e, "SQL error getting tasks by project");
+        AppError::InternalServerError
+    })?;
+
+    Ok(task_rows.into_iter().map(Task::from).collect())
+}
+
+pub async fn get_tasks_by_story_ids(
+    pool: &PgPool,
+    story_ids: &[Uuid],
+    organization_id: Option<Uuid>,
+) -> Result<Vec<Task>, AppError> {
+    if story_ids.is_empty() {
+        return Ok(vec![]);
+    }
+
+    let task_rows = sqlx::query_as::<_, TaskRow>(
+        "SELECT * FROM tasks
+         WHERE story_id = ANY($1)
+         AND (organization_id = $2 OR ($2 IS NULL AND organization_id IS NULL))
+         ORDER BY created_at DESC",
+    )
+    .bind(story_ids)
+    .bind(organization_id)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| {
+        tracing::error!(error = %e, "SQL error getting tasks by story ids");
         AppError::InternalServerError
     })?;
 

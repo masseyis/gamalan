@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
 import { normalizeUserId } from '@/lib/utils/uuid'
+import { convertKeysToCamelCase } from '@/lib/utils/case-converter'
 
 export interface ApiClientOptions {
   baseURL: string
@@ -237,12 +238,16 @@ export class ApiClient {
       }
     )
 
-    // Response interceptor for error handling
+    // Response interceptor for error handling and case conversion
     this.client.interceptors.response.use(
       (response) => {
         // Handle 204 No Content responses for void operations
         if (response.status === 204) {
           response.data = undefined
+        }
+        // Convert snake_case keys to camelCase for responses from Rust backend
+        if (response.data) {
+          response.data = convertKeysToCamelCase(response.data)
         }
         return response
       },

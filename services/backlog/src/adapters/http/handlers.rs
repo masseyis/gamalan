@@ -430,8 +430,83 @@ pub async fn get_user_owned_tasks(
     let tasks = usecases
         .get_user_owned_tasks(user_id, org_context.effective_organization_uuid())
         .await?;
+
     let task_responses: Vec<TaskResponse> = tasks.into_iter().map(TaskResponse::from).collect();
     Ok(Json(task_responses))
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct GetRecommendedTasksQuery {
+    pub sprint_id: Option<Uuid>,
+    pub project_id: Option<Uuid>,
+    pub story_ids: Option<String>, // Comma-separated UUIDs
+    pub role: Option<String>,
+    pub exclude_mine: Option<bool>,
+    pub limit: Option<usize>,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct TaskRecommendationResponse {
+    pub task: TaskResponse,
+    pub score: f64,
+    pub reason: String,
+}
+
+pub async fn get_recommended_tasks(
+    AuthenticatedWithOrg { org_context, auth }: AuthenticatedWithOrg,
+    Query(query): Query<GetRecommendedTasksQuery>,
+    State(usecases): State<Arc<BacklogUsecases>>,
+) -> Result<impl IntoResponse, AppError> {
+    use crate::domain::RecommendationFilters;
+
+    let user_id = resolve_user_uuid(&auth.sub);
+
+    // Parse story_ids if provided
+    let story_ids = if let Some(ids_str) = query.story_ids {
+        let parsed_ids: Result<Vec<Uuid>, _> = ids_str
+            .split(',')
+            .map(|s| s.trim().parse::<Uuid>())
+            .collect();
+
+        match parsed_ids {
+            Ok(ids) => Some(ids),
+            Err(_) => {
+                return Err(AppError::BadRequest(
+                    "Invalid story_ids format. Expected comma-separated UUIDs.".to_string(),
+                ))
+            }
+        }
+    } else {
+        None
+    };
+
+    let filters = RecommendationFilters {
+        sprint_id: query.sprint_id,
+        project_id: query.project_id,
+        story_ids,
+        role: query.role,
+        exclude_user_id: if query.exclude_mine.unwrap_or(false) {
+            Some(user_id)
+        } else {
+            None
+        },
+        limit: query.limit,
+    };
+
+    let recommendations = usecases
+        .get_recommended_tasks(filters, org_context.effective_organization_uuid())
+        .await?;
+
+    let responses: Vec<TaskRecommendationResponse> = recommendations
+        .into_iter()
+        .map(|rec| TaskRecommendationResponse {
+            task: TaskResponse::from(rec.task),
+            score: rec.score,
+            reason: rec.reason,
+        })
+        .collect();
+
+    Ok(Json(responses))
 }
 
 pub async fn take_task_ownership(

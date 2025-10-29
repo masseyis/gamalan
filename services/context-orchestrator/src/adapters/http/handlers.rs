@@ -192,7 +192,7 @@ async fn log_request_body(
     next: Next,
 ) -> impl IntoResponse {
     let (parts, body) = request.into_parts();
-    
+
     // Limit request body size to prevent DoS attacks
     match to_bytes(body, MAX_REQUEST_BODY_SIZE).await {
         Ok(bytes) => {

@@ -174,6 +174,41 @@ shuttle deploy --name salunga-ai-staging  # or salunga-ai-production
 
 The frontend is automatically deployed to Vercel on push to main branch.
 
+## 🤖 Autonomous Development
+
+Battra AI includes autonomous agents that can plan sprints and implement tasks automatically:
+
+### Quick Start: Fully Autonomous Development
+
+1. **Start Scrum Master Agent** (plans and manages sprints):
+   ```sh
+   ./scripts/scrummaster-agent.sh battra-sm-key-1 <project-uuid>
+   ```
+
+2. **Start Dev Agents** (implement tasks):
+   ```sh
+   export GIT_WORKFLOW_ENABLED=true
+   ./scripts/autonomous-agent.sh battra-dev-key-1 <sprint-uuid> dev
+   ```
+
+3. **Start QA Agents** (write tests):
+   ```sh
+   export GIT_WORKFLOW_ENABLED=true
+   ./scripts/autonomous-agent.sh battra-qa-key-1 <sprint-uuid> qa
+   ```
+
+The agents will:
+- ✅ Automatically plan sprints from ready stories
+- ✅ Continuously pick and implement tasks
+- ✅ Create branches and PRs for each task
+- ✅ Run tests and wait for reviews
+- ✅ Close sprints and plan new ones
+
+For complete setup instructions, see:
+- [Quick Start: Full Automation](docs/QUICK_START_FULL_AUTOMATION.md)
+- [Scrum Master Agent](docs/SCRUMMASTER_AGENT.md)
+- [Git Workflow for Agents](docs/GIT_WORKFLOW_FOR_AGENTS.md)
+
 ## 📁 Project Structure
 
 ```
@@ -189,7 +224,15 @@ salunga/
 ├── libs/
 │   ├── common/             # Shared utilities and types
 │   └── auth_clerk/         # Clerk authentication library
+├── scripts/
+│   ├── scrummaster-agent.sh     # Autonomous sprint management
+│   ├── autonomous-agent.sh      # Autonomous task execution
+│   ├── sprint-planner.js        # Sprint planning logic
+│   └── claude-code-executor-with-git.js  # Task implementation with git workflow
 └── docs/                   # Documentation
+    ├── QUICK_START_FULL_AUTOMATION.md
+    ├── SCRUMMASTER_AGENT.md
+    └── GIT_WORKFLOW_FOR_AGENTS.md
 ```
 
 For detailed information about each component:
@@ -197,3 +240,4 @@ For detailed information about each component:
 - [Frontend Documentation](apps/web/README.md)
 - [API Documentation](docs/api.md)
 - [Contributing Guidelines](CONTRIBUTING.md)
+- [Autonomous Development Guide](docs/QUICK_START_FULL_AUTOMATION.md)

@@ -201,7 +201,7 @@ pub async fn get_criterion_by_story_and_ac_id(
 
     if let Some(row) = json_row {
         let value: Value = row.get("acceptance_criteria");
-        let projection_org_id: Option<Uuid> = row.get("organization_id");
+        let _projection_org_id: Option<Uuid> = row.get("organization_id");
         let records: Vec<AcceptanceCriterionRecord> = match serde_json::from_value(value.clone()) {
             Ok(records) => records,
             Err(err) => {
@@ -217,13 +217,8 @@ pub async fn get_criterion_by_story_and_ac_id(
             return Ok(Some(AcceptanceCriterion {
                 id: record.id,
                 story_id: record.story_id,
-<<<<<<< HEAD
-                organization_id: projection_org_id,
-                ac_id: record.id.to_string(),
-=======
                 organization_id,
                 ac_id: format!("AC{}", index + 1),
->>>>>>> 17da963 (Refactor: Standardize acceptance criterion IDs to AC1, AC2, etc.)
                 given: record.given,
                 when: record.when,
                 then: record.then,

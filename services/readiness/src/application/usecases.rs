@@ -737,9 +737,24 @@ mod tests {
 
         // Add multiple criteria to test the numbering
         let criteria_data = vec![
-            ("AC1".to_string(), "given1".to_string(), "when1".to_string(), "then1".to_string()),
-            ("AC2".to_string(), "given2".to_string(), "when2".to_string(), "then2".to_string()),
-            ("AC3".to_string(), "given3".to_string(), "when3".to_string(), "then3".to_string()),
+            (
+                "AC1".to_string(),
+                "given1".to_string(),
+                "when1".to_string(),
+                "then1".to_string(),
+            ),
+            (
+                "AC2".to_string(),
+                "given2".to_string(),
+                "when2".to_string(),
+                "then2".to_string(),
+            ),
+            (
+                "AC3".to_string(),
+                "given3".to_string(),
+                "when3".to_string(),
+                "then3".to_string(),
+            ),
         ];
 
         let _ = usecases
@@ -748,7 +763,7 @@ mod tests {
             .unwrap();
 
         let criteria = usecases
-            .get_criteria_by_story(story_id, None)
+            .get_criteria_for_story(story_id, None)
             .await
             .unwrap();
 

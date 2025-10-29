@@ -7,6 +7,7 @@ vi.mock('@/lib/api/client', () => ({
   projectsClient: {
     get: vi.fn(),
     post: vi.fn(),
+    put: vi.fn(),
     patch: vi.fn(),
     delete: vi.fn(),
   },
@@ -88,11 +89,11 @@ describe('Projects API', () => {
         description: 'Updated description',
       }
 
-      vi.mocked(projectsClient.patch).mockResolvedValue(undefined)
+      vi.mocked(projectsClient.put).mockResolvedValue(undefined)
 
       await projectsApi.updateProject(projectId, updateData)
 
-      expect(projectsClient.patch).toHaveBeenCalledWith(`/projects/${projectId}`, updateData)
+      expect(projectsClient.put).toHaveBeenCalledWith(`/projects/${projectId}`, updateData)
     })
   })
 

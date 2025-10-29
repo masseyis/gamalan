@@ -5,7 +5,7 @@ use event_bus::{
     AcceptanceCriterionRecord, BacklogEvent, DomainEvent, EventPublisher, SprintEvent,
     SprintRecord, StoryRecord, TaskRecord,
 };
-use sqlx::{PgPool, Postgres, Transaction};
+use sqlx::PgPool;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -278,10 +278,10 @@ impl BacklogUsecases {
         .await?;
 
         // Update all stories within the same transaction
-        for mut story in stories_to_commit {
+        for story in &mut stories_to_commit {
             story.assign_to_sprint(sprint_id)?;
             story.update_status(StoryStatus::Committed)?;
-            repo::update_story_with_transaction(&mut tx, &story).await?;
+            repo::update_story_with_transaction(&mut tx, story).await?;
         }
 
         // Set team active sprint within the same transaction
@@ -400,6 +400,32 @@ impl BacklogUsecases {
         organization_id: Option<Uuid>,
     ) -> Result<Vec<Task>, AppError> {
         repo::get_tasks_by_owner(&self.pool, user_id, organization_id).await
+    }
+
+    pub async fn get_recommended_tasks(
+        &self,
+        filters: crate::domain::RecommendationFilters,
+        organization_id: Option<Uuid>,
+    ) -> Result<Vec<crate::domain::TaskRecommendation>, AppError> {
+        use crate::domain::TaskRecommender;
+
+        // Get tasks based on filters
+        let tasks = if let Some(sprint_id) = filters.sprint_id {
+            repo::get_tasks_by_sprint(&self.pool, sprint_id, organization_id).await?
+        } else if let Some(project_id) = filters.project_id {
+            repo::get_tasks_by_project(&self.pool, project_id, organization_id).await?
+        } else if let Some(ref story_ids) = filters.story_ids {
+            repo::get_tasks_by_story_ids(&self.pool, story_ids, organization_id).await?
+        } else {
+            // If no specific filter, return empty (avoiding returning all tasks in the system)
+            vec![]
+        };
+
+        // Apply recommendation engine
+        let recommender = TaskRecommender::with_default_strategy();
+        let recommendations = recommender.recommend(tasks, &filters);
+
+        Ok(recommendations)
     }
 
     pub async fn take_task_ownership(
