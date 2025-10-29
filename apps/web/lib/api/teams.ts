@@ -20,43 +20,43 @@ type RawTeamResponse = {
   id: string
   name: string
   description?: string | null
-  organization_id: string
-  active_sprint_id?: string | null
-  current_sprint?: RawSprintResponse | null
-  velocity_history?: number[]
-  created_at: string
-  updated_at: string
+  organizationId: string
+  activeSprintId?: string | null
+  currentSprint?: RawSprintResponse | null
+  velocityHistory?: number[]
+  createdAt: string
+  updatedAt: string
   members?: RawTeamMemberResponse[]
 }
 
 type RawTeamMemberResponse = {
   id?: string
-  team_id: string
-  user_id: string
+  teamId: string
+  userId: string
   role: string
   specialty?: string | null
-  is_active: boolean
-  joined_at: string
-  updated_at?: string
+  isActive: boolean
+  joinedAt: string
+  updatedAt?: string
   userEmail?: string | null
   userName?: string | null
 }
 
 type RawSprintResponse = {
   id: string
-  team_id: string
+  teamId: string
   name: string
   goal: string
   status: string
-  capacity_points?: number | null
-  committed_points?: number | null
-  committed_story_points?: number | null
-  completed_points?: number | null
-  completed_story_points?: number | null
-  start_date: string
-  end_date: string
-  created_at: string
-  updated_at: string
+  capacityPoints?: number | null
+  committedPoints?: number | null
+  committedStoryPoints?: number | null
+  completedPoints?: number | null
+  completedStoryPoints?: number | null
+  startDate: string
+  endDate: string
+  createdAt: string
+  updatedAt: string
 }
 
 const toSprint = (raw?: RawSprintResponse | null): Sprint | undefined => {
@@ -66,30 +66,30 @@ const toSprint = (raw?: RawSprintResponse | null): Sprint | undefined => {
 
   return {
     id: raw.id,
-    teamId: raw.team_id,
+    teamId: raw.teamId,
     name: raw.name,
     goal: raw.goal,
     status: (raw.status as SprintStatus) ?? 'planning',
-    capacityPoints: raw.capacity_points ?? 0,
-    committedPoints: raw.committed_points ?? raw.committed_story_points ?? 0,
-    completedPoints: raw.completed_points ?? raw.completed_story_points ?? 0,
-    startDate: raw.start_date,
-    endDate: raw.end_date,
-    createdAt: raw.created_at,
-    updatedAt: raw.updated_at,
+    capacityPoints: raw.capacityPoints ?? 0,
+    committedPoints: raw.committedPoints ?? raw.committedStoryPoints ?? 0,
+    completedPoints: raw.completedPoints ?? raw.completedStoryPoints ?? 0,
+    startDate: raw.startDate,
+    endDate: raw.endDate,
+    createdAt: raw.createdAt,
+    updatedAt: raw.updatedAt,
   }
 }
 
 const toTeamWithMembers = (raw: RawTeamResponse): TeamWithMembers => {
   const members = (raw.members ?? []).map((member) => ({
-    id: member.id ?? `${member.team_id}:${member.user_id}`,
-    teamId: member.team_id,
-    userId: member.user_id,
+    id: member.id ?? `${member.teamId}:${member.userId}`,
+    teamId: member.teamId,
+    userId: member.userId,
     role: member.role as TeamMembership['role'],
     specialty: (member.specialty ?? undefined) as TeamMembership['specialty'],
-    isActive: member.is_active,
-    joinedAt: member.joined_at,
-    updatedAt: member.updated_at ?? member.joined_at,
+    isActive: member.isActive,
+    joinedAt: member.joinedAt,
+    updatedAt: member.updatedAt ?? member.joinedAt,
     userEmail: member.userEmail ?? undefined,
     userName: member.userName ?? undefined,
   }))
@@ -98,13 +98,13 @@ const toTeamWithMembers = (raw: RawTeamResponse): TeamWithMembers => {
     id: raw.id,
     name: raw.name,
     description: raw.description ?? undefined,
-    organizationId: raw.organization_id,
-    activeSprintId: raw.active_sprint_id ?? undefined,
-    velocityHistory: raw.velocity_history ?? [],
-    createdAt: raw.created_at,
-    updatedAt: raw.updated_at,
+    organizationId: raw.organizationId,
+    activeSprintId: raw.activeSprintId ?? undefined,
+    velocityHistory: raw.velocityHistory ?? [],
+    createdAt: raw.createdAt,
+    updatedAt: raw.updatedAt,
     members,
-    currentSprint: toSprint(raw.current_sprint),
+    currentSprint: toSprint(raw.currentSprint),
   }
 }
 

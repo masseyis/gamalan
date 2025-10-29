@@ -318,7 +318,7 @@ impl Story {
     pub fn clear_readiness_override_with_logging(&mut self, reason: &str) {
         let previous_reason = self.readiness_override_reason.clone();
         let override_by = self.readiness_override_by;
-        
+
         info!(
             story_id = %self.id,
             previous_override_reason = ?previous_reason,
@@ -326,7 +326,7 @@ impl Story {
             clear_reason = %reason,
             "Readiness override cleared for story"
         );
-        
+
         self.clear_readiness_override();
     }
 

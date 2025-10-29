@@ -11,20 +11,20 @@ import {
 
 type GeneratedAcceptanceCriterion = {
   id: string
-  story_id: string
-  ac_id: string
+  storyId: string
+  acId: string
   given: string
   when: string
   then: string
 }
 
 type PlanPackApiResponse = {
-  proposed_tasks?: Array<{
+  proposedTasks?: Array<{
     title?: string
     description?: string
-    acceptance_criteria_refs?: string[]
-    estimated_effort?: string | null
-    technical_notes?: string | null
+    acceptanceCriteriaRefs?: string[]
+    estimatedEffort?: string | null
+    technicalNotes?: string | null
   }>
 }
 
@@ -403,7 +403,7 @@ export const aiApi = {
       const thenClause = item.then?.trim() || 'Then outcome missing'
 
       return {
-        id: item.ac_id || item.id || `ac-${index}`,
+        id: item.acId || item.id || `ac-${index}`,
         given,
         when: whenClause,
         then: thenClause,
@@ -436,10 +436,10 @@ export const aiApi = {
       `/plans/from-story/${storyId}`
     )
 
-    const tasks = Array.isArray(planPack?.proposed_tasks) ? planPack.proposed_tasks : []
+    const tasks = Array.isArray(planPack?.proposedTasks) ? planPack.proposedTasks : []
 
     const suggestions = tasks.map((task, index) => {
-      const rawEffort = task?.estimated_effort?.toString() || ''
+      const rawEffort = task?.estimatedEffort?.toString() || ''
       const parsedPoints = Number.parseInt(rawEffort, 10)
       const storyPoints = Number.isFinite(parsedPoints) ? parsedPoints : undefined
 
@@ -447,9 +447,9 @@ export const aiApi = {
         id: `plan-pack-task-${index}`,
         title: task?.title || `Story Breakdown ${index + 1}`,
         description: task?.description || 'No description provided',
-        acceptanceCriteriaRefs: task?.acceptance_criteria_refs || [],
+        acceptanceCriteriaRefs: task?.acceptanceCriteriaRefs || [],
         estimatedEffort: rawEffort || undefined,
-        technicalNotes: task?.technical_notes || undefined,
+        technicalNotes: task?.technicalNotes || undefined,
         storyPoints,
         priority: 'medium' as const,
       }

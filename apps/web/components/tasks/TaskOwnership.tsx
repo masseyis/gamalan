@@ -84,13 +84,62 @@ export function TaskOwnership({
 
   // Task ownership mutations
   const invalidateTaskQueries = () => {
-    queryClient.invalidateQueries({ queryKey: ['tasks', projectId, task.storyId] })
-    queryClient.invalidateQueries({ queryKey: ['stories', projectId, task.storyId] })
-    queryClient.invalidateQueries({ queryKey: ['story-readiness', projectId, task.storyId] })
+    // Invalidate with exact: false to match all related queries
+    queryClient.invalidateQueries({
+      queryKey: ['tasks', projectId, task.storyId],
+      exact: false,
+    })
+    queryClient.invalidateQueries({
+      queryKey: ['stories', projectId, task.storyId],
+      exact: false,
+    })
+    queryClient.invalidateQueries({
+      queryKey: ['story-readiness', projectId, task.storyId],
+      exact: false,
+    })
+    // Also invalidate acceptance criteria in case task AC refs changed
+    queryClient.invalidateQueries({
+      queryKey: ['acceptance-criteria', projectId, task.storyId],
+      exact: false,
+    })
+    // Invalidate dashboard queries to update "Your Next Actions"
+    queryClient.invalidateQueries({
+      queryKey: ['dashboard', 'owned-tasks'],
+      exact: false,
+    })
+    queryClient.invalidateQueries({
+      queryKey: ['dashboard', 'sprint-tasks'],
+      exact: false,
+    })
   }
 
   const takeOwnershipMutation = useMutation({
     mutationFn: () => backlogApi.takeTaskOwnership(task.id),
+    onMutate: async () => {
+      // Cancel any outgoing refetches to avoid optimistic update being overwritten
+      await queryClient.cancelQueries({ queryKey: ['tasks', projectId, task.storyId] })
+
+      // Snapshot the previous value
+      const previousTasks = queryClient.getQueryData(['tasks', projectId, task.storyId])
+
+      // Optimistically update to show ownership immediately
+      queryClient.setQueryData(['tasks', projectId, task.storyId], (old: any) => {
+        if (!old || !Array.isArray(old)) return old
+        return old.map((t: any) =>
+          t.id === task.id
+            ? {
+                ...t,
+                status: 'owned',
+                ownerUserId: user?.id,
+                ownedAt: new Date().toISOString(),
+              }
+            : t
+        )
+      })
+
+      // Return context with previous value for rollback on error
+      return { previousTasks }
+    },
     onSuccess: () => {
       invalidateTaskQueries()
       toast({
@@ -98,7 +147,11 @@ export function TaskOwnership({
         description: 'You are now responsible for this task',
       })
     },
-    onError: (error) => {
+    onError: (error, _, context) => {
+      // Rollback optimistic update on error
+      if (context?.previousTasks) {
+        queryClient.setQueryData(['tasks', projectId, task.storyId], context.previousTasks)
+      }
       toast({
         title: 'Failed to take ownership',
         description: error instanceof Error ? error.message : 'An error occurred',
@@ -109,6 +162,26 @@ export function TaskOwnership({
 
   const releaseOwnershipMutation = useMutation({
     mutationFn: () => backlogApi.releaseTaskOwnership(task.id),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['tasks', projectId, task.storyId] })
+      const previousTasks = queryClient.getQueryData(['tasks', projectId, task.storyId])
+
+      queryClient.setQueryData(['tasks', projectId, task.storyId], (old: any) => {
+        if (!old || !Array.isArray(old)) return old
+        return old.map((t: any) =>
+          t.id === task.id
+            ? {
+                ...t,
+                status: 'available',
+                ownerUserId: null,
+                ownedAt: null,
+              }
+            : t
+        )
+      })
+
+      return { previousTasks }
+    },
     onSuccess: () => {
       invalidateTaskQueries()
       setReleaseDialogOpen(false)
@@ -117,7 +190,10 @@ export function TaskOwnership({
         description: 'Task is now available for others to take',
       })
     },
-    onError: (error) => {
+    onError: (error, _, context) => {
+      if (context?.previousTasks) {
+        queryClient.setQueryData(['tasks', projectId, task.storyId], context.previousTasks)
+      }
       toast({
         title: 'Failed to release ownership',
         description: error instanceof Error ? error.message : 'An error occurred',
@@ -128,6 +204,24 @@ export function TaskOwnership({
 
   const startWorkMutation = useMutation({
     mutationFn: () => backlogApi.startTaskWork(task.id),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['tasks', projectId, task.storyId] })
+      const previousTasks = queryClient.getQueryData(['tasks', projectId, task.storyId])
+
+      queryClient.setQueryData(['tasks', projectId, task.storyId], (old: any) => {
+        if (!old || !Array.isArray(old)) return old
+        return old.map((t: any) =>
+          t.id === task.id
+            ? {
+                ...t,
+                status: 'inprogress',
+              }
+            : t
+        )
+      })
+
+      return { previousTasks }
+    },
     onSuccess: () => {
       invalidateTaskQueries()
       toast({
@@ -135,7 +229,10 @@ export function TaskOwnership({
         description: 'Task is now in progress',
       })
     },
-    onError: (error) => {
+    onError: (error, _, context) => {
+      if (context?.previousTasks) {
+        queryClient.setQueryData(['tasks', projectId, task.storyId], context.previousTasks)
+      }
       toast({
         title: 'Failed to start work',
         description: error instanceof Error ? error.message : 'An error occurred',
@@ -146,6 +243,25 @@ export function TaskOwnership({
 
   const completeWorkMutation = useMutation({
     mutationFn: () => backlogApi.completeTaskWork(task.id),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['tasks', projectId, task.storyId] })
+      const previousTasks = queryClient.getQueryData(['tasks', projectId, task.storyId])
+
+      queryClient.setQueryData(['tasks', projectId, task.storyId], (old: any) => {
+        if (!old || !Array.isArray(old)) return old
+        return old.map((t: any) =>
+          t.id === task.id
+            ? {
+                ...t,
+                status: 'completed',
+                completedAt: new Date().toISOString(),
+              }
+            : t
+        )
+      })
+
+      return { previousTasks }
+    },
     onSuccess: () => {
       invalidateTaskQueries()
       toast({
@@ -153,7 +269,10 @@ export function TaskOwnership({
         description: 'Great work! Task has been marked as complete',
       })
     },
-    onError: (error) => {
+    onError: (error, _, context) => {
+      if (context?.previousTasks) {
+        queryClient.setQueryData(['tasks', projectId, task.storyId], context.previousTasks)
+      }
       toast({
         title: 'Failed to complete task',
         description: error instanceof Error ? error.message : 'An error occurred',
@@ -165,6 +284,24 @@ export function TaskOwnership({
   const setEstimateMutation = useMutation({
     mutationFn: (hours: number | undefined) =>
       backlogApi.setTaskEstimate(task.id, { estimatedHours: hours }),
+    onMutate: async (hours) => {
+      await queryClient.cancelQueries({ queryKey: ['tasks', projectId, task.storyId] })
+      const previousTasks = queryClient.getQueryData(['tasks', projectId, task.storyId])
+
+      queryClient.setQueryData(['tasks', projectId, task.storyId], (old: any) => {
+        if (!old || !Array.isArray(old)) return old
+        return old.map((t: any) =>
+          t.id === task.id
+            ? {
+                ...t,
+                estimatedHours: hours,
+              }
+            : t
+        )
+      })
+
+      return { previousTasks }
+    },
     onSuccess: () => {
       invalidateTaskQueries()
       setEstimateDialogOpen(false)
@@ -174,7 +311,10 @@ export function TaskOwnership({
         description: 'Task estimate has been saved',
       })
     },
-    onError: (error) => {
+    onError: (error, _, context) => {
+      if (context?.previousTasks) {
+        queryClient.setQueryData(['tasks', projectId, task.storyId], context.previousTasks)
+      }
       setEstimateError(error instanceof Error ? error.message : 'An error occurred')
     },
   })

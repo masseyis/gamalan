@@ -1,6 +1,8 @@
+pub mod recommendation;
 pub mod story;
 pub mod task;
 
+pub use recommendation::*;
 pub use story::*;
 pub use task::*;
 

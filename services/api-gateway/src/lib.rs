@@ -112,6 +112,10 @@ pub fn build_backlog_router(
             get(backlog_handlers::get_user_owned_tasks),
         )
         .route(
+            "/api/v1/tasks/recommended",
+            get(backlog_handlers::get_recommended_tasks),
+        )
+        .route(
             "/api/v1/tasks/{task_id}/ownership",
             put(backlog_handlers::take_task_ownership),
         )

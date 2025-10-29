@@ -24,8 +24,10 @@ pub fn build_usecases(
 ) -> Arc<PromptBuilderUsecases> {
     let pool = Arc::new(pool);
     projections::SprintProjectionWorker::spawn(pool.clone(), event_bus);
-    let plan_pack_repo: Arc<dyn PlanPackRepository> = Arc::new(SqlPlanPackRepository::new((*pool).clone()));
-    let task_pack_repo: Arc<dyn TaskPackRepository> = Arc::new(SqlTaskPackRepository::new((*pool).clone()));
+    let plan_pack_repo: Arc<dyn PlanPackRepository> =
+        Arc::new(SqlPlanPackRepository::new((*pool).clone()));
+    let task_pack_repo: Arc<dyn TaskPackRepository> =
+        Arc::new(SqlTaskPackRepository::new((*pool).clone()));
 
     Arc::new(PromptBuilderUsecases::new(
         plan_pack_repo,

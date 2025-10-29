@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useAuth } from '@clerk/nextjs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -84,6 +85,7 @@ export default function StoryDetailPage() {
   const params = useParams()
   const projectId = params.id as string
   const storyId = params.storyId as string
+  const { isLoaded: authLoaded } = useAuth()
   const { canModifyBacklog, canAcceptStories } = usePermissions()
   const { user, getRoleDisplayName } = useRoles()
   const { toast } = useToast()
@@ -112,7 +114,7 @@ export default function StoryDetailPage() {
   const { data: project, isLoading: projectLoading } = useQuery({
     queryKey: ['projects', projectId],
     queryFn: () => projectsApi.getProject(projectId),
-    enabled: !!projectId,
+    enabled: authLoaded && !!projectId,
   })
 
   const {
@@ -122,19 +124,19 @@ export default function StoryDetailPage() {
   } = useQuery({
     queryKey: ['stories', projectId, storyId],
     queryFn: () => backlogApi.getStory(projectId, storyId),
-    enabled: !!projectId && !!storyId,
+    enabled: authLoaded && !!projectId && !!storyId,
   })
 
   const { data: tasks = [], isLoading: tasksLoading } = useQuery({
     queryKey: ['tasks', projectId, storyId],
     queryFn: () => backlogApi.getTasks(projectId, storyId),
-    enabled: !!projectId && !!storyId,
+    enabled: authLoaded && !!projectId && !!storyId,
   })
 
   const { data: acceptanceCriteria = [], isLoading: acLoading } = useQuery({
     queryKey: ['acceptance-criteria', projectId, storyId],
     queryFn: () => backlogApi.getAcceptanceCriteria(projectId, storyId),
-    enabled: !!projectId && !!storyId,
+    enabled: authLoaded && !!projectId && !!storyId,
   })
 
   const {
@@ -146,7 +148,7 @@ export default function StoryDetailPage() {
   } = useQuery<ReadinessEvaluation>({
     queryKey: ['story-readiness', projectId, storyId, story?.updatedAt],
     queryFn: () => aiApi.checkStoryReadiness(projectId, storyId),
-    enabled: !!projectId && !!storyId && !!story,
+    enabled: authLoaded && !!projectId && !!storyId && !!story && !story.sprintId,
   })
 
   const updateStoryMutation = useMutation({
@@ -257,7 +259,7 @@ export default function StoryDetailPage() {
     },
   })
 
-  const isLoading = projectLoading || storyLoading || tasksLoading || acLoading
+  const isLoading = !authLoaded || projectLoading || storyLoading || tasksLoading || acLoading
 
   // Seed form fields when story data is available
   useEffect(() => {
@@ -764,17 +766,18 @@ export default function StoryDetailPage() {
               {/* AI Assistant */}
               <AIAssistant projectId={projectId} storyId={storyId} context="story" />
 
-              {/* AI Readiness Review */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-purple-500" />
-                    AI Readiness Review
-                  </CardTitle>
-                  <CardDescription>
-                    Automatic guidance to determine when the story is sprint-ready.
-                  </CardDescription>
-                </CardHeader>
+              {/* AI Readiness Review - Only show for stories not yet committed to a sprint */}
+              {!story.sprintId && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-purple-500" />
+                      AI Readiness Review
+                    </CardTitle>
+                    <CardDescription>
+                      Automatic guidance to determine when the story is sprint-ready.
+                    </CardDescription>
+                  </CardHeader>
                 <CardContent className="space-y-4">
                   {readinessLoading ? (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -915,7 +918,8 @@ export default function StoryDetailPage() {
                     </div>
                   )}
                 </CardContent>
-              </Card>
+                </Card>
+              )}
 
               {/* Story Stats */}
               <Card>

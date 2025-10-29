@@ -1,0 +1,60 @@
+{
+  "mcpServers": {
+    "battra-dev": {
+      "command": "pnpm",
+      "args": ["--filter", "@battra/mcp-server", "start"],
+      "env": {
+        "BATTRA_API_BASE": "http://localhost:8000/api/v1",
+        "BATTRA_API_KEY": "battra-dev-key-1"
+      }
+    },
+    "battra-sm": {
+      "command": "pnpm",
+      "args": ["--filter", "@battra/mcp-server", "start"],
+      "env": {
+        "BATTRA_API_BASE": "http://localhost:8000/api/v1",
+        "BATTRA_API_KEY": "battra-sm-key-1"
+      }
+    },
+    "battra-po": {
+      "command": "pnpm",
+      "args": ["--filter", "@battra/mcp-server", "start"],
+      "env": {
+        "BATTRA_API_BASE": "http://localhost:8000/api/v1",
+        "BATTRA_API_KEY": "battra-po-key-1"
+      }
+    },
+    "battra-qa": {
+      "command": "pnpm",
+      "args": ["--filter", "@battra/mcp-server", "start"],
+      "env": {
+        "BATTRA_API_BASE": "http://localhost:8000/api/v1",
+        "BATTRA_API_KEY": "battra-qa-key-1"
+      }
+    },
+    "battra-sponsor": {
+      "command": "pnpm",
+      "args": ["--filter", "@battra/mcp-server", "start"],
+      "env": {
+        "BATTRA_API_BASE": "http://localhost:8000/api/v1",
+        "BATTRA_API_KEY": "battra-sponsor-key-1"
+      }
+    },
+    "battra-devops": {
+      "command": "pnpm",
+      "args": ["--filter", "@battra/mcp-server", "start"],
+      "env": {
+        "BATTRA_API_BASE": "http://localhost:8000/api/v1",
+        "BATTRA_API_KEY": "battra-devops-key-1"
+      }
+    },
+    "battra-documenter": {
+      "command": "pnpm",
+      "args": ["--filter", "@battra/mcp-server", "start"],
+      "env": {
+        "BATTRA_API_BASE": "http://localhost:8000/api/v1",
+        "BATTRA_API_KEY": "battra-documenter-key-1"
+      }
+    }
+  }
+}
