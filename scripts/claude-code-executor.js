@@ -21,6 +21,7 @@ const API_BASE = process.env.BATTRA_API_BASE || 'http://localhost:8000/api/v1';
 const API_KEY = process.env.BATTRA_API_KEY;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY; // Optional when using CLI
 const STORY_ID = process.env.BATTRA_STORY_ID;
+const MAX_FIX_RETRIES = parseInt(process.env.MAX_FIX_RETRIES || '3', 10); // Number of times to attempt fixes
 
 // Validation
 if (!TASK_ID) {
@@ -202,12 +203,15 @@ async function runTests(task, story) {
   const hasWebChanges = changedFiles.includes('apps/web/');
   const hasServiceChanges = changedFiles.includes('services/');
 
+  let testOutput = '';
+
   try {
     // Frontend tests
     if (isFrontend || hasWebChanges) {
       console.log('  📱 Detected frontend task, running frontend tests...');
       try {
-        await execCommand('pnpm', ['test:unit'], { cwd: 'apps/web' });
+        const result = await execCommand('pnpm', ['test:unit'], { cwd: 'apps/web', captureOutput: true });
+        testOutput += result.stdout + result.stderr;
         console.log('✅ Frontend tests passed');
       } catch (error) {
         console.log('⚠️  Frontend tests failed or not configured');
@@ -219,17 +223,24 @@ async function runTests(task, story) {
     if (isBackend || hasServiceChanges) {
       console.log('  🦀 Detected backend task, running backend tests...');
       // Run tests for the specific service if we can detect it
-      if (changedFiles.includes('services/backlog/')) {
-        await execCommand('cargo', ['test', '--package', 'backlog', '--quiet']);
-      } else if (changedFiles.includes('services/projects/')) {
-        await execCommand('cargo', ['test', '--package', 'projects', '--quiet']);
-      } else if (changedFiles.includes('services/readiness/')) {
-        await execCommand('cargo', ['test', '--package', 'readiness', '--quiet']);
-      } else {
-        console.log('  Running workspace tests...');
-        await execCommand('cargo', ['test', '--workspace', '--quiet']);
+      try {
+        let result;
+        if (changedFiles.includes('services/backlog/')) {
+          result = await execCommand('cargo', ['test', '--package', 'backlog', '--quiet'], { captureOutput: true });
+        } else if (changedFiles.includes('services/projects/')) {
+          result = await execCommand('cargo', ['test', '--package', 'projects', '--quiet'], { captureOutput: true });
+        } else if (changedFiles.includes('services/readiness/')) {
+          result = await execCommand('cargo', ['test', '--package', 'readiness', '--quiet'], { captureOutput: true });
+        } else {
+          console.log('  Running workspace tests...');
+          result = await execCommand('cargo', ['test', '--workspace', '--quiet'], { captureOutput: true });
+        }
+        testOutput += result.stdout + result.stderr;
+        console.log('✅ Backend tests passed');
+      } catch (error) {
+        // Capture test failure output
+        throw error;
       }
-      console.log('✅ Backend tests passed');
     }
 
     // If we can't detect the type, skip tests with warning
@@ -238,10 +249,11 @@ async function runTests(task, story) {
       console.log('  (Tests will run in CI)');
     }
 
-    return true;
+    return { success: true, output: testOutput };
   } catch (error) {
     console.error('❌ Tests failed:', error.message);
-    return false;
+    // Try to capture error details from stderr if available
+    return { success: false, output: testOutput + '\n' + error.message, error: error.message };
   }
 }
 
@@ -382,12 +394,48 @@ async function invokeCloudeAPI(prompt) {
   }
 }
 
+// Build fix prompt from test failures
+function buildFixPrompt(task, testResult, attempt) {
+  return `The previous implementation broke existing tests. Please fix the test failures.
+
+# Task Being Implemented
+**Title:** ${task.title}
+**Description:** ${task.description || 'No description'}
+
+# Test Failure Details (Attempt ${attempt}/${MAX_FIX_RETRIES})
+
+\`\`\`
+${testResult.output || testResult.error}
+\`\`\`
+
+# Instructions
+
+The tests were passing BEFORE you started implementing this task. Your implementation broke them.
+
+Please analyze the test failures carefully and fix ALL issues:
+
+1. **Read the error messages** - They often tell you exactly what's wrong
+2. **Check type mismatches** - Did you change a function signature without updating all callers?
+3. **Update test fixtures** - If you changed structs or state types, update test setup code
+4. **Fix imports** - Remove unused imports that cause clippy warnings
+5. **Complete the migration** - If you started changing something (like state types), finish updating ALL files
+
+**IMPORTANT:**
+- Do NOT skip or disable tests
+- Do NOT comment out failing code
+- Fix the actual problems, don't work around them
+- Update ALL files that need changing, not just some
+
+Please fix the issues now.`;
+}
+
 // Main execution
 async function main() {
   try {
     console.log('🚀 Claude Code Task Executor');
     console.log(`📋 Task ID: ${TASK_ID}`);
-    console.log(`📖 Story ID: ${STORY_ID}\n`);
+    console.log(`📖 Story ID: ${STORY_ID}`);
+    console.log(`🔄 Max fix retries: ${MAX_FIX_RETRIES}\n`);
 
     // Fetch task details
     const { task, story, acs } = await fetchTaskDetails(TASK_ID, STORY_ID);
@@ -396,7 +444,7 @@ async function main() {
     console.log(`📖 Story: ${story.title}`);
     console.log(`📝 Acceptance Criteria: ${acs.length}\n`);
 
-    // Build prompt
+    // Build initial prompt
     const prompt = buildPrompt(task, story, acs);
 
     // Save prompt to file for debugging
@@ -405,14 +453,42 @@ async function main() {
     fs.writeFileSync(promptFile, prompt);
     console.log(`💾 Prompt saved to: ${promptFile}\n`);
 
-    // Invoke Claude Code
-    const result = await invokeClaude(prompt);
+    // Invoke Claude Code (initial implementation)
+    await invokeClaude(prompt);
 
-    // Run tests
-    const testsPassed = await runTests(task, story);
-    if (!testsPassed) {
-      console.error('\n❌ Task execution failed: Tests did not pass');
-      process.exit(1);
+    // Test/Fix Loop
+    let testResult;
+    let fixAttempt = 0;
+
+    while (fixAttempt <= MAX_FIX_RETRIES) {
+      // Run tests
+      testResult = await runTests(task, story);
+
+      if (testResult.success) {
+        console.log('\n✅ Tests passed!');
+        break;
+      }
+
+      // Tests failed
+      fixAttempt++;
+
+      if (fixAttempt > MAX_FIX_RETRIES) {
+        console.error(`\n❌ Tests still failing after ${MAX_FIX_RETRIES} fix attempts`);
+        console.error('\n📋 Test Output:');
+        console.error(testResult.output);
+        console.error('\n❌ Task execution failed: Tests did not pass');
+        process.exit(1);
+      }
+
+      // Try to fix the failures
+      console.log(`\n🔧 Attempt ${fixAttempt}/${MAX_FIX_RETRIES}: Asking Claude to fix test failures...`);
+      const fixPrompt = buildFixPrompt(task, testResult, fixAttempt);
+
+      const fixPromptFile = `/tmp/claude-task-${TASK_ID}-fix-${fixAttempt}.txt`;
+      fs.writeFileSync(fixPromptFile, fixPrompt);
+      console.log(`💾 Fix prompt saved to: ${fixPromptFile}\n`);
+
+      await invokeClaude(fixPrompt);
     }
 
     // Run quality checks
@@ -425,6 +501,7 @@ async function main() {
     console.log('\n✅ Task executed successfully!');
     console.log(`📋 Task ID: ${TASK_ID}`);
     console.log(`✅ Title: ${task.title}`);
+    console.log(`🔄 Fix attempts used: ${fixAttempt}/${MAX_FIX_RETRIES}`);
 
     process.exit(0);
   } catch (error) {
