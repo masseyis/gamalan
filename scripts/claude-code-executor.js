@@ -22,6 +22,9 @@ const API_KEY = process.env.BATTRA_API_KEY;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY; // Optional when using CLI
 const STORY_ID = process.env.BATTRA_STORY_ID;
 const MAX_FIX_RETRIES = parseInt(process.env.MAX_FIX_RETRIES || '3', 10); // Number of times to attempt fixes
+const AGENT_ROLE = process.env.AGENT_ROLE || 'dev'; // Agent role for branch naming
+const USE_WORKTREE = process.env.USE_WORKTREE !== 'false'; // Default to true
+const WORKTREE_BASE = process.env.WORKTREE_BASE || '../agents/tasks'; // Base dir for task worktrees
 
 // Validation
 if (!TASK_ID) {
@@ -429,13 +432,191 @@ Please analyze the test failures carefully and fix ALL issues:
 Please fix the issues now.`;
 }
 
+// Create task-specific worktree
+async function setupWorktree(task) {
+  if (!USE_WORKTREE) {
+    console.log('ℹ️  Worktree mode disabled, working in current directory');
+    return { worktreePath: process.cwd(), branchName: null, cleanup: async () => {} };
+  }
+
+  const path = require('path');
+  const fs = require('fs');
+
+  // Create worktree directory
+  const worktreeDir = path.resolve(WORKTREE_BASE);
+  if (!fs.existsSync(worktreeDir)) {
+    fs.mkdirSync(worktreeDir, { recursive: true });
+  }
+
+  // Generate branch name from task
+  const taskSlug = task.title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .substring(0, 50);
+  const branchName = `${AGENT_ROLE}/task-${TASK_ID.substring(0, 8)}-${taskSlug}`;
+  const worktreePath = path.join(worktreeDir, `task-${TASK_ID.substring(0, 8)}`);
+
+  console.log(`\n🌳 Creating worktree for task...`);
+  console.log(`   Branch: ${branchName}`);
+  console.log(`   Path: ${worktreePath}`);
+
+  try {
+    // Remove existing worktree if it exists
+    if (fs.existsSync(worktreePath)) {
+      console.log('   Cleaning up existing worktree...');
+      await execCommand('git', ['worktree', 'remove', worktreePath, '--force'], { captureOutput: true });
+    }
+
+    // Fetch latest to ensure we're up to date
+    await execCommand('git', ['fetch', 'origin'], { captureOutput: true });
+
+    // Create worktree with new branch based on main
+    await execCommand('git', ['worktree', 'add', '-b', branchName, worktreePath, 'origin/main'], {
+      captureOutput: true
+    });
+
+    console.log(`✅ Worktree created successfully\n`);
+
+    // Return cleanup function
+    const cleanup = async () => {
+      console.log(`\n🧹 Cleaning up worktree: ${worktreePath}`);
+      try {
+        await execCommand('git', ['worktree', 'remove', worktreePath, '--force'], { captureOutput: true });
+        console.log('✅ Worktree removed');
+      } catch (err) {
+        console.warn('⚠️  Failed to remove worktree:', err.message);
+      }
+    };
+
+    return { worktreePath, branchName, cleanup };
+  } catch (error) {
+    console.error('❌ Failed to create worktree:', error.message);
+    throw error;
+  }
+}
+
+// Commit and push changes
+async function commitAndPush(worktreePath, branchName, task, story) {
+  console.log('\n📝 Committing changes...');
+
+  const taskTitle = task.title;
+  const storyTitle = story.title;
+
+  // Commit message
+  const commitMessage = `feat: ${taskTitle}
+
+Implements task from story: ${storyTitle}
+
+Task ID: ${task.id}
+Story ID: ${story.id}
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>`;
+
+  try {
+    // Stage all changes
+    await execCommand('git', ['add', '-A'], { cwd: worktreePath });
+
+    // Check if there are changes to commit
+    const { stdout: statusOut } = await execCommand('git', ['status', '--porcelain'], {
+      cwd: worktreePath,
+      captureOutput: true
+    });
+
+    if (!statusOut.trim()) {
+      console.log('ℹ️  No changes to commit');
+      return false;
+    }
+
+    // Commit
+    await execCommand('git', ['commit', '-m', commitMessage], { cwd: worktreePath });
+    console.log('✅ Changes committed');
+
+    // Push to remote
+    console.log('\n📤 Pushing to remote...');
+    await execCommand('git', ['push', 'origin', branchName, '--set-upstream'], { cwd: worktreePath });
+    console.log('✅ Pushed to remote');
+
+    return true;
+  } catch (error) {
+    console.error('❌ Failed to commit/push:', error.message);
+    throw error;
+  }
+}
+
+// Create pull request
+async function createPullRequest(branchName, task, story, acs) {
+  console.log('\n🔀 Creating pull request...');
+
+  const taskTitle = task.title;
+  const storyTitle = story.title;
+
+  // Build PR body
+  const acList = acs
+    .map(ac => `- **Given:** ${ac.given}\n  **When:** ${ac.whenClause}\n  **Then:** ${ac.thenClause}`)
+    .join('\n\n');
+
+  const prBody = `## Task
+
+**Title:** ${taskTitle}
+**Description:** ${task.description || 'No description provided'}
+
+## Story
+
+**Title:** ${storyTitle}
+**Description:** ${story.description || 'No description'}
+
+## Acceptance Criteria
+
+${acList}
+
+## Testing
+
+- [x] Tests pass
+- [x] Code quality checks pass (fmt, clippy)
+
+---
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>`;
+
+  try {
+    // Create PR using gh CLI
+    const { stdout: prUrl } = await execCommand(
+      'gh',
+      [
+        'pr', 'create',
+        '--title', `${taskTitle}`,
+        '--body', prBody,
+        '--base', 'main',
+        '--head', branchName
+      ],
+      { captureOutput: true }
+    );
+
+    console.log(`✅ Pull request created: ${prUrl.trim()}`);
+    return prUrl.trim();
+  } catch (error) {
+    console.error('❌ Failed to create pull request:', error.message);
+    throw error;
+  }
+}
+
 // Main execution
 async function main() {
+  let worktreeCleanup = null;
+  let worktreePath = process.cwd();
+
   try {
     console.log('🚀 Claude Code Task Executor');
     console.log(`📋 Task ID: ${TASK_ID}`);
     console.log(`📖 Story ID: ${STORY_ID}`);
-    console.log(`🔄 Max fix retries: ${MAX_FIX_RETRIES}\n`);
+    console.log(`👤 Agent Role: ${AGENT_ROLE}`);
+    console.log(`🔄 Max fix retries: ${MAX_FIX_RETRIES}`);
+    console.log(`🌳 Worktree mode: ${USE_WORKTREE ? 'enabled' : 'disabled'}\n`);
 
     // Fetch task details
     const { task, story, acs } = await fetchTaskDetails(TASK_ID, STORY_ID);
@@ -443,6 +624,19 @@ async function main() {
     console.log(`\n✅ Task: ${task.title}`);
     console.log(`📖 Story: ${story.title}`);
     console.log(`📝 Acceptance Criteria: ${acs.length}\n`);
+
+    // Setup worktree
+    const worktreeInfo = await setupWorktree(task);
+    worktreeCleanup = worktreeInfo.cleanup;
+    worktreePath = worktreeInfo.worktreePath;
+    const branchName = worktreeInfo.branchName;
+
+    // Change to worktree directory
+    const originalCwd = process.cwd();
+    if (USE_WORKTREE) {
+      process.chdir(worktreePath);
+      console.log(`📂 Working directory: ${worktreePath}\n`);
+    }
 
     // Build initial prompt
     const prompt = buildPrompt(task, story, acs);
@@ -477,6 +671,13 @@ async function main() {
         console.error('\n📋 Test Output:');
         console.error(testResult.output);
         console.error('\n❌ Task execution failed: Tests did not pass');
+
+        // Change back to original directory before cleanup
+        if (USE_WORKTREE) {
+          process.chdir(originalCwd);
+        }
+        if (worktreeCleanup) await worktreeCleanup();
+
         process.exit(1);
       }
 
@@ -495,7 +696,27 @@ async function main() {
     const qualityPassed = await runQualityChecks();
     if (!qualityPassed) {
       console.error('\n❌ Task execution failed: Quality checks did not pass');
+
+      // Change back to original directory before cleanup
+      if (USE_WORKTREE) {
+        process.chdir(originalCwd);
+      }
+      if (worktreeCleanup) await worktreeCleanup();
+
       process.exit(1);
+    }
+
+    // Commit and push if using worktree
+    if (USE_WORKTREE && branchName) {
+      const hasChanges = await commitAndPush(worktreePath, branchName, task, story);
+
+      if (hasChanges) {
+        // Create pull request
+        const prUrl = await createPullRequest(branchName, task, story, acs);
+        console.log(`\n🎉 Pull Request: ${prUrl}`);
+      } else {
+        console.log('\nℹ️  No changes to push');
+      }
     }
 
     console.log('\n✅ Task executed successfully!');
@@ -503,9 +724,37 @@ async function main() {
     console.log(`✅ Title: ${task.title}`);
     console.log(`🔄 Fix attempts used: ${fixAttempt}/${MAX_FIX_RETRIES}`);
 
+    // Change back to original directory before cleanup
+    if (USE_WORKTREE) {
+      process.chdir(originalCwd);
+    }
+
+    // Clean up worktree
+    if (worktreeCleanup) {
+      await worktreeCleanup();
+    }
+
     process.exit(0);
   } catch (error) {
     console.error('\n❌ Task execution failed:', error.message);
+
+    // Ensure cleanup happens even on error
+    if (worktreeCleanup) {
+      try {
+        // Change back if we were in worktree
+        if (USE_WORKTREE) {
+          const originalCwd = process.cwd();
+          if (originalCwd.includes('agents/tasks')) {
+            const path = require('path');
+            process.chdir(path.resolve(__dirname, '..'));
+          }
+        }
+        await worktreeCleanup();
+      } catch (cleanupError) {
+        console.error('⚠️  Cleanup error:', cleanupError.message);
+      }
+    }
+
     process.exit(1);
   }
 }

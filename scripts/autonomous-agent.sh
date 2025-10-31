@@ -143,6 +143,8 @@ execute_task() {
   export BATTRA_API_KEY="$API_KEY"
   export BATTRA_API_BASE="$API_BASE"
   export BATTRA_STORY_ID="$task_story_id"
+  export AGENT_ROLE="$ROLE"
+  export USE_WORKTREE="${USE_WORKTREE:-true}"  # Enable worktree mode by default
 
   # Pass through ANTHROPIC_API_KEY from environment (optional - if not set, uses Claude Code CLI)
   if [ -n "$ANTHROPIC_API_KEY" ]; then

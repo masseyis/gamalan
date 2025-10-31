@@ -1,5 +1,5 @@
 use crate::adapters::http::BacklogAppState;
-use crate::domain::{AcceptanceCriteria, Story, StoryStatus, Task, TaskStatus};
+use crate::domain::{AcceptanceCriteria, Story, StoryStatus, Task, TaskEvent, TaskStatus};
 use auth_clerk::AuthenticatedWithOrg;
 use axum::{
     extract::{Path, Query, State},
@@ -526,10 +526,19 @@ pub async fn take_task_ownership(
 ) -> Result<impl IntoResponse, AppError> {
     let user_id = resolve_user_uuid(&auth.sub);
 
-    state
+    let task = state
         .usecases
         .take_task_ownership(task_id, org_context.effective_organization_uuid(), user_id)
         .await?;
+
+    // Broadcast WebSocket event for real-time updates
+    let event = TaskEvent::OwnershipTaken {
+        task_id,
+        story_id: task.story_id,
+        owner_user_id: user_id,
+        timestamp: chrono::Utc::now(),
+    };
+    state.ws_manager.broadcast(event);
 
     Ok((
         StatusCode::OK,
@@ -547,10 +556,22 @@ pub async fn release_task_ownership(
 ) -> Result<impl IntoResponse, AppError> {
     let user_id = resolve_user_uuid(&auth.sub);
 
-    state
+    let task = state
         .usecases
         .release_task_ownership(task_id, org_context.effective_organization_uuid(), user_id)
         .await?;
+
+    // Broadcast WebSocket event for real-time updates
+    // Note: task.owner_user_id contains the previous owner from the usecase
+    if let Some(previous_owner_user_id) = task.owner_user_id {
+        let event = TaskEvent::OwnershipReleased {
+            task_id,
+            story_id: task.story_id,
+            previous_owner_user_id,
+            timestamp: chrono::Utc::now(),
+        };
+        state.ws_manager.broadcast(event);
+    }
 
     Ok((
         StatusCode::OK,
@@ -644,6 +665,14 @@ pub async fn update_task_status(
 
     info!(%task_id, org_id = ?org_id, user_id = %auth.sub, status = %status, "Updating task status");
 
+    // Get the old task to capture previous status
+    let old_task = state
+        .usecases
+        .get_task(task_id, org_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Task not found".to_string()))?;
+    let old_status = old_task.status.to_string();
+
     let result = state
         .usecases
         .update_task_status(task_id, org_id, user_id, status)
@@ -652,6 +681,18 @@ pub async fn update_task_status(
     match result {
         Ok(task) => {
             info!(%task_id, org_id = ?org_id, user_id = %auth.sub, "Task status updated");
+
+            // Broadcast WebSocket event for real-time updates
+            let event = TaskEvent::StatusChanged {
+                task_id,
+                story_id: task.story_id,
+                old_status,
+                new_status: task.status.to_string(),
+                changed_by_user_id: user_id,
+                timestamp: chrono::Utc::now(),
+            };
+            state.ws_manager.broadcast(event);
+
             Ok(Json(TaskResponse::from(task)))
         }
         Err(err) => {
@@ -876,4 +917,72 @@ pub async fn delete_acceptance_criterion(
         )
         .await?;
     Ok(StatusCode::OK)
+}
+
+// Sprint Task Board DTOs and Handler
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SprintTaskBoardResponse {
+    pub sprint: SprintMetadata,
+    pub tasks: Vec<SprintTaskView>,
+    pub groups: serde_json::Value,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SprintMetadata {
+    pub id: Uuid,
+    pub name: String,
+    pub goal: String,
+    pub start_date: chrono::DateTime<chrono::Utc>,
+    pub end_date: chrono::DateTime<chrono::Utc>,
+    pub days_remaining: i64,
+    pub status: String,
+    pub total_stories: i64,
+    pub total_tasks: i64,
+    pub completed_tasks: i64,
+    pub progress_percentage: f64,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SprintTaskView {
+    pub id: Uuid,
+    pub story_id: Uuid,
+    pub story_title: String,
+    pub title: String,
+    pub description: Option<String>,
+    pub status: String,
+    pub owner_user_id: Option<Uuid>,
+    pub acceptance_criteria_refs: Vec<String>,
+    pub estimated_hours: Option<u32>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SprintTaskBoardQuery {
+    pub status: Option<String>,
+    #[serde(rename = "groupBy")]
+    pub group_by: Option<String>,
+}
+
+pub async fn get_sprint_task_board(
+    AuthenticatedWithOrg { org_context, .. }: AuthenticatedWithOrg,
+    Path(sprint_id): Path<Uuid>,
+    Query(query): Query<SprintTaskBoardQuery>,
+    State(state): State<Arc<BacklogAppState>>,
+) -> Result<impl IntoResponse, AppError> {
+    let response = state
+        .usecases
+        .get_sprint_task_board(
+            sprint_id,
+            org_context.effective_organization_uuid(),
+            query.status,
+            query.group_by,
+        )
+        .await?;
+
+    Ok(Json(response))
 }

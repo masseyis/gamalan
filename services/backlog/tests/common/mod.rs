@@ -146,6 +146,10 @@ pub async fn build_backlog_router_for_tests(pool: PgPool) -> Router {
             "/api/v1/tasks/{task_id}/estimate",
             patch(backlog_handlers::set_task_estimate),
         )
+        .route(
+            "/api/v1/sprints/{sprint_id}/tasks",
+            get(backlog_handlers::get_sprint_task_board),
+        )
         .with_state(state)
         .layer(Extension(verifier))
         .layer(TraceLayer::new_for_http())
@@ -186,6 +190,17 @@ async fn clean_test_data(pool: &PgPool) -> Result<(), sqlx::Error> {
         .await
         .ok();
 
+    // Clean sprint-related tables
+    sqlx::query("TRUNCATE TABLE sprints CASCADE")
+        .execute(pool)
+        .await
+        .ok();
+
+    sqlx::query("TRUNCATE TABLE teams CASCADE")
+        .execute(pool)
+        .await
+        .ok();
+
     // Clean projects tables if they exist
     sqlx::query("TRUNCATE TABLE project_settings CASCADE")
         .execute(pool)
@@ -193,6 +208,12 @@ async fn clean_test_data(pool: &PgPool) -> Result<(), sqlx::Error> {
         .ok();
 
     sqlx::query("TRUNCATE TABLE projects CASCADE")
+        .execute(pool)
+        .await
+        .ok();
+
+    // Clean organizations last (referenced by many tables)
+    sqlx::query("TRUNCATE TABLE organizations CASCADE")
         .execute(pool)
         .await
         .ok();
