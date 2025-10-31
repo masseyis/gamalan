@@ -15,6 +15,10 @@ export const sprintApi = {
     }
   },
 
+  async getSprint(projectId: string, sprintId: string): Promise<Sprint> {
+    return sprintClient.get<Sprint>(`/projects/${projectId}/sprints/${sprintId}`)
+  },
+
   async createSprint(
     projectId: string,
     name: string,
