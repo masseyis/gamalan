@@ -463,6 +463,7 @@ impl Story {
         description: Option<Option<String>>,
         labels: Option<Vec<String>>,
         story_points: Option<u32>,
+        sprint_id: Option<Option<Uuid>>,
     ) -> Result<(), AppError> {
         if let Some(new_title) = title {
             if new_title.trim().is_empty() {
@@ -488,6 +489,10 @@ impl Story {
 
         if let Some(points) = story_points {
             self.set_story_points(points)?;
+        }
+
+        if let Some(new_sprint_id) = sprint_id {
+            self.sprint_id = new_sprint_id;
         }
 
         if self.readiness_override && self.validate_ready_requirements().is_ok() {

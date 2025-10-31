@@ -1,5 +1,5 @@
-use crate::application::BacklogUsecases;
-use crate::domain::{AcceptanceCriteria, Story, StoryStatus, Task, TaskStatus};
+use crate::adapters::http::BacklogAppState;
+use crate::domain::{AcceptanceCriteria, Story, StoryStatus, Task, TaskEvent, TaskStatus};
 use auth_clerk::AuthenticatedWithOrg;
 use axum::{
     extract::{Path, Query, State},
@@ -37,6 +37,8 @@ pub struct UpdateStoryRequest {
     #[serde(rename = "storyPoints")]
     pub story_points: Option<u32>,
     pub labels: Option<Vec<String>>,
+    #[serde(rename = "sprintId")]
+    pub sprint_id: Option<Option<Uuid>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -248,13 +250,14 @@ impl From<Task> for TaskResponse {
 pub async fn create_story(
     AuthenticatedWithOrg { org_context, auth }: AuthenticatedWithOrg,
     Path(project_id): Path<Uuid>,
-    State(usecases): State<Arc<BacklogUsecases>>,
+    State(state): State<Arc<BacklogAppState>>,
     Json(payload): Json<CreateStoryRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let org_id = org_context.effective_organization_uuid();
     info!(%project_id, org_id = ?org_id, user_id = %auth.sub, "Creating story");
 
-    let result = usecases
+    let result = state
+        .usecases
         .create_story(
             project_id,
             org_id,
@@ -279,12 +282,12 @@ pub async fn create_story(
 pub async fn get_story(
     AuthenticatedWithOrg { org_context, auth }: AuthenticatedWithOrg,
     Path(id): Path<Uuid>,
-    State(usecases): State<Arc<BacklogUsecases>>,
+    State(state): State<Arc<BacklogAppState>>,
 ) -> Result<impl IntoResponse, AppError> {
     let org_id = org_context.effective_organization_uuid();
     info!(%id, org_id = ?org_id, user_id = %auth.sub, "Fetching story");
 
-    let result = usecases.get_story(id, org_id).await;
+    let result = state.usecases.get_story(id, org_id).await;
 
     match result {
         Ok(Some(story)) => {
@@ -308,13 +311,14 @@ pub async fn get_story(
 pub async fn update_story(
     AuthenticatedWithOrg { org_context, auth }: AuthenticatedWithOrg,
     Path(id): Path<Uuid>,
-    State(usecases): State<Arc<BacklogUsecases>>,
+    State(state): State<Arc<BacklogAppState>>,
     Json(payload): Json<UpdateStoryRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let org_id = org_context.effective_organization_uuid();
     info!(%id, org_id = ?org_id, user_id = %auth.sub, "Updating story");
 
-    let result = usecases
+    let result = state
+        .usecases
         .update_story(
             id,
             org_id,
@@ -322,6 +326,7 @@ pub async fn update_story(
             Some(payload.description),
             payload.labels,
             payload.story_points,
+            payload.sprint_id,
         )
         .await;
 
@@ -340,13 +345,14 @@ pub async fn update_story(
 pub async fn override_story_ready(
     AuthenticatedWithOrg { org_context, auth }: AuthenticatedWithOrg,
     Path(id): Path<Uuid>,
-    State(usecases): State<Arc<BacklogUsecases>>,
+    State(state): State<Arc<BacklogAppState>>,
     Json(payload): Json<OverrideStoryReadyRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let org_id = org_context.effective_organization_uuid();
     let user_id = resolve_user_uuid(&auth.sub);
 
-    let story = usecases
+    let story = state
+        .usecases
         .override_story_ready(id, org_id, user_id, payload.reason)
         .await?;
 
@@ -356,13 +362,14 @@ pub async fn override_story_ready(
 pub async fn create_task(
     AuthenticatedWithOrg { org_context, auth }: AuthenticatedWithOrg,
     Path(story_id): Path<Uuid>,
-    State(usecases): State<Arc<BacklogUsecases>>,
+    State(state): State<Arc<BacklogAppState>>,
     Json(payload): Json<CreateTaskRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let org_id = org_context.effective_organization_uuid();
     info!(%story_id, org_id = ?org_id, user_id = %auth.sub, "Creating task");
 
-    let result = usecases
+    let result = state
+        .usecases
         .create_task(
             story_id,
             org_id,
@@ -387,12 +394,12 @@ pub async fn create_task(
 pub async fn get_tasks_by_story(
     AuthenticatedWithOrg { org_context, auth }: AuthenticatedWithOrg,
     Path(story_id): Path<Uuid>,
-    State(usecases): State<Arc<BacklogUsecases>>,
+    State(state): State<Arc<BacklogAppState>>,
 ) -> Result<impl IntoResponse, AppError> {
     let org_id = org_context.effective_organization_uuid();
     info!(%story_id, org_id = ?org_id, user_id = %auth.sub, "Fetching tasks for story");
 
-    let result = usecases.get_tasks_by_story(story_id, org_id).await;
+    let result = state.usecases.get_tasks_by_story(story_id, org_id).await;
 
     match result {
         Ok(tasks) => {
@@ -412,9 +419,10 @@ pub async fn get_tasks_by_story(
 pub async fn get_available_tasks(
     AuthenticatedWithOrg { org_context, .. }: AuthenticatedWithOrg,
     Path(story_id): Path<Uuid>,
-    State(usecases): State<Arc<BacklogUsecases>>,
+    State(state): State<Arc<BacklogAppState>>,
 ) -> Result<impl IntoResponse, AppError> {
-    let tasks = usecases
+    let tasks = state
+        .usecases
         .get_available_tasks(story_id, org_context.effective_organization_uuid())
         .await?;
     let task_responses: Vec<TaskResponse> = tasks.into_iter().map(TaskResponse::from).collect();
@@ -423,11 +431,12 @@ pub async fn get_available_tasks(
 
 pub async fn get_user_owned_tasks(
     AuthenticatedWithOrg { org_context, auth }: AuthenticatedWithOrg,
-    State(usecases): State<Arc<BacklogUsecases>>,
+    State(state): State<Arc<BacklogAppState>>,
 ) -> Result<impl IntoResponse, AppError> {
     let user_id = resolve_user_uuid(&auth.sub);
 
-    let tasks = usecases
+    let tasks = state
+        .usecases
         .get_user_owned_tasks(user_id, org_context.effective_organization_uuid())
         .await?;
 
@@ -455,7 +464,7 @@ pub struct TaskRecommendationResponse {
 pub async fn get_recommended_tasks(
     AuthenticatedWithOrg { org_context, auth }: AuthenticatedWithOrg,
     Query(query): Query<GetRecommendedTasksQuery>,
-    State(usecases): State<Arc<BacklogUsecases>>,
+    State(state): State<Arc<BacklogAppState>>,
 ) -> Result<impl IntoResponse, AppError> {
     use crate::domain::RecommendationFilters;
 
@@ -493,7 +502,8 @@ pub async fn get_recommended_tasks(
         limit: query.limit,
     };
 
-    let recommendations = usecases
+    let recommendations = state
+        .usecases
         .get_recommended_tasks(filters, org_context.effective_organization_uuid())
         .await?;
 
@@ -512,13 +522,23 @@ pub async fn get_recommended_tasks(
 pub async fn take_task_ownership(
     AuthenticatedWithOrg { org_context, auth }: AuthenticatedWithOrg,
     Path(task_id): Path<Uuid>,
-    State(usecases): State<Arc<BacklogUsecases>>,
+    State(state): State<Arc<BacklogAppState>>,
 ) -> Result<impl IntoResponse, AppError> {
     let user_id = resolve_user_uuid(&auth.sub);
 
-    usecases
+    let task = state
+        .usecases
         .take_task_ownership(task_id, org_context.effective_organization_uuid(), user_id)
         .await?;
+
+    // Broadcast WebSocket event for real-time updates
+    let event = TaskEvent::OwnershipTaken {
+        task_id,
+        story_id: task.story_id,
+        owner_user_id: user_id,
+        timestamp: chrono::Utc::now(),
+    };
+    state.ws_manager.broadcast(event);
 
     Ok((
         StatusCode::OK,
@@ -532,13 +552,26 @@ pub async fn take_task_ownership(
 pub async fn release_task_ownership(
     AuthenticatedWithOrg { org_context, auth }: AuthenticatedWithOrg,
     Path(task_id): Path<Uuid>,
-    State(usecases): State<Arc<BacklogUsecases>>,
+    State(state): State<Arc<BacklogAppState>>,
 ) -> Result<impl IntoResponse, AppError> {
     let user_id = resolve_user_uuid(&auth.sub);
 
-    usecases
+    let task = state
+        .usecases
         .release_task_ownership(task_id, org_context.effective_organization_uuid(), user_id)
         .await?;
+
+    // Broadcast WebSocket event for real-time updates
+    // Note: task.owner_user_id contains the previous owner from the usecase
+    if let Some(previous_owner_user_id) = task.owner_user_id {
+        let event = TaskEvent::OwnershipReleased {
+            task_id,
+            story_id: task.story_id,
+            previous_owner_user_id,
+            timestamp: chrono::Utc::now(),
+        };
+        state.ws_manager.broadcast(event);
+    }
 
     Ok((
         StatusCode::OK,
@@ -552,11 +585,12 @@ pub async fn release_task_ownership(
 pub async fn start_task_work(
     AuthenticatedWithOrg { org_context, auth }: AuthenticatedWithOrg,
     Path(task_id): Path<Uuid>,
-    State(usecases): State<Arc<BacklogUsecases>>,
+    State(state): State<Arc<BacklogAppState>>,
 ) -> Result<impl IntoResponse, AppError> {
     let user_id = resolve_user_uuid(&auth.sub);
 
-    usecases
+    state
+        .usecases
         .start_task_work(task_id, org_context.effective_organization_uuid(), user_id)
         .await?;
 
@@ -572,11 +606,12 @@ pub async fn start_task_work(
 pub async fn complete_task_work(
     AuthenticatedWithOrg { org_context, auth }: AuthenticatedWithOrg,
     Path(task_id): Path<Uuid>,
-    State(usecases): State<Arc<BacklogUsecases>>,
+    State(state): State<Arc<BacklogAppState>>,
 ) -> Result<impl IntoResponse, AppError> {
     let user_id = resolve_user_uuid(&auth.sub);
 
-    usecases
+    state
+        .usecases
         .complete_task_work(task_id, org_context.effective_organization_uuid(), user_id)
         .await?;
 
@@ -592,12 +627,13 @@ pub async fn complete_task_work(
 pub async fn set_task_estimate(
     AuthenticatedWithOrg { org_context, auth }: AuthenticatedWithOrg,
     Path(task_id): Path<Uuid>,
-    State(usecases): State<Arc<BacklogUsecases>>,
+    State(state): State<Arc<BacklogAppState>>,
     Json(payload): Json<SetTaskEstimateRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let user_id = resolve_user_uuid(&auth.sub);
 
-    usecases
+    state
+        .usecases
         .set_task_estimate(
             task_id,
             org_context.effective_organization_uuid(),
@@ -618,7 +654,7 @@ pub async fn set_task_estimate(
 pub async fn update_task_status(
     AuthenticatedWithOrg { org_context, auth }: AuthenticatedWithOrg,
     Path(task_id): Path<Uuid>,
-    State(usecases): State<Arc<BacklogUsecases>>,
+    State(state): State<Arc<BacklogAppState>>,
     Json(payload): Json<UpdateTaskStatusRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let org_id = org_context.effective_organization_uuid();
@@ -629,13 +665,34 @@ pub async fn update_task_status(
 
     info!(%task_id, org_id = ?org_id, user_id = %auth.sub, status = %status, "Updating task status");
 
-    let result = usecases
+    // Get the old task to capture previous status
+    let old_task = state
+        .usecases
+        .get_task(task_id, org_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Task not found".to_string()))?;
+    let old_status = old_task.status.to_string();
+
+    let result = state
+        .usecases
         .update_task_status(task_id, org_id, user_id, status)
         .await;
 
     match result {
         Ok(task) => {
             info!(%task_id, org_id = ?org_id, user_id = %auth.sub, "Task status updated");
+
+            // Broadcast WebSocket event for real-time updates
+            let event = TaskEvent::StatusChanged {
+                task_id,
+                story_id: task.story_id,
+                old_status,
+                new_status: task.status.to_string(),
+                changed_by_user_id: user_id,
+                timestamp: chrono::Utc::now(),
+            };
+            state.ws_manager.broadcast(event);
+
             Ok(Json(TaskResponse::from(task)))
         }
         Err(err) => {
@@ -648,7 +705,7 @@ pub async fn update_task_status(
 pub async fn update_story_status(
     AuthenticatedWithOrg { org_context, auth }: AuthenticatedWithOrg,
     Path(id): Path<Uuid>,
-    State(usecases): State<Arc<BacklogUsecases>>,
+    State(state): State<Arc<BacklogAppState>>,
     Json(payload): Json<UpdateStoryStatusRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let status = StoryStatus::from_str(&payload.status)
@@ -657,7 +714,7 @@ pub async fn update_story_status(
     let org_id = org_context.effective_organization_uuid();
     info!(%id, org_id = ?org_id, user_id = %auth.sub, status = %status, "Updating story status");
 
-    let result = usecases.update_story_status(id, org_id, status).await;
+    let result = state.usecases.update_story_status(id, org_id, status).await;
 
     match result {
         Ok(_) => {
@@ -674,12 +731,12 @@ pub async fn update_story_status(
 pub async fn delete_story(
     AuthenticatedWithOrg { org_context, auth }: AuthenticatedWithOrg,
     Path(id): Path<Uuid>,
-    State(usecases): State<Arc<BacklogUsecases>>,
+    State(state): State<Arc<BacklogAppState>>,
 ) -> Result<impl IntoResponse, AppError> {
     let org_id = org_context.effective_organization_uuid();
     info!(%id, org_id = ?org_id, user_id = %auth.sub, "Deleting story");
 
-    let result = usecases.delete_story(id, org_id).await;
+    let result = state.usecases.delete_story(id, org_id).await;
 
     match result {
         Ok(_) => {
@@ -710,13 +767,14 @@ pub struct CreateSprintResponse {
 pub async fn create_sprint(
     AuthenticatedWithOrg { org_context, auth }: AuthenticatedWithOrg,
     Path(project_id): Path<Uuid>,
-    State(usecases): State<Arc<BacklogUsecases>>,
+    State(state): State<Arc<BacklogAppState>>,
     Json(payload): Json<CreateSprintRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let org_id = org_context.effective_organization_uuid();
     info!(%project_id, org_id = ?org_id, user_id = %auth.sub, "Creating sprint");
 
-    let result = usecases
+    let result = state
+        .usecases
         .create_sprint(
             project_id,
             org_id,
@@ -746,7 +804,7 @@ pub async fn get_stories_by_project(
     AuthenticatedWithOrg { org_context, auth }: AuthenticatedWithOrg,
     Path(project_id): Path<Uuid>,
     Query(query): Query<StoriesQuery>,
-    State(usecases): State<Arc<BacklogUsecases>>,
+    State(state): State<Arc<BacklogAppState>>,
 ) -> Result<impl IntoResponse, AppError> {
     let org_id = org_context.effective_organization_uuid();
     info!(%project_id, org_id = ?org_id, user_id = %auth.sub, "Fetching project stories");
@@ -765,7 +823,8 @@ pub async fn get_stories_by_project(
         None
     };
 
-    let result = usecases
+    let result = state
+        .usecases
         .get_stories_by_project(project_id, org_id, status_filter)
         .await;
 
@@ -787,9 +846,10 @@ pub async fn get_stories_by_project(
 pub async fn get_acceptance_criteria(
     AuthenticatedWithOrg { org_context, .. }: AuthenticatedWithOrg,
     Path(story_id): Path<Uuid>,
-    State(usecases): State<Arc<BacklogUsecases>>,
+    State(state): State<Arc<BacklogAppState>>,
 ) -> Result<impl IntoResponse, AppError> {
-    let criteria = usecases
+    let criteria = state
+        .usecases
         .get_acceptance_criteria(story_id, org_context.effective_organization_uuid())
         .await?;
     let criteria_responses: Vec<AcceptanceCriterionResponse> = criteria
@@ -802,10 +862,11 @@ pub async fn get_acceptance_criteria(
 pub async fn create_acceptance_criterion(
     AuthenticatedWithOrg { org_context, .. }: AuthenticatedWithOrg,
     Path(story_id): Path<Uuid>,
-    State(usecases): State<Arc<BacklogUsecases>>,
+    State(state): State<Arc<BacklogAppState>>,
     Json(payload): Json<CreateAcceptanceCriterionRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    let criterion_id = usecases
+    let criterion_id = state
+        .usecases
         .create_acceptance_criterion(
             story_id,
             org_context.effective_organization_uuid(),
@@ -824,10 +885,11 @@ pub async fn create_acceptance_criterion(
 pub async fn update_acceptance_criterion(
     AuthenticatedWithOrg { org_context, .. }: AuthenticatedWithOrg,
     Path((story_id, criterion_id)): Path<(Uuid, Uuid)>,
-    State(usecases): State<Arc<BacklogUsecases>>,
+    State(state): State<Arc<BacklogAppState>>,
     Json(payload): Json<UpdateAcceptanceCriterionRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    usecases
+    state
+        .usecases
         .update_acceptance_criterion(
             criterion_id,
             story_id,
@@ -844,9 +906,10 @@ pub async fn update_acceptance_criterion(
 pub async fn delete_acceptance_criterion(
     AuthenticatedWithOrg { org_context, .. }: AuthenticatedWithOrg,
     Path((story_id, criterion_id)): Path<(Uuid, Uuid)>,
-    State(usecases): State<Arc<BacklogUsecases>>,
+    State(state): State<Arc<BacklogAppState>>,
 ) -> Result<impl IntoResponse, AppError> {
-    usecases
+    state
+        .usecases
         .delete_acceptance_criterion(
             criterion_id,
             story_id,
@@ -854,4 +917,72 @@ pub async fn delete_acceptance_criterion(
         )
         .await?;
     Ok(StatusCode::OK)
+}
+
+// Sprint Task Board DTOs and Handler
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SprintTaskBoardResponse {
+    pub sprint: SprintMetadata,
+    pub tasks: Vec<SprintTaskView>,
+    pub groups: serde_json::Value,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SprintMetadata {
+    pub id: Uuid,
+    pub name: String,
+    pub goal: String,
+    pub start_date: chrono::DateTime<chrono::Utc>,
+    pub end_date: chrono::DateTime<chrono::Utc>,
+    pub days_remaining: i64,
+    pub status: String,
+    pub total_stories: i64,
+    pub total_tasks: i64,
+    pub completed_tasks: i64,
+    pub progress_percentage: f64,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SprintTaskView {
+    pub id: Uuid,
+    pub story_id: Uuid,
+    pub story_title: String,
+    pub title: String,
+    pub description: Option<String>,
+    pub status: String,
+    pub owner_user_id: Option<Uuid>,
+    pub acceptance_criteria_refs: Vec<String>,
+    pub estimated_hours: Option<u32>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SprintTaskBoardQuery {
+    pub status: Option<String>,
+    #[serde(rename = "groupBy")]
+    pub group_by: Option<String>,
+}
+
+pub async fn get_sprint_task_board(
+    AuthenticatedWithOrg { org_context, .. }: AuthenticatedWithOrg,
+    Path(sprint_id): Path<Uuid>,
+    Query(query): Query<SprintTaskBoardQuery>,
+    State(state): State<Arc<BacklogAppState>>,
+) -> Result<impl IntoResponse, AppError> {
+    let response = state
+        .usecases
+        .get_sprint_task_board(
+            sprint_id,
+            org_context.effective_organization_uuid(),
+            query.status,
+            query.group_by,
+        )
+        .await?;
+
+    Ok(Json(response))
 }

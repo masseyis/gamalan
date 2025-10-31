@@ -116,13 +116,14 @@ impl BacklogUsecases {
         description: Option<Option<String>>,
         labels: Option<Vec<String>>,
         story_points: Option<u32>,
+        sprint_id: Option<Option<Uuid>>,
     ) -> Result<(), AppError> {
         let mut story = self
             .get_story(id, organization_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Story not found".to_string()))?;
 
-        story.update(title, description, labels, story_points)?;
+        story.update(title, description, labels, story_points, sprint_id)?;
         repo::update_story(&self.pool, &story).await?;
         let record = Self::story_record(&story);
         self.publish(DomainEvent::Backlog(BacklogEvent::StoryUpdated {
@@ -433,7 +434,7 @@ impl BacklogUsecases {
         task_id: Uuid,
         organization_id: Option<Uuid>,
         user_id: Uuid,
-    ) -> Result<(), AppError> {
+    ) -> Result<Task, AppError> {
         let mut task = self
             .get_task(task_id, organization_id)
             .await?
@@ -446,7 +447,7 @@ impl BacklogUsecases {
             task: record,
         }))
         .await;
-        Ok(())
+        Ok(task)
     }
 
     pub async fn release_task_ownership(
@@ -454,12 +455,13 @@ impl BacklogUsecases {
         task_id: Uuid,
         organization_id: Option<Uuid>,
         user_id: Uuid,
-    ) -> Result<(), AppError> {
+    ) -> Result<Task, AppError> {
         let mut task = self
             .get_task(task_id, organization_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Task not found".to_string()))?;
 
+        let previous_owner = task.owner_user_id;
         task.release_ownership(user_id)?;
         repo::update_task(&self.pool, &task).await?;
         let record = Self::task_record(&task);
@@ -467,7 +469,13 @@ impl BacklogUsecases {
             task: record,
         }))
         .await;
-        Ok(())
+
+        // Store previous_owner in task for WebSocket event
+        let mut task_with_prev_owner = task.clone();
+        if let Some(prev_owner) = previous_owner {
+            task_with_prev_owner.owner_user_id = Some(prev_owner);
+        }
+        Ok(task_with_prev_owner)
     }
 
     pub async fn start_task_work(
@@ -656,5 +664,267 @@ impl BacklogUsecases {
         }))
         .await;
         Ok(())
+    }
+
+    pub async fn get_sprint_task_board(
+        &self,
+        sprint_id: Uuid,
+        organization_id: Option<Uuid>,
+        status_filter: Option<String>,
+        group_by: Option<String>,
+    ) -> Result<crate::adapters::http::handlers::SprintTaskBoardResponse, AppError> {
+        use crate::adapters::http::handlers::{
+            SprintMetadata, SprintTaskBoardResponse, SprintTaskView,
+        };
+        use chrono::Utc;
+        use std::collections::HashMap;
+
+        // Get sprint metadata
+        let sprint_row = sqlx::query!(
+            r#"
+            SELECT id, name, goal, status, start_date, end_date,
+                   capacity_points, committed_points, completed_points
+            FROM sprints
+            WHERE id = $1
+            "#,
+            sprint_id
+        )
+        .fetch_optional(self.pool.as_ref())
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "SQL error fetching sprint");
+            AppError::InternalServerError
+        })?
+        .ok_or_else(|| AppError::NotFound("Sprint not found".to_string()))?;
+
+        // Calculate days remaining
+        let now = Utc::now();
+        let days_remaining = (sprint_row.end_date - now).num_days().max(0);
+
+        // Get all stories in the sprint with organization filter
+        let stories_query: Vec<(Uuid, String)> = if let Some(org_id) = organization_id {
+            sqlx::query_as::<_, (Uuid, String)>(
+                r#"
+                SELECT id, title
+                FROM stories
+                WHERE sprint_id = $1 AND organization_id = $2
+                "#,
+            )
+            .bind(sprint_id)
+            .bind(org_id)
+            .fetch_all(self.pool.as_ref())
+            .await
+            .map_err(|e| {
+                tracing::error!(error = %e, "SQL error fetching stories for sprint");
+                AppError::InternalServerError
+            })?
+        } else {
+            sqlx::query_as::<_, (Uuid, String)>(
+                r#"
+                SELECT id, title
+                FROM stories
+                WHERE sprint_id = $1
+                "#,
+            )
+            .bind(sprint_id)
+            .fetch_all(self.pool.as_ref())
+            .await
+            .map_err(|e| {
+                tracing::error!(error = %e, "SQL error fetching stories for sprint");
+                AppError::InternalServerError
+            })?
+        };
+
+        let total_stories = stories_query.len() as i64;
+        let story_map: HashMap<Uuid, String> = stories_query.into_iter().collect();
+
+        if story_map.is_empty() {
+            // No stories in sprint - return empty response
+            return Ok(SprintTaskBoardResponse {
+                sprint: SprintMetadata {
+                    id: sprint_row.id,
+                    name: sprint_row.name,
+                    goal: sprint_row.goal,
+                    start_date: sprint_row.start_date,
+                    end_date: sprint_row.end_date,
+                    days_remaining,
+                    status: sprint_row.status,
+                    total_stories: 0,
+                    total_tasks: 0,
+                    completed_tasks: 0,
+                    progress_percentage: 0.0,
+                },
+                tasks: vec![],
+                groups: serde_json::json!({}),
+            });
+        }
+
+        let story_ids: Vec<Uuid> = story_map.keys().copied().collect();
+
+        // Define a struct for task row data
+        #[derive(sqlx::FromRow)]
+        struct TaskRowData {
+            id: Uuid,
+            story_id: Uuid,
+            title: String,
+            description: Option<String>,
+            status: String,
+            owner_user_id: Option<Uuid>,
+            acceptance_criteria_refs: Vec<String>,
+            estimated_hours: Option<i32>,
+            created_at: chrono::DateTime<chrono::Utc>,
+            updated_at: chrono::DateTime<chrono::Utc>,
+        }
+
+        // Get all tasks for these stories with optional status filter
+        let tasks_rows: Vec<TaskRowData> = if let Some(status) = &status_filter {
+            sqlx::query_as::<_, TaskRowData>(
+                r#"
+                SELECT id, story_id, title, description, status,
+                       owner_user_id, acceptance_criteria_refs,
+                       estimated_hours, created_at, updated_at
+                FROM tasks
+                WHERE story_id = ANY($1) AND status = $2
+                ORDER BY story_id, created_at
+                "#,
+            )
+            .bind(&story_ids)
+            .bind(status)
+            .fetch_all(self.pool.as_ref())
+            .await
+            .map_err(|e| {
+                tracing::error!(error = %e, "SQL error fetching tasks for sprint");
+                AppError::InternalServerError
+            })?
+        } else {
+            sqlx::query_as::<_, TaskRowData>(
+                r#"
+                SELECT id, story_id, title, description, status,
+                       owner_user_id, acceptance_criteria_refs,
+                       estimated_hours, created_at, updated_at
+                FROM tasks
+                WHERE story_id = ANY($1)
+                ORDER BY story_id, created_at
+                "#,
+            )
+            .bind(&story_ids)
+            .fetch_all(self.pool.as_ref())
+            .await
+            .map_err(|e| {
+                tracing::error!(error = %e, "SQL error fetching tasks for sprint");
+                AppError::InternalServerError
+            })?
+        };
+
+        // Build task views
+        let mut tasks: Vec<SprintTaskView> = Vec::new();
+        let mut completed_tasks = 0i64;
+
+        for row in tasks_rows {
+            if row.status == "completed" {
+                completed_tasks += 1;
+            }
+
+            let story_title = story_map
+                .get(&row.story_id)
+                .cloned()
+                .unwrap_or_else(|| "Unknown Story".to_string());
+
+            tasks.push(SprintTaskView {
+                id: row.id,
+                story_id: row.story_id,
+                story_title,
+                title: row.title,
+                description: row.description,
+                status: row.status,
+                owner_user_id: row.owner_user_id,
+                acceptance_criteria_refs: row.acceptance_criteria_refs,
+                estimated_hours: row.estimated_hours.map(|h| h as u32),
+                created_at: row.created_at,
+                updated_at: row.updated_at,
+            });
+        }
+
+        let total_tasks = tasks.len() as i64;
+        let progress_percentage = if total_tasks > 0 {
+            (completed_tasks as f64 / total_tasks as f64) * 100.0
+        } else {
+            0.0
+        };
+
+        // Build groups based on group_by parameter
+        let groups = match group_by.as_deref() {
+            Some("status") => {
+                let mut status_groups: HashMap<String, serde_json::Value> = HashMap::new();
+
+                for task in &tasks {
+                    let entry = status_groups.entry(task.status.clone()).or_insert_with(|| {
+                        serde_json::json!({
+                            "count": 0,
+                            "tasks": Vec::<Uuid>::new()
+                        })
+                    });
+
+                    if let Some(obj) = entry.as_object_mut() {
+                        if let Some(count) = obj.get_mut("count") {
+                            *count = serde_json::json!(count.as_i64().unwrap_or(0) + 1);
+                        }
+                        if let Some(task_list) = obj.get_mut("tasks") {
+                            if let Some(arr) = task_list.as_array_mut() {
+                                arr.push(serde_json::json!(task.id.to_string()));
+                            }
+                        }
+                    }
+                }
+
+                serde_json::to_value(status_groups).unwrap_or_else(|_| serde_json::json!({}))
+            }
+            _ => {
+                // Default to grouping by story
+                let mut story_groups: HashMap<String, serde_json::Value> = HashMap::new();
+
+                for task in &tasks {
+                    let entry = story_groups
+                        .entry(task.story_id.to_string())
+                        .or_insert_with(|| {
+                            serde_json::json!({
+                                "count": 0,
+                                "tasks": Vec::<Uuid>::new()
+                            })
+                        });
+
+                    if let Some(obj) = entry.as_object_mut() {
+                        if let Some(count) = obj.get_mut("count") {
+                            *count = serde_json::json!(count.as_i64().unwrap_or(0) + 1);
+                        }
+                        if let Some(task_list) = obj.get_mut("tasks") {
+                            if let Some(arr) = task_list.as_array_mut() {
+                                arr.push(serde_json::json!(task.id.to_string()));
+                            }
+                        }
+                    }
+                }
+
+                serde_json::to_value(story_groups).unwrap_or_else(|_| serde_json::json!({}))
+            }
+        };
+
+        Ok(SprintTaskBoardResponse {
+            sprint: SprintMetadata {
+                id: sprint_row.id,
+                name: sprint_row.name,
+                goal: sprint_row.goal,
+                start_date: sprint_row.start_date,
+                end_date: sprint_row.end_date,
+                days_remaining,
+                status: sprint_row.status,
+                total_stories,
+                total_tasks,
+                completed_tasks,
+                progress_percentage,
+            },
+            tasks,
+            groups,
+        })
     }
 }
