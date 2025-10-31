@@ -116,13 +116,14 @@ impl BacklogUsecases {
         description: Option<Option<String>>,
         labels: Option<Vec<String>>,
         story_points: Option<u32>,
+        sprint_id: Option<Option<Uuid>>,
     ) -> Result<(), AppError> {
         let mut story = self
             .get_story(id, organization_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Story not found".to_string()))?;
 
-        story.update(title, description, labels, story_points)?;
+        story.update(title, description, labels, story_points, sprint_id)?;
         repo::update_story(&self.pool, &story).await?;
         let record = Self::story_record(&story);
         self.publish(DomainEvent::Backlog(BacklogEvent::StoryUpdated {
@@ -433,7 +434,7 @@ impl BacklogUsecases {
         task_id: Uuid,
         organization_id: Option<Uuid>,
         user_id: Uuid,
-    ) -> Result<(), AppError> {
+    ) -> Result<Task, AppError> {
         let mut task = self
             .get_task(task_id, organization_id)
             .await?
@@ -446,7 +447,7 @@ impl BacklogUsecases {
             task: record,
         }))
         .await;
-        Ok(())
+        Ok(task)
     }
 
     pub async fn release_task_ownership(
@@ -454,12 +455,13 @@ impl BacklogUsecases {
         task_id: Uuid,
         organization_id: Option<Uuid>,
         user_id: Uuid,
-    ) -> Result<(), AppError> {
+    ) -> Result<Task, AppError> {
         let mut task = self
             .get_task(task_id, organization_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Task not found".to_string()))?;
 
+        let previous_owner = task.owner_user_id;
         task.release_ownership(user_id)?;
         repo::update_task(&self.pool, &task).await?;
         let record = Self::task_record(&task);
@@ -467,7 +469,13 @@ impl BacklogUsecases {
             task: record,
         }))
         .await;
-        Ok(())
+
+        // Store previous_owner in task for WebSocket event
+        let mut task_with_prev_owner = task.clone();
+        if let Some(prev_owner) = previous_owner {
+            task_with_prev_owner.owner_user_id = Some(prev_owner);
+        }
+        Ok(task_with_prev_owner)
     }
 
     pub async fn start_task_work(

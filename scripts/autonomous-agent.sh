@@ -75,6 +75,13 @@ api_post() {
     -H "Content-Type: application/json"
 }
 
+api_delete() {
+  local endpoint="$1"
+  curl -s -X DELETE "$API_BASE/$endpoint" \
+    -H "X-API-Key: $API_KEY" \
+    -H "Content-Type: application/json"
+}
+
 # Get recommended tasks
 get_recommended_task() {
   local response=$(api_get "tasks/recommended?sprint_id=$SPRINT_ID&role=$ROLE&exclude_mine=false&limit=1")
@@ -94,6 +101,12 @@ take_task() {
   api_put "tasks/$task_id/ownership"
 }
 
+# Release task ownership
+release_task() {
+  local task_id="$1"
+  api_delete "tasks/$task_id/ownership"
+}
+
 # Mark task as complete
 complete_task() {
   local task_id="$1"
@@ -105,6 +118,7 @@ execute_task() {
   local task_id="$1"
   local task_title="$2"
   local task_description="$3"
+  local task_story_id="$4"
 
   log_info "Executing task: $task_title"
   log_info "Task ID: $task_id"
@@ -124,6 +138,19 @@ execute_task() {
 
   # Execute with Claude Code
   local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+  # Export environment variables for the executor
+  export BATTRA_API_KEY="$API_KEY"
+  export BATTRA_API_BASE="$API_BASE"
+  export BATTRA_STORY_ID="$task_story_id"
+
+  # Pass through ANTHROPIC_API_KEY from environment (optional - if not set, uses Claude Code CLI)
+  if [ -n "$ANTHROPIC_API_KEY" ]; then
+    export ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY"
+    echo "  Using Anthropic API (separate API credits)"
+  else
+    echo "  Using Claude Code CLI (Claude Code Plus subscription)"
+  fi
 
   if ! node "$script_dir/$executor" "$task_id"; then
     log_error "Task execution failed"
@@ -167,6 +194,7 @@ run_agent() {
     task_id=$(echo "$task_data" | jq -r '.[0].task.id')
     task_title=$(echo "$task_data" | jq -r '.[0].task.title')
     task_description=$(echo "$task_data" | jq -r '.[0].task.description // empty')
+    task_story_id=$(echo "$task_data" | jq -r '.[0].task.story_id')
     task_score=$(echo "$task_data" | jq -r '.[0].score')
     task_reason=$(echo "$task_data" | jq -r '.[0].reason')
 
@@ -186,9 +214,13 @@ run_agent() {
     log_success "Ownership acquired"
 
     # Execute task
-    if ! execute_task "$task_id" "$task_title" "$task_description"; then
+    if ! execute_task "$task_id" "$task_title" "$task_description" "$task_story_id"; then
       log_error "Task execution failed. Releasing task..."
-      # TODO: Add release_task API call here
+      if ! release_task "$task_id"; then
+        log_warning "Failed to release task ownership"
+      else
+        log_success "Task ownership released"
+      fi
       sleep $POLL_INTERVAL
       continue
     fi

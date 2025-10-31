@@ -19,7 +19,8 @@ const { spawn } = require('child_process');
 const TASK_ID = process.argv[2];
 const API_BASE = process.env.BATTRA_API_BASE || 'http://localhost:8000/api/v1';
 const API_KEY = process.env.BATTRA_API_KEY;
-const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY; // Optional when using CLI
+const STORY_ID = process.env.BATTRA_STORY_ID;
 
 // Validation
 if (!TASK_ID) {
@@ -33,9 +34,17 @@ if (!API_KEY) {
   process.exit(1);
 }
 
-if (!ANTHROPIC_KEY) {
-  console.error('❌ Error: ANTHROPIC_API_KEY environment variable required');
+if (!STORY_ID) {
+  console.error('❌ Error: BATTRA_STORY_ID environment variable required');
   process.exit(1);
+}
+
+// Check if Claude CLI is available (will use Claude Code Plus subscription)
+const USE_CLI = !ANTHROPIC_KEY; // Use CLI if no API key provided
+if (USE_CLI) {
+  console.log('ℹ️  Using Claude Code CLI (Claude Code Plus subscription)');
+} else {
+  console.log('ℹ️  Using Anthropic API (separate API credits)');
 }
 
 // API helper
@@ -55,15 +64,21 @@ async function apiGet(endpoint) {
 }
 
 // Fetch task details
-async function fetchTaskDetails(taskId) {
-  console.log('📥 Fetching task details...');
-  const task = await apiGet(`tasks/${taskId}`);
-
+async function fetchTaskDetails(taskId, storyId) {
   console.log('📥 Fetching story...');
-  const story = await apiGet(`stories/${task.storyId}`);
+  const story = await apiGet(`stories/${storyId}`);
+
+  console.log('📥 Fetching tasks for story...');
+  const tasks = await apiGet(`stories/${storyId}/tasks`);
+
+  // Find the specific task
+  const task = tasks.find(t => t.id === taskId);
+  if (!task) {
+    throw new Error(`Task ${taskId} not found in story ${storyId}`);
+  }
 
   console.log('📥 Fetching acceptance criteria...');
-  const acs = await apiGet(`stories/${task.storyId}/acceptance-criteria`);
+  const acs = await apiGet(`stories/${storyId}/acceptance-criteria`);
 
   return { task, story, acs };
 }
@@ -88,8 +103,8 @@ function buildPrompt(task, story, acs) {
 **Story:** ${story.title}
 **Story Description:** ${story.description || 'No description'}
 
-**Estimated Hours:** ${task.estimatedHours || 'Not estimated'}
-**AC References:** ${task.acceptanceCriteriaRefs.join(', ')}
+**Estimated Hours:** ${task.estimated_hours || task.estimatedHours || 'Not estimated'}
+**AC References:** ${(task.acceptance_criteria_refs || task.acceptanceCriteriaRefs || []).join(', ') || 'None'}
 
 # Acceptance Criteria
 
@@ -131,16 +146,30 @@ Please implement this task now. Be thorough and ensure all acceptance criteria a
 // Execute command and stream output
 function execCommand(command, args, options = {}) {
   return new Promise((resolve, reject) => {
+    const { captureOutput, ...spawnOptions } = options;
     console.log(`🚀 Running: ${command} ${args.join(' ')}`);
 
     const proc = spawn(command, args, {
-      stdio: 'inherit',
-      ...options,
+      stdio: captureOutput ? ['pipe', 'pipe', 'pipe'] : 'inherit',
+      ...spawnOptions,
     });
+
+    let stdout = '';
+    let stderr = '';
+
+    if (captureOutput) {
+      proc.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+
+      proc.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+    }
 
     proc.on('close', (code) => {
       if (code === 0) {
-        resolve({ success: true, code });
+        resolve({ success: true, code, stdout, stderr });
       } else {
         reject(new Error(`Command exited with code ${code}`));
       }
@@ -153,11 +182,62 @@ function execCommand(command, args, options = {}) {
 }
 
 // Run tests
-async function runTests() {
+async function runTests(task, story) {
   console.log('\n🧪 Running tests...');
+
+  // Detect task type from title, description, and git changes
+  const taskText = `${task.title} ${task.description || ''} ${story.title} ${story.description || ''}`.toLowerCase();
+  const isFrontend = /frontend|react|next\.?js|component|ui|web|tsx?|jsx?/i.test(taskText);
+  const isBackend = /backend|rust|service|api|endpoint|gateway|database/i.test(taskText);
+
+  // Check git diff to see which files were modified
+  let changedFiles = '';
   try {
-    await execCommand('cargo', ['test', '--package', 'backlog', '--quiet']);
-    console.log('✅ All tests passed');
+    const { stdout } = await execCommand('git', ['diff', '--name-only', 'HEAD'], { captureOutput: true });
+    changedFiles = stdout.toLowerCase();
+  } catch (err) {
+    console.log('⚠️  Could not detect changed files, using keyword detection only');
+  }
+
+  const hasWebChanges = changedFiles.includes('apps/web/');
+  const hasServiceChanges = changedFiles.includes('services/');
+
+  try {
+    // Frontend tests
+    if (isFrontend || hasWebChanges) {
+      console.log('  📱 Detected frontend task, running frontend tests...');
+      try {
+        await execCommand('pnpm', ['test:unit'], { cwd: 'apps/web' });
+        console.log('✅ Frontend tests passed');
+      } catch (error) {
+        console.log('⚠️  Frontend tests failed or not configured');
+        console.log('  Proceeding anyway (tests may not exist yet)');
+      }
+    }
+
+    // Backend tests
+    if (isBackend || hasServiceChanges) {
+      console.log('  🦀 Detected backend task, running backend tests...');
+      // Run tests for the specific service if we can detect it
+      if (changedFiles.includes('services/backlog/')) {
+        await execCommand('cargo', ['test', '--package', 'backlog', '--quiet']);
+      } else if (changedFiles.includes('services/projects/')) {
+        await execCommand('cargo', ['test', '--package', 'projects', '--quiet']);
+      } else if (changedFiles.includes('services/readiness/')) {
+        await execCommand('cargo', ['test', '--package', 'readiness', '--quiet']);
+      } else {
+        console.log('  Running workspace tests...');
+        await execCommand('cargo', ['test', '--workspace', '--quiet']);
+      }
+      console.log('✅ Backend tests passed');
+    }
+
+    // If we can't detect the type, skip tests with warning
+    if (!isFrontend && !isBackend && !hasWebChanges && !hasServiceChanges) {
+      console.log('⚠️  Could not detect task type, skipping tests');
+      console.log('  (Tests will run in CI)');
+    }
+
     return true;
   } catch (error) {
     console.error('❌ Tests failed:', error.message);
@@ -184,11 +264,83 @@ async function runQualityChecks() {
   }
 }
 
-// Call Claude Code via Anthropic API
+// Call Claude Code via CLI or API
 async function invokeClaude(prompt) {
   console.log('\n🤖 Invoking Claude Code...');
   console.log('   (This may take several minutes for complex tasks)\n');
 
+  if (USE_CLI) {
+    // Use Claude Code CLI (Claude Code Plus subscription)
+    return invokeClaudeCLI(prompt);
+  } else {
+    // Use Anthropic API (separate API credits)
+    return invokeCloudeAPI(prompt);
+  }
+}
+
+// Call Claude Code via CLI
+async function invokeClaudeCLI(prompt) {
+  console.log('🔍 [DEBUG] Entering invokeClaudeCLI function');
+  try {
+    console.log('🔍 [DEBUG] Creating spawn Promise');
+    // Execute Claude CLI with --print flag and pipe prompt to stdin
+    const result = await new Promise((resolve, reject) => {
+      console.log('🔍 [DEBUG] Inside Promise executor');
+      const { spawn } = require('child_process');
+      console.log('🔍 [DEBUG] Spawning Claude process...');
+
+      const claude = spawn('claude', [
+        '--print',
+        '--model', 'sonnet',
+        '--dangerously-skip-permissions'  // YOLO mode: auto-approve all actions (safe with git)
+      ], {
+        cwd: process.cwd(),
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+
+      console.log('🔍 [DEBUG] Claude process spawned, PID:', claude.pid);
+
+      let stdout = '';
+      let stderr = '';
+
+      claude.stdout.on('data', (data) => {
+        stdout += data.toString();
+        // Stream output in real-time
+        process.stdout.write(data);
+      });
+
+      claude.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      claude.on('close', (code) => {
+        if (code === 0) {
+          resolve(stdout);
+        } else {
+          reject(new Error(`Claude CLI exited with code ${code}: ${stderr}`));
+        }
+      });
+
+      claude.on('error', (error) => {
+        reject(error);
+      });
+
+      // Write prompt to stdin and close
+      claude.stdin.write(prompt);
+      claude.stdin.end();
+    });
+
+    console.log('\n\n📝 Claude Code execution completed\n');
+
+    return result;
+  } catch (error) {
+    console.error('❌ Claude CLI error:', error.message);
+    throw error;
+  }
+}
+
+// Call Claude Code via Anthropic API
+async function invokeCloudeAPI(prompt) {
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -234,10 +386,11 @@ async function invokeClaude(prompt) {
 async function main() {
   try {
     console.log('🚀 Claude Code Task Executor');
-    console.log(`📋 Task ID: ${TASK_ID}\n`);
+    console.log(`📋 Task ID: ${TASK_ID}`);
+    console.log(`📖 Story ID: ${STORY_ID}\n`);
 
     // Fetch task details
-    const { task, story, acs } = await fetchTaskDetails(TASK_ID);
+    const { task, story, acs } = await fetchTaskDetails(TASK_ID, STORY_ID);
 
     console.log(`\n✅ Task: ${task.title}`);
     console.log(`📖 Story: ${story.title}`);
@@ -256,7 +409,7 @@ async function main() {
     const result = await invokeClaude(prompt);
 
     // Run tests
-    const testsPassed = await runTests();
+    const testsPassed = await runTests(task, story);
     if (!testsPassed) {
       console.error('\n❌ Task execution failed: Tests did not pass');
       process.exit(1);

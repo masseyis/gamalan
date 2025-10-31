@@ -88,6 +88,7 @@ fn test_story_update_valid_fields() {
             Some(Some("Updated Description".to_string())),
             Some(vec!["updated".to_string(), "feature".to_string()]),
             Some(5),
+            None,
         )
         .unwrap();
 
@@ -104,7 +105,7 @@ fn test_story_update_empty_title_fails() {
 
     let mut story = Story::new(project_id, org_id, "Original Title".to_string(), None).unwrap();
 
-    let result = story.update(Some("".to_string()), None, None, None);
+    let result = story.update(Some("".to_string()), None, None, None, None);
 
     assert!(result.is_err());
     assert!(result

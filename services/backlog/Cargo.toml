@@ -6,10 +6,10 @@ edition = "2021"
 [dependencies]
 common = { path = "../../libs/common" }
 auth_clerk = { path = "../../libs/auth_clerk" }
-axum = { workspace = true }
+axum = { workspace = true, features = ["ws"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
-tokio = { workspace = true }
+tokio = { workspace = true, features = ["sync"] }
 thiserror = { workspace = true }
 anyhow = { workspace = true }
 shuttle-runtime = { workspace = true }
@@ -25,6 +25,7 @@ chrono = { workspace = true }
 event-bus = { path = "../../libs/event-bus" }
 tracing = { workspace = true }
 reqwest = { version = "0.12.4", features = ["json"] }
+futures = "0.3"
 
 [dev-dependencies]
 reqwest = { version = "0.12.4", features = ["json"] }
