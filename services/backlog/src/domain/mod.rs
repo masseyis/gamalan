@@ -1,7 +1,9 @@
+pub mod events;
 pub mod recommendation;
 pub mod story;
 pub mod task;
 
+pub use events::*;
 pub use recommendation::*;
 pub use story::*;
 pub use task::*;

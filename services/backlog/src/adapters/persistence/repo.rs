@@ -148,10 +148,10 @@ pub async fn update_story(pool: &PgPool, story: &Story) -> Result<(), AppError> 
         .map_err(|_| AppError::InternalServerError)?;
 
     sqlx::query(
-        "UPDATE stories SET title = $2, description = $3, status = $4, labels = $5, story_points = $6, readiness_override = $7, readiness_override_by = $8, readiness_override_reason = $9, readiness_override_at = $10, updated_at = NOW()
+        "UPDATE stories SET title = $2, description = $3, status = $4, labels = $5, story_points = $6, sprint_id = $7, readiness_override = $8, readiness_override_by = $9, readiness_override_reason = $10, readiness_override_at = $11, updated_at = NOW()
          WHERE id = $1 AND (
-             (organization_id IS NOT NULL AND organization_id = $11) OR
-             (organization_id IS NULL AND $11 IS NULL)
+             (organization_id IS NOT NULL AND organization_id = $12) OR
+             (organization_id IS NULL AND $12 IS NULL)
          )",
     )
     .bind(story.id)
@@ -160,6 +160,7 @@ pub async fn update_story(pool: &PgPool, story: &Story) -> Result<(), AppError> 
     .bind(story.status.to_string())
     .bind(&story.labels)
     .bind(story.story_points.map(|points| points as i32))
+    .bind(story.sprint_id)
     .bind(story.readiness_override)
     .bind(story.readiness_override_by)
     .bind(&story.readiness_override_reason)
@@ -212,10 +213,10 @@ pub async fn update_story_with_transaction(
     story: &Story,
 ) -> Result<(), AppError> {
     sqlx::query(
-        "UPDATE stories SET title = $2, description = $3, status = $4, labels = $5, story_points = $6, readiness_override = $7, readiness_override_by = $8, readiness_override_reason = $9, readiness_override_at = $10, updated_at = NOW()
+        "UPDATE stories SET title = $2, description = $3, status = $4, labels = $5, story_points = $6, sprint_id = $7, readiness_override = $8, readiness_override_by = $9, readiness_override_reason = $10, readiness_override_at = $11, updated_at = NOW()
          WHERE id = $1 AND (
-             (organization_id IS NOT NULL AND organization_id = $11) OR
-             (organization_id IS NULL AND $11 IS NULL)
+             (organization_id IS NOT NULL AND organization_id = $12) OR
+             (organization_id IS NULL AND $12 IS NULL)
          )",
     )
     .bind(story.id)
@@ -224,6 +225,7 @@ pub async fn update_story_with_transaction(
     .bind(story.status.to_string())
     .bind(&story.labels)
     .bind(story.story_points.map(|points| points as i32))
+    .bind(story.sprint_id)
     .bind(story.readiness_override)
     .bind(story.readiness_override_by)
     .bind(&story.readiness_override_reason)
