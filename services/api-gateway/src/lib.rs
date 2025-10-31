@@ -9,6 +9,8 @@ pub mod auth;
 use async_trait::async_trait;
 use auth_clerk::JwtVerifier;
 use backlog::adapters::http::handlers as backlog_handlers;
+use backlog::adapters::http::BacklogAppState;
+use backlog::adapters::websocket::{websocket_handler, WebSocketManager};
 use common::AppError;
 use prompt_builder::adapters::http::handlers as prompt_handlers;
 use prompt_builder::application::ports as prompt_ports;
@@ -25,6 +27,11 @@ pub fn build_backlog_router(
     backlog_usecases: Arc<BacklogUsecases>,
     verifier: Arc<Mutex<JwtVerifier>>,
 ) -> Router {
+    // Create WebSocket manager for real-time updates
+    let ws_manager = Arc::new(WebSocketManager::new(100));
+
+    // Create state with both usecases and WebSocket manager
+    let state = Arc::new(BacklogAppState::new(backlog_usecases, ws_manager.clone()));
     let trace_layer =
         TraceLayer::new_for_http().make_span_with(|request: &axum::http::Request<_>| {
             let org_id = request
@@ -139,7 +146,9 @@ pub fn build_backlog_router(
             "/api/v1/tasks/{task_id}/estimate",
             patch(backlog_handlers::set_task_estimate),
         )
-        .with_state(backlog_usecases)
+        // WebSocket endpoint for real-time task updates
+        .route("/api/v1/ws/tasks", get(websocket_handler))
+        .with_state(state)
         .layer(Extension(verifier))
         .layer(trace_layer)
 }
