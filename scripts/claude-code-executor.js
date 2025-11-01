@@ -468,6 +468,14 @@ async function setupWorktree(task) {
       await execCommand('git', ['worktree', 'remove', worktreePath, '--force'], { captureOutput: true });
     }
 
+    // Delete existing branch if it exists (local and remote)
+    try {
+      await execCommand('git', ['branch', '-D', branchName], { captureOutput: true });
+      console.log(`   Deleted existing local branch: ${branchName}`);
+    } catch (err) {
+      // Branch doesn't exist, that's fine
+    }
+
     // Fetch latest to ensure we're up to date
     await execCommand('git', ['fetch', 'origin'], { captureOutput: true });
 

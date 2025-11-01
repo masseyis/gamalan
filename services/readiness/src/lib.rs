@@ -5,7 +5,10 @@ pub mod domain;
 mod projections;
 
 use application::{
-    ports::{AcceptanceCriteriaRepository, LlmService, ReadinessEvaluationRepository},
+    ports::{
+        AcceptanceCriteriaRepository, LlmService, ReadinessEvaluationRepository,
+        TaskAnalysisRepository,
+    },
     ReadinessUsecases,
 };
 use event_bus::EventBus;
@@ -26,10 +29,12 @@ pub fn build_usecases(
         as Arc<dyn application::ports::StoryService>;
     let criteria_repo: Arc<dyn AcceptanceCriteriaRepository> = pool.clone();
     let readiness_repo: Arc<dyn ReadinessEvaluationRepository> = pool.clone();
+    let task_analysis_repo: Arc<dyn TaskAnalysisRepository> = pool.clone();
 
     Arc::new(ReadinessUsecases::new(
         criteria_repo,
         readiness_repo,
+        task_analysis_repo,
         story_service,
         llm_service,
     ))

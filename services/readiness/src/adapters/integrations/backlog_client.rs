@@ -51,7 +51,9 @@ impl StoryService for InProcessBacklogService {
                 id: task.id,
                 story_id: task.story_id,
                 title: task.title,
+                description: task.description,
                 acceptance_criteria_refs: task.acceptance_criteria_refs,
+                estimated_hours: task.estimated_hours,
             })
             .collect())
     }
@@ -81,6 +83,8 @@ struct TaskResponse {
     description: Option<String>,
     #[serde(rename = "acceptanceCriteriaRefs")]
     acceptance_criteria_refs: Vec<String>,
+    #[serde(rename = "estimatedHours")]
+    estimated_hours: Option<u32>,
 }
 
 pub struct HttpBacklogService {
@@ -198,7 +202,9 @@ impl StoryService for HttpBacklogService {
                 id: t.id,
                 story_id: t.story_id,
                 title: t.title,
+                description: t.description,
                 acceptance_criteria_refs: t.acceptance_criteria_refs,
+                estimated_hours: t.estimated_hours,
             })
             .collect())
     }

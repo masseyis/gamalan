@@ -1,0 +1,269 @@
+'use client'
+
+import { useMemo } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Story, Task, TaskStatus } from '@/lib/types/story'
+import { GroupByOption } from './SprintTaskFilters'
+import { CheckCircle2, Circle, Clock, User } from 'lucide-react'
+
+export interface SprintTaskListProps {
+  stories: Story[]
+  selectedStatuses: TaskStatus[]
+  groupBy: GroupByOption
+  currentUserId?: string
+}
+
+interface TaskWithStory extends Task {
+  story: Story
+}
+
+interface GroupedTasks {
+  [key: string]: TaskWithStory[]
+}
+
+const STATUS_CONFIG: Record<
+  TaskStatus,
+  { label: string; icon: React.ReactNode; color: string; bgColor: string }
+> = {
+  available: {
+    label: 'Available',
+    icon: <Circle className="h-4 w-4" />,
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-50 border-blue-200',
+  },
+  owned: {
+    label: 'Owned',
+    icon: <User className="h-4 w-4" />,
+    color: 'text-yellow-600',
+    bgColor: 'bg-yellow-50 border-yellow-200',
+  },
+  inprogress: {
+    label: 'In Progress',
+    icon: <Clock className="h-4 w-4" />,
+    color: 'text-purple-600',
+    bgColor: 'bg-purple-50 border-purple-200',
+  },
+  completed: {
+    label: 'Completed',
+    icon: <CheckCircle2 className="h-4 w-4" />,
+    color: 'text-green-600',
+    bgColor: 'bg-green-50 border-green-200',
+  },
+}
+
+const STATUS_ORDER: TaskStatus[] = ['available', 'owned', 'inprogress', 'completed']
+
+/**
+ * SprintTaskList component displays sprint tasks grouped and filtered according to user preferences.
+ *
+ * Features:
+ * - Filter tasks by status
+ * - Group tasks by story or status
+ * - Display task counts for each group
+ * - Highlight current user's tasks
+ * - Show all required task information (ID, title, status, owner, parent story, AC refs)
+ *
+ * This component satisfies AC1 and AC2 of the Sprint Tasks View story.
+ */
+export function SprintTaskList({
+  stories,
+  selectedStatuses,
+  groupBy,
+  currentUserId,
+}: SprintTaskListProps) {
+  // Flatten tasks and attach story information
+  const tasksWithStories = useMemo((): TaskWithStory[] => {
+    return stories.flatMap((story) =>
+      (story.tasks || []).map((task) => ({
+        ...task,
+        story,
+      }))
+    )
+  }, [stories])
+
+  // Apply status filters
+  const filteredTasks = useMemo(() => {
+    if (selectedStatuses.length === 0) {
+      return tasksWithStories
+    }
+    return tasksWithStories.filter((task) => selectedStatuses.includes(task.status))
+  }, [tasksWithStories, selectedStatuses])
+
+  // Group tasks based on groupBy option
+  const groupedTasks = useMemo((): GroupedTasks => {
+    if (groupBy === 'story') {
+      // Group by story
+      const groups: GroupedTasks = {}
+      filteredTasks.forEach((task) => {
+        const key = task.story.id
+        if (!groups[key]) {
+          groups[key] = []
+        }
+        groups[key].push(task)
+      })
+      return groups
+    } else {
+      // Group by status
+      const groups: GroupedTasks = {}
+      filteredTasks.forEach((task) => {
+        const key = task.status
+        if (!groups[key]) {
+          groups[key] = []
+        }
+        groups[key].push(task)
+      })
+      return groups
+    }
+  }, [filteredTasks, groupBy])
+
+  // Get ordered group keys
+  const orderedGroupKeys = useMemo(() => {
+    if (groupBy === 'story') {
+      // Maintain story order from input
+      return stories.map((s) => s.id).filter((id) => groupedTasks[id]?.length > 0)
+    } else {
+      // Use status order
+      return STATUS_ORDER.filter((status) => groupedTasks[status]?.length > 0)
+    }
+  }, [groupBy, groupedTasks, stories])
+
+  const renderTaskCard = (task: TaskWithStory) => {
+    const config = STATUS_CONFIG[task.status]
+    const isMyTask = currentUserId && task.ownerUserId === currentUserId
+    const isAvailable = task.status === 'available' && !task.ownerUserId
+    const isOthersTask = task.ownerUserId && !isMyTask
+
+    // Determine border styling based on task status
+    let borderClasses = ''
+    if (task.status === 'completed') {
+      borderClasses = 'border-green-200'
+    } else if (task.status === 'inprogress') {
+      borderClasses = 'border-yellow-200'
+    } else if (task.status === 'owned') {
+      borderClasses = 'border-blue-200'
+    } else {
+      borderClasses = 'border-gray-200'
+    }
+
+    return (
+      <Card
+        key={task.id}
+        data-testid={`task-card-${task.id}`}
+        data-my-task={isMyTask ? 'true' : 'false'}
+        className={`transition-all hover:shadow-md ${borderClasses} ${
+          isMyTask ? 'ring-2 ring-blue-500 ring-offset-2' : isAvailable ? 'border-dashed' : ''
+        }`}
+      >
+        <CardContent className="p-4">
+          <div className="space-y-3">
+            {/* Task Title and Status */}
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <h4 className="font-medium text-foreground break-words">{task.title}</h4>
+                {groupBy === 'status' && (
+                  <p className="text-xs text-muted-foreground mt-1">{task.story.title}</p>
+                )}
+              </div>
+              <Badge
+                variant="outline"
+                className={`${config.color} flex items-center gap-1 shrink-0`}
+              >
+                {config.icon}
+                <span className="text-xs">{config.label}</span>
+              </Badge>
+            </div>
+
+            {/* Task Metadata */}
+            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+              {/* Task ID */}
+              <div className="flex items-center gap-1">
+                <span className="font-mono">{task.id.slice(0, 8)}</span>
+              </div>
+
+              {/* Owner */}
+              {task.ownerUserId && (
+                <div className="flex items-center gap-1">
+                  <User className="h-3 w-3" />
+                  {isMyTask ? <span>You</span> : <span>Owned by {task.ownerUserId}</span>}
+                </div>
+              )}
+
+              {/* AC References */}
+              {task.acceptanceCriteriaRefs.length > 0 && (
+                <div className="flex items-center gap-1">
+                  <Badge variant="secondary" className="text-xs">
+                    {task.acceptanceCriteriaRefs.length} AC
+                    {task.acceptanceCriteriaRefs.length !== 1 ? 's' : ''}
+                  </Badge>
+                </div>
+              )}
+
+              {/* Available indicator */}
+              {isAvailable && (
+                <span className="text-green-600 font-medium">Available to claim</span>
+              )}
+
+              {/* My task indicator */}
+              {isMyTask && <Badge className="bg-blue-500 text-white">My Task</Badge>}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const renderGroup = (groupKey: string) => {
+    const tasks = groupedTasks[groupKey]
+    if (!tasks || tasks.length === 0) return null
+
+    let groupTitle: string
+    let groupTestId: string
+
+    if (groupBy === 'story') {
+      const story = stories.find((s) => s.id === groupKey)
+      groupTitle = story?.title || 'Unknown Story'
+      groupTestId = `story-group-${groupKey}`
+    } else {
+      const status = groupKey as TaskStatus
+      groupTitle = STATUS_CONFIG[status].label
+      groupTestId = `status-group-${status}`
+    }
+
+    const taskCount = tasks.length
+    const taskLabel = taskCount === 1 ? 'task' : 'tasks'
+
+    return (
+      <div key={groupKey} data-testid={groupTestId} className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-foreground">{groupTitle}</h3>
+          <Badge variant="secondary">
+            {taskCount} {taskLabel}
+          </Badge>
+        </div>
+        <div className="space-y-2">{tasks.map(renderTaskCard)}</div>
+      </div>
+    )
+  }
+
+  // Handle empty state
+  if (filteredTasks.length === 0) {
+    return (
+      <Card data-testid="sprint-task-list">
+        <CardContent className="p-12 text-center">
+          <p className="text-muted-foreground">
+            {selectedStatuses.length > 0
+              ? 'No tasks match the selected filters'
+              : 'No tasks available in this sprint'}
+          </p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <div data-testid="sprint-task-list" className="space-y-6">
+      {orderedGroupKeys.map(renderGroup)}
+    </div>
+  )
+}
