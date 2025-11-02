@@ -279,7 +279,7 @@ export class TaskAnalysisPage extends BasePage {
     }
 
     const section = categoryMap[category]
-    const badge = section.locator(`text="${priority}"i`)
+    const badge = section.locator(`text=/${priority}/i`)
     await expect(badge).toBeVisible()
   }
 
