@@ -5,6 +5,7 @@ export { ProjectsPage, ProjectDetailPage } from './projects-page'
 export { BacklogPage, StoryDetailPage } from './backlog-page'
 export { BoardPage } from './board-page'
 export { AssistantPage } from './assistant-page'
+export { TaskAnalysisPage } from './task-analysis-page'
 
 // Test helpers
 export * from '../test-helpers/auth-helpers'
