@@ -17,36 +17,36 @@ async fn create_test_sprint(pool: &PgPool, _project_id: Uuid) -> (Uuid, Uuid) {
 
     // Create organization first
     let org_slug = format!("test-org-{}", &org_id.to_string().replace('-', "")[..8]);
-    sqlx::query!(
+    sqlx::query(
         r#"
         INSERT INTO organizations (id, external_id, name, slug, created_at, updated_at)
         VALUES ($1, $2, $3, $4, NOW(), NOW())
         "#,
-        org_id,
-        format!("org_{}", org_id),
-        "Test Organization",
-        org_slug,
     )
+    .bind(org_id)
+    .bind(format!("org_{}", org_id))
+    .bind("Test Organization")
+    .bind(org_slug)
     .execute(pool)
     .await
     .expect("Failed to create test organization");
 
     // Create team
-    sqlx::query!(
+    sqlx::query(
         r#"
         INSERT INTO teams (id, name, organization_id, created_at, updated_at)
         VALUES ($1, $2, $3, NOW(), NOW())
         "#,
-        team_id,
-        "Test Team",
-        org_id,
     )
+    .bind(team_id)
+    .bind("Test Team")
+    .bind(org_id)
     .execute(pool)
     .await
     .expect("Failed to create test team");
 
     // Create sprint
-    sqlx::query!(
+    sqlx::query(
         r#"
         INSERT INTO sprints (
             id, team_id, name, goal, status,
@@ -55,13 +55,13 @@ async fn create_test_sprint(pool: &PgPool, _project_id: Uuid) -> (Uuid, Uuid) {
         )
         VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW() + INTERVAL '14 days', NOW(), NOW())
         "#,
-        sprint_id,
-        team_id,
-        "Test Sprint",
-        "Test sprint goal",
-        "active",
-        40 as i32,
     )
+    .bind(sprint_id)
+    .bind(team_id)
+    .bind("Test Sprint")
+    .bind("Test sprint goal")
+    .bind("active")
+    .bind(40_i32)
     .execute(pool)
     .await
     .expect("Failed to create test sprint");
@@ -79,7 +79,7 @@ async fn create_test_story_in_sprint(
 ) -> Uuid {
     let story_id = Uuid::new_v4();
 
-    sqlx::query!(
+    sqlx::query(
         r#"
         INSERT INTO stories (
             id, project_id, organization_id, title, description,
@@ -88,15 +88,15 @@ async fn create_test_story_in_sprint(
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
         "#,
-        story_id,
-        project_id,
-        Some(org_id),
-        title,
-        Some("Test story description"),
-        "inprogress",
-        Some(sprint_id),
-        Some(5 as i32),
     )
+    .bind(story_id)
+    .bind(project_id)
+    .bind(org_id)
+    .bind(title)
+    .bind("Test story description")
+    .bind("inprogress")
+    .bind(sprint_id)
+    .bind(5_i32)
     .execute(pool)
     .await
     .expect("Failed to create test story");
@@ -128,7 +128,7 @@ async fn create_test_task(
         None
     };
 
-    sqlx::query!(
+    sqlx::query(
         r#"
         INSERT INTO tasks (
             id, story_id, organization_id, title, description,
@@ -138,17 +138,17 @@ async fn create_test_task(
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
         "#,
-        task_id,
-        story_id,
-        Some(org_id),
-        title,
-        Some("Test task description"),
-        status,
-        owner_user_id,
-        &vec!["AC1".to_string(), "AC2".to_string()],
-        owned_at,
-        completed_at,
     )
+    .bind(task_id)
+    .bind(story_id)
+    .bind(org_id)
+    .bind(title)
+    .bind("Test task description")
+    .bind(status)
+    .bind(owner_user_id)
+    .bind(vec!["AC1".to_string(), "AC2".to_string()])
+    .bind(owned_at)
+    .bind(completed_at)
     .execute(pool)
     .await
     .expect("Failed to create test task");
