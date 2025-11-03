@@ -21,16 +21,48 @@ const { spawn } = require('child_process');
 const TASK_ID = process.argv[2];
 const API_BASE = process.env.BATTRA_API_BASE || 'http://localhost:8000/api/v1';
 const API_KEY = process.env.BATTRA_API_KEY;
-const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+const STORY_ID = process.env.BATTRA_STORY_ID;
+const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY; // Optional - uses Claude Code CLI if not set
 const GIT_BASE_BRANCH = process.env.GIT_PR_BASE_BRANCH || 'main';
 const AUTO_MERGE = process.env.GIT_AUTO_MERGE === 'true';
 const PR_REVIEWERS = process.env.GIT_PR_REVIEWERS || '';
+const MAX_FIX_RETRIES = parseInt(process.env.MAX_FIX_RETRIES || '3', 10);
+
+// Determine which Claude invocation method to use
+// Priority: USE_CLAUDE_CLI env var > presence of ANTHROPIC_API_KEY
+const FORCE_CLI = process.env.USE_CLAUDE_CLI === 'true';
+const FORCE_API = process.env.USE_CLAUDE_API === 'true';
+
+let USE_CLI;
+if (FORCE_CLI && FORCE_API) {
+  console.error('❌ Error: Cannot set both USE_CLAUDE_CLI and USE_CLAUDE_API');
+  process.exit(1);
+} else if (FORCE_CLI) {
+  USE_CLI = true;
+  console.log('ℹ️  Forced to use Claude Code CLI (USE_CLAUDE_CLI=true)');
+} else if (FORCE_API) {
+  if (!ANTHROPIC_KEY) {
+    console.error('❌ Error: USE_CLAUDE_API=true but ANTHROPIC_API_KEY not set');
+    process.exit(1);
+  }
+  USE_CLI = false;
+  console.log('ℹ️  Forced to use Anthropic API (USE_CLAUDE_API=true)');
+} else {
+  // Auto-detect based on API key presence
+  USE_CLI = !ANTHROPIC_KEY;
+  if (USE_CLI) {
+    console.log('ℹ️  Using Claude Code CLI (Claude Code Plus subscription)');
+  } else {
+    console.log('ℹ️  Using Anthropic API (separate API credits)');
+  }
+}
 
 // Validation
-if (!TASK_ID || !API_KEY || !ANTHROPIC_KEY) {
+if (!TASK_ID || !API_KEY || !STORY_ID) {
   console.error('❌ Missing required environment variables');
   console.error('Usage: node claude-code-executor-with-git.js <task_id>');
-  console.error('Required: BATTRA_API_KEY, ANTHROPIC_API_KEY');
+  console.error('Required: BATTRA_API_KEY, BATTRA_STORY_ID');
+  console.error('Optional: ANTHROPIC_API_KEY (uses Claude Code CLI if not provided)');
   process.exit(1);
 }
 
@@ -84,7 +116,29 @@ async function createBranch(task) {
   const slug = createSlug(task.title);
   const branchName = `task/${TASK_ID}-${slug}`;
 
-  // Check if we're in a worktree
+  // Check if branch already exists
+  const branchExists = await checkBranchExists(branchName);
+
+  if (branchExists) {
+    console.log(`📌 Branch already exists: ${branchName}`);
+    console.log('   Using existing branch (work may already be in progress)');
+
+    // Just checkout the existing branch
+    await execCommand('git', ['checkout', branchName]);
+
+    // Pull latest changes for this branch
+    try {
+      await execCommand('git', ['pull', 'origin', branchName]);
+      console.log('   Pulled latest changes from remote');
+    } catch (error) {
+      console.log('   Branch exists locally but not on remote (that\'s OK)');
+    }
+
+    console.log(`✅ Using existing branch: ${branchName}`);
+    return branchName;
+  }
+
+  // Branch doesn't exist, create it
   const isWorktree = await checkIfWorktree();
 
   if (isWorktree) {
@@ -117,6 +171,33 @@ async function createBranch(task) {
   return branchName;
 }
 
+async function checkBranchExists(branchName) {
+  try {
+    // Check if branch exists (locally or remotely)
+    const result = await execCommand('git', ['show-ref', '--verify', `refs/heads/${branchName}`], { silent: true });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function checkExistingPR(branchName) {
+  try {
+    // Check if there's already a PR for this branch
+    const result = await execCommand(
+      'gh',
+      ['pr', 'list', '--head', branchName, '--json', 'url', '-q', '.[0].url'],
+      { silent: true }
+    );
+
+    const prUrl = result.stdout.trim();
+    return prUrl || null;
+  } catch {
+    // gh CLI might not be available or no PR exists
+    return null;
+  }
+}
+
 async function checkIfWorktree() {
   try {
     const result = await execCommand('git', ['rev-parse', '--is-inside-work-tree'], { silent: true });
@@ -141,6 +222,32 @@ async function getCurrentBranch() {
   }
 }
 
+async function cleanupBranch(branchName) {
+  console.log('\n🧹 Cleaning up branch...');
+
+  const isWorktree = await checkIfWorktree();
+
+  if (isWorktree) {
+    // In a worktree, we can't checkout main (it's in use by another worktree)
+    // Just delete the branch and let the worktree manager handle cleanup
+    try {
+      await execCommand('git', ['branch', '-D', branchName]);
+      console.log(`✅ Branch ${branchName} deleted`);
+    } catch (error) {
+      console.error(`⚠️  Could not delete branch: ${error.message}`);
+    }
+  } else {
+    // In a standard repo, checkout main first, then delete the branch
+    try {
+      await execCommand('git', ['checkout', GIT_BASE_BRANCH]);
+      await execCommand('git', ['branch', '-D', branchName]);
+      console.log(`✅ Branch ${branchName} deleted`);
+    } catch (error) {
+      console.error(`⚠️  Could not cleanup branch: ${error.message}`);
+    }
+  }
+}
+
 async function commitChanges(task, story, acs) {
   console.log('\n💾 Committing changes...');
 
@@ -149,10 +256,16 @@ async function commitChanges(task, story, acs) {
 
   // Check if there are changes to commit
   const statusResult = await execCommand('git', ['status', '--porcelain'], { silent: true });
-  if (!statusResult.stdout.trim()) {
-    console.log('⚠️  No changes to commit');
+  const changes = statusResult.stdout.trim();
+
+  if (!changes) {
+    console.log('⚠️  No changes to commit (this should not happen - we already checked!)');
+    console.log('   Something went wrong between change detection and commit.');
     return false;
   }
+
+  console.log('📝 Changes staged:');
+  changes.split('\n').forEach(line => console.log(`   ${line}`));
 
   // Determine commit type
   const commitType = determineCommitType(task.title);
@@ -208,7 +321,7 @@ async function pushBranch(branchName) {
   console.log('✅ Branch pushed');
 }
 
-async function createPullRequest(task, story, acs, branchName) {
+async function createPullRequest(task, story, acs, branchName, testsPassed, qualityPassed) {
   console.log('\n🔀 Creating pull request...');
 
   // Build PR body
@@ -216,12 +329,31 @@ async function createPullRequest(task, story, acs, branchName) {
     .map((ac) => `- [x] ${ac.id}: ${ac.given} → ${ac.thenClause}`)
     .join('\n');
 
+  // Build warning section if tests/quality failed
+  let warningSection = '';
+  if (!testsPassed || !qualityPassed) {
+    warningSection = `
+## ⚠️ WARNING: Manual Review Required
+
+This PR was created automatically but has issues that need attention:
+
+${!testsPassed ? '- ❌ **Tests are failing** - The agent attempted to fix test failures but was unable to resolve them after multiple attempts' : ''}
+${!qualityPassed ? '- ❌ **Quality checks failing** - Code formatting or linting issues need manual attention' : ''}
+
+**The work may still be salvageable.** Please review the changes and either:
+1. Fix the remaining issues manually
+2. Use the changes as a starting point
+3. Close this PR if the approach is not viable
+
+`;
+  }
+
   const prBody = `## Task Details
 
 **Task ID:** ${TASK_ID}
 **Story:** ${story.title} (#${story.id})
 **Implemented by:** Autonomous Agent
-
+${warningSection}
 ## Changes
 
 ${task.description || 'Implementation of task requirements'}
@@ -232,9 +364,9 @@ ${acChecklist}
 
 ## Testing
 
-- [x] Unit tests pass
-- [x] Integration tests pass
-- [x] Code quality checks pass (fmt, clippy)
+- [${testsPassed ? 'x' : ' '}] Unit tests pass
+- [${testsPassed ? 'x' : ' '}] Integration tests pass
+- [${qualityPassed ? 'x' : ' '}] Code quality checks pass (fmt, clippy)
 
 ## Review Checklist
 
@@ -243,6 +375,7 @@ ${acChecklist}
 - [ ] OpenAPI specs updated (if applicable)
 - [ ] No security issues
 - [ ] Performance acceptable
+${!testsPassed || !qualityPassed ? '- [ ] Fix test/quality issues before merging' : ''}
 
 ---
 
@@ -251,7 +384,7 @@ Branch: \`${branchName}\`
 Task: ${TASK_ID}`;
 
   // Create PR using GitHub CLI
-  const prTitle = `[Task] ${task.title}`;
+  const prTitle = `${!testsPassed || !qualityPassed ? '[NEEDS REVIEW] ' : ''}[Task] ${task.title}`;
 
   const args = [
     'pr',
@@ -275,6 +408,9 @@ Task: ${TASK_ID}`;
   const prUrl = result.stdout.trim().split('\n').pop();
 
   console.log(`✅ Pull request created: ${prUrl}`);
+  if (!testsPassed || !qualityPassed) {
+    console.log('⚠️  This PR has failing tests/quality checks - manual review required');
+  }
 
   return prUrl;
 }
@@ -366,7 +502,7 @@ ${acText}
 # Git Workflow
 
 ✅ You are on branch: \`${branchName}\`
-✅ Implement your changes
+✅ Implement your changes BY CREATING/MODIFYING FILES
 ✅ Ensure all tests pass
 ❌ DO NOT commit (I will commit for you)
 ❌ DO NOT push (I will push for you)
@@ -391,21 +527,104 @@ Follow guidelines in \`CLAUDE.md\`:
 
 ${process.cwd()}
 
-# Instructions
+# CRITICAL INSTRUCTIONS - READ CAREFULLY
 
+You MUST actually create or modify files to complete this task. Do NOT just plan or describe what to do.
+
+**Required actions:**
 1. Analyze task and acceptance criteria
-2. Identify files to create/modify
-3. Write tests first
-4. Implement functionality
-5. Verify tests pass
-6. Run quality checks
+2. Identify EXACTLY which files to create/modify
+3. **USE THE Write/Edit TOOLS** to create tests first (TDD)
+4. **USE THE Write/Edit TOOLS** to implement functionality
+5. **USE THE Bash TOOL** to verify tests pass (cargo test)
+6. **USE THE Bash TOOL** to run quality checks (cargo fmt, cargo clippy)
 
-Implement this task now.`;
+**What NOT to do:**
+- ❌ Do NOT just describe what needs to be done
+- ❌ Do NOT just create a plan without implementing it
+- ❌ Do NOT say "ready for commit" without actually creating/modifying files
+- ❌ Do NOT skip writing actual code
+
+**Success criteria:**
+- ✅ At least one file must be created or modified
+- ✅ Tests must be written and passing
+- ✅ Quality checks must pass
+- ✅ The implementation must be complete, not a plan
+
+Implement this task NOW using Write/Edit/Bash tools.`;
 }
 
+// Call Claude Code via CLI or API
 async function invokeClaude(prompt) {
   console.log('\n🤖 Invoking Claude Code...');
+  console.log('   (This may take several minutes for complex tasks)\n');
 
+  if (USE_CLI) {
+    // Use Claude Code CLI (Claude Code Plus subscription)
+    return invokeClaudeCLI(prompt);
+  } else {
+    // Use Anthropic API (separate API credits)
+    return invokeCloudeAPI(prompt);
+  }
+}
+
+// Call Claude Code via CLI
+async function invokeClaudeCLI(prompt) {
+  try {
+    // Execute Claude CLI with --print flag and pipe prompt to stdin
+    const result = await new Promise((resolve, reject) => {
+      const { spawn } = require('child_process');
+
+      const claude = spawn('claude', [
+        '--print',
+        '--model', 'sonnet',
+        '--dangerously-skip-permissions'  // YOLO mode: auto-approve all actions (safe with git)
+      ], {
+        cwd: process.cwd(),
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      claude.stdout.on('data', (data) => {
+        stdout += data.toString();
+        // Stream output in real-time
+        process.stdout.write(data);
+      });
+
+      claude.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      claude.on('close', (code) => {
+        if (code === 0) {
+          resolve(stdout);
+        } else {
+          reject(new Error(`Claude CLI exited with code ${code}: ${stderr}`));
+        }
+      });
+
+      claude.on('error', (error) => {
+        reject(error);
+      });
+
+      // Write prompt to stdin and close
+      claude.stdin.write(prompt);
+      claude.stdin.end();
+    });
+
+    console.log('\n\n📝 Claude Code execution completed\n');
+
+    return result;
+  } catch (error) {
+    console.error('❌ Claude CLI error:', error.message);
+    throw error;
+  }
+}
+
+// Call Claude Code via Anthropic API
+async function invokeCloudeAPI(prompt) {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -440,15 +659,62 @@ async function invokeClaude(prompt) {
 
 async function runTests() {
   console.log('\n🧪 Running tests...');
-  await execCommand('cargo', ['test', '--package', 'backlog', '--quiet']);
-  console.log('✅ All tests passed');
+  try {
+    await execCommand('cargo', ['test', '--package', 'backlog', '--quiet']);
+    console.log('✅ All tests passed');
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Tests failed:', error.message);
+    return { success: false, error: error.message };
+  }
 }
 
 async function runQualityChecks() {
   console.log('\n🔍 Running quality checks...');
-  await execCommand('cargo', ['fmt', '--all', '--check']);
-  await execCommand('cargo', ['clippy', '--all-targets', '--', '-D', 'warnings']);
-  console.log('✅ Quality checks passed');
+  try {
+    await execCommand('cargo', ['fmt', '--all', '--check']);
+    await execCommand('cargo', ['clippy', '--all-targets', '--', '-D', 'warnings']);
+    console.log('✅ Quality checks passed');
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Quality checks failed:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+// Build fix prompt from test failures
+function buildFixPrompt(task, testResult, attempt) {
+  return `The previous implementation has compilation or test errors. Please fix them.
+
+# Task Being Implemented
+**Title:** ${task.title}
+**Description:** ${task.description || 'No description'}
+
+# Error Details (Attempt ${attempt}/${MAX_FIX_RETRIES})
+
+\`\`\`
+${testResult.error}
+\`\`\`
+
+# Instructions
+
+The tests/compilation were passing BEFORE you started implementing this task. Your implementation broke them.
+
+Please analyze the errors carefully and fix ALL issues:
+
+1. **Read the error messages** - They often tell you exactly what's wrong
+2. **Check type mismatches** - Did you change a function signature without updating all callers?
+3. **Update test fixtures** - If you changed structs or state types, update test setup code
+4. **Fix imports** - Remove unused imports that cause clippy warnings
+5. **Complete the migration** - If you started changing something (like state types), finish updating ALL files
+
+**IMPORTANT:**
+- Do NOT skip or disable tests
+- Do NOT comment out failing code
+- Fix the actual problems, don't work around them
+- Update ALL files that need changing, not just some
+
+Please fix the issues now.`;
 }
 
 // Main execution
@@ -457,10 +723,11 @@ async function main() {
 
   try {
     console.log('🚀 Claude Code Task Executor (with Git Workflow)');
-    console.log(`📋 Task ID: ${TASK_ID}\n`);
+    console.log(`📋 Task ID: ${TASK_ID}`);
+    console.log(`📖 Story ID: ${STORY_ID}\n`);
 
     // Fetch task details
-    const { task, story, acs } = await fetchTaskDetails(TASK_ID);
+    const { task, story, acs } = await fetchTaskDetails(TASK_ID, STORY_ID);
 
     console.log(`✅ Task: ${task.title}`);
     console.log(`📖 Story: ${story.title}`);
@@ -469,45 +736,127 @@ async function main() {
     // Step 1: Create branch
     branchName = await createBranch(task);
 
+    // Check if PR already exists for this branch
+    const existingPR = await checkExistingPR(branchName);
+    if (existingPR) {
+      console.log(`\n✅ PR already exists for this task: ${existingPR}`);
+      console.log('   Work appears to be complete. Skipping implementation.');
+      console.log(`   Review PR: ${existingPR}`);
+      process.exit(0);
+    }
+
     // Step 2: Build prompt
     const prompt = await buildPromptWithGitInstructions(task, story, acs, branchName);
 
     // Step 3: Invoke Claude
     await invokeClaude(prompt);
 
-    // Step 4: Run tests
-    await runTests();
+    // Step 3.5: Check what changed
+    console.log('\n📊 Checking for changes after Claude execution...');
+    const statusAfterClaude = await execCommand('git', ['status', '--porcelain'], { silent: true });
+    const changedFiles = statusAfterClaude.stdout.trim().split('\n').filter(line => line);
 
-    // Step 5: Run quality checks
-    await runQualityChecks();
+    if (changedFiles.length === 0) {
+      console.log('⚠️  WARNING: No files were changed by Claude!');
+      console.log('   Claude may have just provided a plan without implementing it.');
+      console.log('   This could mean:');
+      console.log('   - The task was unclear or too abstract');
+      console.log('   - Claude decided no changes were needed');
+      console.log('   - Claude misunderstood the instructions');
+      console.log('\n   Proceeding with cleanup...');
+      await cleanupBranch(branchName);
+      process.exit(1);
+    }
 
-    // Step 6: Commit changes
+    console.log(`✅ Claude modified ${changedFiles.length} file(s):`);
+    changedFiles.forEach(file => console.log(`   ${file}`));
+
+    // Step 4: Test/Fix Loop (with retries)
+    let testResult;
+    let qualityResult;
+    let fixAttempt = 0;
+    let testsPassed = false;
+    let qualityPassed = false;
+
+    while (fixAttempt <= MAX_FIX_RETRIES) {
+      // Run tests
+      testResult = await runTests();
+
+      if (!testResult.success) {
+        fixAttempt++;
+
+        if (fixAttempt > MAX_FIX_RETRIES) {
+          console.error(`\n❌ Tests still failing after ${MAX_FIX_RETRIES} fix attempts`);
+          console.log('⚠️  Will create PR with failing tests for manual review');
+          break;
+        }
+
+        // Try to fix the failures
+        console.log(`\n🔧 Attempt ${fixAttempt}/${MAX_FIX_RETRIES}: Asking Claude to fix test failures...`);
+        const fixPrompt = buildFixPrompt(task, testResult, fixAttempt);
+        await invokeClaude(fixPrompt);
+        continue;
+      }
+
+      // Tests passed, try quality checks
+      testsPassed = true;
+      qualityResult = await runQualityChecks();
+
+      if (!qualityResult.success) {
+        fixAttempt++;
+
+        if (fixAttempt > MAX_FIX_RETRIES) {
+          console.error(`\n❌ Quality checks still failing after ${MAX_FIX_RETRIES} fix attempts`);
+          console.log('⚠️  Will create PR with quality issues for manual review');
+          break;
+        }
+
+        // Try to fix quality issues
+        console.log(`\n🔧 Attempt ${fixAttempt}/${MAX_FIX_RETRIES}: Asking Claude to fix quality issues...`);
+        const fixPrompt = buildFixPrompt(task, qualityResult, fixAttempt);
+        await invokeClaude(fixPrompt);
+        continue;
+      }
+
+      // Both passed!
+      testsPassed = true;
+      qualityPassed = true;
+      break;
+    }
+
+    // Step 5: Commit changes
     const committed = await commitChanges(task, story, acs);
     if (!committed) {
       console.log('⚠️  No changes to commit. Cleaning up...');
-      await execCommand('git', ['checkout', GIT_BASE_BRANCH]);
-      await execCommand('git', ['branch', '-D', branchName]);
+      await cleanupBranch(branchName);
       return;
     }
 
-    // Step 7: Push branch
+    // Step 6: Push branch
     await pushBranch(branchName);
 
-    // Step 8: Create PR
-    const prUrl = await createPullRequest(task, story, acs, branchName);
+    // Step 7: Create PR (with test/quality status)
+    const prUrl = await createPullRequest(task, story, acs, branchName, testsPassed, qualityPassed);
 
-    // Step 9: Wait for approval
-    const { prNumber } = await waitForPRApproval(prUrl);
+    // Step 8: Only wait for approval if tests and quality passed
+    if (testsPassed && qualityPassed) {
+      // Step 9: Wait for approval
+      const { prNumber } = await waitForPRApproval(prUrl);
 
-    // Step 10: Merge (if auto-merge enabled)
-    if (AUTO_MERGE) {
-      await mergePR(prNumber);
+      // Step 10: Merge (if auto-merge enabled)
+      if (AUTO_MERGE) {
+        await mergePR(prNumber);
+      } else {
+        console.log('\n⏸️  Auto-merge disabled. Waiting for manual merge...');
+        // Could poll here to detect when merged
+      }
+
+      console.log('\n✅ Task executed successfully!');
     } else {
-      console.log('\n⏸️  Auto-merge disabled. Waiting for manual merge...');
-      // Could poll here to detect when merged
+      console.log('\n⚠️  Task completed with issues - manual review required');
+      console.log('   The PR has been created but needs attention before merging');
     }
 
-    console.log('\n✅ Task executed successfully!');
     console.log(`📋 Task ID: ${TASK_ID}`);
     console.log(`🔀 PR: ${prUrl}`);
 
@@ -517,24 +866,29 @@ async function main() {
 
     // Cleanup: delete branch if it was created
     if (branchName) {
-      console.log('\n🧹 Cleaning up branch...');
-      try {
-        await execCommand('git', ['checkout', GIT_BASE_BRANCH]);
-        await execCommand('git', ['branch', '-D', branchName]);
-      } catch (cleanupError) {
-        console.error('Failed to cleanup branch:', cleanupError.message);
-      }
+      await cleanupBranch(branchName);
     }
 
     process.exit(1);
   }
 }
 
-async function fetchTaskDetails(taskId) {
-  console.log('📥 Fetching task details...');
-  const task = await apiGet(`tasks/${taskId}`);
-  const story = await apiGet(`stories/${task.storyId}`);
-  const acs = await apiGet(`stories/${task.storyId}/acceptance-criteria`);
+async function fetchTaskDetails(taskId, storyId) {
+  console.log('📥 Fetching story...');
+  const story = await apiGet(`stories/${storyId}`);
+
+  console.log('📥 Fetching tasks for story...');
+  const tasks = await apiGet(`stories/${storyId}/tasks`);
+
+  // Find the specific task
+  const task = tasks.find(t => t.id === taskId);
+  if (!task) {
+    throw new Error(`Task ${taskId} not found in story ${storyId}`);
+  }
+
+  console.log('📥 Fetching acceptance criteria...');
+  const acs = await apiGet(`stories/${storyId}/acceptance-criteria`);
+
   return { task, story, acs };
 }
 

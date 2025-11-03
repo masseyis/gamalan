@@ -454,14 +454,19 @@ pub async fn get_stories_by_project(
     pool: &PgPool,
     project_id: Uuid,
     organization_id: Option<Uuid>,
+    sprint_id: Option<Uuid>,
 ) -> Result<Vec<Story>, AppError> {
     let story_rows = sqlx::query_as::<_, StoryRow>(
         "SELECT id, project_id, organization_id, title, description, status, labels, story_points, sprint_id, assigned_to_user_id, readiness_override, readiness_override_by, readiness_override_reason, readiness_override_at, created_at, updated_at FROM stories
-         WHERE project_id = $1 AND (organization_id = $2 OR ($2 IS NULL AND organization_id IS NULL)) AND deleted_at IS NULL
+         WHERE project_id = $1
+           AND (organization_id = $2 OR ($2 IS NULL AND organization_id IS NULL))
+           AND ($3::uuid IS NULL OR sprint_id = $3)
+           AND deleted_at IS NULL
          ORDER BY title",
     )
     .bind(project_id)
     .bind(organization_id)
+    .bind(sprint_id)
     .fetch_all(pool)
     .await
     .map_err(|e| {

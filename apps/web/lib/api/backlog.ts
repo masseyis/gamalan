@@ -13,6 +13,7 @@ import {
   SetTaskEstimateRequest,
   UpdateStoryStatusRequest,
 } from '@/lib/types/story'
+import { TaskReadinessAnalysis } from '@/lib/types/task-readiness'
 
 // Mock data for demonstration
 const mockStories: Record<string, Story[]> = {
@@ -311,5 +312,16 @@ export const backlogApi = {
     request: UpdateStoryStatusRequest
   ): Promise<Story> {
     return backlogClient.patch<Story>(`/stories/${storyId}/status`, request)
+  },
+
+  // Task Readiness Analysis
+  async analyzeTaskReadiness(
+    projectId: string,
+    storyId: string,
+    taskId: string
+  ): Promise<TaskReadinessAnalysis> {
+    // TODO: Replace with actual backend endpoint when ready
+    // The backend endpoint should be: POST /tasks/{taskId}/analyze
+    return backlogClient.post<TaskReadinessAnalysis>(`/tasks/${taskId}/analyze`, {})
   },
 }

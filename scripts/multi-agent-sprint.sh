@@ -1,11 +1,12 @@
 #!/bin/bash
-# multi-agent-sprint.sh - Run multiple agents in parallel for a sprint
+# multi-agent-sprint.sh - Run multiple agents for a sprint
 #
 # Usage:
-#   ./multi-agent-sprint.sh <sprint_id>
+#   ./multi-agent-sprint.sh [--parallel] <sprint_id>
 #
 # Example:
-#   ./multi-agent-sprint.sh <sprint-uuid>
+#   ./multi-agent-sprint.sh <sprint-uuid>                    # Round-robin (sequential, saves Claude usage)
+#   ./multi-agent-sprint.sh --parallel <sprint-uuid>         # Parallel (faster, uses more Claude)
 #
 # This script starts:
 # - 1 dev agent (battra-dev-key-1)
@@ -17,17 +18,100 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SPRINT_ID="${1:-${BATTRA_SPRINT_ID}}"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# Validation
+# Make sure we're in the repo root for consistent paths
+cd "$REPO_ROOT"
+
+# Configuration
+API_BASE="${BATTRA_API_BASE:-http://localhost:8000/api/v1}"
+API_KEY="${BATTRA_API_KEY:-battra-dev-key-1}"  # Use dev key for queries
+
+# Parse arguments
+PARALLEL_MODE=false
+VERBOSE_MODE=false
+SPRINT_ID=""
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --parallel)
+      PARALLEL_MODE=true
+      shift
+      ;;
+    --verbose|-v)
+      VERBOSE_MODE=true
+      shift
+      ;;
+    --debug)
+      VERBOSE_MODE=true
+      set -x  # Enable bash debug mode
+      shift
+      ;;
+    *)
+      SPRINT_ID="$1"
+      shift
+      ;;
+  esac
+done
+
+# Fall back to env var if not provided
+SPRINT_ID="${SPRINT_ID:-${BATTRA_SPRINT_ID}}"
+
+# If no sprint ID provided, auto-detect active sprint
 if [ -z "$SPRINT_ID" ]; then
-  echo "Error: SPRINT_ID required. Pass as argument or set BATTRA_SPRINT_ID env var"
-  exit 1
+  echo "No sprint ID provided, auto-detecting active sprint..."
+
+  # Get first team
+  TEAM_ID=$(curl -s "$API_BASE/teams" -H "X-API-Key: $API_KEY" | jq -r '.[0].id // empty')
+
+  if [ -z "$TEAM_ID" ]; then
+    echo "Error: No teams found. Cannot auto-detect sprint."
+    echo ""
+    echo "Usage:"
+    echo "  ./multi-agent-sprint.sh [--parallel] [--verbose] [sprint_id]"
+    echo ""
+    echo "Options:"
+    echo "  --parallel         Run agents in parallel (faster, uses more Claude credits)"
+    echo "  --verbose, -v      Show real-time agent output"
+    echo "  --debug            Enable verbose mode + bash debug tracing"
+    echo ""
+    echo "Examples:"
+    echo "  ./multi-agent-sprint.sh                       # Auto-detect active sprint"
+    echo "  ./multi-agent-sprint.sh --verbose             # Auto-detect + show output"
+    echo "  ./multi-agent-sprint.sh --debug               # Auto-detect + full debug"
+    echo "  ./multi-agent-sprint.sh abc-123-def           # Use specific sprint"
+    echo "  ./multi-agent-sprint.sh --parallel            # Auto-detect + parallel mode"
+    echo "  ./multi-agent-sprint.sh --parallel abc-123    # Specific sprint + parallel"
+    exit 1
+  fi
+
+  # Get active sprint for team
+  SPRINT_ID=$(curl -s "$API_BASE/teams/$TEAM_ID/sprints/active" -H "X-API-Key: $API_KEY" | jq -r '.id // empty')
+
+  if [ -z "$SPRINT_ID" ]; then
+    echo "Error: No active sprint found for team $TEAM_ID"
+    echo ""
+    echo "Please create and activate a sprint first, or specify a sprint ID:"
+    echo "  ./multi-agent-sprint.sh <sprint_id>"
+    exit 1
+  fi
+
+  SPRINT_NAME=$(curl -s "$API_BASE/teams/$TEAM_ID/sprints/active" -H "X-API-Key: $API_KEY" | jq -r '.name // "Unknown"')
+  echo "✓ Found active sprint: $SPRINT_NAME ($SPRINT_ID)"
+  echo ""
 fi
 
+# Worktree and logging configuration (use absolute paths)
+WORKTREE_BASE="$(cd "$REPO_ROOT/.." && pwd)/agents"
+LOG_DIR="$REPO_ROOT/logs/autonomous-agents"
+mkdir -p "$LOG_DIR"
+
 # Colors
+RED='\033[0;31m'
 GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
 NC='\033[0m'
 
 log_info() {
@@ -38,10 +122,27 @@ log_success() {
   echo -e "${GREEN}[ORCHESTRATOR]${NC} $1"
 }
 
+log_warning() {
+  echo -e "${YELLOW}[ORCHESTRATOR]${NC} $1"
+}
+
+log_error() {
+  echo -e "${RED}[ORCHESTRATOR]${NC} $1"
+}
+
+log_agent() {
+  local role="$1"
+  local message="$2"
+  echo -e "${CYAN}[$role]${NC} $message"
+}
+
+# Agent configurations
+declare -a AGENT_ROLES=("dev" "qa" "po" "devops" "documenter")
+declare -a AGENT_KEYS=("battra-dev-key-1" "battra-qa-key-1" "battra-po-key-1" "battra-devops-key-1" "battra-documenter-key-1")
+declare -a AGENT_NAMES=("dev-1" "qa-1" "po-1" "devops-1" "documenter-1")
+
 # PID tracking
 AGENT_PIDS=()
-LOG_DIR="./logs/autonomous-agents"
-mkdir -p "$LOG_DIR"
 
 # Cleanup function
 cleanup() {
@@ -50,7 +151,7 @@ cleanup() {
   for pid in "${AGENT_PIDS[@]}"; do
     if kill -0 $pid 2>/dev/null; then
       log_info "Stopping agent (PID: $pid)"
-      kill $pid
+      kill $pid 2>/dev/null || true
     fi
   done
 
@@ -61,54 +162,247 @@ cleanup() {
 # Trap signals
 trap cleanup INT TERM
 
-# Start agent helper
-start_agent() {
+# Setup worktrees
+setup_worktrees() {
+  log_info "Setting up agent worktrees..."
+  log_info "Worktree base: $WORKTREE_BASE"
+
+  # Export WORKTREE_BASE for the setup script
+  export WORKTREE_BASE
+
+  # Create 5 agent worktrees
+  if ! "$SCRIPT_DIR/setup-agent-worktrees.sh" 5; then
+    log_error "Failed to setup worktrees"
+    exit 1
+  fi
+
+  # Verify worktrees were created
+  if [ ! -d "$WORKTREE_BASE/dev-1" ]; then
+    log_error "Worktree creation failed - dev-1 not found at $WORKTREE_BASE/dev-1"
+    exit 1
+  fi
+
+  log_success "Agent worktrees ready"
+  log_info "Worktrees created at: $WORKTREE_BASE"
+}
+
+# Run one iteration of an agent (for round-robin mode)
+run_agent_iteration() {
   local role="$1"
   local api_key="$2"
+  local agent_name="$3"
+  local worktree_path="$WORKTREE_BASE/$agent_name"
   local log_file="$LOG_DIR/${role}-agent.log"
 
-  log_info "Starting $role agent..."
+  log_agent "$role" "Starting task iteration..."
 
-  # Start agent in background and capture PID
-  "$SCRIPT_DIR/autonomous-agent.sh" "$api_key" "$SPRINT_ID" "$role" > "$log_file" 2>&1 &
+  # Verify worktree exists
+  if [ ! -d "$worktree_path" ]; then
+    log_error "Worktree not found: $worktree_path"
+    return 1
+  fi
+
+  # Export environment for this agent
+  export BATTRA_API_KEY="$api_key"
+  export BATTRA_API_BASE="${BATTRA_API_BASE:-http://localhost:8000/api/v1}"
+  export BATTRA_SPRINT_ID="$SPRINT_ID"
+  export AGENT_ROLE="$role"
+  export USE_WORKTREE="true"
+  export GIT_WORKFLOW_ENABLED="true"
+  export GIT_PR_BASE_BRANCH="main"
+  export MAX_ITERATIONS="1"  # Only one iteration in round-robin mode
+  export POLL_INTERVAL="5"    # Short poll interval
+
+  # Change to agent's worktree and run (use absolute path for log file)
+  if [ "$VERBOSE_MODE" = true ]; then
+    # Verbose mode: show output in real-time AND log to file
+    (
+      cd "$worktree_path" || exit 1
+      "$SCRIPT_DIR/autonomous-agent.sh" "$api_key" "$SPRINT_ID" "$role"
+    ) 2>&1 | tee -a "$log_file"
+    local exit_code=${PIPESTATUS[0]}
+  else
+    # Normal mode: just log to file
+    (
+      cd "$worktree_path" || exit 1
+      "$SCRIPT_DIR/autonomous-agent.sh" "$api_key" "$SPRINT_ID" "$role"
+    ) >> "$log_file" 2>&1
+    local exit_code=$?
+  fi
+
+  if [ $exit_code -eq 0 ]; then
+    log_agent "$role" "Iteration completed successfully"
+  else
+    log_agent "$role" "Iteration completed (no tasks available or error)"
+  fi
+
+  return $exit_code
+}
+
+# Start agent in background (for parallel mode)
+start_agent_parallel() {
+  local role="$1"
+  local api_key="$2"
+  local agent_name="$3"
+  local worktree_path="$WORKTREE_BASE/$agent_name"
+  local log_file="$LOG_DIR/${role}-agent.log"
+
+  log_info "Starting $role agent (parallel mode)..."
+
+  # Verify worktree exists
+  if [ ! -d "$worktree_path" ]; then
+    log_error "Worktree not found: $worktree_path"
+    return 1
+  fi
+
+  # Export environment for this agent
+  export BATTRA_API_KEY="$api_key"
+  export BATTRA_API_BASE="${BATTRA_API_BASE:-http://localhost:8000/api/v1}"
+  export BATTRA_SPRINT_ID="$SPRINT_ID"
+  export AGENT_ROLE="$role"
+  export USE_WORKTREE="true"
+  export GIT_WORKFLOW_ENABLED="true"
+  export GIT_PR_BASE_BRANCH="main"
+  export MAX_ITERATIONS="0"  # Infinite iterations in parallel mode
+  export POLL_INTERVAL="30"
+
+  # Start agent in background (use absolute path for log file)
+  if [ "$VERBOSE_MODE" = true ]; then
+    # Verbose mode: show output in real-time AND log to file
+    (
+      cd "$worktree_path" || exit 1
+      "$SCRIPT_DIR/autonomous-agent.sh" "$api_key" "$SPRINT_ID" "$role"
+    ) 2>&1 | tee -a "$log_file" &
+  else
+    # Normal mode: just log to file
+    (
+      cd "$worktree_path" || exit 1
+      "$SCRIPT_DIR/autonomous-agent.sh" "$api_key" "$SPRINT_ID" "$role"
+    ) > "$log_file" 2>&1 &
+  fi
+
   local pid=$!
-
   AGENT_PIDS+=($pid)
 
   log_success "$role agent started (PID: $pid, Log: $log_file)"
 }
 
-# Main
-log_info "=== Multi-Agent Sprint Execution ==="
-log_info "Sprint ID: $SPRINT_ID"
-log_info "Log directory: $LOG_DIR"
-echo ""
+# Round-robin execution
+run_round_robin() {
+  log_info "=== Round-Robin Mode (Sequential) ==="
+  log_info "Sprint ID: $SPRINT_ID"
+  log_info "Agents will execute one task at a time in rotation"
+  log_info "This saves Claude usage by running one agent at a time"
+  echo ""
 
-# Start agents
-start_agent "dev" "battra-dev-key-1"
-sleep 1
+  local iteration=0
+  local consecutive_failures=0
+  local max_consecutive_failures=$((${#AGENT_ROLES[@]} * 2))  # Allow 2 full rounds of failures
 
-start_agent "qa" "battra-qa-key-1"
-sleep 1
+  while true; do
+    iteration=$((iteration + 1))
+    log_info "=== Round $iteration ==="
 
-start_agent "po" "battra-po-key-1"
-sleep 1
+    local tasks_completed=false
 
-start_agent "devops" "battra-devops-key-1"
-sleep 1
+    # Iterate through each agent
+    for i in "${!AGENT_ROLES[@]}"; do
+      local role="${AGENT_ROLES[$i]}"
+      local api_key="${AGENT_KEYS[$i]}"
+      local agent_name="${AGENT_NAMES[$i]}"
 
-start_agent "documenter" "battra-documenter-key-1"
-echo ""
+      log_info "Agent turn: $role"
 
-log_success "All agents running!"
-log_info "Press Ctrl+C to stop all agents"
-log_info ""
-log_info "Monitor agent logs:"
-log_info "  tail -f $LOG_DIR/dev-agent.log"
-log_info "  tail -f $LOG_DIR/qa-agent.log"
-log_info "  tail -f $LOG_DIR/po-agent.log"
-log_info "  tail -f $LOG_DIR/devops-agent.log"
-log_info "  tail -f $LOG_DIR/documenter-agent.log"
+      if run_agent_iteration "$role" "$api_key" "$agent_name"; then
+        tasks_completed=true
+        consecutive_failures=0
+      else
+        consecutive_failures=$((consecutive_failures + 1))
 
-# Wait for all agents
-wait
+        if [ $consecutive_failures -ge $max_consecutive_failures ]; then
+          log_warning "No tasks available for $max_consecutive_failures consecutive attempts"
+          log_info "All agents appear to have no work. Exiting."
+          return 0
+        fi
+      fi
+
+      # Small delay between agents
+      sleep 2
+    done
+
+    if [ "$tasks_completed" = false ]; then
+      log_warning "No tasks completed this round"
+    fi
+
+    echo ""
+  done
+}
+
+# Parallel execution
+run_parallel() {
+  log_info "=== Parallel Mode ==="
+  log_info "Sprint ID: $SPRINT_ID"
+  log_info "All agents will run simultaneously"
+  log_warning "This uses more Claude usage but completes faster"
+  echo ""
+
+  # Start all agents in parallel
+  for i in "${!AGENT_ROLES[@]}"; do
+    local role="${AGENT_ROLES[$i]}"
+    local api_key="${AGENT_KEYS[$i]}"
+    local agent_name="${AGENT_NAMES[$i]}"
+
+    start_agent_parallel "$role" "$api_key" "$agent_name"
+    sleep 1
+  done
+
+  echo ""
+  log_success "All agents running!"
+  log_info "Press Ctrl+C to stop all agents"
+  log_info ""
+  log_info "Monitor agent logs:"
+  for role in "${AGENT_ROLES[@]}"; do
+    log_info "  tail -f $LOG_DIR/${role}-agent.log"
+  done
+
+  # Wait for all agents
+  wait
+}
+
+# Main execution
+main() {
+  log_info "=== Multi-Agent Sprint Execution ==="
+  log_info "Sprint ID: $SPRINT_ID"
+  log_info "Mode: $([ "$PARALLEL_MODE" = true ] && echo "PARALLEL" || echo "ROUND-ROBIN (sequential)")"
+  log_info "Verbose: $([ "$VERBOSE_MODE" = true ] && echo "ON" || echo "OFF")"
+  log_info "Log directory: $LOG_DIR"
+  echo ""
+
+  # Check available tasks
+  log_info "Checking available tasks..."
+  TASK_COUNT=$(curl -s "$API_BASE/sprints/$SPRINT_ID/tasks" -H "X-API-Key: $API_KEY" | jq 'length')
+  AVAILABLE_COUNT=$(curl -s "$API_BASE/sprints/$SPRINT_ID/tasks" -H "X-API-Key: $API_KEY" | jq '[.[] | select(.status == "available")] | length')
+  log_info "Total tasks: $TASK_COUNT, Available: $AVAILABLE_COUNT"
+  echo ""
+
+  if [ "$AVAILABLE_COUNT" -eq 0 ]; then
+    log_warning "No available tasks in sprint. Agents will have nothing to do."
+    echo ""
+  fi
+
+  # Setup worktrees
+  setup_worktrees
+  echo ""
+
+  # Run in selected mode
+  if [ "$PARALLEL_MODE" = true ]; then
+    run_parallel
+  else
+    run_round_robin
+  fi
+
+  log_success "Sprint execution completed"
+}
+
+# Run main
+main

@@ -329,8 +329,11 @@ impl BacklogUsecases {
         project_id: Uuid,
         organization_id: Option<Uuid>,
         status: Option<StoryStatus>,
+        sprint_id: Option<Uuid>,
     ) -> Result<Vec<Story>, AppError> {
-        let stories = repo::get_stories_by_project(&self.pool, project_id, organization_id).await?;
+        let stories =
+            repo::get_stories_by_project(&self.pool, project_id, organization_id, sprint_id)
+                .await?;
 
         if let Some(status_filter) = status {
             Ok(stories

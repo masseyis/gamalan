@@ -150,7 +150,7 @@ Implemented a new Sprint Task Board UI page that allows contributors to view all
 ## Files Created
 
 ### 1. Main Page Component
-- **Path:** `apps/web/app/projects/[id]/sprints/[sprint_id]/tasks/page.tsx`
+- **Path:** `apps/web/app/projects/[id]/sprints/[sprintId]/tasks/page.tsx`
 - **Purpose:** Sprint task board page displaying all tasks in a sprint
 - **Key Features:**
   - Task list with full details (ID, title, status, owner, AC refs)
@@ -304,7 +304,7 @@ SprintTasksPage (Main Container)
 
 ## Route Configuration
 
-**URL Pattern:** `/projects/[id]/sprints/[sprint_id]/tasks`
+**URL Pattern:** `/projects/[id]/sprints/[sprintId]/tasks`
 
 **Example URLs:**
 - `/projects/abc123/sprints/sprint-456/tasks`

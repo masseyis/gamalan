@@ -5,6 +5,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { useState } from 'react'
 import { Toaster } from '@/components/ui/toaster'
 import { UserContextProvider } from '@/components/providers/UserContextProvider'
+import { TaskNotificationProvider } from '@/components/providers/TaskNotificationProvider'
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -22,9 +23,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <UserContextProvider>
-        {children}
-        <ReactQueryDevtools initialIsOpen={false} />
-        <Toaster />
+        <TaskNotificationProvider>
+          {children}
+          <ReactQueryDevtools initialIsOpen={false} />
+          <Toaster />
+        </TaskNotificationProvider>
       </UserContextProvider>
     </QueryClientProvider>
   )

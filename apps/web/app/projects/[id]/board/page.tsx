@@ -49,6 +49,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { aiApi } from '@/lib/api/ai'
 import type { ReadinessEvaluation } from '@/lib/types/ai'
 import { useRoles } from '@/components/providers/UserContextProvider'
+import { useAuth } from '@clerk/nextjs'
+import { useApiClient } from '@/lib/api/client'
 
 type WorkflowStage = {
   label: string
@@ -148,7 +150,7 @@ const executionColumns: ColumnDefinition[] = [
     id: 'committed',
     title: 'Committed',
     subtitle: 'Stories locked into the sprint.',
-    statuses: ['committed'],
+    statuses: ['committed', 'ready'],
   },
   {
     id: 'execution',
@@ -281,7 +283,11 @@ function StoryCard({
                 </Badge>
               ) : null}
             </div>
-            <CardTitle className="line-clamp-2 text-base font-semibold">{story.title}</CardTitle>
+            <Link href={`/projects/${story.projectId}/backlog/${story.id}`} className="block">
+              <CardTitle className="line-clamp-2 text-base font-semibold transition-colors hover:text-primary">
+                {story.title}
+              </CardTitle>
+            </Link>
           </div>
           <span className="text-xs text-muted-foreground">#{story.id.slice(-6)}</span>
         </div>
@@ -728,6 +734,16 @@ export default function ProjectBoardPage() {
   const projectId = params.id as string
   const [extraStoryDialogOpen, setExtraStoryDialogOpen] = useState(false)
   const { user: contextUser } = useRoles()
+  const { isLoaded } = useAuth()
+  const { setupClients } = useApiClient()
+
+  useEffect(() => {
+    if (isLoaded) {
+      setupClients()
+    }
+  }, [isLoaded, setupClients])
+
+  const authLoading = !isLoaded
   const isContributorRole =
     contextUser?.role === 'contributor' || contextUser?.role === 'managing_contributor'
 
@@ -738,19 +754,19 @@ export default function ProjectBoardPage() {
   } = useQuery({
     queryKey: ['projects', projectId],
     queryFn: () => projectsApi.getProject(projectId),
-    enabled: !!projectId,
+    enabled: isLoaded && !!projectId,
   })
 
   const { data: team, isLoading: teamLoading } = useQuery({
     queryKey: ['team', project?.teamId],
     queryFn: () => teamsApi.getTeam(project!.teamId!),
-    enabled: !!project?.teamId,
+    enabled: isLoaded && !!project?.teamId,
   })
 
   const { data: activeSprint, isLoading: sprintLoading } = useQuery({
     queryKey: ['sprints', projectId, 'active'],
     queryFn: () => sprintApi.getActiveSprint(projectId),
-    enabled: !!projectId,
+    enabled: isLoaded && !!projectId,
   })
 
   const {
@@ -761,14 +777,15 @@ export default function ProjectBoardPage() {
     queryKey: ['sprint-stories', projectId, activeSprint?.id],
     queryFn: () =>
       backlogApi.getStories(projectId, activeSprint!.id, undefined, { includeTasks: true }),
-    enabled: !!projectId && !!activeSprint?.id,
+    select: (stories) => stories.filter((story) => story.sprintId === activeSprint?.id),
+    enabled: isLoaded && !!projectId && !!activeSprint?.id,
   })
 
   const readinessQueries = useQueries({
     queries: sprintStories.map((story) => ({
       queryKey: ['story-readiness', projectId, story.id],
       queryFn: () => aiApi.checkStoryReadiness(projectId, story.id),
-      enabled: !!projectId && !!story.id,
+      enabled: isLoaded && !!projectId && !!story.id,
       staleTime: 60 * 1000,
     })),
   })
@@ -791,7 +808,10 @@ export default function ProjectBoardPage() {
   } = useQuery({
     queryKey: ['planning-stories', projectId],
     queryFn: () => backlogApi.getStories(projectId),
-    enabled: !!projectId && (!activeSprint || extraStoryDialogOpen),
+    enabled:
+      isLoaded &&
+      !!projectId &&
+      (!sprintLoading && (!activeSprint || extraStoryDialogOpen)),
   })
 
   const updateStoryStatusMutation = useMutation({
@@ -816,6 +836,7 @@ export default function ProjectBoardPage() {
   })
 
   const isLoading =
+    authLoading ||
     projectLoading ||
     sprintLoading ||
     (activeSprint ? sprintStoriesLoading : planningStoriesLoading)

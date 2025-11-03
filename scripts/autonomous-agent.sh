@@ -16,6 +16,7 @@ API_BASE="${BATTRA_API_BASE:-http://localhost:8000/api/v1}"
 API_KEY="${1:-${BATTRA_API_KEY}}"
 SPRINT_ID="${2:-${BATTRA_SPRINT_ID}}"
 ROLE="${3:-dev}"
+PROJECT_ID="${4:-${BATTRA_PROJECT_ID}}"
 POLL_INTERVAL="${POLL_INTERVAL:-30}"  # seconds
 MAX_ITERATIONS="${MAX_ITERATIONS:-0}"  # 0 = infinite
 
@@ -27,6 +28,11 @@ fi
 
 if [ -z "$SPRINT_ID" ]; then
   echo "Error: SPRINT_ID required. Pass as second argument or set BATTRA_SPRINT_ID env var"
+  exit 1
+fi
+
+if [ "$ROLE" = "po" ] && [ -z "$PROJECT_ID" ]; then
+  echo "Error: PROJECT_ID required for PO agents. Pass as fourth argument or set BATTRA_PROJECT_ID env var"
   exit 1
 fi
 
@@ -113,6 +119,96 @@ complete_task() {
   api_post "tasks/$task_id/work/complete"
 }
 
+# Fetch all stories assigned to the sprint for PO workflows
+get_sprint_stories() {
+  local stories=$(api_get "projects/$PROJECT_ID/stories")
+  echo "$stories" | jq --arg sprint "$SPRINT_ID" '[.[] | select(.sprintId == $sprint)]'
+}
+
+# Retrieve the highest-priority story recommendation for PO agents
+get_po_story_recommendation() {
+  local sprint_stories
+  sprint_stories=$(get_sprint_stories)
+
+  if [ -z "$sprint_stories" ] || [ "$(echo "$sprint_stories" | jq 'length')" -eq 0 ]; then
+    return 1
+  fi
+
+  local fallback=""
+  local story_id
+
+  while IFS= read -r story_id; do
+    [ -z "$story_id" ] && continue
+
+    local recommendation
+    recommendation=$(api_get "readiness/stories/$story_id/recommendations")
+    if [ -z "$recommendation" ] || [ "$recommendation" = "null" ]; then
+      continue
+    fi
+
+    local missing_count
+    missing_count=$(echo "$recommendation" | jq '.readiness.missingItems | length')
+    local is_ready
+    is_ready=$(echo "$recommendation" | jq -r '.readiness.isReady')
+
+    if [ "$missing_count" -gt 0 ] || [ "$is_ready" != "true" ]; then
+      echo "$recommendation"
+      return 0
+    fi
+
+    if [ -z "$fallback" ]; then
+      fallback="$recommendation"
+    fi
+  done <<<"$(echo "$sprint_stories" | jq -r '.[].id')"
+
+  if [ -n "$fallback" ]; then
+    echo "$fallback"
+    return 0
+  fi
+
+  return 1
+}
+
+# Present PO recommendation details
+process_po_recommendation() {
+  local recommendation="$1"
+
+  local story_title
+  story_title=$(echo "$recommendation" | jq -r '.story.title')
+  local story_id
+  story_id=$(echo "$recommendation" | jq -r '.story.id')
+  local story_points
+  story_points=$(echo "$recommendation" | jq -r '.story.storyPoints // "unestimated"')
+  local summary
+  summary=$(echo "$recommendation" | jq -r '.readiness.summary')
+  local readiness_score
+  readiness_score=$(echo "$recommendation" | jq -r '.readiness.score')
+
+  log_success "Story recommendation: $story_title"
+  log_info "  Story ID: $story_id"
+  log_info "  Story Points: $story_points"
+  log_info "  Readiness Score: $readiness_score"
+  log_info "  Summary: $summary"
+
+  local missing_count
+  missing_count=$(echo "$recommendation" | jq '.readiness.missingItems | length')
+  if [ "$missing_count" -gt 0 ]; then
+    log_warning "  Missing items:"
+    echo "$recommendation" | jq -r '.readiness.missingItems[]' | while IFS= read -r item; do
+      log_warning "    - $item"
+    done
+  fi
+
+  local rec_count
+  rec_count=$(echo "$recommendation" | jq '.readiness.recommendations | length')
+  if [ "$rec_count" -gt 0 ]; then
+    log_info "  Recommended actions:"
+    echo "$recommendation" | jq -r '.readiness.recommendations[]' | while IFS= read -r action; do
+      log_info "    • $action"
+    done
+  fi
+}
+
 # Execute task with Claude Code and Git workflow
 execute_task() {
   local task_id="$1"
@@ -166,11 +262,15 @@ execute_task() {
 # Main agent loop
 run_agent() {
   local iteration=0
+  local -a skipped_tasks=()  # Track tasks we've failed on to avoid infinite loops
 
   log_info "Starting autonomous agent"
-  log_info "  API Base: $API_BASE"
-  log_info "  Sprint ID: $SPRINT_ID"
-  log_info "  Role: $ROLE"
+log_info "  API Base: $API_BASE"
+log_info "  Sprint ID: $SPRINT_ID"
+log_info "  Role: $ROLE"
+if [ "$ROLE" = "po" ]; then
+  log_info "  Project ID: $PROJECT_ID"
+fi
   log_info "  Poll Interval: ${POLL_INTERVAL}s"
   echo ""
 
@@ -183,6 +283,19 @@ run_agent() {
     fi
 
     log_info "=== Iteration $iteration ==="
+
+    if [ "$ROLE" = "po" ]; then
+      log_info "Fetching story readiness recommendations..."
+      if ! recommendation=$(get_po_story_recommendation); then
+        log_warning "No stories in sprint require attention. Waiting ${POLL_INTERVAL}s..."
+        sleep $POLL_INTERVAL
+        continue
+      fi
+
+      process_po_recommendation "$recommendation"
+      sleep $POLL_INTERVAL
+      continue
+    fi
 
     # Get recommended task
     log_info "Fetching recommended tasks..."
@@ -199,6 +312,15 @@ run_agent() {
     task_story_id=$(echo "$task_data" | jq -r '.[0].task.story_id')
     task_score=$(echo "$task_data" | jq -r '.[0].score')
     task_reason=$(echo "$task_data" | jq -r '.[0].reason')
+
+    # Check if we've already tried and failed this task
+    if [ ${#skipped_tasks[@]} -gt 0 ] && printf '%s\n' "${skipped_tasks[@]}" | grep -q "^${task_id}$"; then
+      log_warning "Task already attempted and failed: $task_title"
+      log_warning "Skipping to avoid infinite loop. Another agent or role may be better suited."
+      log_info "Tasks in skip list: ${#skipped_tasks[@]}"
+      sleep $POLL_INTERVAL
+      continue
+    fi
 
     log_success "Found task: $task_title"
     log_info "  Score: $task_score"
@@ -217,12 +339,21 @@ run_agent() {
 
     # Execute task
     if ! execute_task "$task_id" "$task_title" "$task_description" "$task_story_id"; then
-      log_error "Task execution failed. Releasing task..."
+      log_error "Task execution failed"
+
+      # Add to skip list to prevent infinite loops
+      skipped_tasks+=("$task_id")
+      log_warning "Added task to skip list (${#skipped_tasks[@]} tasks skipped this session)"
+      log_warning "This task may need manual intervention, clarification, or a different agent/role"
+
+      # Release the task so another agent can try
+      log_info "Releasing task ownership..."
       if ! release_task "$task_id"; then
-        log_warning "Failed to release task ownership"
+        log_error "Failed to release task ownership"
       else
-        log_success "Task ownership released"
+        log_success "Task ownership released (available for other agents)"
       fi
+
       sleep $POLL_INTERVAL
       continue
     fi

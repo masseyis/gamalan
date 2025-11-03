@@ -83,6 +83,8 @@ pub struct TaskOwnershipResponse {
 #[derive(Debug, Deserialize, Default)]
 pub struct StoriesQuery {
     pub status: Option<String>,
+    #[serde(rename = "sprintId")]
+    pub sprint_id: Option<Uuid>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -825,7 +827,7 @@ pub async fn get_stories_by_project(
 
     let result = state
         .usecases
-        .get_stories_by_project(project_id, org_id, status_filter)
+        .get_stories_by_project(project_id, org_id, status_filter, query.sprint_id)
         .await;
 
     match result {

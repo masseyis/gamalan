@@ -83,14 +83,16 @@ export function useTaskWebSocket(options: UseTaskWebSocketOptions = {}) {
         }
 
         ws.onerror = (error) => {
-          console.error('[WebSocket] Error:', error)
+          // Only log on first attempt to reduce console noise
+          if (reconnectAttempts.current === 0) {
+            console.warn('[WebSocket] Connection failed - backend may not be running')
+          }
           options.onError?.(error)
         }
 
         ws.onclose = () => {
           if (!isMounted) return
 
-          console.log('[WebSocket] Disconnected')
           setIsConnected(false)
           options.onDisconnect?.()
 
@@ -99,15 +101,18 @@ export function useTaskWebSocket(options: UseTaskWebSocketOptions = {}) {
             const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000)
             reconnectAttempts.current += 1
 
-            console.log(
-              `[WebSocket] Reconnecting in ${delay}ms (attempt ${reconnectAttempts.current}/${maxReconnectAttempts})`
-            )
+            // Only log on first disconnect to reduce console noise
+            if (reconnectAttempts.current === 1) {
+              console.log('[WebSocket] Disconnected - will retry in background')
+            }
 
             reconnectTimeoutRef.current = setTimeout(() => {
               if (isMounted) {
                 connect()
               }
             }, delay)
+          } else {
+            console.warn('[WebSocket] Max reconnection attempts reached - giving up')
           }
         }
 
