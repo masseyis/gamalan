@@ -313,3 +313,43 @@ pub async fn create_test_criteria(
 
     id
 }
+
+/// Helper to create a test task in readiness_task_projections
+#[allow(dead_code)]
+pub async fn create_test_task(
+    pool: &PgPool,
+    story_id: Uuid,
+    org_id: Uuid,
+    title: &str,
+    description: Option<&str>,
+    acceptance_criteria_refs: &[&str],
+    estimated_hours: Option<u32>,
+) -> Uuid {
+    let task_id = Uuid::new_v4();
+
+    // Convert acceptance_criteria_refs to a Vec<String> for the TEXT[] array
+    let ac_refs: Vec<String> = acceptance_criteria_refs
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+
+    sqlx::query(
+        r#"
+        INSERT INTO readiness_task_projections
+        (id, story_id, organization_id, title, description, acceptance_criteria_refs, estimated_hours, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+        "#,
+    )
+    .bind(task_id)
+    .bind(story_id)
+    .bind(org_id)
+    .bind(title)
+    .bind(description)
+    .bind(&ac_refs) // Bind as &Vec<String> for TEXT[] type
+    .bind(estimated_hours.map(|h| h as i32))
+    .execute(pool)
+    .await
+    .expect("Failed to create test task");
+
+    task_id
+}
