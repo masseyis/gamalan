@@ -398,7 +398,7 @@ export default function TeamDetailPage() {
                         .split(' ')
                         .filter(Boolean)
                         .slice(0, 2)
-                        .map((part) => part.charAt(0).toUpperCase())
+                        .map((part: string) => part.charAt(0).toUpperCase())
                         .join('') || 'U'
 
                       return (

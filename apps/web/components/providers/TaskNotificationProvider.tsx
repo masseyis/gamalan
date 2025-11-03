@@ -107,7 +107,6 @@ export function TaskNotificationProvider({ children }: PropsWithChildren) {
           new Notification(title, {
             body,
             tag,
-            renotify: false,
           })
           return
         } catch (error) {
