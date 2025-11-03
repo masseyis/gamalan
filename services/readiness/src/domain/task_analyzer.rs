@@ -1,3 +1,4 @@
+use super::TaskAnalysis;
 use super::{GapType, Recommendation, TaskAnalysis};
 use crate::application::ports::TaskInfo;
 use uuid::Uuid;
