@@ -1,11 +1,13 @@
 use axum::{
     extract::{
         ws::{Message, WebSocket},
-        State, WebSocketUpgrade,
+        FromRequestParts, State, WebSocketUpgrade,
     },
+    http::{header::HeaderName, header::AUTHORIZATION, request::Parts, HeaderValue},
     response::IntoResponse,
 };
 use futures::{sink::SinkExt, stream::StreamExt};
+use percent_encoding::percent_decode_str;
 use std::sync::Arc;
 use tokio::sync::broadcast;
 use tracing::{debug, error, info, warn};
@@ -13,6 +15,7 @@ use uuid::Uuid;
 
 use crate::domain::TaskEvent;
 use auth_clerk::AuthenticatedWithOrg;
+use common::AppError;
 
 /// WebSocket connection manager that broadcasts task events to connected clients
 #[derive(Clone)]
@@ -46,11 +49,108 @@ impl WebSocketManager {
     }
 }
 
+pub struct WsAuthenticatedWithOrg(pub AuthenticatedWithOrg);
+
+impl<S> FromRequestParts<S> for WsAuthenticatedWithOrg
+where
+    S: Send + Sync,
+{
+    type Rejection = AppError;
+
+    fn from_request_parts(
+        parts: &mut Parts,
+        state: &S,
+    ) -> impl std::future::Future<Output = Result<Self, Self::Rejection>> + Send {
+        let (additional_auth, additional_api_key, query_snapshot) =
+            if parts.headers.get(AUTHORIZATION).is_none() {
+                let result = parts
+                    .uri
+                    .query()
+                    .map(parse_auth_from_query)
+                    .unwrap_or_default();
+                (result.0, result.1, parts.uri.query().map(|q| q.to_string()))
+            } else {
+                (None, None, parts.uri.query().map(|q| q.to_string()))
+            };
+
+        async move {
+            if let Some(ref query) = query_snapshot {
+                debug!(query, "WebSocket auth query string");
+            }
+
+            if let Some(header) = additional_auth {
+                debug!(
+                    ?header,
+                    "Injecting Authorization header from query parameter"
+                );
+                parts.headers.insert(AUTHORIZATION, header);
+            }
+            if let Some(header) = additional_api_key {
+                debug!(?header, "Injecting X-API-Key header from query parameter");
+                parts.headers.insert(X_API_KEY, header);
+            }
+
+            match AuthenticatedWithOrg::from_request_parts(parts, state).await {
+                Ok(auth) => {
+                    debug!(user_id = %auth.auth.sub, "WebSocket authentication succeeded");
+                    Ok(WsAuthenticatedWithOrg(auth))
+                }
+                Err(err) => {
+                    error!(?err, "WebSocket authentication failed");
+                    Err(err)
+                }
+            }
+        }
+    }
+}
+
+const X_API_KEY: HeaderName = HeaderName::from_static("x-api-key");
+
+fn parse_auth_from_query(query: &str) -> (Option<HeaderValue>, Option<HeaderValue>) {
+    let mut auth_header: Option<HeaderValue> = None;
+    let mut api_key_header: Option<HeaderValue> = None;
+
+    for pair in query.split('&') {
+        let mut parts = pair.splitn(2, '=');
+        match (parts.next(), parts.next()) {
+            (Some("token"), Some(value)) => {
+                if let Some(decoded) = decode_query_value(value) {
+                    debug!("Found token query parameter");
+                    if let Ok(header) = HeaderValue::from_str(&format!("Bearer {}", decoded)) {
+                        auth_header = Some(header);
+                    }
+                }
+            }
+            (Some("api_key"), Some(value)) => {
+                if let Some(decoded) = decode_query_value(value) {
+                    debug!("Found api_key query parameter");
+                    if let Ok(header) = HeaderValue::from_str(&format!("ApiKey {}", decoded)) {
+                        auth_header = Some(header);
+                    }
+                    if let Ok(x_header) = HeaderValue::from_str(&decoded) {
+                        api_key_header = Some(x_header);
+                    }
+                }
+            }
+            _ => continue,
+        }
+    }
+
+    (auth_header, api_key_header)
+}
+
+fn decode_query_value(raw: &str) -> Option<String> {
+    percent_decode_str(raw)
+        .decode_utf8()
+        .ok()
+        .map(|cow| cow.to_string())
+}
+
 /// WebSocket handler for real-time task updates
 /// Authenticated users can connect to receive task event notifications
 pub async fn websocket_handler(
     ws: WebSocketUpgrade,
-    AuthenticatedWithOrg { org_context, auth }: AuthenticatedWithOrg,
+    WsAuthenticatedWithOrg(AuthenticatedWithOrg { org_context, auth }): WsAuthenticatedWithOrg,
     State(state): State<Arc<crate::adapters::http::BacklogAppState>>,
 ) -> impl IntoResponse {
     let org_id = org_context.effective_organization_uuid();

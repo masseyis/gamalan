@@ -1,1 +1,2 @@
+mod test_recommendation_generator;
 mod test_task_analyzer;

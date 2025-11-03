@@ -385,7 +385,8 @@ export default function TeamDetailPage() {
                 ) : (
                   <div className="space-y-3">
                     {members.map((member) => {
-                      const formattedRole = member.role
+                      const rawRole = member.role || 'member'
+                      const formattedRole = rawRole
                         .split('_')
                         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
                         .join(' ')
@@ -414,7 +415,7 @@ export default function TeamDetailPage() {
                             <p className="font-medium">{displayName}</p>
                             <div className="flex items-center gap-2">
                               <Badge variant="outline" className="text-xs">
-                                {member.role}
+                                {formattedRole}
                               </Badge>
                               {member.specialty && (
                                 <Badge variant="secondary" className="text-xs">

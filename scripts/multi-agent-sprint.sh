@@ -31,6 +31,7 @@ API_KEY="${BATTRA_API_KEY:-battra-dev-key-1}"  # Use dev key for queries
 PARALLEL_MODE=false
 VERBOSE_MODE=false
 SPRINT_ID=""
+AI_MODE="claude-cli"  # Default execution mode
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -47,12 +48,28 @@ while [[ $# -gt 0 ]]; do
       set -x  # Enable bash debug mode
       shift
       ;;
+    --ai-mode)
+      AI_MODE="$2"
+      shift 2
+      ;;
     *)
       SPRINT_ID="$1"
       shift
       ;;
   esac
 done
+
+# Validate AI mode
+case "$AI_MODE" in
+  claude-cli|claude-api|codex-cli)
+    # Valid mode
+    ;;
+  *)
+    echo "❌ Error: Invalid AI mode '$AI_MODE'"
+    echo "   Valid options: claude-cli, claude-api, codex-cli"
+    exit 1
+    ;;
+esac
 
 # Fall back to env var if not provided
 SPRINT_ID="${SPRINT_ID:-${BATTRA_SPRINT_ID}}"
@@ -68,20 +85,26 @@ if [ -z "$SPRINT_ID" ]; then
     echo "Error: No teams found. Cannot auto-detect sprint."
     echo ""
     echo "Usage:"
-    echo "  ./multi-agent-sprint.sh [--parallel] [--verbose] [sprint_id]"
+    echo "  ./multi-agent-sprint.sh [OPTIONS] [sprint_id]"
     echo ""
     echo "Options:"
-    echo "  --parallel         Run agents in parallel (faster, uses more Claude credits)"
-    echo "  --verbose, -v      Show real-time agent output"
-    echo "  --debug            Enable verbose mode + bash debug tracing"
+    echo "  --parallel              Run agents in parallel (faster, uses more AI credits)"
+    echo "  --verbose, -v           Show real-time agent output"
+    echo "  --debug                 Enable verbose mode + bash debug tracing"
+    echo "  --ai-mode <mode>        Choose AI execution mode (default: claude-cli)"
+    echo ""
+    echo "AI Modes:"
+    echo "  claude-cli              Use Claude Code CLI (default, local CLI)"
+    echo "  claude-api              Use Claude API (requires ANTHROPIC_API_KEY env var)"
+    echo "  codex-cli               Use Codex CLI (OpenAI, optional CODEX_API_KEY env var)"
     echo ""
     echo "Examples:"
-    echo "  ./multi-agent-sprint.sh                       # Auto-detect active sprint"
-    echo "  ./multi-agent-sprint.sh --verbose             # Auto-detect + show output"
-    echo "  ./multi-agent-sprint.sh --debug               # Auto-detect + full debug"
-    echo "  ./multi-agent-sprint.sh abc-123-def           # Use specific sprint"
-    echo "  ./multi-agent-sprint.sh --parallel            # Auto-detect + parallel mode"
-    echo "  ./multi-agent-sprint.sh --parallel abc-123    # Specific sprint + parallel"
+    echo "  ./multi-agent-sprint.sh                                # Auto-detect sprint, Claude CLI"
+    echo "  ./multi-agent-sprint.sh --verbose                      # Auto-detect + show output"
+    echo "  ./multi-agent-sprint.sh --debug                        # Auto-detect + full debug"
+    echo "  ./multi-agent-sprint.sh --ai-mode codex-cli            # Use Codex instead of Claude"
+    echo "  ./multi-agent-sprint.sh --ai-mode claude-api abc-123   # Specific sprint + Claude API"
+    echo "  ./multi-agent-sprint.sh --parallel --verbose           # Parallel mode with output"
     exit 1
   fi
 
@@ -137,9 +160,10 @@ log_agent() {
 }
 
 # Agent configurations
-declare -a AGENT_ROLES=("dev" "qa" "po" "devops" "documenter")
-declare -a AGENT_KEYS=("battra-dev-key-1" "battra-qa-key-1" "battra-po-key-1" "battra-devops-key-1" "battra-documenter-key-1")
-declare -a AGENT_NAMES=("dev-1" "qa-1" "po-1" "devops-1" "documenter-1")
+# Documenter goes FIRST to create ADRs/contracts that QA and Dev reference
+declare -a AGENT_ROLES=("documenter" "dev" "qa" "devops" "po")
+declare -a AGENT_KEYS=("battra-documenter-key-1" "battra-dev-key-1" "battra-qa-key-1" "battra-devops-key-1" "battra-po-key-1")
+declare -a AGENT_NAMES=("documenter-1" "dev-1" "qa-1" "devops-1" "po-1")
 
 # PID tracking
 AGENT_PIDS=()
@@ -213,6 +237,21 @@ run_agent_iteration() {
   export MAX_ITERATIONS="1"  # Only one iteration in round-robin mode
   export POLL_INTERVAL="5"    # Short poll interval
 
+  # Configure AI execution mode
+  case "$AI_MODE" in
+    claude-cli)
+      export USE_CLAUDE_CLI="true"
+      ;;
+    claude-api)
+      export USE_CLAUDE_API="true"
+      # ANTHROPIC_API_KEY should be set in environment
+      ;;
+    codex-cli)
+      export USE_CODEX_CLI="true"
+      # CODEX_API_KEY can be set in environment (optional)
+      ;;
+  esac
+
   # Change to agent's worktree and run (use absolute path for log file)
   if [ "$VERBOSE_MODE" = true ]; then
     # Verbose mode: show output in real-time AND log to file
@@ -265,6 +304,21 @@ start_agent_parallel() {
   export GIT_PR_BASE_BRANCH="main"
   export MAX_ITERATIONS="0"  # Infinite iterations in parallel mode
   export POLL_INTERVAL="30"
+
+  # Configure AI execution mode
+  case "$AI_MODE" in
+    claude-cli)
+      export USE_CLAUDE_CLI="true"
+      ;;
+    claude-api)
+      export USE_CLAUDE_API="true"
+      # ANTHROPIC_API_KEY should be set in environment
+      ;;
+    codex-cli)
+      export USE_CODEX_CLI="true"
+      # CODEX_API_KEY can be set in environment (optional)
+      ;;
+  esac
 
   # Start agent in background (use absolute path for log file)
   if [ "$VERBOSE_MODE" = true ]; then
@@ -374,9 +428,17 @@ main() {
   log_info "=== Multi-Agent Sprint Execution ==="
   log_info "Sprint ID: $SPRINT_ID"
   log_info "Mode: $([ "$PARALLEL_MODE" = true ] && echo "PARALLEL" || echo "ROUND-ROBIN (sequential)")"
+  log_info "AI Mode: $AI_MODE"
   log_info "Verbose: $([ "$VERBOSE_MODE" = true ] && echo "ON" || echo "OFF")"
   log_info "Log directory: $LOG_DIR"
   echo ""
+
+  # Validate AI mode configuration
+  if [ "$AI_MODE" = "claude-api" ] && [ -z "$ANTHROPIC_API_KEY" ]; then
+    log_error "AI Mode is 'claude-api' but ANTHROPIC_API_KEY environment variable is not set"
+    log_error "Please set ANTHROPIC_API_KEY or use --ai-mode claude-cli (default)"
+    exit 1
+  fi
 
   # Check available tasks
   log_info "Checking available tasks..."

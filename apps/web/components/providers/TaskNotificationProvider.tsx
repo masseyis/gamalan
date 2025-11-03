@@ -1,6 +1,6 @@
 'use client'
 
-import { PropsWithChildren, useCallback, useEffect, useRef } from 'react'
+import { PropsWithChildren, useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTaskWebSocket, TaskWebSocketEvent } from '@/lib/hooks/useTaskWebSocket'
 import { useToast } from '@/hooks/use-toast'
 import { ToastAction } from '@/components/ui/toast'
@@ -168,11 +168,16 @@ export function TaskNotificationProvider({ children }: PropsWithChildren) {
     [resolveStoryTitle, resolveUserLabel, showSystemNotification]
   )
 
-  useTaskWebSocket({
-    onEvent: (event) => {
+  const handleEventRef = useCallback(
+    (event: TaskWebSocketEvent) => {
       void handleEvent(event)
     },
-  })
+    [handleEvent]
+  )
+
+  const wsOptions = useMemo(() => ({ onEvent: handleEventRef }), [handleEventRef])
+
+  useTaskWebSocket(wsOptions)
 
   return <>{children}</>
 }

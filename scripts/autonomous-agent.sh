@@ -242,12 +242,33 @@ execute_task() {
   export AGENT_ROLE="$ROLE"
   export USE_WORKTREE="${USE_WORKTREE:-true}"  # Enable worktree mode by default
 
-  # Pass through ANTHROPIC_API_KEY from environment (optional - if not set, uses Claude Code CLI)
-  if [ -n "$ANTHROPIC_API_KEY" ]; then
+  # Pass through AI execution mode configuration
+  # Priority: Explicit mode flags > API keys presence
+  if [ "${USE_CODEX_CLI:-false}" = "true" ]; then
+    export USE_CODEX_CLI="true"
+    echo "  Using Codex CLI (OpenAI Codex)"
+    if [ -n "$CODEX_API_KEY" ]; then
+      export CODEX_API_KEY="$CODEX_API_KEY"
+    fi
+  elif [ "${USE_CLAUDE_API:-false}" = "true" ]; then
+    export USE_CLAUDE_API="true"
+    if [ -n "$ANTHROPIC_API_KEY" ]; then
+      export ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY"
+      echo "  Using Claude API (Anthropic API)"
+    else
+      log_error "USE_CLAUDE_API=true but ANTHROPIC_API_KEY not set"
+      return 1
+    fi
+  elif [ "${USE_CLAUDE_CLI:-false}" = "true" ]; then
+    export USE_CLAUDE_CLI="true"
+    echo "  Using Claude Code CLI (default)"
+  elif [ -n "$ANTHROPIC_API_KEY" ]; then
+    # Auto-detect: if ANTHROPIC_API_KEY is set, use Claude API
     export ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY"
-    echo "  Using Anthropic API (separate API credits)"
+    echo "  Using Claude API (ANTHROPIC_API_KEY detected)"
   else
-    echo "  Using Claude Code CLI (Claude Code Plus subscription)"
+    # Default: Claude Code CLI
+    echo "  Using Claude Code CLI (default)"
   fi
 
   if ! node "$script_dir/$executor" "$task_id"; then
