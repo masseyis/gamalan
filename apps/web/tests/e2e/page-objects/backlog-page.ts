@@ -11,9 +11,9 @@ export class BacklogPage extends BasePage {
 
   constructor(page: Page) {
     super(page)
-    this.addStoryButton = page.locator(
-      'button:has-text("Add Story"), button:has-text("New Story"), a:has-text("New Story")'
-    )
+    this.addStoryButton = page
+      .locator('button:has-text("Add Story"), button:has-text("New Story"), a:has-text("New Story")')
+      .first()
     this.storiesList = page.locator('[data-testid="stories-list"]')
     this.storyCards = page.locator('[data-testid="story-card"]')
     this.filterDropdown = page.locator('button:has-text("Filter")')
@@ -27,10 +27,13 @@ export class BacklogPage extends BasePage {
   }
 
   async createStory(title: string, description: string, acceptanceCriteria: string[] = []) {
+    // Wait for the add story button and click it
+    await this.addStoryButton.waitFor({ state: 'visible', timeout: 30000 })
     await this.addStoryButton.click()
 
     // Fill story form
     const titleInput = this.page.locator('input[name="title"], input[placeholder*="title"]')
+    await titleInput.waitFor({ state: 'visible', timeout: 10000 })
     await titleInput.fill(title)
 
     const descInput = this.page.locator(

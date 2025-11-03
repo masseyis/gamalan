@@ -83,8 +83,11 @@ export class BasePage {
     await aiButton.click()
   }
 
-  async expectToastMessage(message: string) {
-    const toast = this.page.locator(`[role="alert"]:has-text("${message}")`)
+  async expectToastMessage(message: string | RegExp) {
+    const toast =
+      typeof message === 'string'
+        ? this.page.locator(`[role="alert"]:has-text("${message}")`)
+        : this.page.locator(`[role="alert"]`).filter({ hasText: message })
     await expect(toast).toBeVisible({ timeout: 5000 })
   }
 
