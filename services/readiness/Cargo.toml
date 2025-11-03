@@ -29,3 +29,6 @@ event-bus = { path = "../../libs/event-bus" }
 
 [dev-dependencies]
 reqwest = { version = "0.12.4", features = ["json"] }
+tower = { version = "0.5", features = ["util"] }
+serial_test = "3.0"
+proptest = "1.4"

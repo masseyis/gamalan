@@ -1,6 +1,6 @@
 use crate::application::ports::{
     AcceptanceCriteriaRepository, LlmService, ReadinessEvaluationRepository, StoryService,
-    TaskAnalysisRepository,
+    TaskAnalysisRepository, TaskInfo,
 };
 use crate::domain::{
     AcceptanceCriterion, ReadinessCheck, ReadinessEvaluation, TaskAnalysis, TaskAnalyzer,
@@ -494,11 +494,10 @@ impl ReadinessUsecases {
 
         let valid_ac_ids: Vec<String> = criteria.iter().map(|c| c.ac_id.clone()).collect();
 
-        // Convert port TaskInfo to domain TaskInfo
-        let task_info = crate::domain::task_analyzer::TaskInfo {
+        // Use TaskInfo from ports
+        let task_info = TaskInfo {
             id: task.id,
             story_id: task.story_id,
-            organization_id,
             title: task.title.clone(),
             description: task.description.clone(),
             acceptance_criteria_refs: task.acceptance_criteria_refs.clone(),
@@ -506,7 +505,8 @@ impl ReadinessUsecases {
         };
 
         // Analyze the task
-        let analysis = TaskAnalyzer::analyze(&task_info, &valid_ac_ids, None);
+        let mut analysis = TaskAnalyzer::analyze(&task_info, &valid_ac_ids, None);
+        analysis.organization_id = organization_id;
 
         // Save the analysis
         self.task_analysis_repo.save_analysis(&analysis).await?;

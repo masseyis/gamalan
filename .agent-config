@@ -1,0 +1,15 @@
+# Agent Configuration
+AGENT_NAME=qa-1
+AGENT_ROLE=qa
+AGENT_INDEX=1
+
+# API Configuration (set these before running)
+# export BATTRA_API_KEY=battra-qa-key-2
+# export BATTRA_PROJECT_ID=<your-project-uuid>
+# export BATTRA_SPRINT_ID=<your-sprint-uuid>
+# export ANTHROPIC_API_KEY=<your-anthropic-key>
+
+# Git Configuration
+export GIT_WORKFLOW_ENABLED=true
+export GIT_PR_BASE_BRANCH=main
+export GIT_PR_REVIEWERS=""
