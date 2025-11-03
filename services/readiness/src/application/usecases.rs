@@ -1,7 +1,10 @@
 use crate::application::ports::{
     AcceptanceCriteriaRepository, LlmService, ReadinessEvaluationRepository, StoryService,
+    TaskAnalysisRepository, TaskInfo,
 };
-use crate::domain::{AcceptanceCriterion, ReadinessCheck, ReadinessEvaluation};
+use crate::domain::{
+    AcceptanceCriterion, ReadinessCheck, ReadinessEvaluation, TaskAnalysis, TaskAnalyzer,
+};
 use common::AppError;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -9,6 +12,7 @@ use uuid::Uuid;
 pub struct ReadinessUsecases {
     criteria_repo: Arc<dyn AcceptanceCriteriaRepository>,
     readiness_repo: Arc<dyn ReadinessEvaluationRepository>,
+    task_analysis_repo: Arc<dyn TaskAnalysisRepository>,
     story_service: Arc<dyn StoryService>,
     llm_service: Arc<dyn LlmService>,
 }
@@ -17,12 +21,14 @@ impl ReadinessUsecases {
     pub fn new(
         criteria_repo: Arc<dyn AcceptanceCriteriaRepository>,
         readiness_repo: Arc<dyn ReadinessEvaluationRepository>,
+        task_analysis_repo: Arc<dyn TaskAnalysisRepository>,
         story_service: Arc<dyn StoryService>,
         llm_service: Arc<dyn LlmService>,
     ) -> Self {
         Self {
             criteria_repo,
             readiness_repo,
+            task_analysis_repo,
             story_service,
             llm_service,
         }
@@ -462,6 +468,62 @@ impl ReadinessUsecases {
 
         Ok(invalid_refs)
     }
+
+    /// Analyze a task for readiness and generate recommendations
+    pub async fn analyze_task(
+        &self,
+        task_id: Uuid,
+        organization_id: Option<Uuid>,
+    ) -> Result<TaskAnalysis, AppError> {
+        // Get task info from story service
+        let tasks = self
+            .story_service
+            .get_tasks_for_story(Uuid::nil(), organization_id)
+            .await?;
+
+        let task = tasks
+            .iter()
+            .find(|t| t.id == task_id)
+            .ok_or_else(|| AppError::NotFound(format!("Task {} not found", task_id)))?;
+
+        // Get valid AC IDs for the story
+        let criteria = self
+            .criteria_repo
+            .get_criteria_by_story(task.story_id, organization_id)
+            .await?;
+
+        let valid_ac_ids: Vec<String> = criteria.iter().map(|c| c.ac_id.clone()).collect();
+
+        // Use TaskInfo from ports
+        let task_info = TaskInfo {
+            id: task.id,
+            story_id: task.story_id,
+            title: task.title.clone(),
+            description: task.description.clone(),
+            acceptance_criteria_refs: task.acceptance_criteria_refs.clone(),
+            estimated_hours: task.estimated_hours,
+        };
+
+        // Analyze the task
+        let mut analysis = TaskAnalyzer::analyze(&task_info, &valid_ac_ids, None);
+        analysis.organization_id = organization_id;
+
+        // Save the analysis
+        self.task_analysis_repo.save_analysis(&analysis).await?;
+
+        Ok(analysis)
+    }
+
+    /// Get task analysis by task ID
+    pub async fn get_task_analysis(
+        &self,
+        task_id: Uuid,
+        organization_id: Option<Uuid>,
+    ) -> Result<Option<TaskAnalysis>, AppError> {
+        self.task_analysis_repo
+            .get_latest_analysis(task_id, organization_id)
+            .await
+    }
 }
 
 fn format_gwt_summary(given: &str, when_clause: &str, then_clause: &str) -> String {
@@ -590,6 +652,24 @@ mod tests {
         }
     }
 
+    #[derive(Default)]
+    struct MockTaskAnalysisRepository;
+
+    #[async_trait]
+    impl TaskAnalysisRepository for MockTaskAnalysisRepository {
+        async fn save_analysis(&self, _analysis: &TaskAnalysis) -> Result<(), AppError> {
+            Ok(())
+        }
+
+        async fn get_latest_analysis(
+            &self,
+            _task_id: Uuid,
+            _organization_id: Option<Uuid>,
+        ) -> Result<Option<TaskAnalysis>, AppError> {
+            Ok(None)
+        }
+    }
+
     struct MockStoryService;
 
     #[async_trait]
@@ -616,7 +696,9 @@ mod tests {
                 id: Uuid::new_v4(),
                 story_id: _story_id,
                 title: "Test Task".to_string(),
+                description: Some("Test task description".to_string()),
                 acceptance_criteria_refs: vec!["AC1".to_string()],
+                estimated_hours: Some(3),
             }])
         }
     }
@@ -643,10 +725,17 @@ mod tests {
     fn setup_usecases() -> ReadinessUsecases {
         let criteria_repo = Arc::new(MockAcceptanceCriteriaRepository::default());
         let readiness_repo = Arc::new(MockReadinessEvaluationRepository);
+        let task_analysis_repo = Arc::new(MockTaskAnalysisRepository);
         let story_service = Arc::new(MockStoryService);
         let llm_service = Arc::new(MockLlmService);
 
-        ReadinessUsecases::new(criteria_repo, readiness_repo, story_service, llm_service)
+        ReadinessUsecases::new(
+            criteria_repo,
+            readiness_repo,
+            task_analysis_repo,
+            story_service,
+            llm_service,
+        )
     }
 
     #[tokio::test]

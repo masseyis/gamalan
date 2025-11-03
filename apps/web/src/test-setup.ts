@@ -5,20 +5,15 @@ import React from 'react'
 import { server } from '../mocks/server'
 
 // Mock Clerk module to use our test wrapper hooks
-vi.mock('@clerk/nextjs', () => {
-  const {
-    useMockUser,
-    useMockAuth,
-    useMockClerk,
-    useMockOrganization,
-  } = require('@/app/auth-provider-wrapper')
+vi.mock('@clerk/nextjs', async () => {
+  const authMocks = await import('../app/auth-provider-wrapper')
 
   return {
     ClerkProvider: ({ children }: { children: React.ReactNode }) => children,
-    useUser: useMockUser,
-    useAuth: useMockAuth,
-    useClerk: useMockClerk,
-    useOrganization: useMockOrganization,
+    useUser: authMocks.useMockUser,
+    useAuth: authMocks.useMockAuth,
+    useClerk: authMocks.useMockClerk,
+    useOrganization: authMocks.useMockOrganization,
     SignedIn: ({ children }: { children: React.ReactNode }) =>
       React.createElement(React.Fragment, null, children),
     SignedOut: ({ children }: { children: React.ReactNode }) =>

@@ -74,7 +74,9 @@ struct TaskProjectionRow {
     id: Uuid,
     story_id: Uuid,
     title: String,
+    description: Option<String>,
     acceptance_criteria_refs: Option<Vec<String>>,
+    estimated_hours: Option<i32>,
 }
 
 #[derive(Clone)]
@@ -521,7 +523,7 @@ impl StoryService for ProjectionStoryService {
     ) -> Result<Vec<TaskInfo>, AppError> {
         let rows = sqlx::query_as::<_, TaskProjectionRow>(
             r#"
-            SELECT id, story_id, title, acceptance_criteria_refs
+            SELECT id, story_id, title, description, acceptance_criteria_refs, estimated_hours
             FROM readiness_task_projections
             WHERE story_id = $1
             ORDER BY created_at
@@ -541,7 +543,9 @@ impl StoryService for ProjectionStoryService {
                 id: row.id,
                 story_id: row.story_id,
                 title: row.title,
+                description: row.description,
                 acceptance_criteria_refs: row.acceptance_criteria_refs.unwrap_or_default(),
+                estimated_hours: row.estimated_hours.map(|v| v as u32),
             })
             .collect())
     }

@@ -1,4 +1,4 @@
-use crate::domain::{AcceptanceCriterion, ReadinessEvaluation};
+use crate::domain::{AcceptanceCriterion, ReadinessEvaluation, TaskAnalysis};
 use async_trait::async_trait;
 use common::AppError;
 use uuid::Uuid;
@@ -63,13 +63,12 @@ pub struct StoryInfo {
 
 #[derive(Debug, Clone)]
 pub struct TaskInfo {
-    #[allow(dead_code)]
     pub id: Uuid,
-    #[allow(dead_code)]
     pub story_id: Uuid,
-    #[allow(dead_code)]
     pub title: String,
+    pub description: Option<String>,
     pub acceptance_criteria_refs: Vec<String>,
+    pub estimated_hours: Option<u32>,
 }
 
 #[async_trait]
@@ -78,4 +77,14 @@ pub trait LlmService: Send + Sync {
         &self,
         story_info: &StoryInfo,
     ) -> Result<Vec<AcceptanceCriterion>, AppError>;
+}
+
+#[async_trait]
+pub trait TaskAnalysisRepository: Send + Sync {
+    async fn save_analysis(&self, analysis: &TaskAnalysis) -> Result<(), AppError>;
+    async fn get_latest_analysis(
+        &self,
+        task_id: Uuid,
+        organization_id: Option<Uuid>,
+    ) -> Result<Option<TaskAnalysis>, AppError>;
 }

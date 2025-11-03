@@ -10,9 +10,9 @@ export class ProjectsPage extends BasePage {
 
   constructor(page: Page) {
     super(page)
-    this.newProjectButton = page.locator(
-      'button:has-text("New Project"), button:has-text("Create Project")'
-    )
+    this.newProjectButton = page
+      .locator('button:has-text("New Project"), button:has-text("Create Project")')
+      .first()
     this.projectsList = page.locator('[data-testid="projects-list"]')
     this.searchInput = page.locator('input[placeholder*="Search"]')
     this.filterButton = page.locator('button:has-text("Filter")')
@@ -25,44 +25,73 @@ export class ProjectsPage extends BasePage {
   }
 
   async createProject(name: string, description: string = '') {
-    // Check if new project button is available
-    if (await this.newProjectButton.isVisible({ timeout: 5000 })) {
-      await this.newProjectButton.click()
+    // Click new project button/link
+    await this.newProjectButton.waitFor({ state: 'visible', timeout: 10000 })
+    await this.newProjectButton.click()
 
-      // Fill project form
-      const nameInput = this.page.locator('input[name="name"], input[placeholder*="Project name"]')
-      if (await nameInput.isVisible({ timeout: 5000 })) {
-        await nameInput.fill(name)
+    // Wait for navigation to /projects/new OR for the form modal to appear
+    try {
+      await Promise.race([
+        this.page.waitForURL(/.*\/projects\/new/, { timeout: 5000 }),
+        this.page
+          .locator('input[name="name"], input[placeholder*="Project name"]')
+          .waitFor({ state: 'visible', timeout: 5000 }),
+      ])
+    } catch (error) {
+      console.error('Failed to navigate to project creation form:', error)
+      return ''
+    }
 
-        if (description) {
-          const descInput = this.page.locator(
-            'textarea[name="description"], textarea[placeholder*="description"]'
-          )
-          if (await descInput.isVisible({ timeout: 2000 })) {
-            await descInput.fill(description)
-          }
-        }
+    // Fill project form
+    const nameInput = this.page.locator('input[name="name"], input[placeholder*="Project name"]')
+    await nameInput.waitFor({ state: 'visible', timeout: 10000 })
+    await nameInput.fill(name)
 
-        // Submit form
-        const submitButton = this.page.locator('button:has-text("Create"), button[type="submit"]')
-        if (await submitButton.isVisible({ timeout: 5000 })) {
-          await submitButton.click()
-
-          // Wait for project to be created and redirected
-          try {
-            await this.page.waitForURL(/.*\/projects\/.*/, { timeout: 10000 })
-            await this.expectToastMessage('Project created successfully')
-            return this.getCurrentProjectId()
-          } catch {
-            // Return empty if creation failed
-            return ''
-          }
-        }
+    if (description) {
+      const descInput = this.page.locator(
+        'textarea[name="description"], textarea[placeholder*="description"]'
+      )
+      if (await descInput.isVisible({ timeout: 3000 })) {
+        await descInput.fill(description)
       }
     }
 
-    // Return empty if project creation UI is not available
-    return ''
+    // Submit form
+    const submitButton = this.page.locator(
+      'button:has-text("Create Project"), button:has-text("Create"), button[type="submit"]'
+    )
+    await submitButton.waitFor({ state: 'visible', timeout: 10000 })
+    await submitButton.click()
+
+    // Wait for project to be created and redirected
+    try {
+      // Wait for either redirect OR error message
+      await Promise.race([
+        this.page.waitForURL(/.*\/projects\/[^\/]+(?:\/|$)/, { timeout: 15000 }),
+        this.page.locator('[role="alert"], .error, [data-testid="error"]').waitFor({ state: 'visible', timeout: 3000 }).catch(() => {}),
+      ])
+
+      // Check if we're still on /projects/new (submission failed)
+      const url = this.page.url()
+      if (url.includes('/projects/new')) {
+        console.error('Still on /projects/new page after submission')
+        // Try to capture any error messages
+        const errorMessages = await this.page.locator('[role="alert"], .error-message').allTextContents()
+        if (errorMessages.length > 0) {
+          console.error('Error messages:', errorMessages)
+        }
+        return ''
+      }
+
+      // Wait a bit for the page to load
+      await this.page.waitForTimeout(1000)
+      return this.getCurrentProjectId()
+    } catch (error) {
+      console.error('Project creation failed:', error)
+      const url = this.page.url()
+      console.error('Current URL:', url)
+      return ''
+    }
   }
 
   async openProject(projectName: string) {

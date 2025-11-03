@@ -1,6 +1,8 @@
 use crate::adapters::persistence::models::{AcceptanceCriterionRow, ReadinessEvaluationRow};
-use crate::application::ports::{AcceptanceCriteriaRepository, ReadinessEvaluationRepository};
-use crate::domain::{AcceptanceCriterion, ReadinessEvaluation};
+use crate::application::ports::{
+    AcceptanceCriteriaRepository, ReadinessEvaluationRepository, TaskAnalysisRepository,
+};
+use crate::domain::{AcceptanceCriterion, ReadinessEvaluation, TaskAnalysis};
 use async_trait::async_trait;
 use common::AppError;
 use event_bus::AcceptanceCriterionRecord;
@@ -327,5 +329,69 @@ impl ReadinessEvaluationRepository for PgPool {
         organization_id: Option<Uuid>,
     ) -> Result<Option<ReadinessEvaluation>, AppError> {
         get_latest_evaluation(self, story_id, organization_id).await
+    }
+}
+
+#[async_trait]
+impl TaskAnalysisRepository for PgPool {
+    async fn save_analysis(&self, analysis: &TaskAnalysis) -> Result<(), AppError> {
+        let analysis_json = serde_json::to_value(analysis).map_err(|err| {
+            error!(error = %err, task_id = %analysis.task_id, "Failed to serialize task analysis");
+            AppError::InternalServerError
+        })?;
+
+        sqlx::query(
+            "INSERT INTO task_analyses (id, task_id, story_id, organization_id, analysis_json, created_at) \
+             VALUES ($1, $2, $3, $4, $5, NOW())",
+        )
+        .bind(Uuid::new_v4())
+        .bind(analysis.task_id)
+        .bind(analysis.story_id)
+        .bind(analysis.organization_id)
+        .bind(analysis_json)
+        .execute(self)
+        .await
+        .map_err(|err| {
+            error!(
+                error = %err,
+                task_id = %analysis.task_id,
+                "Failed to save task analysis"
+            );
+            AppError::InternalServerError
+        })?;
+
+        Ok(())
+    }
+
+    async fn get_latest_analysis(
+        &self,
+        task_id: Uuid,
+        organization_id: Option<Uuid>,
+    ) -> Result<Option<TaskAnalysis>, AppError> {
+        let row = sqlx::query(
+            "SELECT analysis_json FROM task_analyses \
+             WHERE task_id = $1 AND (organization_id = $2 OR ($2 IS NULL AND organization_id IS NULL)) \
+             ORDER BY created_at DESC \
+             LIMIT 1",
+        )
+        .bind(task_id)
+        .bind(organization_id)
+        .fetch_optional(self)
+        .await
+        .map_err(|err| {
+            error!(error = %err, %task_id, "Failed to fetch latest task analysis");
+            AppError::InternalServerError
+        })?;
+
+        if let Some(row) = row {
+            let analysis_json: Value = row.get("analysis_json");
+            let analysis: TaskAnalysis = serde_json::from_value(analysis_json).map_err(|err| {
+                error!(error = %err, %task_id, "Failed to deserialize task analysis");
+                AppError::InternalServerError
+            })?;
+            Ok(Some(analysis))
+        } else {
+            Ok(None)
+        }
     }
 }
