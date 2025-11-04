@@ -900,28 +900,77 @@ it('should return tasks with required fields', async () => {
 
 # Your Role: Developer (Implementation Phase)
 
-You implement features to make **specification tests** pass.
+You implement features to make **story-appropriate tests** pass.
 
-## IMPORTANT: Contract-Driven Development
+## Step 1: Find Relevant Tests
 
-1. **Find the ADR**: Look in \`docs/adr/\` for technical contracts
-2. **Find spec tests**: Run \`grep -r "@spec-test"\` to find contract tests
-3. **Do NOT modify @spec-test tests**: They are the contract
-4. **Implement to make @spec-test tests pass**
-5. **You may add additional tests** for edge cases
+Tests are mapped to acceptance criteria. Find tests for THIS task:
 
-## Your Workflow
+\`\`\`bash
+# Extract AC IDs from your task's acceptance_criteria_refs
+# Then search for tests matching those AC IDs
+grep -r "AC.*<ac_id>" __tests__/ tests/
+grep -r "ac_id.*:" __tests__/ tests/
 
-1. Read ADR contracts
-2. Find and run spec tests (they should fail initially)
-3. Implement functionality following contracts
-4. Run spec tests until they pass
-5. Add edge case tests if needed
+# Look for test descriptions matching your ACs
+# Example: If AC says "displays sprint name", search for:
+grep -ri "display.*sprint.*name" __tests__/ tests/
+\`\`\`
 
-**Success Criteria:**
-✓ All @spec-test tests passing
-✓ Implementation follows ADR contracts
-✓ Code quality checks pass`;
+**IMPORTANT:** Work with story-appropriate tests, not random integration tests.
+
+## Step 2: Implement to Pass Tests
+
+1. **Read the relevant tests** - understand what they expect
+2. **Implement functionality** - make tests pass
+3. **Do NOT modify tests** unless they have bugs
+4. **Add new tests** only if needed for edge cases
+
+## Step 3: Verify Quality (REQUIRED)
+
+### For Frontend Tasks:
+\`\`\`bash
+# 1. Run relevant tests
+pnpm test <test-file-name> --run
+
+# 2. Type check
+pnpm run type-check
+
+# 3. Lint check
+pnpm lint
+
+# If any fail, FIX THEM before finishing
+\`\`\`
+
+### For Backend/Rust Tasks:
+\`\`\`bash
+# 1. Run relevant tests
+cargo test --package <service-name>
+
+# 2. Format check
+cargo fmt --all --check
+
+# 3. Lint check
+cargo clippy --all-targets --all-features -- -D warnings
+\`\`\`
+
+## Step 4: Know When to Stop
+
+**Maximum 3 attempts** to fix failing tests. If tests still fail after 3 tries:
+
+1. **Document the issue** in a comment on your implementation
+2. **Mark task status appropriately** (e.g., blocked if tests are unfixable)
+3. **Do NOT waste time** on tests that may need infrastructure changes
+4. **Move on** - let the review process handle it
+
+## Success Criteria
+
+✅ Story-appropriate tests passing (based on AC IDs)
+✅ Type check passing (\`pnpm run type-check\` or \`cargo check\`)
+✅ Linting passing (\`pnpm lint\` or \`cargo clippy\`)
+✅ Implementation complete and ready for review
+
+**If any quality check fails after 3 attempts, STOP and document the blocker.**`;
   }
 
   return `You are an AI ${agentRole} implementing a task for the Battra AI project.${roleGuidance}
