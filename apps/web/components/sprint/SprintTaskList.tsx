@@ -168,6 +168,7 @@ export function SprintTaskList({
               <Badge
                 variant="outline"
                 className={`${config.color} flex items-center gap-1 shrink-0`}
+                data-testid="task-status-badge"
               >
                 {config.icon}
                 <span className="text-xs">{config.label}</span>
@@ -185,7 +186,7 @@ export function SprintTaskList({
               {task.ownerUserId && (
                 <div className="flex items-center gap-1">
                   <User className="h-3 w-3" />
-                  {isMyTask ? <span>You</span> : <span>Owned by {task.ownerUserId}</span>}
+                  {isMyTask ? <span>You</span> : <span>Owner: {task.ownerUserId}</span>}
                 </div>
               )}
 
@@ -237,7 +238,7 @@ export function SprintTaskList({
       <div key={groupKey} data-testid={groupTestId} className="space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-foreground">{groupTitle}</h3>
-          <Badge variant="secondary">
+          <Badge variant="secondary" data-testid="task-count-badge">
             {taskCount} {taskLabel}
           </Badge>
         </div>
@@ -263,6 +264,11 @@ export function SprintTaskList({
 
   return (
     <div data-testid="sprint-task-list" className="space-y-6">
+      {/* Task count summary */}
+      <div className="text-sm text-muted-foreground">
+        Showing {filteredTasks.length} of {tasksWithStories.length} tasks
+      </div>
+
       {orderedGroupKeys.map(renderGroup)}
     </div>
   )

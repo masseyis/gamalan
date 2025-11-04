@@ -131,7 +131,7 @@ describe('SprintHeader Integration with SprintTaskBoard', () => {
         projectId: 'project-1',
         title: 'Task Visual Indicators',
         description: 'Add visual distinction for available, owned, and others tasks',
-        status: 'todo',
+        status: 'ready',
         labels: ['frontend', 'ux'],
         createdAt: '2024-12-20T00:00:00Z',
         updatedAt: '2025-01-10T00:00:00Z',

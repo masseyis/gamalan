@@ -378,8 +378,8 @@ describe('SprintHeader', () => {
     it('should have proper semantic structure', () => {
       const { container } = render(<SprintHeader sprint={mockSprint} stories={mockStories} />)
 
-      // Should have a main heading (h2) for sprint name
-      const heading = container.querySelector('h2')
+      // Should have a main heading (h1) for sprint name
+      const heading = container.querySelector('h1')
       expect(heading).toBeInTheDocument()
       expect(heading).toHaveTextContent('Sprint 1: Test Sprint')
     })
