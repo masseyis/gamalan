@@ -6,6 +6,7 @@ import { FormShowcase } from '@/components/salunga/form-elements'
 import { BadgeShowcase } from '@/components/salunga/badge-variants'
 import { SalungaNavigation } from '@/components/salunga/navigation-bar'
 import { KanbanShowcase } from '@/components/salunga/kanban-column'
+import { TaskRecommendationsPanelShowcase } from '@/components/salunga/task-recommendations-panel'
 
 export default function BrandPreviewPage() {
   const colorPalette = [
@@ -237,6 +238,7 @@ export default function BrandPreviewPage() {
           <FormShowcase />
           <BadgeShowcase />
           <KanbanShowcase />
+          <TaskRecommendationsPanelShowcase />
         </div>
 
         {/* Accessibility Information */}

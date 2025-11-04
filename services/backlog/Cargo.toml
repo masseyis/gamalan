@@ -26,6 +26,7 @@ event-bus = { path = "../../libs/event-bus" }
 tracing = { workspace = true }
 reqwest = { version = "0.12.4", features = ["json"] }
 futures = "0.3"
+percent-encoding = { workspace = true }
 
 [dev-dependencies]
 reqwest = { version = "0.12.4", features = ["json"] }

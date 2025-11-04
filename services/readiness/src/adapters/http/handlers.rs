@@ -1,3 +1,4 @@
+use crate::application::ports::StoryInfo;
 use crate::application::ReadinessUsecases;
 use crate::domain::{AcceptanceCriterion, ReadinessEvaluation};
 use crate::rebuild_projections;
@@ -53,6 +54,26 @@ impl From<AcceptanceCriterion> for AcceptanceCriterionResponse {
             given: criterion.given,
             when: criterion.when,
             then: criterion.then,
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct StorySummaryResponse {
+    pub id: Uuid,
+    pub title: String,
+    pub description: Option<String>,
+    #[serde(rename = "storyPoints")]
+    pub story_points: Option<u32>,
+}
+
+impl From<StoryInfo> for StorySummaryResponse {
+    fn from(info: StoryInfo) -> Self {
+        Self {
+            id: info.id,
+            title: info.title,
+            description: info.description,
+            story_points: info.story_points,
         }
     }
 }

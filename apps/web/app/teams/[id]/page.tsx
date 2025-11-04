@@ -384,24 +384,38 @@ export default function TeamDetailPage() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {members.map((member) => (
+                    {members.map((member) => {
+                      const rawRole = member.role || 'member'
+                      const formattedRole = rawRole
+                        .split('_')
+                        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+                        .join(' ')
+                      const displayName =
+                        (member as any).userName ||
+                        (member as any).userEmail ||
+                        (member as any).email ||
+                        formattedRole
+                      const initials = displayName
+                        .split(' ')
+                        .filter(Boolean)
+                        .slice(0, 2)
+                        .map((part: string) => part.charAt(0).toUpperCase())
+                        .join('') || 'U'
+
+                      return (
                       <div
-                        key={member.id}
+                        key={`${member.teamId}-${member.userId}`}
                         className="flex items-center justify-between p-3 border rounded-lg"
                       >
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                            <span className="text-sm font-medium text-blue-700">
-                              {(member as any).userName?.charAt(0).toUpperCase() || 'U'}
-                            </span>
+                            <span className="text-sm font-medium text-blue-700">{initials}</span>
                           </div>
                           <div>
-                            <p className="font-medium">
-                              {(member as any).userName || 'Unknown User'}
-                            </p>
+                            <p className="font-medium">{displayName}</p>
                             <div className="flex items-center gap-2">
                               <Badge variant="outline" className="text-xs">
-                                {member.role}
+                                {formattedRole}
                               </Badge>
                               {member.specialty && (
                                 <Badge variant="secondary" className="text-xs">
@@ -415,7 +429,8 @@ export default function TeamDetailPage() {
                           Joined {new Date(member.joinedAt).toLocaleDateString()}
                         </div>
                       </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
               </CardContent>

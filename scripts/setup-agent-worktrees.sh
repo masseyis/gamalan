@@ -62,8 +62,8 @@ git pull origin "$BASE_BRANCH" 2>/dev/null || log_warning "Could not pull from o
 mkdir -p "$WORKTREE_BASE"
 
 # Agent configurations
-declare -a AGENT_NAMES=("scrum-master" "dev-1" "dev-2" "qa-1" "devops-1" "documenter-1" "dev-3" "qa-2")
-declare -a AGENT_ROLES=("sm" "dev" "dev" "qa" "devops" "documenter" "dev" "qa")
+declare -a AGENT_NAMES=("dev-1" "qa-1" "po-1" "devops-1" "documenter-1" "dev-2" "dev-3" "qa-2")
+declare -a AGENT_ROLES=("dev" "qa" "po" "devops" "documenter" "dev" "dev" "qa")
 
 # Create worktrees
 for i in $(seq 0 $((NUM_AGENTS - 1))); do

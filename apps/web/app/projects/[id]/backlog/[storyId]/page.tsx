@@ -29,6 +29,7 @@ import { backlogApi } from '@/lib/api/backlog'
 import { aiApi } from '@/lib/api/ai'
 import { AIAssistant } from '@/components/ai/ai-assistant'
 import { TaskOwnership } from '@/components/tasks/TaskOwnership'
+import { TaskAnalysisTrigger } from '@/components/tasks/TaskAnalysisTrigger'
 import { usePermissions, useRoles } from '@/components/providers/UserContextProvider'
 import { CanModifyBacklog, CanAcceptStories } from '@/components/guards/RoleGuard'
 import {
@@ -720,6 +721,15 @@ export default function StoryDetailPage() {
                               sprintId={story.sprintId}
                               projectId={projectId}
                             />
+
+                            {/* Task Analysis Trigger */}
+                            <div className="mt-4">
+                              <TaskAnalysisTrigger
+                                taskId={task.id}
+                                storyId={story.id}
+                                projectId={projectId}
+                              />
+                            </div>
                           </div>
                         </div>
                       ))}

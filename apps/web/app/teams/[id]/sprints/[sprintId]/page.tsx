@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -30,6 +30,7 @@ import {
   AlertTriangle,
   Edit,
   Trash2,
+  Loader2,
 } from 'lucide-react'
 import Link from 'next/link'
 import { teamsApi, sprintsApi, sprintHelpers } from '@/lib/api/teams'
@@ -37,6 +38,9 @@ import { usePermissions, useRoles } from '@/components/providers/UserContextProv
 import { ManagerOnly } from '@/components/guards/RoleGuard'
 import { useToast } from '@/hooks/use-toast'
 import { SprintStatus } from '@/lib/types/team'
+import { projectsApi } from '@/lib/api/projects'
+import { backlogApi } from '@/lib/api/backlog'
+import { Story } from '@/lib/types/story'
 
 export default function SprintDetailPage() {
   const params = useParams()
@@ -106,6 +110,46 @@ export default function SprintDetailPage() {
         variant: 'destructive',
       })
     },
+  })
+
+  const {
+    data: teamProjects = [],
+    isLoading: projectsLoading,
+  } = useQuery({
+    queryKey: ['team-projects', teamId],
+    queryFn: async () => {
+      const projects = await projectsApi.getProjects()
+      return projects.filter((project) => project.teamId === teamId)
+    },
+    enabled: !!teamId,
+  })
+
+  const projectIds = useMemo(() => teamProjects.map((project) => project.id), [teamProjects])
+
+  type SprintStory = Story & { projectName: string }
+
+  const {
+    data: sprintStories = [],
+    isLoading: sprintStoriesLoading,
+  } = useQuery<SprintStory[]>({
+    queryKey: ['team-sprint-stories', teamId, sprintId, projectIds.join(',')],
+    queryFn: async () => {
+      const results = await Promise.all(
+        teamProjects.map(async (project) => {
+          const stories = await backlogApi.getStories(project.id, sprintId, undefined, {
+            includeTasks: true,
+          })
+          return stories.map((story) => ({
+            ...story,
+            projectName: project.name,
+          }))
+        })
+      )
+
+      return results.flat()
+    },
+    enabled: !!sprintId && projectIds.length > 0,
+    staleTime: 1000 * 60, // 1 minute
   })
 
   const isLoading = teamLoading || sprintLoading
@@ -397,25 +441,101 @@ export default function SprintDetailPage() {
               </Card>
             )}
 
-            {/* Sprint Backlog Placeholder */}
+            {/* Sprint Backlog */}
             <Card>
               <CardHeader>
                 <CardTitle>Sprint Backlog</CardTitle>
                 <CardDescription>Stories committed to this sprint</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8">
-                  <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                    <Target className="h-8 w-8 text-gray-400" />
+                {projectsLoading || sprintStoriesLoading ? (
+                  <div className="flex flex-col items-center justify-center gap-2 py-10 text-muted-foreground">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span>Loading sprint stories...</span>
                   </div>
-                  <h4 className="font-medium text-gray-900 mb-2">Sprint backlog integration</h4>
-                  <p className="text-gray-500 mb-4">
-                    Story management will be integrated in a future update.
-                  </p>
-                  <Button variant="outline" disabled>
-                    Manage Stories
-                  </Button>
-                </div>
+                ) : projectIds.length === 0 ? (
+                  <div className="text-center py-10 text-muted-foreground">
+                    <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                      <Target className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                    <p className="font-medium text-foreground">No linked projects</p>
+                    <p className="mt-1 text-sm">
+                      Link a project to this team to manage sprint stories directly from here.
+                    </p>
+                  </div>
+                ) : sprintStories.length === 0 ? (
+                  <div className="text-center py-10 text-muted-foreground">
+                    <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                      <Target className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                    <p className="font-medium text-foreground">No stories committed yet</p>
+                    <p className="mt-1 text-sm">
+                      Add stories to this sprint from the project backlog to see them here.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {sprintStories
+                      .slice()
+                      .sort((a, b) => a.projectName.localeCompare(b.projectName))
+                      .map((story) => (
+                        <Link
+                          key={story.id}
+                          href={`/projects/${story.projectId}/backlog/${story.id}`}
+                          className="block"
+                        >
+                          <div className="rounded-lg border p-3 transition-colors hover:border-primary/40 hover:shadow-sm">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                                  {story.projectName}
+                                </div>
+                                <h4 className="text-sm font-medium text-foreground">
+                                  {story.title}
+                                </h4>
+                              </div>
+                              <Badge variant="outline" className="text-xs capitalize">
+                                {story.status.replace(/([a-z])([A-Z])/g, '$1 $2')}
+                              </Badge>
+                            </div>
+                            <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                              <span>
+                                {typeof story.storyPoints === 'number'
+                                  ? `${story.storyPoints} pts`
+                                  : 'Unestimated'}
+                              </span>
+                              <span>
+                                {(story.tasks?.length ?? 0).toString()} task
+                                {(story.tasks?.length ?? 0) === 1 ? '' : 's'}
+                              </span>
+                              <span>
+                                Updated {new Date(story.updatedAt).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    <div className="pt-2">
+                      {teamProjects.length === 1 ? (
+                        <Link href={`/projects/${teamProjects[0].id}/backlog`}>
+                          <Button variant="outline" className="w-full" size="sm">
+                            Manage Stories in {teamProjects[0].name}
+                          </Button>
+                        </Link>
+                      ) : (
+                        <div className="space-y-2">
+                          {teamProjects.map((project) => (
+                            <Link key={project.id} href={`/projects/${project.id}/backlog`}>
+                              <Button variant="outline" className="w-full justify-start" size="sm">
+                                Manage {project.name}
+                              </Button>
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

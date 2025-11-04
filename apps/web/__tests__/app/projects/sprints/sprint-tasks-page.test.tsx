@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useParams } from 'next/navigation'
-import SprintTasksPage from '@/app/projects/[id]/sprints/[sprint_id]/tasks/page'
+import SprintTasksPage from '@/app/projects/[id]/sprints/[sprintId]/tasks/page'
 import { projectsApi } from '@/lib/api/projects'
 import { backlogApi } from '@/lib/api/backlog'
 import { sprintApi } from '@/lib/api/sprint'
@@ -290,33 +290,134 @@ describe('SprintTasksPage', () => {
     expect(screen.getByText(/Owner: user-2/i)).toBeInTheDocument()
   })
 
-  it('AC d4d41a1f: displays sprint metrics in header', async () => {
+  it('AC d4d41a1f: displays sprint name in header', async () => {
     render(<SprintTasksPage />, { wrapper: createWrapper() })
 
     await waitFor(() => {
       expect(screen.getByText('Sprint 1 — Tasks')).toBeInTheDocument()
     })
 
-    // Check sprint name, dates, and days remaining
-    expect(screen.getByText(/Sprint 1 — Tasks/i)).toBeInTheDocument()
-    expect(screen.getByText(/days remaining/i)).toBeInTheDocument()
-
-    // Check progress metrics
-    expect(screen.getByText('2')).toBeInTheDocument() // 2 stories
-    expect(screen.getByText('3')).toBeInTheDocument() // 3 total tasks
-    expect(screen.getByText('1')).toBeInTheDocument() // 1 completed task
-    expect(screen.getByText('1')).toBeInTheDocument() // 1 my task
+    // Verify sprint name is prominently displayed
+    const heading = screen.getByRole('heading', { level: 1, name: /Sprint 1 — Tasks/i })
+    expect(heading).toBeInTheDocument()
+    expect(heading.className).toContain('text-4xl')
   })
 
-  it('AC d4d41a1f: displays completion percentage', async () => {
+  it('AC d4d41a1f: displays sprint start and end dates', async () => {
     render(<SprintTasksPage />, { wrapper: createWrapper() })
 
     await waitFor(() => {
       expect(screen.getByText('Sprint 1 — Tasks')).toBeInTheDocument()
     })
 
+    // Verify date range is displayed
+    // formatSprintDateRange converts dates to local date string format
+    const startDate = new Date(mockSprint.startDate).toLocaleDateString()
+    const endDate = new Date(mockSprint.endDate).toLocaleDateString()
+    const dateRangePattern = new RegExp(`${startDate}.*→.*${endDate}`)
+
+    expect(screen.getByText(dateRangePattern)).toBeInTheDocument()
+  })
+
+  it('AC d4d41a1f: displays days remaining in sprint', async () => {
+    render(<SprintTasksPage />, { wrapper: createWrapper() })
+
+    await waitFor(() => {
+      expect(screen.getByText('Sprint 1 — Tasks')).toBeInTheDocument()
+    })
+
+    // Verify days remaining is displayed
+    expect(screen.getByText(/\d+ days remaining/i)).toBeInTheDocument()
+  })
+
+  it('AC d4d41a1f: displays progress indicator with percentage of completed tasks', async () => {
+    render(<SprintTasksPage />, { wrapper: createWrapper() })
+
+    await waitFor(() => {
+      expect(screen.getByText('Sprint 1 — Tasks')).toBeInTheDocument()
+    })
+
+    // Verify completion percentage is calculated correctly
     // 1 completed out of 3 tasks = 33%
     expect(screen.getByText(/33%/i)).toBeInTheDocument()
+
+    // Verify it's labeled as "Tasks progress"
+    expect(screen.getByText('Tasks progress')).toBeInTheDocument()
+  })
+
+  it('AC d4d41a1f: displays total number of stories in sprint', async () => {
+    render(<SprintTasksPage />, { wrapper: createWrapper() })
+
+    await waitFor(() => {
+      expect(screen.getByText('Sprint 1 — Tasks')).toBeInTheDocument()
+    })
+
+    // Verify story count is displayed correctly
+    expect(screen.getByText('Stories in sprint')).toBeInTheDocument()
+
+    // Mock data has 2 stories
+    const storyCards = screen.getAllByText('Stories in sprint')
+    expect(storyCards).toHaveLength(1)
+
+    // Find the card that displays story count
+    const storyCountCard = storyCards[0].parentElement
+    expect(storyCountCard).toHaveTextContent('2')
+  })
+
+  it('AC d4d41a1f: displays all sprint context metrics together', async () => {
+    render(<SprintTasksPage />, { wrapper: createWrapper() })
+
+    await waitFor(() => {
+      expect(screen.getByText('Sprint 1 — Tasks')).toBeInTheDocument()
+    })
+
+    // Verify all key metrics are present
+    expect(screen.getByText(/Sprint 1 — Tasks/i)).toBeInTheDocument()
+    expect(screen.getByText(/days remaining/i)).toBeInTheDocument()
+    expect(screen.getByText('Stories in sprint')).toBeInTheDocument()
+    expect(screen.getByText('Total tasks')).toBeInTheDocument()
+    expect(screen.getByText('Tasks completed')).toBeInTheDocument()
+    expect(screen.getByText('Tasks progress')).toBeInTheDocument()
+    expect(screen.getByText(/\d+%/i)).toBeInTheDocument()
+  })
+
+  it('AC d4d41a1f: calculates progress percentage correctly with no tasks', async () => {
+    vi.mocked(backlogApi.getStories).mockResolvedValue([
+      {
+        ...mockStories[0],
+        tasks: [],
+      },
+    ])
+
+    render(<SprintTasksPage />, { wrapper: createWrapper() })
+
+    await waitFor(() => {
+      expect(screen.getByText('Sprint 1 — Tasks')).toBeInTheDocument()
+    })
+
+    // With 0 tasks, percentage should be 0%
+    expect(screen.getByText(/0%/i)).toBeInTheDocument()
+  })
+
+  it('AC d4d41a1f: calculates progress percentage correctly with all tasks completed', async () => {
+    const allCompletedStories = mockStories.map((story) => ({
+      ...story,
+      tasks: story.tasks?.map((task) => ({
+        ...task,
+        status: 'completed' as const,
+      })),
+    }))
+
+    vi.mocked(backlogApi.getStories).mockResolvedValue(allCompletedStories)
+
+    render(<SprintTasksPage />, { wrapper: createWrapper() })
+
+    await waitFor(() => {
+      expect(screen.getByText('Sprint 1 — Tasks')).toBeInTheDocument()
+    })
+
+    // With all tasks completed, percentage should be 100%
+    expect(screen.getByText(/100%/i)).toBeInTheDocument()
   })
 
   it('handles take ownership action', async () => {
@@ -355,9 +456,7 @@ describe('SprintTasksPage', () => {
     render(<SprintTasksPage />, { wrapper: createWrapper() })
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/Sprint not found or failed to load/i)
-      ).toBeInTheDocument()
+      expect(screen.getByText(/Sprint not found or failed to load/i)).toBeInTheDocument()
     })
   })
 

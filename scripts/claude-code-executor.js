@@ -480,7 +480,7 @@ async function setupWorktree(task) {
     await execCommand('git', ['fetch', 'origin'], { captureOutput: true });
 
     // Create worktree with new branch based on main
-    await execCommand('git', ['worktree', 'add', '-b', branchName, worktreePath, 'origin/main'], {
+    await execCommand('git', ['worktree', 'add', '-b', branchName, worktreePath, 'main'], {
       captureOutput: true
     });
 

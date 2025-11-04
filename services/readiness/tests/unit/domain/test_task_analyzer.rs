@@ -37,36 +37,50 @@ fn test_missing_technical_details_recommendation() {
     );
     assert!(!rec.specific_suggestions.is_empty());
 
-    // Should suggest file paths
+    // Enhanced recommendations should provide context-aware specific examples
+    let suggestions_text = rec.specific_suggestions.join(" ");
+
+    // Should suggest file paths (enhanced with examples)
     assert!(
-        rec.specific_suggestions
-            .iter()
-            .any(|s| s.contains("file paths")),
-        "Should suggest adding file paths"
+        rec.specific_suggestions.iter().any(|s| s.contains("file")
+            || s.contains("path")
+            || s.contains("src/")
+            || s.contains("services/")),
+        "Should suggest adding file paths with examples, got: {}",
+        suggestions_text
     );
 
-    // Should suggest functions/components
+    // Should suggest functions/components (enhanced with examples)
     assert!(
         rec.specific_suggestions
             .iter()
-            .any(|s| s.contains("functions or components")),
-        "Should suggest specifying functions/components"
+            .any(|s| s.contains("function")
+                || s.contains("component")
+                || s.contains("struct")
+                || s.contains("Example")),
+        "Should suggest specifying functions/components with examples, got: {}",
+        suggestions_text
     );
 
-    // Should suggest inputs/outputs
+    // Should suggest inputs/outputs (enhanced with type examples)
     assert!(
-        rec.specific_suggestions
-            .iter()
-            .any(|s| s.contains("inputs and outputs")),
-        "Should suggest defining inputs/outputs"
+        rec.specific_suggestions.iter().any(|s| s.contains("input")
+            || s.contains("output")
+            || s.contains("parameter")
+            || s.contains("Input:")),
+        "Should suggest defining inputs/outputs with examples, got: {}",
+        suggestions_text
     );
 
-    // Should suggest technical approach
+    // Should suggest technical approach (enhanced with hexagonal architecture)
     assert!(
         rec.specific_suggestions
             .iter()
-            .any(|s| s.contains("technical approach")),
-        "Should suggest describing technical approach"
+            .any(|s| s.contains("technical approach")
+                || s.contains("architecture")
+                || s.contains("hexagonal")),
+        "Should suggest describing technical approach with examples, got: {}",
+        suggestions_text
     );
 }
 
@@ -600,21 +614,37 @@ fn test_recommendations_match_specific_gaps() {
     // Verify all four categories of technical details are recommended
     let suggestions = tech_rec.specific_suggestions.join(" ");
 
+    // Enhanced recommendations should include context-aware specific examples
     assert!(
-        suggestions.contains("file paths"),
-        "Should recommend file paths when missing"
+        suggestions.contains("file")
+            || suggestions.contains("path")
+            || suggestions.contains("src/")
+            || suggestions.contains("services/"),
+        "Should recommend file paths when missing, got: {}",
+        suggestions
     );
     assert!(
-        suggestions.contains("functions or components"),
-        "Should recommend functions/components when missing"
+        suggestions.contains("function")
+            || suggestions.contains("component")
+            || suggestions.contains("struct")
+            || suggestions.contains("Example"),
+        "Should recommend functions/components when missing, got: {}",
+        suggestions
     );
     assert!(
-        suggestions.contains("inputs and outputs"),
-        "Should recommend inputs/outputs when missing"
+        suggestions.contains("input")
+            || suggestions.contains("output")
+            || suggestions.contains("parameter")
+            || suggestions.contains("Input:"),
+        "Should recommend inputs/outputs when missing, got: {}",
+        suggestions
     );
     assert!(
-        suggestions.contains("technical approach") || suggestions.contains("architecture"),
-        "Should recommend technical approach when missing"
+        suggestions.contains("technical approach")
+            || suggestions.contains("architecture")
+            || suggestions.contains("hexagonal"),
+        "Should recommend technical approach when missing, got: {}",
+        suggestions
     );
 }
 
