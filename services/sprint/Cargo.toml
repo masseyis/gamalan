@@ -12,3 +12,7 @@ uuid = { workspace = true }
 chrono = { workspace = true }
 common = { path = "../../libs/common" }
 tracing = { workspace = true }
+
+[dev-dependencies]
+backlog = { path = "../backlog" }
+serde_json = { workspace = true }

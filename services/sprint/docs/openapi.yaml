@@ -1,5 +1,582 @@
 openapi: 3.0.0
 info:
-  title: Sprint API (Stub)
+  title: Sprint Service API
   version: 1.0.0
-paths: {}
+  description: |
+    Sprint task board service providing real-time sprint management and task visibility.
+
+    **Real-Time Updates:**
+    This service leverages WebSocket connections at `/api/v1/ws/tasks` (provided by the backlog service)
+    to deliver real-time updates when:
+    - Contributors take ownership of tasks
+    - Contributors release task ownership
+    - Task status changes (available → in_progress → completed)
+
+    **Architecture:**
+    The sprint service provides read-only views of sprint data while task mutations occur
+    in the backlog service. WebSocket events are broadcast from the backlog service and
+    consumed by sprint task board frontend clients.
+
+    See ADR-0006-real-time-websocket-updates.md for detailed architecture.
+
+servers:
+  - url: https://api.example.com
+    description: Production API Gateway
+  - url: http://localhost:8000
+    description: Local development
+
+tags:
+  - name: sprints
+    description: Sprint management operations
+  - name: tasks
+    description: Sprint task board operations
+  - name: websocket
+    description: Real-time WebSocket updates
+
+paths:
+  /api/v1/projects/{project_id}/sprints/active:
+    get:
+      summary: Get active sprint for a project
+      description: Retrieves the currently active sprint for the specified project
+      operationId: getActiveSprint
+      tags:
+        - sprints
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          description: UUID of the project
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Active sprint found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sprint'
+        '404':
+          description: No active sprint found for this project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/v1/sprints/{sprint_id}/tasks:
+    get:
+      summary: Get sprint task board
+      description: |
+        Retrieves all tasks from all stories in the sprint with optional filtering and grouping.
+
+        **Real-time Updates:**
+        After fetching initial data, clients should connect to the WebSocket endpoint
+        `/api/v1/ws/tasks` to receive real-time updates when tasks change.
+
+        **Acceptance Criteria Mapping:**
+        - AC#7852bac8: Returns all tasks with ID, title, status, owner, parent story, AC refs
+        - AC#a2ef8786: Supports status filtering and grouping by story/status
+        - AC#8e8e949d: Distinguishes available vs owned tasks
+        - AC#d4d41a1f: Provides sprint metadata including progress
+      operationId: getSprintTaskBoard
+      tags:
+        - tasks
+        - sprints
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - name: sprint_id
+          in: path
+          required: true
+          description: UUID of the sprint
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          required: false
+          description: Filter by task status (available, owned, inprogress, completed)
+          schema:
+            type: string
+            enum: [available, owned, inprogress, completed]
+        - name: owner_id
+          in: query
+          required: false
+          description: Filter by task owner user ID
+          schema:
+            type: string
+            format: uuid
+        - name: group_by
+          in: query
+          required: false
+          description: Group tasks by story or status
+          schema:
+            type: string
+            enum: [story, status]
+      responses:
+        '200':
+          description: Sprint task board data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SprintTaskBoardResponse'
+        '404':
+          description: Sprint not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/v1/ws/tasks:
+    get:
+      summary: WebSocket endpoint for real-time task updates
+      description: |
+        Establishes a WebSocket connection to receive real-time task event notifications.
+
+        **Usage Pattern:**
+        1. Client fetches initial sprint task board data via GET /api/v1/sprints/{sprint_id}/tasks
+        2. Client establishes WebSocket connection to /api/v1/ws/tasks
+        3. Client receives JSON events whenever tasks are updated by any contributor
+        4. Client updates UI in real-time without page refresh
+
+        **Authentication:**
+        WebSocket connections must be authenticated using one of:
+        - Query parameter: `?token={jwt_token}` (Clerk JWT)
+        - Query parameter: `?api_key={api_key}` (API key)
+
+        **Event Types:**
+        - `ownership_taken`: User took ownership of a task
+        - `ownership_released`: User released ownership of a task
+        - `status_changed`: Task status was updated
+
+        **Acceptance Criteria:**
+        This endpoint satisfies AC#728fd41e: "When another contributor takes ownership of a task
+        or changes task status, then the board should update in real-time without requiring a
+        page refresh, and I should see a subtle notification of the change"
+
+        **Example:**
+        ```javascript
+        const ws = new WebSocket('wss://api.example.com/api/v1/ws/tasks?token=' + jwtToken);
+        ws.onmessage = (event) => {
+          const taskEvent = JSON.parse(event.data);
+          // Update UI based on event type
+        };
+        ```
+
+        **Related ADR:** ADR-0006-real-time-websocket-updates.md
+      operationId: connectWebSocket
+      tags:
+        - websocket
+        - tasks
+      parameters:
+        - name: token
+          in: query
+          required: false
+          description: JWT token for authentication (alternative to api_key)
+          schema:
+            type: string
+        - name: api_key
+          in: query
+          required: false
+          description: API key for authentication (alternative to token)
+          schema:
+            type: string
+      responses:
+        '101':
+          description: |
+            Switching Protocols - WebSocket connection established
+
+            **Event Stream:**
+            After upgrade, client will receive JSON messages with TaskEvent schema.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/OwnershipTakenEvent'
+                  - $ref: '#/components/schemas/OwnershipReleasedEvent'
+                  - $ref: '#/components/schemas/StatusChangedEvent'
+        '401':
+          description: Authentication failed (invalid or missing token/api_key)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '426':
+          description: Upgrade Required - client must request WebSocket upgrade
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Clerk JWT token from frontend authentication
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for service-to-service authentication
+
+  responses:
+    UnauthorizedError:
+      description: Authentication is required or token is invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Sprint:
+      type: object
+      description: Sprint entity with metadata
+      required:
+        - id
+        - project_id
+        - name
+        - status
+        - start_date
+        - end_date
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique sprint identifier
+        project_id:
+          type: string
+          format: uuid
+          description: Project this sprint belongs to
+        name:
+          type: string
+          description: Sprint name (e.g., "Sprint 1", "Q4 Feature Sprint")
+        status:
+          type: string
+          enum: [planned, active, completed]
+          description: Current sprint status
+        start_date:
+          type: string
+          format: date
+          description: Sprint start date (ISO 8601)
+        end_date:
+          type: string
+          format: date
+          description: Sprint end date (ISO 8601)
+        created_at:
+          type: string
+          format: date-time
+          description: When sprint was created
+        updated_at:
+          type: string
+          format: date-time
+          description: When sprint was last updated
+
+    SprintTaskBoardResponse:
+      type: object
+      description: Complete sprint task board with metadata and statistics
+      required:
+        - sprint
+        - stats
+        - tasks
+      properties:
+        sprint:
+          $ref: '#/components/schemas/SprintMetadata'
+        stats:
+          $ref: '#/components/schemas/SprintStats'
+        tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskWithStory'
+          description: All tasks in the sprint (may be filtered by query params)
+        grouped_tasks:
+          description: Tasks grouped by story or status (if group_by query param provided)
+          oneOf:
+            - $ref: '#/components/schemas/TasksGroupedByStory'
+            - $ref: '#/components/schemas/TasksGroupedByStatus'
+
+    SprintMetadata:
+      type: object
+      description: Sprint metadata for task board header
+      required:
+        - id
+        - name
+        - start_date
+        - end_date
+        - days_remaining
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "Sprint 3: The Great Front Ear"
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+        days_remaining:
+          type: integer
+          description: Days remaining until sprint end (can be negative if overdue)
+          example: 7
+
+    SprintStats:
+      type: object
+      description: Sprint progress statistics
+      required:
+        - total_stories
+        - total_tasks
+        - completed_tasks
+        - completion_percentage
+      properties:
+        total_stories:
+          type: integer
+          description: Number of stories in sprint
+          example: 5
+        total_tasks:
+          type: integer
+          description: Total number of tasks across all stories
+          example: 23
+        completed_tasks:
+          type: integer
+          description: Number of completed tasks
+          example: 15
+        completion_percentage:
+          type: number
+          format: float
+          description: Percentage of tasks completed (0-100)
+          example: 65.2
+
+    TaskWithStory:
+      type: object
+      description: Task with parent story information
+      required:
+        - task_id
+        - title
+        - status
+        - story_id
+        - story_title
+        - acceptance_criteria_refs
+      properties:
+        task_id:
+          type: string
+          format: uuid
+          description: Unique task identifier
+        title:
+          type: string
+          description: Task title
+          example: "[Frontend] Build task analysis trigger UI"
+        description:
+          type: string
+          description: Task description
+        status:
+          type: string
+          enum: [available, owned, inprogress, completed]
+          description: Current task status
+        owner_user_id:
+          type: string
+          format: uuid
+          description: User who owns this task (null if available)
+          nullable: true
+        owner_name:
+          type: string
+          description: Name of task owner (for display)
+          nullable: true
+        story_id:
+          type: string
+          format: uuid
+          description: Parent story ID
+        story_title:
+          type: string
+          description: Parent story title
+          example: "As a contributor, I want task clarity analysis"
+        acceptance_criteria_refs:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: UUIDs of acceptance criteria this task addresses
+        estimate_hours:
+          type: number
+          format: float
+          description: Estimated hours to complete
+          nullable: true
+
+    TasksGroupedByStory:
+      type: object
+      description: Tasks grouped by their parent story
+      additionalProperties:
+        type: object
+        properties:
+          story_id:
+            type: string
+            format: uuid
+          story_title:
+            type: string
+          tasks:
+            type: array
+            items:
+              $ref: '#/components/schemas/TaskWithStory'
+
+    TasksGroupedByStatus:
+      type: object
+      description: Tasks grouped by status
+      properties:
+        available:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskWithStory'
+        owned:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskWithStory'
+        inprogress:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskWithStory'
+        completed:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskWithStory'
+
+    OwnershipTakenEvent:
+      type: object
+      description: WebSocket event when a user takes ownership of a task
+      required:
+        - type
+        - task_id
+        - story_id
+        - owner_user_id
+        - timestamp
+      properties:
+        type:
+          type: string
+          enum: [ownership_taken]
+        task_id:
+          type: string
+          format: uuid
+          description: Task that was claimed
+        story_id:
+          type: string
+          format: uuid
+          description: Parent story of the task
+        owner_user_id:
+          type: string
+          format: uuid
+          description: User who took ownership
+        timestamp:
+          type: string
+          format: date-time
+          description: When ownership was taken
+      example:
+        type: ownership_taken
+        task_id: "550e8400-e29b-41d4-a716-446655440000"
+        story_id: "660e8400-e29b-41d4-a716-446655440000"
+        owner_user_id: "770e8400-e29b-41d4-a716-446655440000"
+        timestamp: "2025-01-04T15:30:00Z"
+
+    OwnershipReleasedEvent:
+      type: object
+      description: WebSocket event when a user releases ownership of a task
+      required:
+        - type
+        - task_id
+        - story_id
+        - previous_owner_user_id
+        - timestamp
+      properties:
+        type:
+          type: string
+          enum: [ownership_released]
+        task_id:
+          type: string
+          format: uuid
+          description: Task that was released
+        story_id:
+          type: string
+          format: uuid
+          description: Parent story of the task
+        previous_owner_user_id:
+          type: string
+          format: uuid
+          description: User who previously owned the task
+        timestamp:
+          type: string
+          format: date-time
+          description: When ownership was released
+      example:
+        type: ownership_released
+        task_id: "550e8400-e29b-41d4-a716-446655440000"
+        story_id: "660e8400-e29b-41d4-a716-446655440000"
+        previous_owner_user_id: "770e8400-e29b-41d4-a716-446655440000"
+        timestamp: "2025-01-04T15:35:00Z"
+
+    StatusChangedEvent:
+      type: object
+      description: WebSocket event when task status changes
+      required:
+        - type
+        - task_id
+        - story_id
+        - old_status
+        - new_status
+        - changed_by_user_id
+        - timestamp
+      properties:
+        type:
+          type: string
+          enum: [status_changed]
+        task_id:
+          type: string
+          format: uuid
+          description: Task whose status changed
+        story_id:
+          type: string
+          format: uuid
+          description: Parent story of the task
+        old_status:
+          type: string
+          description: Previous status
+          example: "available"
+        new_status:
+          type: string
+          description: New status
+          example: "inprogress"
+        changed_by_user_id:
+          type: string
+          format: uuid
+          description: User who changed the status
+        timestamp:
+          type: string
+          format: date-time
+          description: When status was changed
+      example:
+        type: status_changed
+        task_id: "550e8400-e29b-41d4-a716-446655440000"
+        story_id: "660e8400-e29b-41d4-a716-446655440000"
+        old_status: "available"
+        new_status: "inprogress"
+        changed_by_user_id: "770e8400-e29b-41d4-a716-446655440000"
+        timestamp: "2025-01-04T15:32:00Z"
+
+    Error:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: Human-readable error message
+        code:
+          type: string
+          description: Machine-readable error code
+        details:
+          type: object
+          description: Additional error context

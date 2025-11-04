@@ -466,7 +466,7 @@ describe('SprintTasksPage', () => {
   })
 
   it('handles error state', async () => {
-    vi.mocked(sprintApi.getSprint).mockRejectedValue(new Error('Failed to load'))
+    vi.mocked(sprintsApi.getSprint).mockRejectedValue(new Error('Failed to load'))
 
     render(<SprintTasksPage />, { wrapper: createWrapper() })
 
