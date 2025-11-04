@@ -145,6 +145,92 @@ function createSlug(title) {
     .substring(0, 40);
 }
 
+// Clean up dirty git state before branch operations
+async function cleanupGitState() {
+  console.log('\n🧹 Checking for uncommitted changes...');
+
+  // Check git status
+  const statusResult = await execCommand('git', ['status', '--porcelain'], { silent: true });
+  const changes = statusResult.stdout.trim();
+
+  if (!changes) {
+    console.log('✅ Working directory is clean');
+    return;
+  }
+
+  // We have uncommitted changes - need to handle them
+  console.log('⚠️  Found uncommitted changes:');
+  const changedFiles = changes.split('\n');
+  changedFiles.forEach(file => console.log(`   ${file}`));
+
+  console.log('\n🤖 Asking Claude Code to investigate and clean up...\n');
+
+  // Get detailed diff
+  const diffResult = await execCommand('git', ['diff', 'HEAD'], { silent: true });
+  const diffOutput = diffResult.stdout;
+
+  const statusFull = await execCommand('git', ['status'], { silent: true });
+  const statusOutput = statusFull.stdout;
+
+  // Build prompt for Claude to investigate
+  const cleanupPrompt = `# Git Working Directory Cleanup
+
+## Situation
+The autonomous agent is trying to create a new branch to work on a task, but there are uncommitted changes in the working directory that would be overwritten by checking out the base branch.
+
+## Git Status
+\`\`\`
+${statusOutput}
+\`\`\`
+
+## Changes
+\`\`\`diff
+${diffOutput}
+\`\`\`
+
+## Your Task
+Investigate these uncommitted changes and decide how to handle them:
+
+1. **If the changes look like legitimate work from a previous task:**
+   - Create a descriptive commit message explaining what these changes are
+   - Commit them with: \`git add -A && git commit -m "your message"\`
+   - Make sure the commit message follows conventional commits format (feat:, fix:, docs:, etc.)
+
+2. **If the changes are incomplete or look like work-in-progress:**
+   - Stash them with: \`git stash push -m "Auto-stashed changes before new task"\`
+
+3. **If the changes are trivial (like log files, temp files, IDE files):**
+   - Check if they should be in .gitignore
+   - If yes, add them to .gitignore and commit the .gitignore update
+   - Clean them with: \`git clean -fd\` or \`git checkout -- <file>\`
+
+4. **If you're unsure:**
+   - Default to stashing: \`git stash push -m "Auto-stashed changes before new task"\`
+
+**IMPORTANT:**
+- After handling the changes, verify with \`git status\` that the working directory is clean
+- The working directory MUST be clean (no uncommitted changes) when you're done
+- Document your reasoning in your response
+
+Please analyze the changes and clean up the working directory now.`;
+
+  // Invoke Claude to handle the cleanup
+  await invokeClaude(cleanupPrompt);
+
+  // Verify the directory is now clean
+  const finalStatus = await execCommand('git', ['status', '--porcelain'], { silent: true });
+  const finalChanges = finalStatus.stdout.trim();
+
+  if (finalChanges) {
+    console.error('\n❌ ERROR: Working directory is still not clean after cleanup attempt!');
+    console.error('   Remaining changes:');
+    finalChanges.split('\n').forEach(file => console.error(`   ${file}`));
+    throw new Error('Failed to clean up git working directory');
+  }
+
+  console.log('\n✅ Working directory is now clean');
+}
+
 async function createBranch(task) {
   console.log('\n🌿 Creating git branch...');
 
@@ -157,6 +243,9 @@ async function createBranch(task) {
   if (branchExists) {
     console.log(`📌 Branch already exists: ${branchName}`);
     console.log('   Using existing branch (work may already be in progress)');
+
+    // Clean up any uncommitted changes before checkout
+    await cleanupGitState();
 
     // Just checkout the existing branch
     await execCommand('git', ['checkout', branchName]);
@@ -183,6 +272,9 @@ async function createBranch(task) {
     const currentBranch = await getCurrentBranch();
     console.log(`   Current branch: ${currentBranch}`);
 
+    // Clean up any uncommitted changes before operations
+    await cleanupGitState();
+
     // Pull latest changes
     try {
       await execCommand('git', ['pull', 'origin', GIT_BASE_BRANCH]);
@@ -194,6 +286,10 @@ async function createBranch(task) {
     await execCommand('git', ['checkout', '-b', branchName]);
   } else {
     console.log('📁 Standard git repository (not worktree)');
+
+    // Clean up any uncommitted changes before checkout
+    await cleanupGitState();
+
     // Standard repo: checkout base branch first
     await execCommand('git', ['checkout', GIT_BASE_BRANCH]);
     await execCommand('git', ['pull', 'origin', GIT_BASE_BRANCH]);
