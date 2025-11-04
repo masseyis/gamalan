@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import { SprintTaskFilters } from '@/components/sprint/SprintTaskFilters'
 import { TaskStatus } from '@/lib/types/story'
@@ -46,85 +46,102 @@ describe('SprintTaskFilters', () => {
       expect(screen.getByText('4')).toBeInTheDocument() // completed
     })
 
-    it('should call onFilterChange when a status is selected', () => {
-      const mockOnFilterChange = vi.fn()
-      const mockOnGroupChange = vi.fn()
+      it('should call onFilterChange when a status is selected', () => {
+        const mockOnFilterChange = vi.fn()
+        const mockOnGroupChange = vi.fn()
 
-      render(
-        <SprintTaskFilters
-          selectedStatuses={[]}
-          groupBy="story"
-          onFilterChange={mockOnFilterChange}
-          onGroupChange={mockOnGroupChange}
-          taskCounts={{ available: 5, owned: 3, inprogress: 2, completed: 4 }}
-        />
-      )
+        render(
+          <SprintTaskFilters
+            selectedStatuses={[]}
+            groupBy="story"
+            onFilterChange={mockOnFilterChange}
+            onGroupChange={mockOnGroupChange}
+            taskCounts={{ available: 5, owned: 3, inprogress: 2, completed: 4 }}
+          />
+        )
 
-      const availableCheckbox = screen.getByRole('checkbox', { name: /available/i })
-      fireEvent.click(availableCheckbox)
+        const availableCheckbox = screen.getByRole('checkbox', { name: /available/i })
+        fireEvent.click(availableCheckbox)
 
-      expect(mockOnFilterChange).toHaveBeenCalledWith(['available'])
-    })
+        expect(mockOnFilterChange).toHaveBeenCalledWith(['available'])
+      })
 
-    it('should call onFilterChange when a status is deselected', () => {
-      const mockOnFilterChange = vi.fn()
-      const mockOnGroupChange = vi.fn()
+      it('should call onFilterChange when a status is deselected', () => {
+        const mockOnFilterChange = vi.fn()
+        const mockOnGroupChange = vi.fn()
 
-      render(
-        <SprintTaskFilters
-          selectedStatuses={['available', 'owned']}
-          groupBy="story"
-          onFilterChange={mockOnFilterChange}
-          onGroupChange={mockOnGroupChange}
-          taskCounts={{ available: 5, owned: 3, inprogress: 2, completed: 4 }}
-        />
-      )
+        render(
+          <SprintTaskFilters
+            selectedStatuses={['available']}
+            groupBy="story"
+            onFilterChange={mockOnFilterChange}
+            onGroupChange={mockOnGroupChange}
+            taskCounts={{ available: 5, owned: 3, inprogress: 2, completed: 4 }}
+          />
+        )
 
-      const availableCheckbox = screen.getByRole('checkbox', { name: /available/i })
-      fireEvent.click(availableCheckbox)
+        const availableCheckbox = screen.getByRole('checkbox', { name: /available/i })
+        fireEvent.click(availableCheckbox)
 
-      expect(mockOnFilterChange).toHaveBeenCalledWith(['owned'])
-    })
+        expect(mockOnFilterChange).toHaveBeenCalledWith([])
+      })
 
-    it('should support multiple status selections', () => {
-      const mockOnFilterChange = vi.fn()
-      const mockOnGroupChange = vi.fn()
+      it('should replace the previously selected status when a new one is chosen', () => {
+        const mockOnFilterChange = vi.fn()
+        const mockOnGroupChange = vi.fn()
 
-      render(
-        <SprintTaskFilters
-          selectedStatuses={['available']}
-          groupBy="story"
-          onFilterChange={mockOnFilterChange}
-          onGroupChange={mockOnGroupChange}
-          taskCounts={{ available: 5, owned: 3, inprogress: 2, completed: 4 }}
-        />
-      )
+        render(
+          <SprintTaskFilters
+            selectedStatuses={['available']}
+            groupBy="story"
+            onFilterChange={mockOnFilterChange}
+            onGroupChange={mockOnGroupChange}
+            taskCounts={{ available: 5, owned: 3, inprogress: 2, completed: 4 }}
+          />
+        )
 
-      const ownedCheckbox = screen.getByRole('checkbox', { name: /owned/i })
-      fireEvent.click(ownedCheckbox)
+        const ownedCheckbox = screen.getByRole('checkbox', { name: /owned/i })
+        fireEvent.click(ownedCheckbox)
 
-      expect(mockOnFilterChange).toHaveBeenCalledWith(['available', 'owned'])
-    })
+        expect(mockOnFilterChange).toHaveBeenCalledWith(['owned'])
+      })
 
-    it('should show correct checked state for selected statuses', () => {
-      const mockOnFilterChange = vi.fn()
-      const mockOnGroupChange = vi.fn()
+      it('should show correct checked state for selected statuses', () => {
+        const mockOnFilterChange = vi.fn()
+        const mockOnGroupChange = vi.fn()
 
-      render(
-        <SprintTaskFilters
-          selectedStatuses={['available', 'inprogress']}
-          groupBy="story"
-          onFilterChange={mockOnFilterChange}
-          onGroupChange={mockOnGroupChange}
-          taskCounts={{ available: 5, owned: 3, inprogress: 2, completed: 4 }}
-        />
-      )
+        render(
+          <SprintTaskFilters
+            selectedStatuses={['available', 'inprogress']}
+            groupBy="story"
+            onFilterChange={mockOnFilterChange}
+            onGroupChange={mockOnGroupChange}
+            taskCounts={{ available: 5, owned: 3, inprogress: 2, completed: 4 }}
+          />
+        )
 
-      expect(screen.getByRole('checkbox', { name: /available/i })).toBeChecked()
-      expect(screen.getByRole('checkbox', { name: /owned/i })).not.toBeChecked()
-      expect(screen.getByRole('checkbox', { name: /in progress/i })).toBeChecked()
-      expect(screen.getByRole('checkbox', { name: /completed/i })).not.toBeChecked()
-    })
+        expect(screen.getByRole('checkbox', { name: /available/i })).toBeChecked()
+        expect(screen.getByRole('checkbox', { name: /owned/i })).not.toBeChecked()
+        expect(screen.getByRole('checkbox', { name: /in progress/i })).not.toBeChecked()
+        expect(screen.getByRole('checkbox', { name: /completed/i })).not.toBeChecked()
+      })
+
+      it('should normalize multiple incoming statuses to a single selection', async () => {
+        const mockOnFilterChange = vi.fn()
+        const mockOnGroupChange = vi.fn()
+
+        render(
+          <SprintTaskFilters
+            selectedStatuses={['available', 'owned']}
+            groupBy="story"
+            onFilterChange={mockOnFilterChange}
+            onGroupChange={mockOnGroupChange}
+            taskCounts={{ available: 5, owned: 3, inprogress: 2, completed: 4 }}
+          />
+        )
+
+        await waitFor(() => expect(mockOnFilterChange).toHaveBeenCalledWith(['available']))
+      })
   })
 
   describe('AC2: Grouping controls', () => {
@@ -212,7 +229,7 @@ describe('SprintTaskFilters', () => {
 
       render(
         <SprintTaskFilters
-          selectedStatuses={['available', 'owned']}
+          selectedStatuses={['available']}
           groupBy="story"
           onFilterChange={mockOnFilterChange}
           onGroupChange={mockOnGroupChange}
@@ -246,7 +263,7 @@ describe('SprintTaskFilters', () => {
 
       render(
         <SprintTaskFilters
-          selectedStatuses={['available', 'owned']}
+          selectedStatuses={['available']}
           groupBy="story"
           onFilterChange={mockOnFilterChange}
           onGroupChange={mockOnGroupChange}

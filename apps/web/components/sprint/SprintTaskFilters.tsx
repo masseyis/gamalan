@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
@@ -50,21 +51,28 @@ export function SprintTaskFilters({
   onGroupChange,
   taskCounts,
 }: SprintTaskFiltersProps) {
-  const handleStatusToggle = (status: TaskStatus) => {
-    if (selectedStatuses.includes(status)) {
-      // Remove status from array
-      onFilterChange(selectedStatuses.filter((s) => s !== status))
-    } else {
-      // Add status to array
-      onFilterChange([...selectedStatuses, status])
+  const selectedStatus = selectedStatuses[0] ?? null
+
+  useEffect(() => {
+    if (selectedStatuses.length > 1) {
+      onFilterChange([selectedStatuses[0]])
     }
+  }, [selectedStatuses, onFilterChange])
+
+  const handleStatusToggle = (status: TaskStatus) => {
+    if (selectedStatus === status) {
+      onFilterChange([])
+      return
+    }
+
+    onFilterChange([status])
   }
 
   const handleClearFilters = () => {
     onFilterChange([])
   }
 
-  const hasActiveFilters = selectedStatuses.length > 0
+  const hasActiveFilters = selectedStatus !== null
 
   return (
     <Card data-testid="sprint-task-filters">
@@ -99,7 +107,7 @@ export function SprintTaskFilters({
                 <div key={option.value} className="flex items-center space-x-3">
                   <Checkbox
                     id={`status-${option.value}`}
-                    checked={selectedStatuses.includes(option.value)}
+                    checked={selectedStatus === option.value}
                     onCheckedChange={() => handleStatusToggle(option.value)}
                     aria-label={option.label}
                   />
