@@ -640,17 +640,30 @@ pub async fn get_tasks_by_owner(
     user_id: Uuid,
     organization_id: Option<Uuid>,
 ) -> Result<Vec<Task>, AppError> {
-    let task_rows = sqlx::query_as::<_, TaskRow>(
-        "SELECT id, story_id, organization_id, title, description, acceptance_criteria_refs,
-                status, owner_user_id, estimated_hours, created_at, updated_at, owned_at, completed_at
-         FROM tasks
-         WHERE owner_user_id = $1 AND (organization_id = $2 OR ($2 IS NULL AND organization_id IS NULL))
-         ORDER BY updated_at DESC",
-    )
-    .bind(user_id)
-    .bind(organization_id)
-    .fetch_all(pool)
-    .await
+    let task_rows = if let Some(org_id) = organization_id {
+        sqlx::query_as::<_, TaskRow>(
+            "SELECT id, story_id, organization_id, title, description, acceptance_criteria_refs,
+                    status, owner_user_id, estimated_hours, created_at, updated_at, owned_at, completed_at
+             FROM tasks
+             WHERE owner_user_id = $1 AND organization_id = $2
+             ORDER BY updated_at DESC",
+        )
+        .bind(user_id)
+        .bind(org_id)
+        .fetch_all(pool)
+        .await
+    } else {
+        sqlx::query_as::<_, TaskRow>(
+            "SELECT id, story_id, organization_id, title, description, acceptance_criteria_refs,
+                    status, owner_user_id, estimated_hours, created_at, updated_at, owned_at, completed_at
+             FROM tasks
+             WHERE owner_user_id = $1
+             ORDER BY updated_at DESC",
+        )
+        .bind(user_id)
+        .fetch_all(pool)
+        .await
+    }
     .map_err(|e| {
         tracing::error!(error = %e, "SQL error fetching tasks by owner");
         AppError::InternalServerError
