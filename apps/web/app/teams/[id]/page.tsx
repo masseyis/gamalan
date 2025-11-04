@@ -43,6 +43,7 @@ import {
 } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import { ContributorSpecialty, User, UserRole } from '@/lib/types'
+import { formatUserDisplayName, getInitials } from '@/lib/utils/display-name'
 
 const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
   { value: 'product_owner', label: 'Product Owner' },
@@ -385,50 +386,48 @@ export default function TeamDetailPage() {
                 ) : (
                   <div className="space-y-3">
                     {members.map((member) => {
-                      const rawRole = member.role || 'member'
-                      const formattedRole = rawRole
+                      const rawRole = typeof member.role === 'string' ? member.role : undefined
+                      const formattedRole = (rawRole || 'member')
                         .split('_')
                         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
                         .join(' ')
-                      const displayName =
-                        (member as any).userName ||
-                        (member as any).userEmail ||
-                        (member as any).email ||
-                        formattedRole
-                      const initials = displayName
-                        .split(' ')
-                        .filter(Boolean)
-                        .slice(0, 2)
-                        .map((part: string) => part.charAt(0).toUpperCase())
-                        .join('') || 'U'
+
+                      const displayName = formatUserDisplayName({
+                        name: (member as any).userName as string | undefined,
+                        email: (member as any).userEmail as string | undefined,
+                        role: rawRole,
+                        id: member.userId,
+                      })
+
+                      const initials = getInitials(displayName)
 
                       return (
-                      <div
-                        key={`${member.teamId}-${member.userId}`}
-                        className="flex items-center justify-between p-3 border rounded-lg"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                            <span className="text-sm font-medium text-blue-700">{initials}</span>
-                          </div>
-                          <div>
-                            <p className="font-medium">{displayName}</p>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="text-xs">
-                                {formattedRole}
-                              </Badge>
-                              {member.specialty && (
-                                <Badge variant="secondary" className="text-xs">
-                                  {member.specialty}
+                        <div
+                          key={`${member.teamId}-${member.userId}`}
+                          className="flex items-center justify-between p-3 border rounded-lg"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                              <span className="text-sm font-medium text-blue-700">{initials}</span>
+                            </div>
+                            <div>
+                              <p className="font-medium">{displayName}</p>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="text-xs">
+                                  {formattedRole}
                                 </Badge>
-                              )}
+                                {member.specialty && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    {member.specialty}
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
                           </div>
+                          <div className="text-sm text-gray-500">
+                            Joined {new Date(member.joinedAt).toLocaleDateString()}
+                          </div>
                         </div>
-                        <div className="text-sm text-gray-500">
-                          Joined {new Date(member.joinedAt).toLocaleDateString()}
-                        </div>
-                      </div>
                       )
                     })}
                   </div>

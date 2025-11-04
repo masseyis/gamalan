@@ -20,6 +20,7 @@ import {
 import { useClerk, useUser, SignInButton, SignedIn, SignedOut } from '@clerk/nextjs'
 import { useUserContext } from '@/components/providers/UserContextProvider'
 import { OrganizationSwitcher } from '@/components/organization/organization-switcher'
+import { formatUserDisplayName, getInitials } from '@/lib/utils/display-name'
 
 export function Navigation() {
   const pathname = usePathname()
@@ -35,16 +36,14 @@ export function Navigation() {
     clerkUser?.emailAddresses?.[0]?.emailAddress ||
     ''
 
-  const resolvedName =
-    clerkUser?.fullName || clerkUser?.firstName || resolvedEmail.split('@')[0] || 'User'
+  const resolvedName = formatUserDisplayName({
+    name: clerkUser?.fullName || clerkUser?.firstName || null,
+    email: resolvedEmail || null,
+    role: appUser?.role ?? null,
+    id: appUser?.id ?? clerkUser?.id ?? null,
+  })
 
-  const initials =
-    resolvedName
-      .split(' ')
-      .map((part) => part[0])
-      .join('')
-      .slice(0, 2)
-      .toUpperCase() || 'U'
+  const initials = getInitials(resolvedName)
 
   return (
     <NavigationContent
