@@ -30,6 +30,7 @@ export default function AgentControlPage() {
   const [aiMode, setAiMode] = useState<'claude-cli' | 'claude-api' | 'codex-cli'>('claude-cli');
   const [anthropicApiKey, setAnthropicApiKey] = useState('');
   const [codexApiKey, setCodexApiKey] = useState('');
+  const [executionMode, setExecutionMode] = useState<'serial' | 'parallel'>('serial');
 
   // Fetch agent statuses
   const fetchStatus = async () => {
@@ -171,11 +172,52 @@ export default function AgentControlPage() {
               </p>
             </div>
 
-            {/* AI Execution Mode */}
+            {/* Execution Mode */}
             <div>
               <label className="block text-sm font-medium mb-2">
-                AI Execution Mode
+                Agent Execution Mode
               </label>
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <input
+                    id="mode-serial"
+                    type="radio"
+                    checked={executionMode === 'serial'}
+                    onChange={() => setExecutionMode('serial')}
+                    className="mt-1 h-4 w-4 border-gray-300"
+                  />
+                  <div className="flex-1">
+                    <label htmlFor="mode-serial" className="text-sm font-medium cursor-pointer">
+                      Serial (recommended)
+                    </label>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Agents start one at a time, waiting for each to claim a task before starting the next
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <input
+                    id="mode-parallel"
+                    type="radio"
+                    checked={executionMode === 'parallel'}
+                    onChange={() => setExecutionMode('parallel')}
+                    className="mt-1 h-4 w-4 border-gray-300"
+                  />
+                  <div className="flex-1">
+                    <label htmlFor="mode-parallel" className="text-sm font-medium cursor-pointer">
+                      Parallel
+                    </label>
+                    <p className="text-xs text-gray-500 mt-1">
+                      All agents start simultaneously (may cause race conditions)
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 pt-6 border-t">
+            <h3 className="text-sm font-medium mb-3">AI Provider Configuration</h3>
               <div className="space-y-3">
                 {/* Claude Code CLI */}
                 <div className="flex items-start gap-3">
@@ -267,7 +309,6 @@ export default function AgentControlPage() {
                   </div>
                 </div>
               </div>
-            </div>
           </div>
         </CardContent>
       </Card>
@@ -386,14 +427,28 @@ export default function AgentControlPage() {
         <CardContent>
           <div className="flex gap-4">
             <Button
-              onClick={() => {
-                agents.forEach((agent) => {
-                  if (!agent.running) startAgent(agent.role);
-                });
+              onClick={async () => {
+                const stoppedAgents = agents.filter((agent) => !agent.running);
+
+                if (executionMode === 'serial') {
+                  // Start agents one at a time
+                  for (const agent of stoppedAgents) {
+                    await startAgent(agent.role);
+                    // Wait 2 seconds between starts to let each agent claim a task
+                    if (stoppedAgents.indexOf(agent) < stoppedAgents.length - 1) {
+                      await new Promise((resolve) => setTimeout(resolve, 2000));
+                    }
+                  }
+                } else {
+                  // Start all agents in parallel
+                  stoppedAgents.forEach((agent) => {
+                    startAgent(agent.role);
+                  });
+                }
               }}
               disabled={loading}
             >
-              Start All
+              Start All ({executionMode})
             </Button>
             <Button
               onClick={() => {
