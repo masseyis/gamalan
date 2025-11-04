@@ -145,6 +145,200 @@ function createSlug(title) {
     .substring(0, 40);
 }
 
+// Clean up dirty git state before branch operations
+async function cleanupGitState() {
+  console.log('\n🧹 Checking for uncommitted changes...');
+
+  // Check git status
+  const statusResult = await execCommand('git', ['status', '--porcelain'], { silent: true });
+  const changes = statusResult.stdout.trim();
+
+  if (!changes) {
+    console.log('✅ Working directory is clean');
+    return;
+  }
+
+  // We have uncommitted changes - need to handle them
+  console.log('⚠️  Found uncommitted changes:');
+  const changedFiles = changes.split('\n');
+  changedFiles.forEach(file => console.log(`   ${file}`));
+
+  console.log('\n🤖 Asking Claude Code to investigate and clean up...\n');
+
+  // Get detailed diff
+  const diffResult = await execCommand('git', ['diff', 'HEAD'], { silent: true });
+  const diffOutput = diffResult.stdout;
+
+  const statusFull = await execCommand('git', ['status'], { silent: true });
+  const statusOutput = statusFull.stdout;
+
+  // Build prompt for Claude to investigate
+  const cleanupPrompt = `# Git Working Directory Cleanup
+
+## Situation
+The autonomous agent is trying to create a new branch to work on a task, but there are uncommitted changes in the working directory that would be overwritten by checking out the base branch.
+
+## Git Status
+\`\`\`
+${statusOutput}
+\`\`\`
+
+## Changes
+\`\`\`diff
+${diffOutput}
+\`\`\`
+
+## Your Task
+Investigate these uncommitted changes and decide how to handle them:
+
+1. **If the changes look like legitimate work from a previous task:**
+   - Create a descriptive commit message explaining what these changes are
+   - Commit them with: \`git add -A && git commit -m "your message"\`
+   - Make sure the commit message follows conventional commits format (feat:, fix:, docs:, etc.)
+
+2. **If the changes are incomplete or look like work-in-progress:**
+   - Stash them with: \`git stash push -m "Auto-stashed changes before new task"\`
+
+3. **If the changes are trivial (like log files, temp files, IDE files):**
+   - Check if they should be in .gitignore
+   - If yes, add them to .gitignore and commit the .gitignore update
+   - Clean them with: \`git clean -fd\` or \`git checkout -- <file>\`
+
+4. **If you're unsure:**
+   - Default to stashing: \`git stash push -m "Auto-stashed changes before new task"\`
+
+**IMPORTANT:**
+- After handling the changes, verify with \`git status\` that the working directory is clean
+- The working directory MUST be clean (no uncommitted changes) when you're done
+- Document your reasoning in your response
+
+Please analyze the changes and clean up the working directory now.`;
+
+  // Invoke Claude to handle the cleanup
+  await invokeClaude(cleanupPrompt);
+
+  // Verify the directory is now clean
+  const finalStatus = await execCommand('git', ['status', '--porcelain'], { silent: true });
+  const finalChanges = finalStatus.stdout.trim();
+
+  if (finalChanges) {
+    console.error('\n❌ ERROR: Working directory is still not clean after cleanup attempt!');
+    console.error('   Remaining changes:');
+    finalChanges.split('\n').forEach(file => console.error(`   ${file}`));
+    throw new Error('Failed to clean up git working directory');
+  }
+
+  console.log('\n✅ Working directory is now clean');
+}
+
+// Pull with automatic conflict resolution
+async function pullWithConflictResolution(branch) {
+  console.log(`\n🔄 Pulling from origin/${branch}...`);
+
+  try {
+    await execCommand('git', ['pull', 'origin', branch]);
+    console.log('✅ Pull successful');
+    return true;
+  } catch (error) {
+    // Check if it's a merge conflict
+    console.log('⚠️  Pull encountered issues - checking for conflicts...');
+
+    const statusResult = await execCommand('git', ['status'], { silent: true });
+    const statusOutput = statusResult.stdout;
+
+    if (statusOutput.includes('CONFLICT') || statusOutput.includes('Unmerged paths')) {
+      console.log('🔍 Merge conflicts detected!');
+
+      // Get list of conflicted files
+      const conflictsResult = await execCommand('git', ['diff', '--name-only', '--diff-filter=U'], { silent: true });
+      const conflictFiles = conflictsResult.stdout.trim().split('\n').filter(f => f);
+
+      if (conflictFiles.length === 0) {
+        console.log('⚠️  Conflict markers in status but no unmerged files found');
+        console.log('   Attempting to abort merge and retry...');
+        await execCommand('git', ['merge', '--abort']);
+        throw new Error('Pull failed - conflict state unclear, merge aborted');
+      }
+
+      console.log(`📝 Found ${conflictFiles.length} conflicted file(s):`);
+      conflictFiles.forEach(file => console.log(`   - ${file}`));
+
+      console.log('\n🤖 Asking Claude Code to resolve merge conflicts...\n');
+
+      // Get diff with conflict markers
+      const diffResult = await execCommand('git', ['diff', '--diff-filter=U'], { silent: true });
+      const diffOutput = diffResult.stdout;
+
+      // Build prompt for conflict resolution
+      const conflictPrompt = `# Merge Conflict Resolution
+
+## Situation
+The autonomous agent pulled changes from the remote branch and encountered merge conflicts. These conflicts need to be resolved before continuing with the task.
+
+## Conflicted Files
+${conflictFiles.map(f => `- ${f}`).join('\n')}
+
+## Conflict Details
+\`\`\`diff
+${diffOutput}
+\`\`\`
+
+## Your Task
+Resolve these merge conflicts by:
+
+1. **Review both versions** (HEAD vs incoming changes)
+2. **Keep the best changes from each**:
+   - If HEAD has incomplete work, integrate incoming changes carefully
+   - If incoming changes are important bug fixes/features, include them
+   - Resolve intelligently - don't just pick one side blindly
+3. **Remove conflict markers** (<<<<<<, =======, >>>>>>>)
+4. **Test that the merged code makes sense**
+5. **Mark conflicts as resolved**: \`git add <file>\`
+6. **Complete the merge**: \`git commit -m "fix: Resolve merge conflicts from origin/${branch}"\`
+
+**IMPORTANT:**
+- All conflict markers MUST be removed
+- Code must compile/work after resolution
+- Use \`git status\` to verify all conflicts are resolved
+- The merge commit should explain what conflicts were resolved
+
+Please resolve the conflicts now.`;
+
+      // Invoke Claude to resolve conflicts
+      await invokeClaude(conflictPrompt);
+
+      // Verify conflicts are resolved
+      const finalStatus = await execCommand('git', ['status', '--porcelain'], { silent: true });
+      const finalOutput = finalStatus.stdout;
+
+      // Check for remaining unmerged files
+      const stillConflicted = finalOutput.split('\n').filter(line => line.startsWith('UU ') || line.startsWith('AA '));
+
+      if (stillConflicted.length > 0) {
+        console.error('\n❌ ERROR: Conflicts still exist after resolution attempt!');
+        console.error('   Remaining conflicts:');
+        stillConflicted.forEach(line => console.error(`   ${line}`));
+        throw new Error('Failed to resolve merge conflicts');
+      }
+
+      // Check that merge was completed
+      const statusCheck = await execCommand('git', ['status'], { silent: true });
+      if (statusCheck.stdout.includes('You have unmerged paths')) {
+        console.error('\n❌ ERROR: Merge not completed properly');
+        throw new Error('Merge conflicts not fully resolved');
+      }
+
+      console.log('\n✅ Merge conflicts resolved successfully');
+      return true;
+
+    } else {
+      // Not a merge conflict, some other pull error
+      console.error('❌ Pull failed but not due to merge conflict');
+      throw error;
+    }
+  }
+}
+
 async function createBranch(task) {
   console.log('\n🌿 Creating git branch...');
 
@@ -158,14 +352,19 @@ async function createBranch(task) {
     console.log(`📌 Branch already exists: ${branchName}`);
     console.log('   Using existing branch (work may already be in progress)');
 
+    // Clean up any uncommitted changes before checkout
+    await cleanupGitState();
+
     // Just checkout the existing branch
     await execCommand('git', ['checkout', branchName]);
 
     // Pull latest changes for this branch
     try {
-      await execCommand('git', ['pull', 'origin', branchName]);
-      console.log('   Pulled latest changes from remote');
+      await pullWithConflictResolution(branchName);
     } catch (error) {
+      if (error.message.includes('merge conflict')) {
+        throw error; // Conflict resolution failed
+      }
       console.log('   Branch exists locally but not on remote (that\'s OK)');
     }
 
@@ -183,10 +382,16 @@ async function createBranch(task) {
     const currentBranch = await getCurrentBranch();
     console.log(`   Current branch: ${currentBranch}`);
 
+    // Clean up any uncommitted changes before operations
+    await cleanupGitState();
+
     // Pull latest changes
     try {
-      await execCommand('git', ['pull', 'origin', GIT_BASE_BRANCH]);
+      await pullWithConflictResolution(GIT_BASE_BRANCH);
     } catch (error) {
+      if (error.message.includes('merge conflict')) {
+        throw error; // Conflict resolution failed
+      }
       console.log('⚠️  Could not pull from origin (may be new repo or no remote)');
     }
 
@@ -194,9 +399,13 @@ async function createBranch(task) {
     await execCommand('git', ['checkout', '-b', branchName]);
   } else {
     console.log('📁 Standard git repository (not worktree)');
+
+    // Clean up any uncommitted changes before checkout
+    await cleanupGitState();
+
     // Standard repo: checkout base branch first
     await execCommand('git', ['checkout', GIT_BASE_BRANCH]);
-    await execCommand('git', ['pull', 'origin', GIT_BASE_BRANCH]);
+    await pullWithConflictResolution(GIT_BASE_BRANCH);
 
     // Create and checkout new branch
     await execCommand('git', ['checkout', '-b', branchName]);
@@ -351,9 +560,42 @@ function getScope(task) {
 async function pushBranch(branchName) {
   console.log('\n📤 Pushing branch...');
 
-  await execCommand('git', ['push', '-u', 'origin', branchName]);
+  try {
+    await execCommand('git', ['push', '-u', 'origin', branchName]);
+    console.log('✅ Branch pushed');
+    return;
+  } catch (error) {
+    const errorMsg = error.message || '';
 
-  console.log('✅ Branch pushed');
+    // Check if push was rejected because remote has advanced
+    if (errorMsg.includes('rejected') || errorMsg.includes('non-fast-forward') || errorMsg.includes('Updates were rejected')) {
+      console.log('\n⚠️  Push rejected - remote branch has new commits');
+      console.log('🔄 Pulling remote changes and integrating...\n');
+
+      // Pull with conflict resolution (this will handle any merge conflicts)
+      try {
+        await pullWithConflictResolution(branchName);
+      } catch (pullError) {
+        console.error('❌ Failed to pull and merge remote changes');
+        throw pullError;
+      }
+
+      // Try push again
+      console.log('\n📤 Retrying push after merge...');
+      try {
+        await execCommand('git', ['push', '-u', 'origin', branchName]);
+        console.log('✅ Branch pushed successfully after merge');
+        return;
+      } catch (retryError) {
+        console.error('❌ Push still failed after merging remote changes');
+        throw retryError;
+      }
+    }
+
+    // Some other push error (auth, network, etc.)
+    console.error('❌ Push failed with non-merge error');
+    throw error;
+  }
 }
 
 async function createPullRequest(task, story, acs, branchName, testsPassed, qualityPassed) {
