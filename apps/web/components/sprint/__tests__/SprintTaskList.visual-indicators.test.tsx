@@ -18,6 +18,7 @@ import { Story, Task, TaskStatus } from '@/lib/types/story'
 // Mock data factory
 const createTask = (overrides?: Partial<Task>): Task => ({
   id: '12345678-1234-1234-1234-123456789012',
+  storyId: '87654321-4321-4321-4321-210987654321',
   title: 'Test Task',
   description: 'Test Description',
   status: 'available' as TaskStatus,
@@ -29,9 +30,11 @@ const createTask = (overrides?: Partial<Task>): Task => ({
 
 const createStory = (tasks: Task[]): Story => ({
   id: '87654321-4321-4321-4321-210987654321',
+  projectId: 'project-123',
   title: 'Test Story',
   description: 'Test Story Description',
   status: 'ready',
+  labels: [],
   acceptanceCriteria: [],
   tasks,
   createdAt: new Date().toISOString(),

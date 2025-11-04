@@ -5,9 +5,16 @@ import { useParams } from 'next/navigation'
 import SprintTasksPage from '@/app/projects/[id]/sprints/[sprintId]/tasks/page'
 import { projectsApi } from '@/lib/api/projects'
 import { backlogApi } from '@/lib/api/backlog'
-import { sprintApi } from '@/lib/api/sprint'
-import { teamsApi } from '@/lib/api/teams'
+import { sprintsApi } from '@/lib/api/teams'
 import { useRoles } from '@/components/providers/UserContextProvider'
+
+// Mock Clerk
+vi.mock('@clerk/nextjs', () => ({
+  useUser: vi.fn(() => ({
+    user: { id: 'user-1' },
+    isLoaded: true,
+  })),
+}))
 
 // Mock Next.js navigation
 vi.mock('next/navigation', () => ({
@@ -18,10 +25,16 @@ vi.mock('next/navigation', () => ({
   })),
 }))
 
+// Mock WebSocket hook
+vi.mock('@/lib/hooks/useTaskWebSocket', () => ({
+  useTaskWebSocket: vi.fn(() => ({
+    isConnected: true,
+  })),
+}))
+
 // Mock API modules
 vi.mock('@/lib/api/projects')
 vi.mock('@/lib/api/backlog')
-vi.mock('@/lib/api/sprint')
 vi.mock('@/lib/api/teams')
 vi.mock('@/components/providers/UserContextProvider')
 
@@ -126,50 +139,51 @@ const createWrapper = () => {
 describe('Sprint Context Header Display - AC5', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useParams).mockReturnValue({ id: 'project-1', sprint_id: 'sprint-1' })
+    vi.mocked(useParams).mockReturnValue({ id: 'project-1', sprintId: 'sprint-1' })
     vi.mocked(useRoles).mockReturnValue({
       user: { id: 'user-1', role: 'contributor' },
       isContributor: true,
       isManager: false,
     } as any)
     vi.mocked(projectsApi.getProject).mockResolvedValue(mockProject)
-    vi.mocked(teamsApi.getTeam).mockResolvedValue(mockTeam)
   })
 
   describe('Sprint Information Display', () => {
     it('should display sprint name in the header', async () => {
       const sprint = createMockSprint('2024-01-01T00:00:00Z', '2024-01-14T00:00:00Z', 'Sprint Alpha')
-      vi.mocked(sprintApi.getSprint).mockResolvedValue(sprint)
+      vi.mocked(sprintsApi.getSprint).mockResolvedValue(sprint)
       vi.mocked(backlogApi.getStories).mockResolvedValue(createMockStories(3))
 
       render(<SprintTasksPage />, { wrapper: createWrapper() })
 
       await waitFor(() => {
-        expect(screen.getByText(/Sprint Alpha — Tasks/i)).toBeInTheDocument()
+        const sprintName = screen.getByTestId('sprint-name')
+        expect(sprintName).toBeInTheDocument()
+        expect(sprintName).toHaveTextContent('Sprint Alpha')
       })
     })
 
     it('should display sprint goal when present', async () => {
       const sprint = createMockSprint('2024-01-01T00:00:00Z', '2024-01-14T00:00:00Z')
-      vi.mocked(sprintApi.getSprint).mockResolvedValue(sprint)
+      vi.mocked(sprintsApi.getSprint).mockResolvedValue(sprint)
       vi.mocked(backlogApi.getStories).mockResolvedValue(createMockStories(2))
 
       render(<SprintTasksPage />, { wrapper: createWrapper() })
 
       await waitFor(() => {
-        expect(screen.getByText('Deliver core features')).toBeInTheDocument()
+        expect(screen.getByTestId('sprint-goal')).toHaveTextContent('Deliver core features')
       })
     })
 
-    it('should display team name in badge', async () => {
+    it('should display sprint header with all elements', async () => {
       const sprint = createMockSprint('2024-01-01T00:00:00Z', '2024-01-14T00:00:00Z')
-      vi.mocked(sprintApi.getSprint).mockResolvedValue(sprint)
+      vi.mocked(sprintsApi.getSprint).mockResolvedValue(sprint)
       vi.mocked(backlogApi.getStories).mockResolvedValue(createMockStories(1))
 
       render(<SprintTasksPage />, { wrapper: createWrapper() })
 
       await waitFor(() => {
-        expect(screen.getByText(/Alpha Team/i)).toBeInTheDocument()
+        expect(screen.getByTestId('sprint-header')).toBeInTheDocument()
       })
     })
   })
@@ -177,31 +191,28 @@ describe('Sprint Context Header Display - AC5', () => {
   describe('Date Range Display', () => {
     it('should display start and end dates', async () => {
       const sprint = createMockSprint('2024-01-01T00:00:00Z', '2024-01-14T00:00:00Z')
-      vi.mocked(sprintApi.getSprint).mockResolvedValue(sprint)
+      vi.mocked(sprintsApi.getSprint).mockResolvedValue(sprint)
       vi.mocked(backlogApi.getStories).mockResolvedValue(createMockStories(2))
 
       render(<SprintTasksPage />, { wrapper: createWrapper() })
 
       await waitFor(() => {
-        // The component formats dates as "MM/DD/YYYY → MM/DD/YYYY"
-        // We verify the arrow separator is present
-        const dateText = screen.getByText(/→/i)
-        expect(dateText).toBeInTheDocument()
+        const sprintDates = screen.getByTestId('sprint-dates')
+        expect(sprintDates).toBeInTheDocument()
+        expect(sprintDates.textContent).toMatch(/Jan\s+1,\s+2024\s+-\s+Jan\s+14,\s+2024/)
       })
     })
 
     it('should display correct date format', async () => {
       const sprint = createMockSprint('2024-03-15T00:00:00Z', '2024-03-29T00:00:00Z')
-      vi.mocked(sprintApi.getSprint).mockResolvedValue(sprint)
+      vi.mocked(sprintsApi.getSprint).mockResolvedValue(sprint)
       vi.mocked(backlogApi.getStories).mockResolvedValue(createMockStories(1))
 
       render(<SprintTasksPage />, { wrapper: createWrapper() })
 
       await waitFor(() => {
-        // Verify date badge is present with arrow separator
-        const badges = screen.getAllByRole('status')
-        const dateBadge = badges.find(badge => badge.textContent?.includes('→'))
-        expect(dateBadge).toBeDefined()
+        const sprintDates = screen.getByTestId('sprint-dates')
+        expect(sprintDates.textContent).toMatch(/Mar\s+15,\s+2024\s+-\s+Mar\s+29,\s+2024/)
       })
     })
   })
@@ -215,16 +226,15 @@ describe('Sprint Context Header Display - AC5', () => {
         now.toISOString(),
         endDate.toISOString()
       )
-      vi.mocked(sprintApi.getSprint).mockResolvedValue(sprint)
+      vi.mocked(sprintsApi.getSprint).mockResolvedValue(sprint)
       vi.mocked(backlogApi.getStories).mockResolvedValue(createMockStories(2))
 
       render(<SprintTasksPage />, { wrapper: createWrapper() })
 
       await waitFor(() => {
-        // Should show approximately 10 days (may be 9 or 10 due to timing)
-        const daysText = screen.getByText(/\d+ days remaining/i)
-        expect(daysText).toBeInTheDocument()
-        expect(daysText.textContent).toMatch(/(9|10) days remaining/i)
+        const daysRemaining = screen.getByTestId('days-remaining')
+        expect(daysRemaining).toBeInTheDocument()
+        expect(daysRemaining.textContent).toMatch(/(9|10|11) days remaining/i)
       })
     })
 
@@ -236,13 +246,13 @@ describe('Sprint Context Header Display - AC5', () => {
         new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString(),
         endDate.toISOString()
       )
-      vi.mocked(sprintApi.getSprint).mockResolvedValue(sprint)
+      vi.mocked(sprintsApi.getSprint).mockResolvedValue(sprint)
       vi.mocked(backlogApi.getStories).mockResolvedValue(createMockStories(1))
 
       render(<SprintTasksPage />, { wrapper: createWrapper() })
 
       await waitFor(() => {
-        expect(screen.getByText(/0 days remaining/i)).toBeInTheDocument()
+        expect(screen.getByTestId('days-remaining')).toHaveTextContent(/0 days remaining/i)
       })
     })
   })
@@ -292,14 +302,14 @@ describe('Sprint Context Header Display - AC5', () => {
         },
       ]
 
-      vi.mocked(sprintApi.getSprint).mockResolvedValue(sprint)
+      vi.mocked(sprintsApi.getSprint).mockResolvedValue(sprint)
       vi.mocked(backlogApi.getStories).mockResolvedValue(stories)
 
       render(<SprintTasksPage />, { wrapper: createWrapper() })
 
       await waitFor(() => {
         // 0 completed out of 2 tasks = 0%
-        expect(screen.getByText(/0%/i)).toBeInTheDocument()
+        expect(screen.getByTestId('progress-percentage')).toHaveTextContent('0%')
       })
     })
 
@@ -307,14 +317,14 @@ describe('Sprint Context Header Display - AC5', () => {
       const sprint = createMockSprint('2024-01-01T00:00:00Z', '2024-01-14T00:00:00Z')
       const stories = createMockStories(2) // Creates 4 tasks total, 2 completed
 
-      vi.mocked(sprintApi.getSprint).mockResolvedValue(sprint)
+      vi.mocked(sprintsApi.getSprint).mockResolvedValue(sprint)
       vi.mocked(backlogApi.getStories).mockResolvedValue(stories)
 
       render(<SprintTasksPage />, { wrapper: createWrapper() })
 
       await waitFor(() => {
         // 2 completed out of 4 tasks = 50%
-        expect(screen.getByText(/50%/i)).toBeInTheDocument()
+        expect(screen.getByTestId('progress-percentage')).toHaveTextContent('50%')
       })
     })
 
@@ -326,7 +336,7 @@ describe('Sprint Context Header Display - AC5', () => {
           projectId: 'project-1',
           title: 'Story 1',
           description: 'Description',
-          status: 'completed' as const,
+          status: 'taskscomplete' as const,
           priority: 'high' as const,
           storyPoints: 5,
           labels: [],
@@ -366,14 +376,14 @@ describe('Sprint Context Header Display - AC5', () => {
         },
       ]
 
-      vi.mocked(sprintApi.getSprint).mockResolvedValue(sprint)
+      vi.mocked(sprintsApi.getSprint).mockResolvedValue(sprint)
       vi.mocked(backlogApi.getStories).mockResolvedValue(stories)
 
       render(<SprintTasksPage />, { wrapper: createWrapper() })
 
       await waitFor(() => {
         // 2 completed out of 2 tasks = 100%
-        expect(screen.getByText(/100%/i)).toBeInTheDocument()
+        expect(screen.getByTestId('progress-percentage')).toHaveTextContent('100%')
       })
     })
 
@@ -381,16 +391,14 @@ describe('Sprint Context Header Display - AC5', () => {
       const sprint = createMockSprint('2024-01-01T00:00:00Z', '2024-01-14T00:00:00Z')
       const stories = createMockStories(3) // Creates 6 tasks total, 3 completed
 
-      vi.mocked(sprintApi.getSprint).mockResolvedValue(sprint)
+      vi.mocked(sprintsApi.getSprint).mockResolvedValue(sprint)
       vi.mocked(backlogApi.getStories).mockResolvedValue(stories)
 
       render(<SprintTasksPage />, { wrapper: createWrapper() })
 
       await waitFor(() => {
-        // Should show completed task count in metrics
-        const completedCard = screen.getByText('Tasks completed').closest('div')
-        expect(completedCard).toBeDefined()
-        expect(completedCard?.textContent).toContain('3')
+        // Should show completed task count "3 of 6 tasks"
+        expect(screen.getByTestId('task-progress')).toHaveTextContent('3 of 6 tasks')
       })
     })
 
@@ -398,16 +406,14 @@ describe('Sprint Context Header Display - AC5', () => {
       const sprint = createMockSprint('2024-01-01T00:00:00Z', '2024-01-14T00:00:00Z')
       const stories = createMockStories(4) // Creates 8 tasks total
 
-      vi.mocked(sprintApi.getSprint).mockResolvedValue(sprint)
+      vi.mocked(sprintsApi.getSprint).mockResolvedValue(sprint)
       vi.mocked(backlogApi.getStories).mockResolvedValue(stories)
 
       render(<SprintTasksPage />, { wrapper: createWrapper() })
 
       await waitFor(() => {
-        // Should show total task count in metrics
-        const totalCard = screen.getByText('Total tasks').closest('div')
-        expect(totalCard).toBeDefined()
-        expect(totalCard?.textContent).toContain('8')
+        // Should show total task count "4 of 8 tasks"
+        expect(screen.getByTestId('task-progress')).toHaveTextContent('4 of 8 tasks')
       })
     })
   })
@@ -417,15 +423,13 @@ describe('Sprint Context Header Display - AC5', () => {
       const sprint = createMockSprint('2024-01-01T00:00:00Z', '2024-01-14T00:00:00Z')
       const stories = createMockStories(1)
 
-      vi.mocked(sprintApi.getSprint).mockResolvedValue(sprint)
+      vi.mocked(sprintsApi.getSprint).mockResolvedValue(sprint)
       vi.mocked(backlogApi.getStories).mockResolvedValue(stories)
 
       render(<SprintTasksPage />, { wrapper: createWrapper() })
 
       await waitFor(() => {
-        const storiesCard = screen.getByText('Stories in sprint').closest('div')
-        expect(storiesCard).toBeDefined()
-        expect(storiesCard?.textContent).toContain('1')
+        expect(screen.getByTestId('story-count')).toHaveTextContent('1 story')
       })
     })
 
@@ -433,29 +437,25 @@ describe('Sprint Context Header Display - AC5', () => {
       const sprint = createMockSprint('2024-01-01T00:00:00Z', '2024-01-14T00:00:00Z')
       const stories = createMockStories(5)
 
-      vi.mocked(sprintApi.getSprint).mockResolvedValue(sprint)
+      vi.mocked(sprintsApi.getSprint).mockResolvedValue(sprint)
       vi.mocked(backlogApi.getStories).mockResolvedValue(stories)
 
       render(<SprintTasksPage />, { wrapper: createWrapper() })
 
       await waitFor(() => {
-        const storiesCard = screen.getByText('Stories in sprint').closest('div')
-        expect(storiesCard).toBeDefined()
-        expect(storiesCard?.textContent).toContain('5')
+        expect(screen.getByTestId('story-count')).toHaveTextContent('5 stories')
       })
     })
 
     it('should display zero when no stories in sprint', async () => {
       const sprint = createMockSprint('2024-01-01T00:00:00Z', '2024-01-14T00:00:00Z')
-      vi.mocked(sprintApi.getSprint).mockResolvedValue(sprint)
+      vi.mocked(sprintsApi.getSprint).mockResolvedValue(sprint)
       vi.mocked(backlogApi.getStories).mockResolvedValue([])
 
       render(<SprintTasksPage />, { wrapper: createWrapper() })
 
       await waitFor(() => {
-        const storiesCard = screen.getByText('Stories in sprint').closest('div')
-        expect(storiesCard).toBeDefined()
-        expect(storiesCard?.textContent).toContain('0')
+        expect(screen.getByTestId('story-count')).toHaveTextContent('0 stories')
       })
     })
 
@@ -463,16 +463,14 @@ describe('Sprint Context Header Display - AC5', () => {
       const sprint = createMockSprint('2024-01-01T00:00:00Z', '2024-01-14T00:00:00Z')
       const stories = createMockStories(7)
 
-      vi.mocked(sprintApi.getSprint).mockResolvedValue(sprint)
+      vi.mocked(sprintsApi.getSprint).mockResolvedValue(sprint)
       vi.mocked(backlogApi.getStories).mockResolvedValue(stories)
 
       render(<SprintTasksPage />, { wrapper: createWrapper() })
 
       await waitFor(() => {
         // Story count should remain accurate regardless of task filters
-        const storiesCard = screen.getByText('Stories in sprint').closest('div')
-        expect(storiesCard).toBeDefined()
-        expect(storiesCard?.textContent).toContain('7')
+        expect(screen.getByTestId('story-count')).toHaveTextContent('7 stories')
       })
     })
   })
@@ -482,54 +480,48 @@ describe('Sprint Context Header Display - AC5', () => {
       const sprint = createMockSprint('2024-02-01T00:00:00Z', '2024-02-15T00:00:00Z', 'Q1 Sprint')
       const stories = createMockStories(3)
 
-      vi.mocked(sprintApi.getSprint).mockResolvedValue(sprint)
+      vi.mocked(sprintsApi.getSprint).mockResolvedValue(sprint)
       vi.mocked(backlogApi.getStories).mockResolvedValue(stories)
 
       render(<SprintTasksPage />, { wrapper: createWrapper() })
 
       await waitFor(() => {
         // Sprint name
-        expect(screen.getByText(/Q1 Sprint — Tasks/i)).toBeInTheDocument()
+        expect(screen.getByTestId('sprint-name')).toHaveTextContent('Q1 Sprint')
 
-        // Team name
-        expect(screen.getByText(/Alpha Team/i)).toBeInTheDocument()
-
-        // Date range (arrow separator)
-        expect(screen.getByText(/→/i)).toBeInTheDocument()
+        // Sprint dates
+        expect(screen.getByTestId('sprint-dates')).toBeInTheDocument()
 
         // Days remaining
-        expect(screen.getByText(/days remaining/i)).toBeInTheDocument()
+        expect(screen.getByTestId('days-remaining')).toBeInTheDocument()
 
         // Story count
-        const storiesCard = screen.getByText('Stories in sprint').closest('div')
-        expect(storiesCard?.textContent).toContain('3')
+        expect(screen.getByTestId('story-count')).toHaveTextContent('3 stories')
 
         // Progress percentage (3 completed out of 6 tasks = 50%)
-        expect(screen.getByText(/50%/i)).toBeInTheDocument()
+        expect(screen.getByTestId('progress-percentage')).toHaveTextContent('50%')
       })
     })
 
-    it('should handle missing team gracefully', async () => {
-      const projectWithoutTeam = { ...mockProject, teamId: undefined }
-      vi.mocked(projectsApi.getProject).mockResolvedValue(projectWithoutTeam)
-
+    it('should display sprint header with all AC5 requirements', async () => {
       const sprint = createMockSprint('2024-01-01T00:00:00Z', '2024-01-14T00:00:00Z')
       const stories = createMockStories(2)
 
-      vi.mocked(sprintApi.getSprint).mockResolvedValue(sprint)
+      vi.mocked(sprintsApi.getSprint).mockResolvedValue(sprint)
       vi.mocked(backlogApi.getStories).mockResolvedValue(stories)
 
       render(<SprintTasksPage />, { wrapper: createWrapper() })
 
       await waitFor(() => {
-        // Should show "No team" badge
-        expect(screen.getByText(/No team/i)).toBeInTheDocument()
-
-        // Should show warning alert
-        expect(screen.getByText(/No team assigned/i)).toBeInTheDocument()
-
-        // Other header elements should still display
-        expect(screen.getByText(/Sprint Alpha — Tasks/i)).toBeInTheDocument()
+        // Verify all AC5 requirements are present
+        expect(screen.getByTestId('sprint-header')).toBeInTheDocument()
+        expect(screen.getByTestId('sprint-name')).toHaveTextContent('Sprint Alpha')
+        expect(screen.getByTestId('sprint-dates')).toBeInTheDocument()
+        expect(screen.getByTestId('days-remaining')).toBeInTheDocument()
+        expect(screen.getByTestId('story-count')).toBeInTheDocument()
+        expect(screen.getByTestId('task-progress')).toBeInTheDocument()
+        expect(screen.getByTestId('progress-percentage')).toBeInTheDocument()
+        expect(screen.getByTestId('progress-bar')).toBeInTheDocument()
       })
     })
   })

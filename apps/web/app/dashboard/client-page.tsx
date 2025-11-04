@@ -323,8 +323,14 @@ function ContributorDashboard({
     staleTime: 30 * 1000,
   })
 
-  const availableEntries = sprintTasksSnapshot?.suggestions ?? []
-  const sprintTaskBuckets = sprintTasksSnapshot?.buckets ?? []
+  const availableEntries = useMemo(
+    () => sprintTasksSnapshot?.suggestions ?? [],
+    [sprintTasksSnapshot?.suggestions]
+  )
+  const sprintTaskBuckets = useMemo(
+    () => sprintTasksSnapshot?.buckets ?? [],
+    [sprintTasksSnapshot?.buckets]
+  )
 
   const ownedTasksFromBuckets = useMemo(() => {
     if (!contextUser?.id) {

@@ -6,8 +6,7 @@ import { useParams } from 'next/navigation'
 import SprintTasksPage from '@/app/projects/[id]/sprints/[sprintId]/tasks/page'
 import { projectsApi } from '@/lib/api/projects'
 import { backlogApi } from '@/lib/api/backlog'
-import { sprintApi } from '@/lib/api/sprint'
-import { teamsApi } from '@/lib/api/teams'
+import { sprintsApi } from '@/lib/api/teams'
 import { useRoles } from '@/components/providers/UserContextProvider'
 
 // Mock Next.js navigation
@@ -19,10 +18,22 @@ vi.mock('next/navigation', () => ({
   })),
 }))
 
+// Mock Clerk
+vi.mock('@clerk/nextjs', () => ({
+  useUser: vi.fn(() => ({
+    user: { id: 'user-1', firstName: 'Test', lastName: 'User' },
+    isLoaded: true,
+  })),
+  useAuth: vi.fn(() => ({
+    getToken: vi.fn(() => Promise.resolve('mock-token')),
+    userId: 'user-1',
+    isLoaded: true,
+  })),
+}))
+
 // Mock API modules
 vi.mock('@/lib/api/projects')
 vi.mock('@/lib/api/backlog')
-vi.mock('@/lib/api/sprint')
 vi.mock('@/lib/api/teams')
 vi.mock('@/components/providers/UserContextProvider')
 
@@ -31,6 +42,14 @@ vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({
     toast: vi.fn(),
   }),
+}))
+
+// Mock WebSocket hook to avoid connection attempts in tests
+vi.mock('@/lib/hooks/useTaskWebSocket', () => ({
+  useTaskWebSocket: vi.fn(() => ({
+    isConnected: false,
+    sendMessage: vi.fn(),
+  })),
 }))
 
 const mockProject = {
@@ -154,15 +173,14 @@ const createWrapper = () => {
 describe('SprintTasksPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useParams).mockReturnValue({ id: 'project-1', sprint_id: 'sprint-1' })
+    vi.mocked(useParams).mockReturnValue({ id: 'project-1', sprintId: 'sprint-1' })
     vi.mocked(useRoles).mockReturnValue({
       user: { id: 'user-1', role: 'contributor' },
       isContributor: true,
       isManager: false,
     } as any)
     vi.mocked(projectsApi.getProject).mockResolvedValue(mockProject)
-    vi.mocked(teamsApi.getTeam).mockResolvedValue(mockTeam)
-    vi.mocked(sprintApi.getSprint).mockResolvedValue(mockSprint)
+    vi.mocked(sprintsApi.getSprint).mockResolvedValue(mockSprint)
     vi.mocked(backlogApi.getStories).mockResolvedValue(mockStories)
   })
 
@@ -171,13 +189,13 @@ describe('SprintTasksPage', () => {
 
     // Wait for data to load
     await waitFor(() => {
-      expect(screen.getByText('Sprint 1 — Tasks')).toBeInTheDocument()
+      expect(screen.getByTestId('sprint-name')).toHaveTextContent('Sprint 1')
     })
 
     // Check sprint context is displayed
-    expect(screen.getByText(/Sprint 1 — Tasks/i)).toBeInTheDocument()
-    expect(screen.getByText(/Complete initial features/i)).toBeInTheDocument()
-    expect(screen.getByText(/Test Team/i)).toBeInTheDocument()
+    expect(screen.getByTestId('sprint-name')).toHaveTextContent('Sprint 1')
+    expect(screen.getByTestId('sprint-goal')).toHaveTextContent('Complete initial features')
+    expect(screen.getByText(/Sprint Task Board/i)).toBeInTheDocument()
 
     // Check all tasks are displayed
     expect(screen.getByText('Setup JWT authentication')).toBeInTheDocument()
@@ -185,12 +203,12 @@ describe('SprintTasksPage', () => {
     expect(screen.getByText('Design dashboard layout')).toBeInTheDocument()
 
     // Check task details are shown
-    expect(screen.getByText(/AC1, AC2/i)).toBeInTheDocument() // AC refs for task-1
+    expect(screen.getByText(/2 ACs/i)).toBeInTheDocument() // AC refs for task-1
     expect(screen.getByText(/User Authentication/i)).toBeInTheDocument() // Parent story
 
     // Check task status badges
     expect(screen.getByText('Available')).toBeInTheDocument()
-    expect(screen.getByText('Owned')).toBeInTheDocument()
+    expect(screen.getByText(/Owned/i)).toBeInTheDocument()
     expect(screen.getByText('Completed')).toBeInTheDocument()
   })
 
@@ -199,7 +217,7 @@ describe('SprintTasksPage', () => {
     render(<SprintTasksPage />, { wrapper: createWrapper() })
 
     await waitFor(() => {
-      expect(screen.getByText('Sprint 1 — Tasks')).toBeInTheDocument()
+      expect(screen.getByTestId('sprint-name')).toHaveTextContent('Sprint 1')
     })
 
     // Initially shows all tasks
@@ -225,7 +243,7 @@ describe('SprintTasksPage', () => {
     render(<SprintTasksPage />, { wrapper: createWrapper() })
 
     await waitFor(() => {
-      expect(screen.getByText('Sprint 1 — Tasks')).toBeInTheDocument()
+      expect(screen.getByTestId('sprint-name')).toHaveTextContent('Sprint 1')
     })
 
     // Default grouping is by story
@@ -248,7 +266,7 @@ describe('SprintTasksPage', () => {
     render(<SprintTasksPage />, { wrapper: createWrapper() })
 
     await waitFor(() => {
-      expect(screen.getByText('Sprint 1 — Tasks')).toBeInTheDocument()
+      expect(screen.getByTestId('sprint-name')).toHaveTextContent('Sprint 1')
     })
 
     // Check badge counts for story groups
@@ -294,11 +312,11 @@ describe('SprintTasksPage', () => {
     render(<SprintTasksPage />, { wrapper: createWrapper() })
 
     await waitFor(() => {
-      expect(screen.getByText('Sprint 1 — Tasks')).toBeInTheDocument()
+      expect(screen.getByTestId('sprint-name')).toHaveTextContent('Sprint 1')
     })
 
     // Verify sprint name is prominently displayed
-    const heading = screen.getByRole('heading', { level: 1, name: /Sprint 1 — Tasks/i })
+    const heading = screen.getByRole('heading', { level: 1, name: /Sprint 1/i })
     expect(heading).toBeInTheDocument()
     expect(heading.className).toContain('text-4xl')
   })
@@ -307,23 +325,21 @@ describe('SprintTasksPage', () => {
     render(<SprintTasksPage />, { wrapper: createWrapper() })
 
     await waitFor(() => {
-      expect(screen.getByText('Sprint 1 — Tasks')).toBeInTheDocument()
+      expect(screen.getByTestId('sprint-name')).toHaveTextContent('Sprint 1')
     })
 
-    // Verify date range is displayed
-    // formatSprintDateRange converts dates to local date string format
-    const startDate = new Date(mockSprint.startDate).toLocaleDateString()
-    const endDate = new Date(mockSprint.endDate).toLocaleDateString()
-    const dateRangePattern = new RegExp(`${startDate}.*→.*${endDate}`)
-
-    expect(screen.getByText(dateRangePattern)).toBeInTheDocument()
+    // Verify date range is displayed with formatted dates
+    const sprintDates = screen.getByTestId('sprint-dates')
+    expect(sprintDates).toBeInTheDocument()
+    // Dates should be formatted as "MMM D, YYYY - MMM D, YYYY"
+    expect(sprintDates).toHaveTextContent(/Jan\s+1,\s+2024\s+-\s+Jan\s+14,\s+2024/)
   })
 
   it('AC d4d41a1f: displays days remaining in sprint', async () => {
     render(<SprintTasksPage />, { wrapper: createWrapper() })
 
     await waitFor(() => {
-      expect(screen.getByText('Sprint 1 — Tasks')).toBeInTheDocument()
+      expect(screen.getByTestId('sprint-name')).toHaveTextContent('Sprint 1')
     })
 
     // Verify days remaining is displayed
@@ -334,7 +350,7 @@ describe('SprintTasksPage', () => {
     render(<SprintTasksPage />, { wrapper: createWrapper() })
 
     await waitFor(() => {
-      expect(screen.getByText('Sprint 1 — Tasks')).toBeInTheDocument()
+      expect(screen.getByTestId('sprint-name')).toHaveTextContent('Sprint 1')
     })
 
     // Verify completion percentage is calculated correctly
@@ -349,7 +365,7 @@ describe('SprintTasksPage', () => {
     render(<SprintTasksPage />, { wrapper: createWrapper() })
 
     await waitFor(() => {
-      expect(screen.getByText('Sprint 1 — Tasks')).toBeInTheDocument()
+      expect(screen.getByTestId('sprint-name')).toHaveTextContent('Sprint 1')
     })
 
     // Verify story count is displayed correctly
@@ -368,17 +384,16 @@ describe('SprintTasksPage', () => {
     render(<SprintTasksPage />, { wrapper: createWrapper() })
 
     await waitFor(() => {
-      expect(screen.getByText('Sprint 1 — Tasks')).toBeInTheDocument()
+      expect(screen.getByTestId('sprint-name')).toHaveTextContent('Sprint 1')
     })
 
     // Verify all key metrics are present
-    expect(screen.getByText(/Sprint 1 — Tasks/i)).toBeInTheDocument()
+    expect(screen.getByText(/Sprint 1/i)).toBeInTheDocument()
     expect(screen.getByText(/days remaining/i)).toBeInTheDocument()
     expect(screen.getByText('Stories in sprint')).toBeInTheDocument()
     expect(screen.getByText('Total tasks')).toBeInTheDocument()
-    expect(screen.getByText('Tasks completed')).toBeInTheDocument()
-    expect(screen.getByText('Tasks progress')).toBeInTheDocument()
-    expect(screen.getByText(/\d+%/i)).toBeInTheDocument()
+    expect(screen.getByTestId('task-progress')).toBeInTheDocument()
+    expect(screen.getByTestId('progress-percentage')).toHaveTextContent(/\d+%/)
   })
 
   it('AC d4d41a1f: calculates progress percentage correctly with no tasks', async () => {
@@ -392,7 +407,7 @@ describe('SprintTasksPage', () => {
     render(<SprintTasksPage />, { wrapper: createWrapper() })
 
     await waitFor(() => {
-      expect(screen.getByText('Sprint 1 — Tasks')).toBeInTheDocument()
+      expect(screen.getByTestId('sprint-name')).toHaveTextContent('Sprint 1')
     })
 
     // With 0 tasks, percentage should be 0%
@@ -413,7 +428,7 @@ describe('SprintTasksPage', () => {
     render(<SprintTasksPage />, { wrapper: createWrapper() })
 
     await waitFor(() => {
-      expect(screen.getByText('Sprint 1 — Tasks')).toBeInTheDocument()
+      expect(screen.getByTestId('sprint-name')).toHaveTextContent('Sprint 1')
     })
 
     // With all tasks completed, percentage should be 100%
@@ -451,7 +466,7 @@ describe('SprintTasksPage', () => {
   })
 
   it('handles error state', async () => {
-    vi.mocked(sprintApi.getSprint).mockRejectedValue(new Error('Failed to load'))
+    vi.mocked(sprintsApi.getSprint).mockRejectedValue(new Error('Failed to load'))
 
     render(<SprintTasksPage />, { wrapper: createWrapper() })
 

@@ -6,6 +6,7 @@ export { BacklogPage, StoryDetailPage } from './backlog-page'
 export { BoardPage } from './board-page'
 export { AssistantPage } from './assistant-page'
 export { TaskAnalysisPage } from './task-analysis-page'
+export { SprintTaskBoardPage } from './sprint-task-board-page'
 
 // Test helpers
 export * from '../test-helpers/auth-helpers'

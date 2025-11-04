@@ -134,23 +134,14 @@ export default function SprintTaskBoardPage() {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto py-8">
         {/* Page Header */}
-        <div className="mb-8">
+        <div className="mb-6">
           <Link
             href={`/projects/${projectId}/sprints`}
-            className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4"
+            className="inline-flex items-center text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Sprints
           </Link>
-
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">Sprint Task Board</h1>
-              <p className="text-muted-foreground mt-2">
-                Manage and track tasks for {sprint.name}
-              </p>
-            </div>
-          </div>
         </div>
 
         {/* Sprint Task Board Component */}

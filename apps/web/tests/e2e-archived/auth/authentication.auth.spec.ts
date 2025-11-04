@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { AuthPage, testData, testUtils } from '../page-objects'
+import { AuthPage, testData, testUtils } from '../../e2e/page-objects'
 
 test.describe('Authentication Workflows', () => {
   let authPage: AuthPage
