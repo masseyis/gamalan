@@ -27,8 +27,9 @@ export default function AgentControlPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sprintId, setSprintId] = useState('');
-  const [useCLI, setUseCLI] = useState(true);
-  const [apiKey, setApiKey] = useState('');
+  const [aiMode, setAiMode] = useState<'claude-cli' | 'claude-api' | 'codex-cli'>('claude-cli');
+  const [anthropicApiKey, setAnthropicApiKey] = useState('');
+  const [codexApiKey, setCodexApiKey] = useState('');
 
   // Fetch agent statuses
   const fetchStatus = async () => {
@@ -65,8 +66,9 @@ export default function AgentControlPage() {
           action: 'start',
           role,
           sprintId: sprintId || undefined,
-          useCLI,
-          apiKey: !useCLI && apiKey ? apiKey : undefined,
+          aiMode,
+          anthropicApiKey: aiMode === 'claude-api' && anthropicApiKey ? anthropicApiKey : undefined,
+          codexApiKey: aiMode === 'codex-cli' && codexApiKey ? codexApiKey : undefined,
         }),
       });
 
@@ -169,51 +171,101 @@ export default function AgentControlPage() {
               </p>
             </div>
 
-            {/* Claude Invocation Method */}
+            {/* AI Execution Mode */}
             <div>
               <label className="block text-sm font-medium mb-2">
-                Claude Invocation Method
+                AI Execution Mode
               </label>
               <div className="space-y-3">
-                {/* Use CLI Toggle */}
-                <div className="flex items-center gap-3">
+                {/* Claude Code CLI */}
+                <div className="flex items-start gap-3">
                   <input
-                    id="useCLI"
-                    type="checkbox"
-                    checked={useCLI}
-                    onChange={(e) => setUseCLI(e.target.checked)}
-                    className="h-4 w-4 rounded border-gray-300"
+                    id="mode-claude-cli"
+                    type="radio"
+                    checked={aiMode === 'claude-cli'}
+                    onChange={() => setAiMode('claude-cli')}
+                    className="mt-1 h-4 w-4 border-gray-300"
                   />
-                  <label htmlFor="useCLI" className="text-sm">
-                    Use Claude Code CLI (recommended)
-                  </label>
-                </div>
-
-                {/* API Key Input (shown when CLI is disabled) */}
-                {!useCLI && (
-                  <div>
-                    <label htmlFor="apiKey" className="block text-xs text-gray-600 mb-1">
-                      Anthropic API Key
+                  <div className="flex-1">
+                    <label htmlFor="mode-claude-cli" className="text-sm font-medium cursor-pointer">
+                      Claude Code CLI (recommended)
                     </label>
-                    <input
-                      id="apiKey"
-                      type="password"
-                      value={apiKey}
-                      onChange={(e) => setApiKey(e.target.value)}
-                      placeholder="sk-ant-..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                    />
                     <p className="text-xs text-gray-500 mt-1">
-                      Required when not using CLI. Uses separate API credits.
+                      Uses your Claude Code Plus subscription (no additional API costs)
                     </p>
                   </div>
-                )}
+                </div>
 
-                {useCLI && (
-                  <p className="text-xs text-gray-500">
-                    Uses your Claude Code Plus subscription (no additional API costs)
-                  </p>
-                )}
+                {/* Claude API */}
+                <div className="flex items-start gap-3">
+                  <input
+                    id="mode-claude-api"
+                    type="radio"
+                    checked={aiMode === 'claude-api'}
+                    onChange={() => setAiMode('claude-api')}
+                    className="mt-1 h-4 w-4 border-gray-300"
+                  />
+                  <div className="flex-1">
+                    <label htmlFor="mode-claude-api" className="text-sm font-medium cursor-pointer">
+                      Claude API (Anthropic)
+                    </label>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Direct API calls. Uses separate API credits.
+                    </p>
+                    {aiMode === 'claude-api' && (
+                      <div className="mt-2">
+                        <label htmlFor="anthropicApiKey" className="block text-xs text-gray-600 mb-1">
+                          Anthropic API Key
+                        </label>
+                        <input
+                          id="anthropicApiKey"
+                          type="password"
+                          value={anthropicApiKey}
+                          onChange={(e) => setAnthropicApiKey(e.target.value)}
+                          placeholder="sk-ant-..."
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Codex CLI */}
+                <div className="flex items-start gap-3">
+                  <input
+                    id="mode-codex-cli"
+                    type="radio"
+                    checked={aiMode === 'codex-cli'}
+                    onChange={() => setAiMode('codex-cli')}
+                    className="mt-1 h-4 w-4 border-gray-300"
+                  />
+                  <div className="flex-1">
+                    <label htmlFor="mode-codex-cli" className="text-sm font-medium cursor-pointer">
+                      Codex CLI (OpenAI)
+                    </label>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Uses OpenAI Codex CLI. Optional API key override.
+                    </p>
+                    {aiMode === 'codex-cli' && (
+                      <div className="mt-2">
+                        <label htmlFor="codexApiKey" className="block text-xs text-gray-600 mb-1">
+                          Codex API Key (optional)
+                        </label>
+                        <input
+                          id="codexApiKey"
+                          type="password"
+                          value={codexApiKey}
+                          onChange={(e) => setCodexApiKey(e.target.value)}
+                          placeholder="sk-..."
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Leave empty to use default Codex authentication
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>

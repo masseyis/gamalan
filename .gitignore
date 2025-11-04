@@ -54,3 +54,7 @@ Thumbs.db
 .shuttle*
 Secrets*.toml
 .vercel
+
+# Autonomous agent logs
+logs/
+*.log

@@ -35,6 +35,7 @@ utoipa-swagger-ui = { version = "9.0.2", features = ["axum"] }
 tower-http = { version = "0.6.2", features = ["trace", "cors", "map-request-body"] }
 axum-extra = { version = "0.10.0", features = ["typed-header"] }
 async-trait = "0.1.83"
+percent-encoding = "2.3.1"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.20", features = ["env-filter", "json", "fmt"] }
 tracing-error = "0.2.0"

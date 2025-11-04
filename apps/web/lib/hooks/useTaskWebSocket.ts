@@ -48,15 +48,22 @@ export function useTaskWebSocket(options: UseTaskWebSocketOptions = {}) {
     const connect = async () => {
       try {
         // Get auth token from Clerk
-        const token = await getToken()
-        if (!token || !isMounted) return
+        const [token, apiKey] = await Promise.all([getToken(), Promise.resolve(process.env.NEXT_PUBLIC_BATTRA_API_KEY)])
+        if (!isMounted) return
 
         // Determine WebSocket URL based on environment
         const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'
-        const wsUrl = apiUrl.replace(/^http/, 'ws') + '/api/v1/ws/tasks'
+        const wsUrl = new URL('/api/v1/ws/tasks', apiUrl)
+        wsUrl.protocol = wsUrl.protocol.replace('http', 'ws')
+
+        if (token) {
+          wsUrl.searchParams.set('token', token)
+        } else if (apiKey) {
+          wsUrl.searchParams.set('api_key', apiKey)
+        }
 
         // Create WebSocket connection
-        const ws = new WebSocket(wsUrl)
+        const ws = new WebSocket(wsUrl.toString())
 
         ws.onopen = () => {
           if (!isMounted) {

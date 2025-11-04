@@ -1,18 +1,29 @@
 #!/usr/bin/env node
 /**
- * Claude Code Task Executor with Git Workflow
+ * AI Coding Assistant Task Executor with Git Workflow
  *
  * Implements task with proper git hygiene:
  * 1. Create branch per task
- * 2. Implement changes
+ * 2. Implement changes via AI (Claude or Codex)
  * 3. Commit with conventional format
  * 4. Push branch
  * 5. Create PR
  * 6. Wait for CI/reviews
  * 7. Mark complete after merge
  *
+ * Supports three execution modes:
+ * - Claude Code CLI (default) - Uses local Claude Code CLI
+ * - Claude API - Direct Anthropic API calls (requires ANTHROPIC_API_KEY)
+ * - Codex CLI - Uses OpenAI Codex CLI (set USE_CODEX_CLI=true)
+ *
  * Usage:
  *   node claude-code-executor-with-git.js <task_id>
+ *
+ * Environment:
+ *   BATTRA_API_KEY, BATTRA_STORY_ID - Required
+ *   USE_CLAUDE_CLI, USE_CLAUDE_API, USE_CODEX_CLI - Pick one execution mode
+ *   ANTHROPIC_API_KEY - For Claude API mode
+ *   CODEX_API_KEY - Optional Codex CLI auth override
  */
 
 const { spawn } = require('child_process');
@@ -22,38 +33,51 @@ const TASK_ID = process.argv[2];
 const API_BASE = process.env.BATTRA_API_BASE || 'http://localhost:8000/api/v1';
 const API_KEY = process.env.BATTRA_API_KEY;
 const STORY_ID = process.env.BATTRA_STORY_ID;
-const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY; // Optional - uses Claude Code CLI if not set
+const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY; // Optional - uses CLI if not set
+const CODEX_API_KEY = process.env.CODEX_API_KEY; // Optional - for Codex CLI auth
 const GIT_BASE_BRANCH = process.env.GIT_PR_BASE_BRANCH || 'main';
 const AUTO_MERGE = process.env.GIT_AUTO_MERGE === 'true';
 const PR_REVIEWERS = process.env.GIT_PR_REVIEWERS || '';
 const MAX_FIX_RETRIES = parseInt(process.env.MAX_FIX_RETRIES || '3', 10);
 
-// Determine which Claude invocation method to use
-// Priority: USE_CLAUDE_CLI env var > presence of ANTHROPIC_API_KEY
-const FORCE_CLI = process.env.USE_CLAUDE_CLI === 'true';
-const FORCE_API = process.env.USE_CLAUDE_API === 'true';
+// Determine which AI coding assistant to use
+// Options: Claude CLI, Claude API, or Codex CLI
+const FORCE_CLAUDE_CLI = process.env.USE_CLAUDE_CLI === 'true';
+const FORCE_CLAUDE_API = process.env.USE_CLAUDE_API === 'true';
+const FORCE_CODEX_CLI = process.env.USE_CODEX_CLI === 'true';
 
-let USE_CLI;
-if (FORCE_CLI && FORCE_API) {
-  console.error('❌ Error: Cannot set both USE_CLAUDE_CLI and USE_CLAUDE_API');
+// Execution mode: 'claude-cli' | 'claude-api' | 'codex-cli'
+let EXECUTION_MODE;
+
+// Check for conflicting flags
+const forcedModes = [FORCE_CLAUDE_CLI, FORCE_CLAUDE_API, FORCE_CODEX_CLI].filter(Boolean).length;
+if (forcedModes > 1) {
+  console.error('❌ Error: Cannot set multiple execution modes');
+  console.error('   Only one of USE_CLAUDE_CLI, USE_CLAUDE_API, or USE_CODEX_CLI should be true');
   process.exit(1);
-} else if (FORCE_CLI) {
-  USE_CLI = true;
+}
+
+// Determine execution mode
+if (FORCE_CLAUDE_CLI) {
+  EXECUTION_MODE = 'claude-cli';
   console.log('ℹ️  Forced to use Claude Code CLI (USE_CLAUDE_CLI=true)');
-} else if (FORCE_API) {
+} else if (FORCE_CLAUDE_API) {
   if (!ANTHROPIC_KEY) {
     console.error('❌ Error: USE_CLAUDE_API=true but ANTHROPIC_API_KEY not set');
     process.exit(1);
   }
-  USE_CLI = false;
-  console.log('ℹ️  Forced to use Anthropic API (USE_CLAUDE_API=true)');
+  EXECUTION_MODE = 'claude-api';
+  console.log('ℹ️  Forced to use Claude API (USE_CLAUDE_API=true)');
+} else if (FORCE_CODEX_CLI) {
+  EXECUTION_MODE = 'codex-cli';
+  console.log('ℹ️  Forced to use Codex CLI (USE_CODEX_CLI=true)');
 } else {
-  // Auto-detect based on API key presence
-  USE_CLI = !ANTHROPIC_KEY;
-  if (USE_CLI) {
-    console.log('ℹ️  Using Claude Code CLI (Claude Code Plus subscription)');
+  // Auto-detect: prefer Claude CLI, fall back to API if ANTHROPIC_KEY is set
+  EXECUTION_MODE = ANTHROPIC_KEY ? 'claude-api' : 'claude-cli';
+  if (EXECUTION_MODE === 'claude-cli') {
+    console.log('ℹ️  Using Claude Code CLI (default)');
   } else {
-    console.log('ℹ️  Using Anthropic API (separate API credits)');
+    console.log('ℹ️  Using Claude API (ANTHROPIC_API_KEY detected)');
   }
 }
 
@@ -61,8 +85,19 @@ if (FORCE_CLI && FORCE_API) {
 if (!TASK_ID || !API_KEY || !STORY_ID) {
   console.error('❌ Missing required environment variables');
   console.error('Usage: node claude-code-executor-with-git.js <task_id>');
-  console.error('Required: BATTRA_API_KEY, BATTRA_STORY_ID');
-  console.error('Optional: ANTHROPIC_API_KEY (uses Claude Code CLI if not provided)');
+  console.error('');
+  console.error('Required:');
+  console.error('  BATTRA_API_KEY - API key for Battra backend');
+  console.error('  BATTRA_STORY_ID - Story ID for task context');
+  console.error('');
+  console.error('Execution Mode (pick one):');
+  console.error('  USE_CLAUDE_CLI=true - Use Claude Code CLI (default)');
+  console.error('  USE_CLAUDE_API=true - Use Claude API (requires ANTHROPIC_API_KEY)');
+  console.error('  USE_CODEX_CLI=true - Use Codex CLI (optional CODEX_API_KEY)');
+  console.error('');
+  console.error('Optional:');
+  console.error('  ANTHROPIC_API_KEY - For Claude API mode');
+  console.error('  CODEX_API_KEY - For Codex CLI authentication override');
   process.exit(1);
 }
 
@@ -110,6 +145,200 @@ function createSlug(title) {
     .substring(0, 40);
 }
 
+// Clean up dirty git state before branch operations
+async function cleanupGitState() {
+  console.log('\n🧹 Checking for uncommitted changes...');
+
+  // Check git status
+  const statusResult = await execCommand('git', ['status', '--porcelain'], { silent: true });
+  const changes = statusResult.stdout.trim();
+
+  if (!changes) {
+    console.log('✅ Working directory is clean');
+    return;
+  }
+
+  // We have uncommitted changes - need to handle them
+  console.log('⚠️  Found uncommitted changes:');
+  const changedFiles = changes.split('\n');
+  changedFiles.forEach(file => console.log(`   ${file}`));
+
+  console.log('\n🤖 Asking Claude Code to investigate and clean up...\n');
+
+  // Get detailed diff
+  const diffResult = await execCommand('git', ['diff', 'HEAD'], { silent: true });
+  const diffOutput = diffResult.stdout;
+
+  const statusFull = await execCommand('git', ['status'], { silent: true });
+  const statusOutput = statusFull.stdout;
+
+  // Build prompt for Claude to investigate
+  const cleanupPrompt = `# Git Working Directory Cleanup
+
+## Situation
+The autonomous agent is trying to create a new branch to work on a task, but there are uncommitted changes in the working directory that would be overwritten by checking out the base branch.
+
+## Git Status
+\`\`\`
+${statusOutput}
+\`\`\`
+
+## Changes
+\`\`\`diff
+${diffOutput}
+\`\`\`
+
+## Your Task
+Investigate these uncommitted changes and decide how to handle them:
+
+1. **If the changes look like legitimate work from a previous task:**
+   - Create a descriptive commit message explaining what these changes are
+   - Commit them with: \`git add -A && git commit -m "your message"\`
+   - Make sure the commit message follows conventional commits format (feat:, fix:, docs:, etc.)
+
+2. **If the changes are incomplete or look like work-in-progress:**
+   - Stash them with: \`git stash push -m "Auto-stashed changes before new task"\`
+
+3. **If the changes are trivial (like log files, temp files, IDE files):**
+   - Check if they should be in .gitignore
+   - If yes, add them to .gitignore and commit the .gitignore update
+   - Clean them with: \`git clean -fd\` or \`git checkout -- <file>\`
+
+4. **If you're unsure:**
+   - Default to stashing: \`git stash push -m "Auto-stashed changes before new task"\`
+
+**IMPORTANT:**
+- After handling the changes, verify with \`git status\` that the working directory is clean
+- The working directory MUST be clean (no uncommitted changes) when you're done
+- Document your reasoning in your response
+
+Please analyze the changes and clean up the working directory now.`;
+
+  // Invoke Claude to handle the cleanup
+  await invokeClaude(cleanupPrompt);
+
+  // Verify the directory is now clean
+  const finalStatus = await execCommand('git', ['status', '--porcelain'], { silent: true });
+  const finalChanges = finalStatus.stdout.trim();
+
+  if (finalChanges) {
+    console.error('\n❌ ERROR: Working directory is still not clean after cleanup attempt!');
+    console.error('   Remaining changes:');
+    finalChanges.split('\n').forEach(file => console.error(`   ${file}`));
+    throw new Error('Failed to clean up git working directory');
+  }
+
+  console.log('\n✅ Working directory is now clean');
+}
+
+// Pull with automatic conflict resolution
+async function pullWithConflictResolution(branch) {
+  console.log(`\n🔄 Pulling from origin/${branch}...`);
+
+  try {
+    await execCommand('git', ['pull', 'origin', branch]);
+    console.log('✅ Pull successful');
+    return true;
+  } catch (error) {
+    // Check if it's a merge conflict
+    console.log('⚠️  Pull encountered issues - checking for conflicts...');
+
+    const statusResult = await execCommand('git', ['status'], { silent: true });
+    const statusOutput = statusResult.stdout;
+
+    if (statusOutput.includes('CONFLICT') || statusOutput.includes('Unmerged paths')) {
+      console.log('🔍 Merge conflicts detected!');
+
+      // Get list of conflicted files
+      const conflictsResult = await execCommand('git', ['diff', '--name-only', '--diff-filter=U'], { silent: true });
+      const conflictFiles = conflictsResult.stdout.trim().split('\n').filter(f => f);
+
+      if (conflictFiles.length === 0) {
+        console.log('⚠️  Conflict markers in status but no unmerged files found');
+        console.log('   Attempting to abort merge and retry...');
+        await execCommand('git', ['merge', '--abort']);
+        throw new Error('Pull failed - conflict state unclear, merge aborted');
+      }
+
+      console.log(`📝 Found ${conflictFiles.length} conflicted file(s):`);
+      conflictFiles.forEach(file => console.log(`   - ${file}`));
+
+      console.log('\n🤖 Asking Claude Code to resolve merge conflicts...\n');
+
+      // Get diff with conflict markers
+      const diffResult = await execCommand('git', ['diff', '--diff-filter=U'], { silent: true });
+      const diffOutput = diffResult.stdout;
+
+      // Build prompt for conflict resolution
+      const conflictPrompt = `# Merge Conflict Resolution
+
+## Situation
+The autonomous agent pulled changes from the remote branch and encountered merge conflicts. These conflicts need to be resolved before continuing with the task.
+
+## Conflicted Files
+${conflictFiles.map(f => `- ${f}`).join('\n')}
+
+## Conflict Details
+\`\`\`diff
+${diffOutput}
+\`\`\`
+
+## Your Task
+Resolve these merge conflicts by:
+
+1. **Review both versions** (HEAD vs incoming changes)
+2. **Keep the best changes from each**:
+   - If HEAD has incomplete work, integrate incoming changes carefully
+   - If incoming changes are important bug fixes/features, include them
+   - Resolve intelligently - don't just pick one side blindly
+3. **Remove conflict markers** (<<<<<<, =======, >>>>>>>)
+4. **Test that the merged code makes sense**
+5. **Mark conflicts as resolved**: \`git add <file>\`
+6. **Complete the merge**: \`git commit -m "fix: Resolve merge conflicts from origin/${branch}"\`
+
+**IMPORTANT:**
+- All conflict markers MUST be removed
+- Code must compile/work after resolution
+- Use \`git status\` to verify all conflicts are resolved
+- The merge commit should explain what conflicts were resolved
+
+Please resolve the conflicts now.`;
+
+      // Invoke Claude to resolve conflicts
+      await invokeClaude(conflictPrompt);
+
+      // Verify conflicts are resolved
+      const finalStatus = await execCommand('git', ['status', '--porcelain'], { silent: true });
+      const finalOutput = finalStatus.stdout;
+
+      // Check for remaining unmerged files
+      const stillConflicted = finalOutput.split('\n').filter(line => line.startsWith('UU ') || line.startsWith('AA '));
+
+      if (stillConflicted.length > 0) {
+        console.error('\n❌ ERROR: Conflicts still exist after resolution attempt!');
+        console.error('   Remaining conflicts:');
+        stillConflicted.forEach(line => console.error(`   ${line}`));
+        throw new Error('Failed to resolve merge conflicts');
+      }
+
+      // Check that merge was completed
+      const statusCheck = await execCommand('git', ['status'], { silent: true });
+      if (statusCheck.stdout.includes('You have unmerged paths')) {
+        console.error('\n❌ ERROR: Merge not completed properly');
+        throw new Error('Merge conflicts not fully resolved');
+      }
+
+      console.log('\n✅ Merge conflicts resolved successfully');
+      return true;
+
+    } else {
+      // Not a merge conflict, some other pull error
+      console.error('❌ Pull failed but not due to merge conflict');
+      throw error;
+    }
+  }
+}
+
 async function createBranch(task) {
   console.log('\n🌿 Creating git branch...');
 
@@ -123,14 +352,19 @@ async function createBranch(task) {
     console.log(`📌 Branch already exists: ${branchName}`);
     console.log('   Using existing branch (work may already be in progress)');
 
+    // Clean up any uncommitted changes before checkout
+    await cleanupGitState();
+
     // Just checkout the existing branch
     await execCommand('git', ['checkout', branchName]);
 
     // Pull latest changes for this branch
     try {
-      await execCommand('git', ['pull', 'origin', branchName]);
-      console.log('   Pulled latest changes from remote');
+      await pullWithConflictResolution(branchName);
     } catch (error) {
+      if (error.message.includes('merge conflict')) {
+        throw error; // Conflict resolution failed
+      }
       console.log('   Branch exists locally but not on remote (that\'s OK)');
     }
 
@@ -148,10 +382,16 @@ async function createBranch(task) {
     const currentBranch = await getCurrentBranch();
     console.log(`   Current branch: ${currentBranch}`);
 
+    // Clean up any uncommitted changes before operations
+    await cleanupGitState();
+
     // Pull latest changes
     try {
-      await execCommand('git', ['pull', 'origin', GIT_BASE_BRANCH]);
+      await pullWithConflictResolution(GIT_BASE_BRANCH);
     } catch (error) {
+      if (error.message.includes('merge conflict')) {
+        throw error; // Conflict resolution failed
+      }
       console.log('⚠️  Could not pull from origin (may be new repo or no remote)');
     }
 
@@ -159,9 +399,13 @@ async function createBranch(task) {
     await execCommand('git', ['checkout', '-b', branchName]);
   } else {
     console.log('📁 Standard git repository (not worktree)');
+
+    // Clean up any uncommitted changes before checkout
+    await cleanupGitState();
+
     // Standard repo: checkout base branch first
     await execCommand('git', ['checkout', GIT_BASE_BRANCH]);
-    await execCommand('git', ['pull', 'origin', GIT_BASE_BRANCH]);
+    await pullWithConflictResolution(GIT_BASE_BRANCH);
 
     // Create and checkout new branch
     await execCommand('git', ['checkout', '-b', branchName]);
@@ -316,9 +560,42 @@ function getScope(task) {
 async function pushBranch(branchName) {
   console.log('\n📤 Pushing branch...');
 
-  await execCommand('git', ['push', '-u', 'origin', branchName]);
+  try {
+    await execCommand('git', ['push', '-u', 'origin', branchName]);
+    console.log('✅ Branch pushed');
+    return;
+  } catch (error) {
+    const errorMsg = error.message || '';
 
-  console.log('✅ Branch pushed');
+    // Check if push was rejected because remote has advanced
+    if (errorMsg.includes('rejected') || errorMsg.includes('non-fast-forward') || errorMsg.includes('Updates were rejected')) {
+      console.log('\n⚠️  Push rejected - remote branch has new commits');
+      console.log('🔄 Pulling remote changes and integrating...\n');
+
+      // Pull with conflict resolution (this will handle any merge conflicts)
+      try {
+        await pullWithConflictResolution(branchName);
+      } catch (pullError) {
+        console.error('❌ Failed to pull and merge remote changes');
+        throw pullError;
+      }
+
+      // Try push again
+      console.log('\n📤 Retrying push after merge...');
+      try {
+        await execCommand('git', ['push', '-u', 'origin', branchName]);
+        console.log('✅ Branch pushed successfully after merge');
+        return;
+      } catch (retryError) {
+        console.error('❌ Push still failed after merging remote changes');
+        throw retryError;
+      }
+    }
+
+    // Some other push error (auth, network, etc.)
+    console.error('❌ Push failed with non-merge error');
+    throw error;
+  }
 }
 
 async function createPullRequest(task, story, acs, branchName, testsPassed, qualityPassed) {
@@ -484,7 +761,170 @@ async function buildPromptWithGitInstructions(task, story, acs, branchName) {
     )
     .join('\n\n');
 
-  return `You are an AI developer implementing a task for the Battra AI project.
+  // Get agent role from environment for role-specific instructions
+  const agentRole = process.env.AGENT_ROLE || 'dev';
+
+  // Build role-specific guidance
+  let roleGuidance = '';
+
+  if (agentRole === 'documenter') {
+    roleGuidance = `
+
+# Your Role: Documentation Engineer (First Mover)
+
+You create Architecture Decision Records (ADRs) that serve as **technical contracts** for other agents.
+
+## FIRST: Ensure All Stories Have Documentation Tasks
+
+Before working on any task, check if all stories in the current sprint have documentation tasks:
+
+1. **Check sprint stories**: Use the API to get all stories in the current sprint
+2. **For each story without a documentation task**: Create a task with:
+   - Title: \`[Docs] Document [Story Title] Architecture\`
+   - Description: \`Create ADR with technical contracts (API endpoints, component interfaces, data models). Map contracts to acceptance criteria.\`
+   - This ensures QA and Dev agents have contracts to work from
+
+**API Usage Example:**
+\`\`\`bash
+# Get stories in sprint
+curl -H "X-API-Key: $BATTRA_API_KEY" \\
+  "$BATTRA_API_BASE/sprints/$BATTRA_SPRINT_ID/stories"
+
+# For each story, check if documentation task exists
+curl -H "X-API-Key: $BATTRA_API_KEY" \\
+  "$BATTRA_API_BASE/stories/{story_id}/tasks"
+
+# If no [Docs] task found, create one
+curl -X POST -H "X-API-Key: $BATTRA_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{"title": "[Docs] Document Story Architecture", "description": "..."}' \\
+  "$BATTRA_API_BASE/stories/{story_id}/tasks"
+\`\`\`
+
+## THEN: Create ADRs for Your Tasks
+
+Once all stories have documentation tasks, work on assigned documentation tasks:
+
+1. **Create ADR** in \`docs/adr/ADR-XXXX-[feature-name].md\`
+2. **Document Technical Contracts:**
+   - API endpoints (method, path, request/response schemas)
+   - Component interfaces (props, events, state)
+   - Data models and types
+   - Map each contract to its Acceptance Criteria
+
+## Template to Follow
+
+\`\`\`markdown
+# ADR-XXXX: [Feature Name]
+
+## Context
+[Brief explanation of what needs to be built]
+
+## Technical Contracts
+
+### API Endpoints
+\`\`\`
+GET /api/v1/resource/{id}
+Response: ResourceType
+
+ResourceType {
+  id: string
+  name: string
+  ...
+}
+\`\`\`
+
+### Frontend Components
+\`\`\`typescript
+interface ComponentProps {
+  data: ResourceType
+  onAction: (id: string) => void
+}
+\`\`\`
+
+### Acceptance Criteria Mapping
+- AC1: [criterion] → [API endpoint or component that fulfills it]
+- AC2: [criterion] → [...]
+
+## Decision
+[What was decided and why]
+
+## Consequences
+[What this enables/constrains]
+\`\`\`
+
+**Mark task complete when ADR is committed.**`;
+  } else if (agentRole === 'qa') {
+    roleGuidance = `
+
+# Your Role: QA Engineer (Specification Phase)
+
+You write **specification tests** that validate technical contracts from the ADR.
+
+## IMPORTANT: Specification Test Rules
+
+1. **Find the ADR**: Look in \`docs/adr/\` for the relevant ADR (matches story/feature)
+2. **Read the contracts**: Understand API schemas, component interfaces
+3. **Write tests that validate contracts** (NOT the implementation)
+4. **Mark spec tests**: Add comment \`// @spec-test: AC1, AC2\`
+5. **Tests WILL fail**: This is EXPECTED and CORRECT
+6. **Do NOT make tests pass**: You're defining the contract
+
+## Spec Test Template
+
+\`\`\`typescript
+// @spec-test: AC1, AC2
+// This test validates the contract. Expected to FAIL until implementation.
+it('should return tasks with required fields', async () => {
+  const response = await api.getTasks(sprintId)
+
+  // Validate contract from ADR
+  expect(response).toBeArray()
+  expect(response[0]).toMatchSchema({
+    id: expect.any(String),
+    title: expect.any(String),
+    status: expect.stringMatching(/^(available|inprogress|completed)$/),
+    // ... fields from ADR contract
+  })
+})
+\`\`\`
+
+**Expected Outcome:** Tests are committed and FAIL. Mark task complete.
+
+**Success Criteria:**
+✓ Spec tests written for all ACs
+✓ Tests marked with @spec-test
+✓ Tests committed (failures are OK!)`;
+  } else if (agentRole === 'dev') {
+    roleGuidance = `
+
+# Your Role: Developer (Implementation Phase)
+
+You implement features to make **specification tests** pass.
+
+## IMPORTANT: Contract-Driven Development
+
+1. **Find the ADR**: Look in \`docs/adr/\` for technical contracts
+2. **Find spec tests**: Run \`grep -r "@spec-test"\` to find contract tests
+3. **Do NOT modify @spec-test tests**: They are the contract
+4. **Implement to make @spec-test tests pass**
+5. **You may add additional tests** for edge cases
+
+## Your Workflow
+
+1. Read ADR contracts
+2. Find and run spec tests (they should fail initially)
+3. Implement functionality following contracts
+4. Run spec tests until they pass
+5. Add edge case tests if needed
+
+**Success Criteria:**
+✓ All @spec-test tests passing
+✓ Implementation follows ADR contracts
+✓ Code quality checks pass`;
+  }
+
+  return `You are an AI ${agentRole} implementing a task for the Battra AI project.${roleGuidance}
 
 # Task Details
 
@@ -554,17 +994,20 @@ You MUST actually create or modify files to complete this task. Do NOT just plan
 Implement this task NOW using Write/Edit/Bash tools.`;
 }
 
-// Call Claude Code via CLI or API
+// Call AI coding assistant via selected method
 async function invokeClaude(prompt) {
-  console.log('\n🤖 Invoking Claude Code...');
+  console.log('\n🤖 Invoking AI coding assistant...');
   console.log('   (This may take several minutes for complex tasks)\n');
 
-  if (USE_CLI) {
-    // Use Claude Code CLI (Claude Code Plus subscription)
-    return invokeClaudeCLI(prompt);
-  } else {
-    // Use Anthropic API (separate API credits)
-    return invokeCloudeAPI(prompt);
+  switch (EXECUTION_MODE) {
+    case 'claude-cli':
+      return invokeClaudeCLI(prompt);
+    case 'claude-api':
+      return invokeCloudeAPI(prompt);
+    case 'codex-cli':
+      return invokeCodexCLI(prompt);
+    default:
+      throw new Error(`Unknown execution mode: ${EXECUTION_MODE}`);
   }
 }
 
@@ -655,6 +1098,67 @@ async function invokeCloudeAPI(prompt) {
   console.log('\n');
 
   return content;
+}
+
+// Call Codex CLI
+async function invokeCodexCLI(prompt) {
+  try {
+    // Execute Codex CLI with exec command and prompt as argument
+    const result = await new Promise((resolve, reject) => {
+      const { spawn } = require('child_process');
+
+      // Build environment with Codex API key if provided
+      const env = { ...process.env };
+      if (CODEX_API_KEY) {
+        env.CODEX_API_KEY = CODEX_API_KEY;
+      }
+
+      const codex = spawn('codex', [
+        'exec',
+        '--full-auto',  // Allow file edits (similar to Claude's --dangerously-skip-permissions)
+        '--model', 'gpt-5-codex',  // Use latest Codex model
+        prompt  // Prompt as direct argument
+      ], {
+        cwd: process.cwd(),
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      codex.stdout.on('data', (data) => {
+        stdout += data.toString();
+        // Stream output in real-time
+        process.stdout.write(data);
+      });
+
+      codex.stderr.on('data', (data) => {
+        stderr += data.toString();
+        // Codex streams activity to stderr, which is expected
+        process.stderr.write(data);
+      });
+
+      codex.on('close', (code) => {
+        if (code === 0) {
+          resolve(stdout);
+        } else {
+          reject(new Error(`Codex CLI exited with code ${code}: ${stderr}`));
+        }
+      });
+
+      codex.on('error', (error) => {
+        reject(error);
+      });
+    });
+
+    console.log('\n\n📝 Codex CLI execution completed\n');
+
+    return result;
+  } catch (error) {
+    console.error('❌ Codex CLI error:', error.message);
+    throw error;
+  }
 }
 
 async function runTests() {

@@ -29,6 +29,7 @@ import { Sprint } from '@/lib/types/team'
 import { backlogApi } from '@/lib/api/backlog'
 import { sprintApi } from '@/lib/api/sprint'
 import { RolePermissions, User as ContextUser } from '@/lib/types/user'
+import { formatUserDisplayName } from '@/lib/utils/display-name'
 
 interface DashboardProps {
   projects: Project[]
@@ -202,8 +203,15 @@ export default function DashboardPage({
     )
   }
 
-  const displayName =
-    user?.firstName || user?.username || user?.primaryEmailAddress?.emailAddress || 'User'
+  const primaryEmail =
+    user?.primaryEmailAddress?.emailAddress || user?.emailAddresses?.[0]?.emailAddress || contextUser?.email || undefined
+
+  const displayName = formatUserDisplayName({
+    name: user?.fullName || user?.firstName || null,
+    email: primaryEmail || null,
+    role: contextUser?.role ?? null,
+    id: contextUser?.id ?? user?.id ?? null,
+  })
   const isContributorRole =
     contextUser?.role === 'contributor' || contextUser?.role === 'managing_contributor'
 
@@ -318,6 +326,36 @@ function ContributorDashboard({
   const availableEntries = sprintTasksSnapshot?.suggestions ?? []
   const sprintTaskBuckets = sprintTasksSnapshot?.buckets ?? []
 
+  const ownedTasksFromBuckets = useMemo(() => {
+    if (!contextUser?.id) {
+      return [] as Task[]
+    }
+
+    const list: Task[] = []
+    sprintTaskBuckets.forEach((bucket) => {
+      bucket.tasks.forEach((task) => {
+        if (task.ownerUserId === contextUser.id) {
+          list.push(task)
+        }
+      })
+    })
+    return list
+  }, [sprintTaskBuckets, contextUser?.id])
+
+  const allOwnedTasks = useMemo(() => {
+    if (ownedTasks.length === 0 && ownedTasksFromBuckets.length === 0) {
+      return [] as Task[]
+    }
+
+    const map = new Map<string, Task>()
+    ;[...ownedTasks, ...ownedTasksFromBuckets].forEach((task) => {
+      if (!map.has(task.id)) {
+        map.set(task.id, task)
+      }
+    })
+    return Array.from(map.values())
+  }, [ownedTasks, ownedTasksFromBuckets])
+
   const sprintStoryIdSet = useMemo(() => {
     const set = new Set<string>()
     sprintTaskBuckets.forEach((bucket) => set.add(bucket.story.id))
@@ -325,7 +363,7 @@ function ContributorDashboard({
   }, [sprintTaskBuckets])
 
   const filteredOwnedTasks = useMemo(() => {
-    return ownedTasks.filter((task) => {
+    return allOwnedTasks.filter((task) => {
       const info = storyLookup.get(task.storyId)
       if (!info?.project || !info.story) {
         return false
@@ -339,7 +377,7 @@ function ContributorDashboard({
       }
       return sprintStoryIdSet.has(task.storyId)
     })
-  }, [ownedTasks, storyLookup, activeSprintByProjectId, sprintStoryIdSet])
+  }, [allOwnedTasks, storyLookup, activeSprintByProjectId, sprintStoryIdSet])
 
   const ownedQueue = useMemo(() => sortOwnedTasks(filteredOwnedTasks), [filteredOwnedTasks])
   const nextOwnedTask = ownedQueue.find((task) => task.status !== 'completed')

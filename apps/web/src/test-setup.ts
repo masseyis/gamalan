@@ -6,7 +6,7 @@ import { server } from '../mocks/server'
 
 // Mock Clerk module to use our test wrapper hooks
 vi.mock('@clerk/nextjs', async () => {
-  const authMocks = await import('../app/auth-provider-wrapper')
+  const authMocks = await import('./auth-provider-wrapper')
 
   return {
     ClerkProvider: ({ children }: { children: React.ReactNode }) => children,
@@ -61,12 +61,8 @@ vi.mock('next/navigation', () => ({
 
 // Mock Next.js Link
 vi.mock('next/link', () => ({
-  default: ({ children, href, ...props }: any) => {
-    return {
-      type: 'a',
-      props: { href, ...props, children },
-    }
-  },
+  default: ({ children, href, ...props }: any) =>
+    React.createElement('a', { href, ...props }, children),
 }))
 
 // Start mock server before all tests

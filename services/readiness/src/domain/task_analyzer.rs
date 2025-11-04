@@ -1,4 +1,4 @@
-use super::{GapType, Recommendation, TaskAnalysis};
+use super::{GapType, Recommendation, RecommendationGenerator, TaskAnalysis};
 use crate::application::ports::TaskInfo;
 use uuid::Uuid;
 
@@ -30,12 +30,17 @@ impl TaskAnalyzer {
         if let Some(desc) = &task_info.description {
             let technical_gaps = Self::check_technical_details(desc);
             if !technical_gaps.is_empty() {
-                recommendations.push(Recommendation {
-                    gap_type: GapType::MissingTechnicalDetails,
-                    message: "Task description lacks specific technical details".to_string(),
-                    specific_suggestions: technical_gaps,
-                    ac_references: vec![],
-                });
+                // Use enhanced recommendation generator for context-aware suggestions
+                let enhanced_recommendation =
+                    RecommendationGenerator::generate_technical_details_recommendation(
+                        &task_info.title,
+                        desc,
+                        &technical_gaps
+                            .iter()
+                            .map(|s| s.as_str())
+                            .collect::<Vec<_>>(),
+                    );
+                recommendations.push(enhanced_recommendation);
                 clarity_score -= 15;
             }
 
@@ -54,12 +59,14 @@ impl TaskAnalyzer {
             // Check AI agent compatibility requirements
             let ai_gaps = Self::check_ai_compatibility(desc);
             if !ai_gaps.is_empty() {
-                recommendations.push(Recommendation {
-                    gap_type: GapType::MissingAiAgentCompatibility,
-                    message: "Task missing elements for AI agent compatibility".to_string(),
-                    specific_suggestions: ai_gaps,
-                    ac_references: vec![],
-                });
+                // Use enhanced recommendation generator for AI compatibility suggestions
+                let enhanced_ai_recommendation =
+                    RecommendationGenerator::generate_ai_compatibility_recommendation(
+                        &task_info.title,
+                        desc,
+                        &ai_gaps.iter().map(|s| s.as_str()).collect::<Vec<_>>(),
+                    );
+                recommendations.push(enhanced_ai_recommendation);
                 clarity_score -= 10;
             }
         }
@@ -68,24 +75,15 @@ impl TaskAnalyzer {
         if task_info.acceptance_criteria_refs.is_empty() {
             missing_elements.push("Task has no linked acceptance criteria".to_string());
 
-            let ac_suggestions = if valid_ac_ids.is_empty() {
-                vec!["No acceptance criteria available for this story. Consider defining story-level acceptance criteria first.".to_string()]
-            } else {
-                let mut suggestions = vec![
-                    "Link this task to specific acceptance criteria IDs".to_string(),
-                    format!("Available AC IDs: {}", valid_ac_ids.join(", ")),
-                ];
-                suggestions
-                    .push("Identify which acceptance criteria this task addresses".to_string());
-                suggestions
-            };
-
-            recommendations.push(Recommendation {
-                gap_type: GapType::MissingAcceptanceCriteria,
-                message: "Task is not linked to acceptance criteria".to_string(),
-                specific_suggestions: ac_suggestions,
-                ac_references: valid_ac_ids.to_vec(),
-            });
+            // Use enhanced recommendation generator for AC suggestions
+            let enhanced_ac_recommendation = RecommendationGenerator::generate_ac_recommendation(
+                &task_info.title,
+                task_info.description.as_deref().unwrap_or(""),
+                valid_ac_ids,
+                false,
+                vec![],
+            );
+            recommendations.push(enhanced_ac_recommendation);
             clarity_score -= 15;
         } else {
             // Validate that referenced ACs exist
@@ -97,16 +95,16 @@ impl TaskAnalyzer {
                 .collect();
 
             if !invalid_refs.is_empty() {
-                recommendations.push(Recommendation {
-                    gap_type: GapType::MissingAcceptanceCriteria,
-                    message: "Task references invalid acceptance criteria IDs".to_string(),
-                    specific_suggestions: vec![
-                        format!("Invalid AC references: {}", invalid_refs.join(", ")),
-                        format!("Valid AC IDs: {}", valid_ac_ids.join(", ")),
-                        "Update task to reference only valid acceptance criteria".to_string(),
-                    ],
-                    ac_references: valid_ac_ids.to_vec(),
-                });
+                // Use enhanced recommendation generator for invalid AC references
+                let enhanced_ac_recommendation =
+                    RecommendationGenerator::generate_ac_recommendation(
+                        &task_info.title,
+                        task_info.description.as_deref().unwrap_or(""),
+                        valid_ac_ids,
+                        true,
+                        invalid_refs,
+                    );
+                recommendations.push(enhanced_ac_recommendation);
                 clarity_score -= 10;
             }
         }

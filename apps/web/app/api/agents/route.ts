@@ -70,8 +70,9 @@ async function getAgentStatus(): Promise<AgentStatus[]> {
 async function startAgent(
   role: string,
   sprintId?: string,
-  useCLI?: boolean,
-  anthropicApiKey?: string
+  aiMode?: 'claude-cli' | 'claude-api' | 'codex-cli',
+  anthropicApiKey?: string,
+  codexApiKey?: string
 ): Promise<void> {
   const apiKey = AGENT_KEYS[role as keyof typeof AGENT_KEYS];
   if (!apiKey) {
@@ -79,8 +80,9 @@ async function startAgent(
   }
 
   // Validate configuration
-  if (useCLI === false && !anthropicApiKey) {
-    throw new Error('ANTHROPIC_API_KEY is required when not using Claude Code CLI');
+  const mode = aiMode || 'claude-cli';
+  if (mode === 'claude-api' && !anthropicApiKey) {
+    throw new Error('ANTHROPIC_API_KEY is required when using Claude API mode');
   }
 
   // Determine sprint ID
@@ -123,17 +125,23 @@ async function startAgent(
     POLL_INTERVAL: '30',
   };
 
-  // Configure Claude invocation method based on UI settings
-  if (useCLI === true) {
-    // Use Claude Code CLI (recommended)
-    env.USE_CLAUDE_CLI = 'true';
-  } else if (useCLI === false && anthropicApiKey) {
-    // Use Anthropic API with provided key
-    env.USE_CLAUDE_API = 'true';
-    env.ANTHROPIC_API_KEY = anthropicApiKey;
-  } else {
-    // Default to CLI if no preference specified
-    env.USE_CLAUDE_CLI = 'true';
+  // Configure AI execution mode based on UI settings
+  switch (mode) {
+    case 'claude-cli':
+      env.USE_CLAUDE_CLI = 'true';
+      break;
+    case 'claude-api':
+      env.USE_CLAUDE_API = 'true';
+      if (anthropicApiKey) {
+        env.ANTHROPIC_API_KEY = anthropicApiKey;
+      }
+      break;
+    case 'codex-cli':
+      env.USE_CODEX_CLI = 'true';
+      if (codexApiKey) {
+        env.CODEX_API_KEY = codexApiKey;
+      }
+      break;
   }
 
   const child = spawn(scriptPath, [apiKey, sprint, role], {
@@ -190,7 +198,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { action, role, sprintId, useCLI, apiKey } = body;
+    const { action, role, sprintId, aiMode, anthropicApiKey, codexApiKey } = body;
 
     if (!action || !role) {
       return NextResponse.json(
@@ -200,7 +208,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'start') {
-      await startAgent(role, sprintId, useCLI, apiKey);
+      await startAgent(role, sprintId, aiMode, anthropicApiKey, codexApiKey);
       return NextResponse.json({ success: true, message: `${role} agent started` });
     } else if (action === 'stop') {
       await stopAgent(role);

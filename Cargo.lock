@@ -392,6 +392,7 @@ dependencies = [
  "futures",
  "http-body-util",
  "jsonwebtoken",
+ "percent-encoding",
  "proptest",
  "reqwest",
  "serde",

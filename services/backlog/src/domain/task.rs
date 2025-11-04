@@ -156,6 +156,12 @@ impl Task {
     pub fn release_ownership(&mut self, user_id: Uuid) -> Result<(), AppError> {
         // Only the owner can release ownership
         if self.owner_user_id != Some(user_id) {
+            tracing::warn!(
+                ?self.owner_user_id,
+                requester = %user_id,
+                task_id = %self.id,
+                "Attempt to release task ownership by non-owner"
+            );
             return Err(AppError::BadRequest(
                 "Only the task owner can release ownership".to_string(),
             ));
