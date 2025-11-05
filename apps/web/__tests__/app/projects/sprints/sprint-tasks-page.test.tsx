@@ -207,9 +207,9 @@ describe('SprintTasksPage', () => {
     expect(screen.getByText(/User Authentication/i)).toBeInTheDocument() // Parent story
 
     // Check task status badges
-    expect(screen.getByText('Available')).toBeInTheDocument()
-    expect(screen.getByText(/Owned/i)).toBeInTheDocument()
-    expect(screen.getByText('Completed')).toBeInTheDocument()
+    expect(screen.getAllByText('Available').length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Owned/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Completed').length).toBeGreaterThan(0)
   })
 
   it('AC a2ef8786: filters tasks by status', async () => {
@@ -227,9 +227,8 @@ describe('SprintTasksPage', () => {
     expect(screen.getByText(/Showing 3 of 3 tasks/i)).toBeInTheDocument()
 
     // Filter by 'available' status
-    const statusFilter = screen.getByLabelText(/Filter by status/i)
-    await user.click(statusFilter)
-    await user.click(screen.getByRole('option', { name: 'Available' }))
+    const availableFilter = screen.getByLabelText('Available')
+    await user.click(availableFilter)
 
     await waitFor(() => {
       expect(screen.getByText(/Showing 1 of 3 tasks/i)).toBeInTheDocument()
@@ -251,9 +250,8 @@ describe('SprintTasksPage', () => {
     expect(screen.getByRole('heading', { name: /Project Dashboard/i })).toBeInTheDocument()
 
     // Change grouping to status
-    const groupBySelect = screen.getByLabelText(/Group by/i)
-    await user.click(groupBySelect)
-    await user.click(screen.getByRole('option', { name: 'By Status' }))
+    const groupByStatus = screen.getByLabelText('Group by Status')
+    await user.click(groupByStatus)
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: /Available/i })).toBeInTheDocument()
@@ -271,8 +269,8 @@ describe('SprintTasksPage', () => {
 
     // Check badge counts for story groups
     const badges = screen.getAllByTestId(/badge/i)
-    expect(badges.some((badge) => badge.textContent === '2')).toBeTruthy() // User Authentication has 2 tasks
-    expect(badges.some((badge) => badge.textContent === '1')).toBeTruthy() // Project Dashboard has 1 task
+    expect(badges.some((badge) => badge.textContent?.includes('2 tasks'))).toBeTruthy() // User Authentication has 2 tasks
+    expect(badges.some((badge) => badge.textContent?.includes('1 task'))).toBeTruthy() // Project Dashboard has 1 task
   })
 
   it('AC 8e8e949d: visually distinguishes available tasks', async () => {
@@ -305,7 +303,7 @@ describe('SprintTasksPage', () => {
     })
 
     // Task owned by user-2 should show owner
-    expect(screen.getByText(/Owner: user-2/i)).toBeInTheDocument()
+    expect(screen.getByText(/Owned by user-2/i)).toBeInTheDocument()
   })
 
   it('AC d4d41a1f: displays sprint name in header', async () => {
@@ -462,7 +460,7 @@ describe('SprintTasksPage', () => {
 
     render(<SprintTasksPage />, { wrapper: createWrapper() })
 
-    expect(screen.getByText(/Loading sprint task board.../i)).toBeInTheDocument()
+    expect(screen.getByText(/Loading sprint tasks.../i)).toBeInTheDocument()
   })
 
   it('handles error state', async () => {
@@ -471,7 +469,8 @@ describe('SprintTasksPage', () => {
     render(<SprintTasksPage />, { wrapper: createWrapper() })
 
     await waitFor(() => {
-      expect(screen.getByText(/Sprint not found or failed to load/i)).toBeInTheDocument()
+      expect(screen.getByText(/Error Loading Sprint/i)).toBeInTheDocument()
+      expect(screen.getByText(/Failed to load/i)).toBeInTheDocument()
     })
   })
 

@@ -8,6 +8,7 @@ import { useTaskWebSocket, type TaskWebSocketEvent } from '@/lib/hooks/useTaskWe
 import { useToast } from '@/hooks/use-toast'
 import { Story, TaskStatus } from '@/lib/types/story'
 import { Sprint } from '@/lib/types/team'
+import { backlogApi } from '@/lib/api/backlog'
 
 export interface SprintTaskBoardProps {
   sprint: Sprint
@@ -42,6 +43,7 @@ export function SprintTaskBoard({
   const [stories, setStories] = useState<Story[]>(initialStories)
   const [selectedStatuses, setSelectedStatuses] = useState<TaskStatus[]>([])
   const [groupBy, setGroupBy] = useState<GroupByOption>('story')
+  const [claimingTaskId, setClaimingTaskId] = useState<string | null>(null)
 
   // Connect to WebSocket for real-time updates
   const { isConnected } = useTaskWebSocket({
@@ -95,6 +97,46 @@ export function SprintTaskBoard({
       progressPercentage: total > 0 ? Math.round((completed / total) * 100) : 0,
     }
   }, [stories])
+
+  const handleTakeOwnership = async (taskId: string, storyId: string) => {
+    setClaimingTaskId(taskId)
+
+    try {
+      await backlogApi.takeTaskOwnership(taskId)
+
+      if (currentUserId) {
+        setStories((prevStories) =>
+          prevStories.map((story) =>
+            story.id === storyId
+              ? {
+                  ...story,
+                  tasks: story.tasks?.map((task) =>
+                    task.id === taskId
+                      ? { ...task, ownerUserId: currentUserId, status: 'owned' as TaskStatus }
+                      : task
+                  ),
+                }
+              : story
+          )
+        )
+      }
+
+      toast({
+        title: 'Task claimed',
+        description: 'You are now responsible for this task',
+      })
+
+      onRefresh?.()
+    } catch (error) {
+      toast({
+        title: 'Unable to claim task',
+        description: error instanceof Error ? error.message : 'An unexpected error occurred',
+        variant: 'destructive',
+      })
+    } finally {
+      setClaimingTaskId(null)
+    }
+  }
 
   const handleWebSocketEvent = (event: TaskWebSocketEvent) => {
     console.log('[SprintTaskBoard] Task event received:', event)
@@ -220,6 +262,8 @@ export function SprintTaskBoard({
         selectedStatuses={selectedStatuses}
         groupBy={groupBy}
         currentUserId={currentUserId}
+        onTakeOwnership={handleTakeOwnership}
+        claimingTaskId={claimingTaskId}
       />
     </div>
   )
