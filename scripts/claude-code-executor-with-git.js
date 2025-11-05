@@ -1164,7 +1164,7 @@ async function invokeCodexCLI(prompt) {
 
       const codex = spawn('codex', [
         'exec',
-        '--full-auto',  // Allow file edits (similar to Claude's --dangerously-skip-permissions)
+        '--yolo',  // Allow file edits (similar to Claude's --dangerously-skip-permissions)
         '--model', 'gpt-5-codex',  // Use latest Codex model
         prompt  // Prompt as direct argument
       ], {

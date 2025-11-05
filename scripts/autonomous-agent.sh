@@ -81,6 +81,15 @@ api_post() {
     -H "Content-Type: application/json"
 }
 
+api_patch() {
+  local endpoint="$1"
+  local data="$2"
+  curl -s -X PATCH "$API_BASE/$endpoint" \
+    -H "X-API-Key: $API_KEY" \
+    -H "Content-Type: application/json" \
+    -d "$data"
+}
+
 api_delete() {
   local endpoint="$1"
   curl -s -X DELETE "$API_BASE/$endpoint" \
@@ -105,6 +114,13 @@ get_recommended_task() {
 take_task() {
   local task_id="$1"
   api_put "tasks/$task_id/ownership"
+}
+
+# Update task status
+update_task_status() {
+  local task_id="$1"
+  local status="$2"
+  api_patch "tasks/$task_id/status" "{\"status\": \"$status\"}"
 }
 
 # Release task ownership
@@ -357,6 +373,15 @@ fi
     fi
 
     log_success "Ownership acquired"
+
+    # Update status to InProgress
+    log_info "Updating task status to InProgress..."
+    if ! status_response=$(update_task_status "$task_id" "InProgress"); then
+      log_error "Failed to update task status"
+      # Continue anyway - we have ownership
+    else
+      log_success "Task status updated to InProgress"
+    fi
 
     # Execute task
     if ! execute_task "$task_id" "$task_title" "$task_description" "$task_story_id"; then
