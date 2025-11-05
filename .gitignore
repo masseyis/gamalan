@@ -58,3 +58,4 @@ Secrets*.toml
 # Autonomous agent logs
 logs/
 *.log
+logs/autonomous-agents/qa-agent.log

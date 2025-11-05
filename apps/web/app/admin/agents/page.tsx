@@ -46,7 +46,7 @@ export default function AgentControlPage() {
   // Fetch logs for selected agent
   const fetchLogs = async (agent: string) => {
     try {
-      const response = await fetch(`/api/agents/logs/${agent}?lines=50`);
+      const response = await fetch(`/api/agents/logs/${agent}?lines=500`);
       const data = await response.json();
       setLogs(data);
     } catch (err) {
@@ -218,97 +218,97 @@ export default function AgentControlPage() {
 
           <div className="mt-6 pt-6 border-t">
             <h3 className="text-sm font-medium mb-3">AI Provider Configuration</h3>
-              <div className="space-y-3">
-                {/* Claude Code CLI */}
-                <div className="flex items-start gap-3">
-                  <input
-                    id="mode-claude-cli"
-                    type="radio"
-                    checked={aiMode === 'claude-cli'}
-                    onChange={() => setAiMode('claude-cli')}
-                    className="mt-1 h-4 w-4 border-gray-300"
-                  />
-                  <div className="flex-1">
-                    <label htmlFor="mode-claude-cli" className="text-sm font-medium cursor-pointer">
-                      Claude Code CLI (recommended)
-                    </label>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Uses your Claude Code Plus subscription (no additional API costs)
-                    </p>
-                  </div>
-                </div>
-
-                {/* Claude API */}
-                <div className="flex items-start gap-3">
-                  <input
-                    id="mode-claude-api"
-                    type="radio"
-                    checked={aiMode === 'claude-api'}
-                    onChange={() => setAiMode('claude-api')}
-                    className="mt-1 h-4 w-4 border-gray-300"
-                  />
-                  <div className="flex-1">
-                    <label htmlFor="mode-claude-api" className="text-sm font-medium cursor-pointer">
-                      Claude API (Anthropic)
-                    </label>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Direct API calls. Uses separate API credits.
-                    </p>
-                    {aiMode === 'claude-api' && (
-                      <div className="mt-2">
-                        <label htmlFor="anthropicApiKey" className="block text-xs text-gray-600 mb-1">
-                          Anthropic API Key
-                        </label>
-                        <input
-                          id="anthropicApiKey"
-                          type="password"
-                          value={anthropicApiKey}
-                          onChange={(e) => setAnthropicApiKey(e.target.value)}
-                          placeholder="sk-ant-..."
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Codex CLI */}
-                <div className="flex items-start gap-3">
-                  <input
-                    id="mode-codex-cli"
-                    type="radio"
-                    checked={aiMode === 'codex-cli'}
-                    onChange={() => setAiMode('codex-cli')}
-                    className="mt-1 h-4 w-4 border-gray-300"
-                  />
-                  <div className="flex-1">
-                    <label htmlFor="mode-codex-cli" className="text-sm font-medium cursor-pointer">
-                      Codex CLI (OpenAI)
-                    </label>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Uses OpenAI Codex CLI. Optional API key override.
-                    </p>
-                    {aiMode === 'codex-cli' && (
-                      <div className="mt-2">
-                        <label htmlFor="codexApiKey" className="block text-xs text-gray-600 mb-1">
-                          Codex API Key (optional)
-                        </label>
-                        <input
-                          id="codexApiKey"
-                          type="password"
-                          value={codexApiKey}
-                          onChange={(e) => setCodexApiKey(e.target.value)}
-                          placeholder="sk-..."
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                          Leave empty to use default Codex authentication
-                        </p>
-                      </div>
-                    )}
-                  </div>
+            <div className="space-y-3">
+              {/* Claude Code CLI */}
+              <div className="flex items-start gap-3">
+                <input
+                  id="mode-claude-cli"
+                  type="radio"
+                  checked={aiMode === 'claude-cli'}
+                  onChange={() => setAiMode('claude-cli')}
+                  className="mt-1 h-4 w-4 border-gray-300"
+                />
+                <div className="flex-1">
+                  <label htmlFor="mode-claude-cli" className="text-sm font-medium cursor-pointer">
+                    Claude Code CLI (recommended)
+                  </label>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Uses your Claude Code Plus subscription (no additional API costs)
+                  </p>
                 </div>
               </div>
+
+              {/* Claude API */}
+              <div className="flex items-start gap-3">
+                <input
+                  id="mode-claude-api"
+                  type="radio"
+                  checked={aiMode === 'claude-api'}
+                  onChange={() => setAiMode('claude-api')}
+                  className="mt-1 h-4 w-4 border-gray-300"
+                />
+                <div className="flex-1">
+                  <label htmlFor="mode-claude-api" className="text-sm font-medium cursor-pointer">
+                    Claude API (Anthropic)
+                  </label>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Direct API calls. Uses separate API credits.
+                  </p>
+                  {aiMode === 'claude-api' && (
+                    <div className="mt-2">
+                      <label htmlFor="anthropicApiKey" className="block text-xs text-gray-600 mb-1">
+                        Anthropic API Key
+                      </label>
+                      <input
+                        id="anthropicApiKey"
+                        type="password"
+                        value={anthropicApiKey}
+                        onChange={(e) => setAnthropicApiKey(e.target.value)}
+                        placeholder="sk-ant-..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Codex CLI */}
+              <div className="flex items-start gap-3">
+                <input
+                  id="mode-codex-cli"
+                  type="radio"
+                  checked={aiMode === 'codex-cli'}
+                  onChange={() => setAiMode('codex-cli')}
+                  className="mt-1 h-4 w-4 border-gray-300"
+                />
+                <div className="flex-1">
+                  <label htmlFor="mode-codex-cli" className="text-sm font-medium cursor-pointer">
+                    Codex CLI (OpenAI)
+                  </label>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Uses OpenAI Codex CLI. Optional API key override.
+                  </p>
+                  {aiMode === 'codex-cli' && (
+                    <div className="mt-2">
+                      <label htmlFor="codexApiKey" className="block text-xs text-gray-600 mb-1">
+                        Codex API Key (optional)
+                      </label>
+                      <input
+                        id="codexApiKey"
+                        type="password"
+                        value={codexApiKey}
+                        onChange={(e) => setCodexApiKey(e.target.value)}
+                        placeholder="sk-..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Leave empty to use default Codex authentication
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -318,11 +318,10 @@ export default function AgentControlPage() {
         {agents.map((agent) => (
           <Card
             key={agent.role}
-            className={`cursor-pointer transition-all ${
-              selectedAgent === agent.role
+            className={`cursor-pointer transition-all ${selectedAgent === agent.role
                 ? 'ring-2 ring-blue-500'
                 : 'hover:shadow-lg'
-            }`}
+              }`}
             onClick={() => setSelectedAgent(agent.role)}
           >
             <CardHeader className="pb-3">
