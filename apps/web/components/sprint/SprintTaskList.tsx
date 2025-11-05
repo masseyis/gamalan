@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Story, Task, TaskStatus } from '@/lib/types/story'
 import { GroupByOption } from './SprintTaskFilters'
 import { CheckCircle2, Circle, Clock, User } from 'lucide-react'
@@ -12,6 +13,8 @@ export interface SprintTaskListProps {
   selectedStatuses: TaskStatus[]
   groupBy: GroupByOption
   currentUserId?: string
+  onTakeOwnership?: (taskId: string, storyId: string) => void
+  claimingTaskId?: string | null
 }
 
 interface TaskWithStory extends Task {
@@ -71,6 +74,8 @@ export function SprintTaskList({
   selectedStatuses,
   groupBy,
   currentUserId,
+  onTakeOwnership,
+  claimingTaskId,
 }: SprintTaskListProps) {
   // Flatten tasks and attach story information
   const tasksWithStories = useMemo((): TaskWithStory[] => {
@@ -133,6 +138,7 @@ export function SprintTaskList({
     const isMyTask = currentUserId && task.ownerUserId === currentUserId
     const isAvailable = task.status === 'available' && !task.ownerUserId
     const isOthersTask = task.ownerUserId && !isMyTask
+    const isClaiming = claimingTaskId === task.id
 
     // Determine border styling based on task status
     let borderClasses = ''
@@ -186,7 +192,7 @@ export function SprintTaskList({
               {task.ownerUserId && (
                 <div className="flex items-center gap-1">
                   <User className="h-3 w-3" />
-                  {isMyTask ? <span>You</span> : <span>Owner: {task.ownerUserId}</span>}
+                  {isMyTask ? <span>You</span> : <span>Owned by {task.ownerUserId}</span>}
                 </div>
               )}
 
@@ -208,6 +214,20 @@ export function SprintTaskList({
               {/* My task indicator */}
               {isMyTask && <Badge className="bg-blue-500 text-white">My Task</Badge>}
             </div>
+
+            {isAvailable && onTakeOwnership && (
+              <div className="flex items-center justify-between gap-2 text-sm">
+                <span className="text-muted-foreground">Ready for pickup</span>
+                <Button
+                  size="sm"
+                  onClick={() => onTakeOwnership(task.id, task.story.id)}
+                  disabled={isClaiming}
+                  data-testid={`take-ownership-${task.id}`}
+                >
+                  {isClaiming ? 'Claiming...' : "I'm on it"}
+                </Button>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -255,7 +275,7 @@ export function SprintTaskList({
           <p className="text-muted-foreground">
             {selectedStatuses.length > 0
               ? 'No tasks match the selected filters'
-              : 'No tasks available in this sprint'}
+              : 'No tasks found'}
           </p>
         </CardContent>
       </Card>

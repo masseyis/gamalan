@@ -179,7 +179,7 @@ export class SprintTaskBoardPage extends BasePage {
 
   async expectOwnerDisplayed(taskTitle: string, ownerName: string) {
     const taskCard = this.taskCards.filter({ hasText: taskTitle })
-    const ownerText = taskCard.locator(`text=/Owner:.*${ownerName}/i`)
+    const ownerText = taskCard.locator(`text=/Owned by.*${ownerName}/i`)
     await expect(ownerText).toBeVisible()
   }
 
