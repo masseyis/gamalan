@@ -39,6 +39,77 @@ graph TB
 
 ## Architecture Changelog
 
+### 2025-11-05: Sprint Task Board Visual Indicators
+
+**Scope:** Frontend UI/UX - Sprint Task Board
+**Decision Reference:** [ADR-0007: Sprint Task Board Visual Indicators](ADR-0007-sprint-task-visual-indicators.md)
+**Acceptance Criteria:** AC-8e8e949d-1917-4187-a675-57dd59cb9783
+
+#### Changes Made
+
+- **Visual Indicator System:** Implemented comprehensive visual differentiation for task ownership states
+- **Component Updates:** Enhanced `SprintTaskList.tsx` with conditional styling logic
+- **Test Coverage:** Added 22 unit tests and 20+ E2E scenarios
+- **Documentation:** Created ADR-0007 with technical contracts and AC mapping
+
+#### Visual Design System
+
+**Available Tasks:**
+- Dashed border with gray color
+- Green "Available to claim" indicator text
+- No ring highlight
+
+**My Tasks (Current User):**
+- Blue ring highlight with offset (`ring-2 ring-blue-500 ring-offset-2`)
+- Blue "My Task" badge
+- Owner displays as "You"
+- `data-my-task="true"` attribute
+
+**Tasks Owned by Others:**
+- Standard solid border
+- Displays "Owner: {userId}"
+- No special highlighting
+- `data-my-task="false"` attribute
+
+**Status-Specific Border Colors:**
+- Available: Gray (`border-gray-200`)
+- Owned: Blue (`border-blue-200`)
+- In Progress: Yellow (`border-yellow-200`)
+- Completed: Green (`border-green-200`)
+
+#### Files Modified
+
+- `apps/web/components/sprint/SprintTaskList.tsx` - Visual indicator implementation (lines 131-215)
+- `apps/web/components/sprint/__tests__/SprintTaskList.visual-indicators.test.tsx` - Fixed test assertions (lines 289, 423)
+- `apps/web/tests/e2e/workflows/sprint-board-visual-indicators.spec.ts` - Fixed E2E test assertions (lines 314, 322, 246)
+- `docs/adr/ADR-0007-sprint-task-visual-indicators.md` - Created architectural decision record
+
+#### Architectural Impact
+
+- **User Experience:** Reduced cognitive load for contributors scanning the task board
+- **Collaboration:** Clear ownership visibility prevents duplicate work
+- **Accessibility:** Multiple visual cues (border, color, badges, icons) provide redundancy
+- **Testability:** Data attributes (`data-my-task`) enable reliable automated testing
+- **Maintainability:** Centralized visual logic in single component
+
+#### Test Coverage
+
+- **Unit Tests:** 22 tests passing (`SprintTaskList.visual-indicators.test.tsx`)
+  - Available tasks visual distinction (5 tests)
+  - My tasks highlighted and marked (6 tests)
+  - Tasks owned by others show owner name (5 tests)
+  - Comprehensive visual distinction (1 test)
+  - Status-specific border colors (3 tests)
+  - Edge cases (2 tests)
+
+- **E2E Tests:** 20+ scenarios (`sprint-board-visual-indicators.spec.ts`)
+  - Available tasks visual distinction
+  - My tasks highlighted and marked
+  - Tasks owned by others show owner name
+  - Comprehensive visual distinction
+  - Status-specific visual indicators
+  - Accessibility and UX
+
 ### 2025-09-07: Shuttle-Managed Database Architecture Enforcement
 
 **Scope:** Database architecture compliance and documentation  

@@ -122,7 +122,7 @@ export function TaskCard({ task, story, isMyTask, showStoryTitle = false }: Task
                 <div className="flex items-center gap-1">
                   <User className="h-3 w-3" />
                   <span>
-                    {isMyTask ? 'You' : `Owned by ${task.ownerUserId.slice(0, 8)}`}
+                    {isMyTask ? 'You' : `Owned by ${task.ownerUserId}`}
                   </span>
                 </div>
               ) : (
