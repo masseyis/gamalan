@@ -431,19 +431,18 @@ export default function AgentControlPage() {
                 const stoppedAgents = agents.filter((agent) => !agent.running);
 
                 if (executionMode === 'serial') {
-                  // Start agents one at a time
+                  // Start agents one at a time with proper delays
                   for (const agent of stoppedAgents) {
                     await startAgent(agent.role);
-                    // Wait 2 seconds between starts to let each agent claim a task
+                    // Wait 10 seconds between starts to let each agent claim a task
+                    // This prevents race conditions where multiple agents try to claim the same task
                     if (stoppedAgents.indexOf(agent) < stoppedAgents.length - 1) {
-                      await new Promise((resolve) => setTimeout(resolve, 2000));
+                      await new Promise((resolve) => setTimeout(resolve, 10000));
                     }
                   }
                 } else {
-                  // Start all agents in parallel
-                  stoppedAgents.forEach((agent) => {
-                    startAgent(agent.role);
-                  });
+                  // Start all agents in parallel (properly awaited to prevent overwhelming the system)
+                  await Promise.all(stoppedAgents.map((agent) => startAgent(agent.role)));
                 }
               }}
               disabled={loading}
@@ -451,10 +450,9 @@ export default function AgentControlPage() {
               Start All ({executionMode})
             </Button>
             <Button
-              onClick={() => {
-                agents.forEach((agent) => {
-                  if (agent.running) stopAgent(agent.role);
-                });
+              onClick={async () => {
+                const runningAgents = agents.filter((agent) => agent.running);
+                await Promise.all(runningAgents.map((agent) => stopAgent(agent.role)));
               }}
               disabled={loading}
               variant="destructive"

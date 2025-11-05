@@ -286,7 +286,7 @@ describe('SprintTaskList - Visual Indicators (AC3)', () => {
         />
       )
 
-      expect(screen.getByText(/Owned by other-user-456/)).toBeTruthy()
+      expect(screen.getByText(/Owner: other-user-456/)).toBeTruthy()
     })
 
     it('should NOT render "My Task" badge for tasks owned by others', () => {
@@ -420,7 +420,7 @@ describe('SprintTaskList - Visual Indicators (AC3)', () => {
       const othersCard = screen.getByTestId('task-card-others-task-id')
       expect(othersCard.className).not.toContain('ring-2')
       expect(othersCard.className).not.toContain('border-dashed')
-      expect(screen.getByText(/Owned by other-user-456/)).toBeTruthy()
+      expect(screen.getByText(/Owner: other-user-456/)).toBeTruthy()
     })
   })
 

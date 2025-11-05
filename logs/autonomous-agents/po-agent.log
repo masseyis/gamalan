@@ -122,3 +122,4 @@ Error: PROJECT_ID required for PO agents. Pass as fourth argument or set BATTRA_
 + cd /Users/jamesmassey/ai-dev/gamalan/agents/po-1
 + /Users/jamesmassey/ai-dev/gamalan/ai-agile/scripts/autonomous-agent.sh battra-po-key-1 ef3dcf23-2b01-4220-9639-526e2909571a po
 Error: PROJECT_ID required for PO agents. Pass as fourth argument or set BATTRA_PROJECT_ID env var
+Error: PROJECT_ID required for PO agents. Pass as fourth argument or set BATTRA_PROJECT_ID env var

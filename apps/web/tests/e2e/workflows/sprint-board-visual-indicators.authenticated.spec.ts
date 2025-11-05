@@ -242,8 +242,9 @@ test.describe('Sprint Task Board - AC3: Visual Indicators', () => {
           // Should show "You" as owner
           await expect(myTask.locator('text=You')).toBeVisible()
 
-          // Should NOT show "Owned by" prefix for my tasks
-          await expect(myTask.locator('text=Owned by')).not.toBeVisible()
+          // My tasks show just "You", not "Owner: You"
+          const ownerText = await myTask.locator('.text-muted-foreground:has-text("You")').textContent()
+          expect(ownerText?.trim()).toBe('You')
         }
       }
     })
@@ -311,15 +312,15 @@ test.describe('Sprint Task Board - AC3: Visual Indicators', () => {
 
       // Find tasks that are owned but not by current user
       const ownedTasks = page.locator('[data-testid^="task-card-"]').filter({
-        has: page.locator('text=Owned by'),
+        has: page.locator('text=Owner:'),
       })
 
       const count = await ownedTasks.count()
       if (count > 0) {
         const othersTask = ownedTasks.first()
 
-        // Should show "Owned by" prefix
-        await expect(othersTask.locator('text=Owned by')).toBeVisible()
+        // Should show "Owner:" prefix
+        await expect(othersTask.locator('text=Owner:')).toBeVisible()
 
         // Should NOT show "My Task" badge
         await expect(othersTask.locator('text=My Task')).not.toBeVisible()

@@ -79,8 +79,16 @@ export class BasePage {
   }
 
   async openAIAssistant() {
-    const aiButton = this.page.locator('button:has-text("Ask AI")')
-    await aiButton.click()
+    const assistantLink = this.navigation.locator('a:has-text("Assistant")')
+
+    if (await assistantLink.count()) {
+      await assistantLink.first().click()
+      await this.waitForLoad()
+      return
+    }
+
+    await this.page.goto('/assistant')
+    await this.waitForLoad()
   }
 
   async expectToastMessage(message: string | RegExp) {
