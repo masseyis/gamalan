@@ -117,7 +117,7 @@ pub async fn get_story(
             let mut story = Story::from(row);
 
             let acceptance_rows = sqlx::query_as::<_, AcceptanceCriteriaRow>(
-                "SELECT id, story_id, description, given, when_clause, then_clause, created_at
+                "SELECT id, story_id, ac_id, given, \"when\" AS when_clause, \"then\" AS then_clause, created_at
                  FROM acceptance_criteria
                  WHERE story_id = $1
                  ORDER BY created_at",
@@ -183,17 +183,18 @@ pub async fn update_story(pool: &PgPool, story: &Story) -> Result<(), AppError> 
         })?;
 
     for ac in &story.acceptance_criteria {
+        let ac_identifier = ac.id.to_string();
         sqlx::query(
-            "INSERT INTO acceptance_criteria (id, story_id, description, given, when_clause, then_clause, created_at)
+            "INSERT INTO acceptance_criteria (id, story_id, organization_id, ac_id, given, \"when\", \"then\")
              VALUES ($1, $2, $3, $4, $5, $6, $7)",
         )
         .bind(ac.id)
         .bind(story.id)
-        .bind(&ac.description)
+        .bind(story.organization_id)
+        .bind(&ac_identifier)
         .bind(&ac.given)
         .bind(&ac.when)
         .bind(&ac.then)
-        .bind(ac.created_at)
         .execute(&mut *tx)
         .await
         .map_err(|e| {
@@ -248,17 +249,18 @@ pub async fn update_story_with_transaction(
         })?;
 
     for ac in &story.acceptance_criteria {
+        let ac_identifier = ac.id.to_string();
         sqlx::query(
-            "INSERT INTO acceptance_criteria (id, story_id, description, given, when_clause, then_clause, created_at)
+            "INSERT INTO acceptance_criteria (id, story_id, organization_id, ac_id, given, \"when\", \"then\")
              VALUES ($1, $2, $3, $4, $5, $6, $7)",
         )
         .bind(ac.id)
         .bind(story.id)
-        .bind(&ac.description)
+        .bind(story.organization_id)
+        .bind(&ac_identifier)
         .bind(&ac.given)
         .bind(&ac.when)
         .bind(&ac.then)
-        .bind(ac.created_at)
         .execute(&mut **tx)
         .await
         .map_err(|e| {
@@ -479,7 +481,7 @@ pub async fn get_stories_by_project(
 
     if !story_ids.is_empty() {
         let acceptance_rows = sqlx::query_as::<_, AcceptanceCriteriaRow>(
-            "SELECT id, story_id, description, given, when_clause, then_clause, created_at
+            "SELECT id, story_id, ac_id, given, \"when\" AS when_clause, \"then\" AS then_clause, created_at
              FROM acceptance_criteria
              WHERE story_id = ANY($1)
              ORDER BY created_at",

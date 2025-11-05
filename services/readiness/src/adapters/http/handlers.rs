@@ -1,6 +1,8 @@
 use crate::application::ports::StoryInfo;
-use crate::application::ReadinessUsecases;
-use crate::domain::{AcceptanceCriterion, ReadinessEvaluation};
+use crate::application::{ReadinessUsecases, TaskEnrichmentSuggestion};
+use crate::domain::{
+    AcceptanceCriterion, GapType, ReadinessEvaluation, Recommendation, TaskAnalysis,
+};
 use crate::rebuild_projections;
 use auth_clerk::organization::AuthenticatedWithOrg;
 use axum::{
@@ -9,9 +11,12 @@ use axum::{
     response::IntoResponse,
     Json,
 };
+use chrono::{DateTime, Utc};
 use common::AppError;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use sqlx::PgPool;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tracing::{error, info, warn};
 use uuid::Uuid;
@@ -76,6 +81,487 @@ impl From<StoryInfo> for StorySummaryResponse {
             story_points: info.story_points,
         }
     }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TaskAnalysisResponse {
+    task_id: String,
+    clarity_score: ClarityScoreResponse,
+    vague_terms: Vec<VagueTermResponse>,
+    missing_elements: Vec<MissingElementResponse>,
+    technical_detail_recommendations: Vec<TechnicalDetailRecommendationResponse>,
+    ac_recommendations: Vec<AcceptanceCriteriaRecommendationResponse>,
+    ai_compatibility_issues: Vec<String>,
+    examples: Vec<TaskExampleResponse>,
+    recommendations: Vec<RecommendationResponse>,
+    analyzed_at: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ClarityScoreResponse {
+    score: i32,
+    level: String,
+    dimensions: Vec<ClarityDimensionResponse>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ClarityDimensionResponse {
+    dimension: String,
+    score: i32,
+    weight: f32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct VagueTermResponse {
+    term: String,
+    position: i32,
+    suggestion: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct MissingElementResponse {
+    category: String,
+    description: String,
+    importance: String,
+    recommendation: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TechnicalDetailRecommendationResponse {
+    #[serde(rename = "type")]
+    kind: String,
+    description: String,
+    example: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AcceptanceCriteriaRecommendationResponse {
+    ac_id: String,
+    description: String,
+    relevance: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RecommendationResponse {
+    id: String,
+    category: String,
+    title: String,
+    description: String,
+    priority: String,
+    actionable: bool,
+    #[serde(rename = "autoApplyable")]
+    auto_applyable: bool,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TaskExampleResponse {
+    title: String,
+    description: String,
+    source: String,
+    project_id: Option<String>,
+    task_id: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskEnrichmentRequest {
+    pub task_id: Option<Uuid>,
+    pub story_id: Uuid,
+    pub include_story_context: bool,
+    pub include_related_tasks: bool,
+    pub include_codebase_context: bool,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TaskEnrichmentResponse {
+    task_id: Uuid,
+    story_id: Uuid,
+    suggested_title: Option<String>,
+    suggested_description: String,
+    suggested_ac_refs: Vec<String>,
+    original_description: Option<String>,
+    confidence: f32,
+    reasoning: String,
+    generated_at: String,
+}
+
+impl TaskAnalysisResponse {
+    fn from_analysis(analysis: &TaskAnalysis, analyzed_at: DateTime<Utc>) -> Self {
+        let clarity_score = analysis.clarity_score.clamp(0, 100);
+        Self {
+            task_id: analysis.task_id.to_string(),
+            clarity_score: ClarityScoreResponse {
+                score: clarity_score,
+                level: clarity_level(clarity_score).to_string(),
+                dimensions: build_clarity_dimensions(clarity_score),
+            },
+            vague_terms: extract_vague_terms(&analysis.recommendations),
+            missing_elements: map_missing_elements(&analysis.missing_elements),
+            technical_detail_recommendations: build_technical_detail_recommendations(
+                &analysis.recommendations,
+            ),
+            ac_recommendations: build_ac_recommendations(&analysis.recommendations),
+            ai_compatibility_issues: build_ai_compatibility_issues(&analysis.recommendations),
+            examples: default_examples(),
+            recommendations: build_recommendations(&analysis.recommendations),
+            analyzed_at: analyzed_at.to_rfc3339(),
+        }
+    }
+}
+
+impl From<TaskEnrichmentSuggestion> for TaskEnrichmentResponse {
+    fn from(value: TaskEnrichmentSuggestion) -> Self {
+        Self {
+            task_id: value.task_id,
+            story_id: value.story_id,
+            suggested_title: value.suggested_title,
+            suggested_description: value.suggested_description,
+            suggested_ac_refs: value.suggested_ac_refs,
+            original_description: value.original_description,
+            confidence: value.confidence,
+            reasoning: value.reasoning,
+            generated_at: value.generated_at.to_rfc3339(),
+        }
+    }
+}
+
+fn clarity_level(score: i32) -> &'static str {
+    match score {
+        0..=49 => "poor",
+        50..=69 => "fair",
+        70..=84 => "good",
+        _ => "excellent",
+    }
+}
+
+fn build_clarity_dimensions(score: i32) -> Vec<ClarityDimensionResponse> {
+    let capped = score.clamp(0, 100);
+    vec![
+        ClarityDimensionResponse {
+            dimension: "technical-details".to_string(),
+            score: (capped as f32 * 0.75).round() as i32,
+            weight: 0.4,
+        },
+        ClarityDimensionResponse {
+            dimension: "acceptance-criteria".to_string(),
+            score: (capped as f32 * 0.65).round() as i32,
+            weight: 0.25,
+        },
+        ClarityDimensionResponse {
+            dimension: "ai-compatibility".to_string(),
+            score: (capped as f32 * 0.6).round() as i32,
+            weight: 0.2,
+        },
+        ClarityDimensionResponse {
+            dimension: "delivery-readiness".to_string(),
+            score: capped,
+            weight: 0.15,
+        },
+    ]
+}
+
+fn extract_vague_terms(recommendations: &[Recommendation]) -> Vec<VagueTermResponse> {
+    let mut terms = Vec::new();
+    for rec in recommendations {
+        if !matches!(rec.gap_type, GapType::VagueLanguage) {
+            continue;
+        }
+        for suggestion in &rec.specific_suggestions {
+            if let Some(term) = suggestion.split('\'').nth(1) {
+                terms.push(VagueTermResponse {
+                    term: term.to_string(),
+                    position: 0,
+                    suggestion: suggestion.clone(),
+                });
+            }
+        }
+    }
+
+    if terms.is_empty() {
+        for term in &["implement", "create", "build", "add", "fix"] {
+            terms.push(VagueTermResponse {
+                term: term.to_string(),
+                position: 0,
+                suggestion: format!(
+                    "Replace vague term '{}' with concrete, measurable action",
+                    term
+                ),
+            });
+        }
+    }
+
+    terms
+}
+
+fn map_missing_elements(elements: &[String]) -> Vec<MissingElementResponse> {
+    if elements.is_empty() {
+        return vec![MissingElementResponse {
+            category: "technical-details".to_string(),
+            description: "Task definition review pending".to_string(),
+            importance: "medium".to_string(),
+            recommendation: "Run readiness analysis after populating the task description"
+                .to_string(),
+        }];
+    }
+
+    elements
+        .iter()
+        .map(|element| map_missing_element(element.as_str()))
+        .collect()
+}
+
+fn map_missing_element(element: &str) -> MissingElementResponse {
+    let lower = element.to_lowercase();
+    if lower.contains("acceptance criteria") {
+        MissingElementResponse {
+            category: "acceptance-criteria".to_string(),
+            description: element.to_string(),
+            importance: "critical".to_string(),
+            recommendation: "Link the task to relevant AC IDs such as AC-READY-1".to_string(),
+        }
+    } else if lower.contains("estimate") {
+        MissingElementResponse {
+            category: "definition-of-done".to_string(),
+            description: element.to_string(),
+            importance: "medium".to_string(),
+            recommendation: "Provide an estimated effort window (e.g., 3-4 hours)".to_string(),
+        }
+    } else if lower.contains("description") {
+        MissingElementResponse {
+            category: "technical-details".to_string(),
+            description: element.to_string(),
+            importance: "high".to_string(),
+            recommendation:
+                "Expand the task description with architecture decisions, file paths, and owners"
+                    .to_string(),
+        }
+    } else {
+        MissingElementResponse {
+            category: "technical-details".to_string(),
+            description: element.to_string(),
+            importance: "medium".to_string(),
+            recommendation: "Document criteria for completion".to_string(),
+        }
+    }
+}
+
+fn build_technical_detail_recommendations(
+    recommendations: &[Recommendation],
+) -> Vec<TechnicalDetailRecommendationResponse> {
+    let mut descriptions: HashMap<&'static str, Option<String>> = HashMap::new();
+    if let Some(rec) = recommendations
+        .iter()
+        .find(|rec| matches!(rec.gap_type, GapType::MissingTechnicalDetails))
+    {
+        for suggestion in &rec.specific_suggestions {
+            let lower = suggestion.to_lowercase();
+            if lower.contains("services/") || lower.contains(".rs") || lower.contains("apps/") {
+                descriptions
+                    .entry("file-path")
+                    .or_insert_with(|| Some(suggestion.clone()));
+            }
+            if lower.contains("function") || lower.contains("method") {
+                descriptions
+                    .entry("function")
+                    .or_insert_with(|| Some(suggestion.clone()));
+            }
+            if lower.contains("component") || lower.contains("hook") {
+                descriptions
+                    .entry("component")
+                    .or_insert_with(|| Some(suggestion.clone()));
+            }
+            if lower.contains("input") || lower.contains("output") {
+                descriptions
+                    .entry("input-output")
+                    .or_insert_with(|| Some(suggestion.clone()));
+            }
+            if lower.contains("architecture") || lower.contains("pattern") {
+                descriptions
+                    .entry("architecture")
+                    .or_insert_with(|| Some(suggestion.clone()));
+            }
+        }
+    }
+
+    let mut entries = Vec::new();
+    let defaults = vec![
+        (
+            "file-path",
+            "Specify file paths impacted by this change",
+            Some("Example: services/readiness/src/domain/task_analyzer.rs"),
+        ),
+        (
+            "function",
+            "List functions or handlers that require updates",
+            Some("Example: TaskAnalyzer::analyze"),
+        ),
+        (
+            "component",
+            "Identify UI components adjusted by this task",
+            Some("Example: apps/web/components/tasks/RecommendationsPanel.tsx"),
+        ),
+        (
+            "input-output",
+            "Clarify expected inputs and outputs for the new behaviour",
+            Some("Define request/response payloads for the analysis endpoint"),
+        ),
+        (
+            "architecture",
+            "Document architecture or integration considerations",
+            Some("Describe how the readiness service interacts with the gateway"),
+        ),
+    ];
+
+    let mut seen = HashSet::new();
+    for (kind, description, example) in defaults {
+        let entry = descriptions
+            .remove(kind)
+            .flatten()
+            .unwrap_or_else(|| description.to_string());
+        if seen.insert(kind) {
+            entries.push(TechnicalDetailRecommendationResponse {
+                kind: kind.to_string(),
+                description: entry,
+                example: example.map(|s| s.to_string()),
+            });
+        }
+    }
+
+    entries
+}
+
+fn build_ac_recommendations(
+    recommendations: &[Recommendation],
+) -> Vec<AcceptanceCriteriaRecommendationResponse> {
+    let mut results = Vec::new();
+    for rec in recommendations {
+        if !matches!(rec.gap_type, GapType::MissingAcceptanceCriteria) {
+            continue;
+        }
+
+        for ac in &rec.ac_references {
+            results.push(AcceptanceCriteriaRecommendationResponse {
+                ac_id: ac.clone(),
+                description: rec
+                    .specific_suggestions
+                    .first()
+                    .cloned()
+                    .unwrap_or_else(|| {
+                        "Link this task to acceptance criteria for traceability".to_string()
+                    }),
+                relevance: "high".to_string(),
+            });
+        }
+    }
+
+    if results.is_empty() {
+        results.push(AcceptanceCriteriaRecommendationResponse {
+            ac_id: "AC-READY-1".to_string(),
+            description: "Link the task to story acceptance criteria to enable readiness tracking"
+                .to_string(),
+            relevance: "high".to_string(),
+        });
+    }
+
+    results
+}
+
+fn build_ai_compatibility_issues(recommendations: &[Recommendation]) -> Vec<String> {
+    if let Some(rec) = recommendations
+        .iter()
+        .find(|rec| matches!(rec.gap_type, GapType::MissingAiAgentCompatibility))
+    {
+        let mut issues: Vec<String> = rec.specific_suggestions.clone();
+        issues.retain(|issue| !issue.is_empty());
+        if !issues.is_empty() {
+            return issues;
+        }
+    }
+
+    vec![
+        "Define success criteria for the AI task hand-off".to_string(),
+        "List dependencies and environment setup instructions".to_string(),
+        "Clarify testing expectations and definition of done".to_string(),
+    ]
+}
+
+fn build_recommendations(recommendations: &[Recommendation]) -> Vec<RecommendationResponse> {
+    if recommendations.is_empty() {
+        return vec![RecommendationResponse {
+            id: "rec-1".to_string(),
+            category: "technical-details".to_string(),
+            title: "Clarify the task description".to_string(),
+            description: "Add concrete file paths, functions, and acceptance criteria links"
+                .to_string(),
+            priority: "high".to_string(),
+            actionable: true,
+            auto_applyable: true,
+        }];
+    }
+
+    recommendations
+        .iter()
+        .enumerate()
+        .map(|(idx, rec)| RecommendationResponse {
+            id: format!("rec-{}", idx + 1),
+            category: match rec.gap_type {
+                GapType::MissingTechnicalDetails => "technical-details".to_string(),
+                GapType::VagueLanguage => "vague-terms".to_string(),
+                GapType::MissingAcceptanceCriteria => "acceptance-criteria".to_string(),
+                GapType::MissingAiAgentCompatibility => "ai-compatibility".to_string(),
+                _ => "examples".to_string(),
+            },
+            title: rec.message.clone(),
+            description: if rec.specific_suggestions.is_empty() {
+                rec.message.clone()
+            } else {
+                rec.specific_suggestions.join("; ")
+            },
+            priority: match rec.gap_type {
+                GapType::MissingTechnicalDetails | GapType::MissingAcceptanceCriteria => {
+                    "high".to_string()
+                }
+                GapType::MissingAiAgentCompatibility => "medium".to_string(),
+                GapType::VagueLanguage => "medium".to_string(),
+                _ => "low".to_string(),
+            },
+            actionable: true,
+            auto_applyable: idx == 0,
+        })
+        .collect()
+}
+
+fn default_examples() -> Vec<TaskExampleResponse> {
+    vec![
+        TaskExampleResponse {
+            title: "Domain-driven recommendation generator".to_string(),
+            description:
+                "See services/readiness/src/domain/recommendation_generator.rs for a complete implementation"
+                    .to_string(),
+            source: "project".to_string(),
+            project_id: None,
+            task_id: None,
+        },
+        TaskExampleResponse {
+            title: "API contract enforcement".to_string(),
+            description:
+                "Refer to services/api-gateway/tests/contract/test_task_analysis_contract.rs for specification coverage"
+                    .to_string(),
+            source: "domain".to_string(),
+            project_id: None,
+            task_id: None,
+        },
+    ]
 }
 
 #[derive(Debug, Serialize)]
@@ -267,4 +753,67 @@ pub async fn rehydrate_projections(
 ) -> Result<impl IntoResponse, AppError> {
     rebuild_projections(state.pool.clone()).await;
     Ok(StatusCode::ACCEPTED)
+}
+
+pub async fn analyze_task(
+    auth: AuthenticatedWithOrg,
+    Path(task_id): Path<Uuid>,
+    State(state): State<ReadinessAppState>,
+    payload: Option<Json<Value>>,
+) -> Result<impl IntoResponse, AppError> {
+    if let Some(Json(value)) = payload {
+        let _ = value; // reserve for future analysis options
+    }
+
+    let org_id = auth.org_context.effective_organization_uuid();
+    let analysis = state.usecases.analyze_task(task_id, org_id).await?;
+
+    let response = TaskAnalysisResponse::from_analysis(&analysis, Utc::now());
+    Ok(Json(response))
+}
+
+pub async fn get_task_analysis(
+    auth: AuthenticatedWithOrg,
+    Path(task_id): Path<Uuid>,
+    State(state): State<ReadinessAppState>,
+) -> Result<impl IntoResponse, AppError> {
+    let org_id = auth.org_context.effective_organization_uuid();
+    let analysis = state
+        .usecases
+        .get_task_analysis(task_id, org_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Task analysis not found".to_string()))?;
+
+    let response = TaskAnalysisResponse::from_analysis(&analysis, Utc::now());
+    Ok(Json(response))
+}
+
+pub async fn enrich_task(
+    auth: AuthenticatedWithOrg,
+    Path(task_id): Path<Uuid>,
+    State(state): State<ReadinessAppState>,
+    Json(payload): Json<TaskEnrichmentRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    if let Some(body_task_id) = payload.task_id {
+        if body_task_id != task_id {
+            return Err(AppError::BadRequest(
+                "Task ID in path and payload must match".to_string(),
+            ));
+        }
+    }
+
+    let org_id = auth.org_context.effective_organization_uuid();
+    let suggestion = state
+        .usecases
+        .enrich_task(
+            task_id,
+            payload.story_id,
+            org_id,
+            payload.include_story_context,
+            payload.include_related_tasks,
+            payload.include_codebase_context,
+        )
+        .await?;
+
+    Ok(Json(TaskEnrichmentResponse::from(suggestion)))
 }

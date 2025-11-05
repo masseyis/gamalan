@@ -1,10 +1,11 @@
 use crate::application::ports::{
     AcceptanceCriteriaRepository, LlmService, ReadinessEvaluationRepository, StoryService,
-    TaskAnalysisRepository, TaskInfo,
+    TaskAnalysisRepository,
 };
 use crate::domain::{
     AcceptanceCriterion, ReadinessCheck, ReadinessEvaluation, TaskAnalysis, TaskAnalyzer,
 };
+use chrono::{DateTime, Utc};
 use common::AppError;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -15,6 +16,19 @@ pub struct ReadinessUsecases {
     task_analysis_repo: Arc<dyn TaskAnalysisRepository>,
     story_service: Arc<dyn StoryService>,
     llm_service: Arc<dyn LlmService>,
+}
+
+#[derive(Debug, Clone)]
+pub struct TaskEnrichmentSuggestion {
+    pub task_id: Uuid,
+    pub story_id: Uuid,
+    pub suggested_title: Option<String>,
+    pub suggested_description: String,
+    pub suggested_ac_refs: Vec<String>,
+    pub confidence: f32,
+    pub reasoning: String,
+    pub generated_at: DateTime<Utc>,
+    pub original_description: Option<String>,
 }
 
 impl ReadinessUsecases {
@@ -475,37 +489,26 @@ impl ReadinessUsecases {
         task_id: Uuid,
         organization_id: Option<Uuid>,
     ) -> Result<TaskAnalysis, AppError> {
-        // Get task info from story service
-        let tasks = self
+        let task_info = self
             .story_service
-            .get_tasks_for_story(Uuid::nil(), organization_id)
-            .await?;
-
-        let task = tasks
-            .iter()
-            .find(|t| t.id == task_id)
+            .get_task_info(task_id, organization_id)
+            .await?
             .ok_or_else(|| AppError::NotFound(format!("Task {} not found", task_id)))?;
 
-        // Get valid AC IDs for the story
         let criteria = self
             .criteria_repo
-            .get_criteria_by_story(task.story_id, organization_id)
+            .get_criteria_by_story(task_info.story_id, organization_id)
             .await?;
 
         let valid_ac_ids: Vec<String> = criteria.iter().map(|c| c.ac_id.clone()).collect();
 
-        // Use TaskInfo from ports
-        let task_info = TaskInfo {
-            id: task.id,
-            story_id: task.story_id,
-            title: task.title.clone(),
-            description: task.description.clone(),
-            acceptance_criteria_refs: task.acceptance_criteria_refs.clone(),
-            estimated_hours: task.estimated_hours,
-        };
+        let previous_analysis = self
+            .task_analysis_repo
+            .get_latest_analysis(task_id, organization_id)
+            .await?;
 
-        // Analyze the task
-        let mut analysis = TaskAnalyzer::analyze(&task_info, &valid_ac_ids, None);
+        let mut analysis =
+            TaskAnalyzer::analyze(&task_info, &valid_ac_ids, previous_analysis.as_ref());
         analysis.organization_id = organization_id;
 
         // Save the analysis
@@ -523,6 +526,122 @@ impl ReadinessUsecases {
         self.task_analysis_repo
             .get_latest_analysis(task_id, organization_id)
             .await
+    }
+
+    pub async fn enrich_task(
+        &self,
+        task_id: Uuid,
+        story_id: Uuid,
+        organization_id: Option<Uuid>,
+        include_story_context: bool,
+        include_related_tasks: bool,
+        include_codebase_context: bool,
+    ) -> Result<TaskEnrichmentSuggestion, AppError> {
+        let task_info = self
+            .story_service
+            .get_task_info(task_id, organization_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound(format!("Task {} not found", task_id)))?;
+
+        let story = self
+            .story_service
+            .get_story_info(story_id, organization_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound(format!("Story {} not found", story_id)))?;
+
+        let criteria = self
+            .criteria_repo
+            .get_criteria_by_story(story_id, organization_id)
+            .await?;
+        let ac_ids: Vec<String> = criteria.iter().map(|c| c.ac_id.clone()).collect();
+
+        let related_tasks = if include_related_tasks {
+            self.story_service
+                .get_tasks_for_story(story_id, organization_id)
+                .await
+                .unwrap_or_default()
+        } else {
+            Vec::new()
+        };
+
+        let mut sections = Vec::new();
+        if include_story_context {
+            let story_description = story
+                .description
+                .clone()
+                .unwrap_or_else(|| "Story description is pending.".to_string());
+            sections.push(format!(
+                "Story Context: {} — {}",
+                story.title, story_description
+            ));
+        }
+
+        let ac_summary = if ac_ids.is_empty() {
+            "No acceptance criteria linked yet; recommend adding AC coverage.".to_string()
+        } else {
+            format!("Key Acceptance Criteria: {}", ac_ids.join(", "))
+        };
+
+        sections.push(format!(
+            "Task Goal: {}\nClarify deliverables and ensure linkage to story intent. {}",
+            task_info.title, ac_summary
+        ));
+
+        if include_codebase_context {
+            sections.push(
+                "Codebase Guidance: Update services/readiness/src/domain/task_analyzer.rs and related adapters to capture new recommendations.".to_string(),
+            );
+        }
+
+        if include_related_tasks {
+            let neighbors: Vec<String> = related_tasks
+                .into_iter()
+                .filter(|t| t.id != task_id)
+                .take(3)
+                .map(|t| format!("- {}", t.title))
+                .collect();
+            if !neighbors.is_empty() {
+                sections.push(format!("Related Tasks:\n{}", neighbors.join("\n")));
+            }
+        }
+
+        let suggested_description = sections.join("\n\n");
+
+        let key_ac = ac_ids
+            .first()
+            .cloned()
+            .unwrap_or_else(|| "AC-REFERENCE".to_string());
+
+        let mut reasoning_parts = vec![format!(
+            "Grounded in story '{}' and acceptance criteria such as {} to maintain readiness coverage.",
+            story.title, key_ac
+        )];
+        if include_story_context {
+            reasoning_parts.push("Story context included for narrative continuity.".to_string());
+        }
+        if include_codebase_context {
+            reasoning_parts.push(
+                "Suggested touchpoints follow the project's hexagonal architecture layout."
+                    .to_string(),
+            );
+        }
+        if include_related_tasks {
+            reasoning_parts.push("Related tasks considered to avoid duplicate work.".to_string());
+        }
+
+        let reasoning = reasoning_parts.join(" ");
+
+        Ok(TaskEnrichmentSuggestion {
+            task_id,
+            story_id,
+            suggested_title: Some(format!("{} (clarified)", task_info.title)),
+            suggested_description,
+            suggested_ac_refs: ac_ids,
+            confidence: 0.82,
+            reasoning,
+            generated_at: Utc::now(),
+            original_description: task_info.description,
+        })
     }
 }
 
@@ -700,6 +819,21 @@ mod tests {
                 acceptance_criteria_refs: vec!["AC1".to_string()],
                 estimated_hours: Some(3),
             }])
+        }
+
+        async fn get_task_info(
+            &self,
+            task_id: Uuid,
+            _organization_id: Option<Uuid>,
+        ) -> Result<Option<crate::application::ports::TaskInfo>, AppError> {
+            Ok(Some(crate::application::ports::TaskInfo {
+                id: task_id,
+                story_id: Uuid::new_v4(),
+                title: "Test Task".to_string(),
+                description: Some("Test task description".to_string()),
+                acceptance_criteria_refs: vec!["AC1".to_string()],
+                estimated_hours: Some(3),
+            }))
         }
     }
 

@@ -57,6 +57,23 @@ impl StoryService for InProcessBacklogService {
             })
             .collect())
     }
+
+    async fn get_task_info(
+        &self,
+        task_id: Uuid,
+        organization_id: Option<Uuid>,
+    ) -> Result<Option<TaskInfo>, AppError> {
+        let task = self.backlog.get_task(task_id, organization_id).await?;
+
+        Ok(task.map(|task| TaskInfo {
+            id: task.id,
+            story_id: task.story_id,
+            title: task.title,
+            description: task.description,
+            acceptance_criteria_refs: task.acceptance_criteria_refs,
+            estimated_hours: task.estimated_hours,
+        }))
+    }
 }
 
 #[allow(dead_code)]
@@ -207,5 +224,58 @@ impl StoryService for HttpBacklogService {
                 estimated_hours: t.estimated_hours,
             })
             .collect())
+    }
+
+    async fn get_task_info(
+        &self,
+        task_id: Uuid,
+        _organization_id: Option<Uuid>,
+    ) -> Result<Option<TaskInfo>, AppError> {
+        let url = format!("{}/tasks/{}", self.base_url, task_id);
+        let response = self.client.get(&url).send().await.map_err(|err| {
+            error!(
+                error = %err,
+                %task_id,
+                "Failed to contact backlog service for task info"
+            );
+            AppError::InternalServerError
+        })?;
+
+        if response.status() == reqwest::StatusCode::NOT_FOUND {
+            return Ok(None);
+        }
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "<body unavailable>".to_string());
+            warn!(
+                %task_id,
+                %status,
+                body = %body,
+                "Backlog service returned non-success status for task info"
+            );
+            return Err(AppError::InternalServerError);
+        }
+
+        let task: TaskResponse = response.json().await.map_err(|err| {
+            error!(
+                error = %err,
+                %task_id,
+                "Failed to deserialize task response from backlog service"
+            );
+            AppError::InternalServerError
+        })?;
+
+        Ok(Some(TaskInfo {
+            id: task.id,
+            story_id: task.story_id,
+            title: task.title,
+            description: task.description,
+            acceptance_criteria_refs: task.acceptance_criteria_refs,
+            estimated_hours: task.estimated_hours,
+        }))
     }
 }

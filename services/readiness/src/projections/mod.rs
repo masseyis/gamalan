@@ -549,4 +549,34 @@ impl StoryService for ProjectionStoryService {
             })
             .collect())
     }
+
+    async fn get_task_info(
+        &self,
+        task_id: Uuid,
+        _organization_id: Option<Uuid>,
+    ) -> Result<Option<TaskInfo>, AppError> {
+        let row = sqlx::query_as::<_, TaskProjectionRow>(
+            r#"
+            SELECT id, story_id, title, description, acceptance_criteria_refs, estimated_hours
+            FROM readiness_task_projections
+            WHERE id = $1
+            "#,
+        )
+        .bind(task_id)
+        .fetch_optional(&*self.pool)
+        .await
+        .map_err(|err| {
+            error!(error = %err, %task_id, "Failed to fetch task projection by id");
+            AppError::InternalServerError
+        })?;
+
+        Ok(row.map(|row| TaskInfo {
+            id: row.id,
+            story_id: row.story_id,
+            title: row.title,
+            description: row.description,
+            acceptance_criteria_refs: row.acceptance_criteria_refs.unwrap_or_default(),
+            estimated_hours: row.estimated_hours.map(|v| v as u32),
+        }))
+    }
 }

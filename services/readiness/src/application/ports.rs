@@ -51,6 +51,11 @@ pub trait StoryService: Send + Sync {
         story_id: Uuid,
         organization_id: Option<Uuid>,
     ) -> Result<Vec<TaskInfo>, AppError>;
+    async fn get_task_info(
+        &self,
+        task_id: Uuid,
+        organization_id: Option<Uuid>,
+    ) -> Result<Option<TaskInfo>, AppError>;
 }
 
 #[derive(Debug, Clone)]

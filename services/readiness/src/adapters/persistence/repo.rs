@@ -6,6 +6,7 @@ use crate::domain::{AcceptanceCriterion, ReadinessEvaluation, TaskAnalysis};
 use async_trait::async_trait;
 use common::AppError;
 use event_bus::AcceptanceCriterionRecord;
+use serde::Deserialize;
 use serde_json::Value;
 use sqlx::{PgPool, Row};
 use tracing::error;
@@ -96,30 +97,99 @@ pub async fn get_criteria_by_story(
     if let Some(row) = json_row {
         let value: Value = row.get("acceptance_criteria");
         let projection_org_id: Option<Uuid> = row.get("organization_id");
-        let records: Vec<AcceptanceCriterionRecord> = match serde_json::from_value(value.clone()) {
-            Ok(records) => records,
-            Err(err) => {
-                error!(error = %err, %story_id, "Failed to parse acceptance criteria projection");
-                Vec::new()
+        let mut criteria =
+            match parse_projection_acceptance_criteria(story_id, projection_org_id, &value) {
+                Ok(criteria) => criteria,
+                Err(err) => {
+                    error!(
+                        error = %err,
+                        %story_id,
+                        "Failed to parse acceptance criteria projection"
+                    );
+                    Vec::new()
+                }
+            };
+
+        if criteria.is_empty() {
+            if let Ok(records) =
+                serde_json::from_value::<Vec<AcceptanceCriterionRecord>>(value.clone())
+            {
+                criteria = records
+                    .into_iter()
+                    .enumerate()
+                    .map(|(index, record)| AcceptanceCriterion {
+                        id: record.id,
+                        story_id: record.story_id,
+                        organization_id: projection_org_id,
+                        ac_id: format!("AC{}", index + 1),
+                        given: record.given,
+                        when: record.when,
+                        then: record.then,
+                    })
+                    .collect();
             }
-        };
-        let criteria = records
-            .into_iter()
-            .enumerate()
-            .map(|(index, record)| AcceptanceCriterion {
-                id: record.id,
-                story_id: record.story_id,
-                organization_id: projection_org_id,
-                ac_id: format!("AC{}", index + 1),
-                given: record.given,
-                when: record.when,
-                then: record.then,
-            })
-            .collect();
+        }
+
         return Ok(criteria);
     }
 
     Ok(vec![])
+}
+
+fn parse_projection_acceptance_criteria(
+    story_id: Uuid,
+    projection_org_id: Option<Uuid>,
+    value: &Value,
+) -> Result<Vec<AcceptanceCriterion>, serde_json::Error> {
+    #[derive(Debug, Deserialize)]
+    struct ProjectionAcceptanceCriterion {
+        #[serde(default)]
+        id: Option<Uuid>,
+        #[serde(default, alias = "acId", alias = "ac_id")]
+        ac_id: Option<String>,
+        #[serde(default)]
+        given: Option<String>,
+        #[serde(default, alias = "when", alias = "whenClause", alias = "when_clause")]
+        when_text: Option<String>,
+        #[serde(default, alias = "then", alias = "thenClause", alias = "then_clause")]
+        then_text: Option<String>,
+    }
+
+    let records: Vec<ProjectionAcceptanceCriterion> = serde_json::from_value(value.clone())?;
+    let mut results = Vec::with_capacity(records.len());
+
+    for (index, record) in records.into_iter().enumerate() {
+        let id = record.id.unwrap_or_else(Uuid::new_v4);
+        let mut ac_id = record
+            .ac_id
+            .as_ref()
+            .map(|raw| raw.trim())
+            .filter(|trimmed| !trimmed.is_empty())
+            .map(|trimmed| trimmed.to_string());
+        if ac_id.is_none() {
+            ac_id = Some(id.to_string());
+        }
+        let ac_id = ac_id.unwrap_or_else(|| format!("AC{}", index + 1));
+
+        let sanitize = |value: Option<String>, fallback: &str| {
+            value
+                .map(|text| text.trim().to_string())
+                .filter(|text| !text.is_empty())
+                .unwrap_or_else(|| fallback.to_string())
+        };
+
+        results.push(AcceptanceCriterion {
+            id,
+            story_id,
+            organization_id: projection_org_id,
+            ac_id,
+            given: sanitize(record.given, "Given context pending clarification."),
+            when: sanitize(record.when_text, "When condition pending clarification."),
+            then: sanitize(record.then_text, "Then outcome pending clarification."),
+        });
+    }
+
+    Ok(results)
 }
 
 pub async fn update_criterion(
@@ -203,28 +273,40 @@ pub async fn get_criterion_by_story_and_ac_id(
 
     if let Some(row) = json_row {
         let value: Value = row.get("acceptance_criteria");
-        let _projection_org_id: Option<Uuid> = row.get("organization_id");
-        let records: Vec<AcceptanceCriterionRecord> = match serde_json::from_value(value.clone()) {
-            Ok(records) => records,
-            Err(err) => {
-                error!(error = %err, %story_id, "Failed to parse acceptance criteria projection");
-                Vec::new()
+        let projection_org_id: Option<Uuid> = row.get("organization_id");
+        match parse_projection_acceptance_criteria(story_id, projection_org_id, &value) {
+            Ok(criteria) => {
+                if let Some(found) = criteria
+                    .into_iter()
+                    .find(|criterion| criterion.ac_id == ac_id)
+                {
+                    return Ok(Some(found));
+                }
             }
-        };
-        if let Some((index, record)) = records
-            .into_iter()
-            .enumerate()
-            .find(|(index, _)| format!("AC{}", index + 1) == ac_id)
-        {
-            return Ok(Some(AcceptanceCriterion {
-                id: record.id,
-                story_id: record.story_id,
-                organization_id,
-                ac_id: format!("AC{}", index + 1),
-                given: record.given,
-                when: record.when,
-                then: record.then,
-            }));
+            Err(err) => {
+                error!(
+                    error = %err,
+                    %story_id,
+                    "Failed to parse acceptance criteria projection"
+                );
+            }
+        }
+
+        if let Ok(records) = serde_json::from_value::<Vec<AcceptanceCriterionRecord>>(value) {
+            for (index, record) in records.into_iter().enumerate() {
+                let candidate = AcceptanceCriterion {
+                    id: record.id,
+                    story_id: record.story_id,
+                    organization_id,
+                    ac_id: format!("AC{}", index + 1),
+                    given: record.given,
+                    when: record.when,
+                    then: record.then,
+                };
+                if candidate.ac_id == ac_id {
+                    return Ok(Some(candidate));
+                }
+            }
         }
     }
 
