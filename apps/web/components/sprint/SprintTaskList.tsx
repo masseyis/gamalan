@@ -167,9 +167,9 @@ export function SprintTaskList({
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <h4 className="font-medium text-foreground break-words">{task.title}</h4>
-                {groupBy === 'status' && (
-                  <p className="text-xs text-muted-foreground mt-1">{task.story.title}</p>
-                )}
+                <p className="text-xs text-muted-foreground mt-1" data-testid="task-story">
+                  {task.story.title}
+                </p>
               </div>
               <Badge
                 variant="outline"
@@ -185,24 +185,25 @@ export function SprintTaskList({
             <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
               {/* Task ID */}
               <div className="flex items-center gap-1">
-                <span className="font-mono">{task.id.slice(0, 8)}</span>
+                <span className="font-mono" data-testid="task-id">
+                  {task.id}
+                </span>
               </div>
 
               {/* Owner */}
               {task.ownerUserId && (
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1" data-testid="task-owner">
                   <User className="h-3 w-3" />
-                  {isMyTask ? <span>You</span> : <span>Owned by {task.ownerUserId}</span>}
+                  <span>{isMyTask ? 'You' : task.ownerUserId}</span>
                 </div>
               )}
 
               {/* AC References */}
               {task.acceptanceCriteriaRefs.length > 0 && (
-                <div className="flex items-center gap-1">
-                  <Badge variant="secondary" className="text-xs">
-                    {task.acceptanceCriteriaRefs.length} AC
-                    {task.acceptanceCriteriaRefs.length !== 1 ? 's' : ''}
-                  </Badge>
+                <div className="flex items-center gap-1" data-testid="task-ac-refs">
+                  <span className="font-medium">
+                    {task.acceptanceCriteriaRefs.join(', ')}
+                  </span>
                 </div>
               )}
 
@@ -258,7 +259,7 @@ export function SprintTaskList({
       <div key={groupKey} data-testid={groupTestId} className="space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-foreground">{groupTitle}</h3>
-          <Badge variant="secondary" data-testid="task-count-badge">
+          <Badge variant="secondary" data-testid={`group-count-${groupKey}`}>
             {taskCount} {taskLabel}
           </Badge>
         </div>
@@ -282,11 +283,14 @@ export function SprintTaskList({
     )
   }
 
+  const totalTasks = tasksWithStories.length
+  const visibleTasks = filteredTasks.length
+
   return (
     <div data-testid="sprint-task-list" className="space-y-6">
       {/* Task count summary */}
-      <div className="text-sm text-muted-foreground">
-        Showing {filteredTasks.length} of {tasksWithStories.length} tasks
+      <div className="text-sm text-muted-foreground" data-testid="task-count-display">
+        Showing {visibleTasks} of {totalTasks} tasks
       </div>
 
       {orderedGroupKeys.map(renderGroup)}

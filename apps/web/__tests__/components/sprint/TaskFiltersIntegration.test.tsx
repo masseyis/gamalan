@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { Story, Task, TaskStatus } from '@/lib/types/story'
@@ -224,15 +224,22 @@ describe('Task Filtering and Grouping Integration (AC2)', () => {
     it('should group tasks by story by default', () => {
       render(<SprintTaskBoard stories={mockStories} currentUserId="user-current" />)
 
-      // Story headings should be visible
-      expect(screen.getByText('Authentication Story')).toBeInTheDocument()
-      expect(screen.getByText('Dashboard Story')).toBeInTheDocument()
-      expect(screen.getByText('Export Story')).toBeInTheDocument()
-
       // Tasks should be under their stories
-      const story1Group = screen.getByTestId('group-story-1')
-      expect(story1Group).toContainElement(screen.getByText('Implement login endpoint'))
-      expect(story1Group).toContainElement(screen.getByText('Add JWT validation'))
+      const story1Group = screen.getByTestId('story-group-story-1')
+      expect(
+        within(story1Group).getByRole('heading', { name: 'Authentication Story' })
+      ).toBeInTheDocument()
+      expect(within(story1Group).getByText('Implement login endpoint')).toBeInTheDocument()
+      expect(within(story1Group).getByText('Add JWT validation')).toBeInTheDocument()
+
+      const story2Group = screen.getByTestId('story-group-story-2')
+      expect(
+        within(story2Group).getByRole('heading', { name: 'Dashboard Story' })
+      ).toBeInTheDocument()
+      const story3Group = screen.getByTestId('story-group-story-3')
+      expect(
+        within(story3Group).getByRole('heading', { name: 'Export Story' })
+      ).toBeInTheDocument()
     })
 
     it('should respect grouping when filters are applied', async () => {
@@ -244,8 +251,16 @@ describe('Task Filtering and Grouping Integration (AC2)', () => {
       await user.click(availableCheckbox)
 
       // Should still see story groups (for stories with available tasks)
-      expect(screen.getByText('Authentication Story')).toBeInTheDocument()
-      expect(screen.getByText('Dashboard Story')).toBeInTheDocument()
+      expect(
+        within(screen.getByTestId('story-group-story-1')).getByRole('heading', {
+          name: 'Authentication Story',
+        })
+      ).toBeInTheDocument()
+      expect(
+        within(screen.getByTestId('story-group-story-2')).getByRole('heading', {
+          name: 'Dashboard Story',
+        })
+      ).toBeInTheDocument()
 
       // Story 3 should not appear (no available tasks)
       expect(screen.queryByText('Export Story')).not.toBeInTheDocument()
@@ -367,7 +382,11 @@ describe('Task Filtering and Grouping Integration (AC2)', () => {
       expect(screen.queryByText('Empty Story')).not.toBeInTheDocument()
 
       // Other stories should still appear
-      expect(screen.getByText('Authentication Story')).toBeInTheDocument()
+      expect(
+        within(screen.getByTestId('story-group-story-1')).getByRole('heading', {
+          name: 'Authentication Story',
+        })
+      ).toBeInTheDocument()
     })
   })
 

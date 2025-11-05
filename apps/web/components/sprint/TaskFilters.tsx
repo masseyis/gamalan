@@ -68,7 +68,7 @@ export function TaskFilters({
       <CardContent className="pt-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Status Filters */}
-          <div className="space-y-4">
+          <div className="space-y-4" data-testid="filter-status">
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <h3 className="text-sm font-semibold text-foreground">Filter by Status</h3>
@@ -83,6 +83,7 @@ export function TaskFilters({
                       checked={selectedStatuses.includes(status)}
                       onCheckedChange={() => handleStatusToggle(status)}
                       aria-label={STATUS_LABELS[status]}
+                      data-testid={`status-option-${status}`}
                     />
                     <div className="flex flex-col">
                       <Label
@@ -100,7 +101,7 @@ export function TaskFilters({
                     className="text-sm font-medium text-muted-foreground bg-muted px-2 py-1 rounded"
                     data-testid={`count-${status}`}
                   >
-                    {taskCounts[status]}
+                    <span data-testid={`filter-badge-${status}`}>{taskCounts[status]}</span>
                   </span>
                 </div>
               ))}
@@ -130,12 +131,20 @@ export function TaskFilters({
                   Organize tasks by
                 </Label>
                 <Select value={groupBy} onValueChange={onGroupByChange}>
-                  <SelectTrigger id="group-by-select" aria-label="Group By">
+                  <SelectTrigger
+                    id="group-by-select"
+                    aria-label="Group By"
+                    data-testid="group-by-select"
+                  >
                     <SelectValue placeholder="Select grouping" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="story">Story</SelectItem>
-                    <SelectItem value="status">Status</SelectItem>
+                    <SelectItem value="story" data-testid="group-option-story">
+                      Story
+                    </SelectItem>
+                    <SelectItem value="status" data-testid="group-option-status">
+                      Status
+                    </SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground mt-2">

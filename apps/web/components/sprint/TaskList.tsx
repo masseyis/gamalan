@@ -104,33 +104,44 @@ export function TaskList({
     )
   }
 
+  const totalTasks = allTasksWithStory.length
+  const visibleTasks = filteredTasks.length
+
   return (
     <div className="space-y-6" data-testid="task-list">
-      {nonEmptyGroups.map(([groupId, group]) => (
-        <Card key={groupId} data-testid={`group-${groupId}`}>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-semibold">{group.label}</CardTitle>
-              <Badge variant="secondary" data-testid={`group-count-${groupId}`}>
-                {group.tasks.length} {group.tasks.length === 1 ? 'task' : 'tasks'}
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {group.tasks.map(({ task, story }) => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  story={story}
-                  isMyTask={task.ownerUserId === currentUserId}
-                  showStoryTitle={groupBy === 'status'}
-                />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+      <div className="text-sm text-muted-foreground" data-testid="task-count-display">
+        Showing {visibleTasks} of {totalTasks} tasks
+      </div>
+
+      {nonEmptyGroups.map(([groupId, group]) => {
+        const groupTestId =
+          groupBy === 'story' ? `story-group-${groupId}` : `status-group-${groupId}`
+
+        return (
+          <Card key={groupId} data-testid={groupTestId}>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg font-semibold">{group.label}</CardTitle>
+                <Badge variant="secondary" data-testid={`group-count-${groupId}`}>
+                  {group.tasks.length} {group.tasks.length === 1 ? 'task' : 'tasks'}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {group.tasks.map(({ task, story }) => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    story={story}
+                    isMyTask={task.ownerUserId === currentUserId}
+                  />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )
+      })}
     </div>
   )
 }
