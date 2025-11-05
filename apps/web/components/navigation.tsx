@@ -13,7 +13,6 @@ import {
   Bell,
   Plus,
   Sparkles,
-  Command,
   Zap,
 } from 'lucide-react'
 
@@ -171,25 +170,6 @@ function NavigationContent({
 
           {/* Right side actions */}
           <div className="flex items-center gap-3">
-            {/* Assistant Trigger - replaces search */}
-            <Button
-              variant="ghost"
-              className="hidden sm:flex hover:bg-primary/10 hover:text-primary gap-2 text-sm"
-              onClick={() => {
-                if (pathname !== '/assistant') {
-                  window.location.href = '/assistant'
-                } else {
-                  document.querySelector('textarea')?.focus()
-                }
-              }}
-            >
-              <Command className="h-4 w-4" />
-              <span>Ask AI</span>
-              <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
-                <span className="text-xs">⌘</span>K
-              </kbd>
-            </Button>
-
             {/* Notifications */}
             <Button
               variant="ghost"
