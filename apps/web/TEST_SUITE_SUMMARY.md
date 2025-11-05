@@ -32,7 +32,7 @@ _Comprehensive navigation testing_
 
 - ✅ All navigation links and routing
 - ✅ Logo clicks and active states
-- ✅ Header buttons (Ask AI, Notifications, New, User Avatar)
+- ✅ Header buttons (Notifications, New, User Avatar)
 - ✅ Keyboard shortcuts (Cmd+K, Enter, Tab navigation)
 - ✅ Mobile navigation and responsive design
 - ✅ 404 handling and error states
@@ -151,7 +151,7 @@ _Test suite validation and performance_
 - ✅ Assistant navigation button
 - ✅ Projects navigation button
 - ✅ Dashboard navigation button
-- ✅ "Ask AI" button with Cmd+K shortcut
+- ✅ Assistant navigation via header menu
 - ✅ Notifications bell button
 - ✅ "New" quick create button
 - ✅ User avatar and profile menu
