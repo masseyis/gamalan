@@ -5,6 +5,7 @@ use auth_clerk::JwtVerifier;
 use axum::body::{to_bytes, Body};
 use axum::http::{Request, StatusCode};
 use axum::Router;
+use common::init_tracing;
 use event_bus::{EventBus, EventPublisher};
 use serde_json::{json, Value};
 use sqlx::{types::Json, PgPool};
@@ -16,14 +17,19 @@ use uuid::Uuid;
 use prompt_builder::application::ports as prompt_ports;
 
 static DB_LOCK: OnceLock<Arc<Mutex<()>>> = OnceLock::new();
+static TRACING_INIT: OnceLock<()> = OnceLock::new();
 
-fn shared_db_lock() -> &'static Arc<Mutex<()>> {
+pub fn shared_db_lock() -> &'static Arc<Mutex<()>> {
     DB_LOCK.get_or_init(|| Arc::new(Mutex::new(())))
 }
 
 async fn build_gateway_app_with_pool() -> (Router, PgPool) {
     let database_url = std::env::var("TEST_DATABASE_URL")
         .unwrap_or_else(|_| "postgres://postgres:password@localhost:5432/gamalan_test".to_string());
+
+    TRACING_INIT.get_or_init(|| {
+        init_tracing("api-gateway-contract-tests");
+    });
 
     let pool = PgPool::connect(&database_url)
         .await
@@ -69,6 +75,9 @@ async fn build_gateway_app_with_pool() -> (Router, PgPool) {
     .await
     .ok();
 
+    ensure_acceptance_criteria_schema(&pool).await;
+    ensure_task_analysis_storage(&pool).await;
+
     // Clean tables to ensure deterministic state for specification tests
     let tables = [
         "task_analyses",
@@ -97,7 +106,7 @@ async fn build_gateway_app_with_pool() -> (Router, PgPool) {
     let readiness_llm: Arc<dyn readiness::application::ports::LlmService> =
         Arc::new(readiness::adapters::integrations::MockLlmService);
     let readiness_usecases =
-        readiness::build_usecases(pool.clone(), event_bus.clone(), readiness_llm);
+        readiness::build_usecases(pool.clone(), event_bus.clone(), readiness_llm).await;
 
     let prompt_backlog_service = Arc::new(api_gateway::PromptBacklogServiceAdapter {
         backlog: backlog_usecases.clone(),
@@ -141,6 +150,105 @@ async fn build_gateway_app_with_pool() -> (Router, PgPool) {
         .merge(prompt_builder_router);
 
     (router, pool)
+}
+
+async fn ensure_acceptance_criteria_schema(pool: &PgPool) {
+    sqlx::query(
+        r#"
+        ALTER TABLE IF EXISTS acceptance_criteria
+            ADD COLUMN IF NOT EXISTS organization_id UUID,
+            ADD COLUMN IF NOT EXISTS ac_id TEXT,
+            ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+        "#,
+    )
+    .execute(pool)
+    .await
+    .ok();
+
+    sqlx::query(
+        r#"
+        UPDATE acceptance_criteria
+        SET ac_id = id::text
+        WHERE ac_id IS NULL
+        "#,
+    )
+    .execute(pool)
+    .await
+    .ok();
+
+    sqlx::query(
+        r#"
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_acceptance_criteria_story_ac_id
+            ON acceptance_criteria(story_id, ac_id)
+            WHERE ac_id IS NOT NULL
+        "#,
+    )
+    .execute(pool)
+    .await
+    .ok();
+
+    sqlx::query("DROP TABLE IF EXISTS criteria CASCADE")
+        .execute(pool)
+        .await
+        .ok();
+    sqlx::query("DROP VIEW IF EXISTS criteria CASCADE")
+        .execute(pool)
+        .await
+        .ok();
+
+    sqlx::query(
+        r#"
+        CREATE VIEW criteria AS
+        SELECT
+            id,
+            story_id,
+            organization_id,
+            ac_id,
+            description,
+            given,
+            when_clause AS "when",
+            then_clause AS "then",
+            created_at,
+            updated_at
+        FROM acceptance_criteria
+        "#,
+    )
+    .execute(pool)
+    .await
+    .ok();
+}
+
+async fn ensure_task_analysis_storage(pool: &PgPool) {
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS task_analyses (
+            id UUID PRIMARY KEY,
+            task_id UUID NOT NULL,
+            story_id UUID NOT NULL,
+            organization_id UUID,
+            analysis_json JSONB NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await
+    .ok();
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_task_analyses_task_id ON task_analyses(task_id)")
+        .execute(pool)
+        .await
+        .ok();
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_task_analyses_story_id ON task_analyses(story_id)")
+        .execute(pool)
+        .await
+        .ok();
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_task_analyses_org_id ON task_analyses(organization_id)",
+    )
+    .execute(pool)
+    .await
+    .ok();
 }
 
 async fn seed_task_with_analysis_gaps(pool: &PgPool, organization_id: Uuid) -> (Uuid, Uuid) {
@@ -209,15 +317,17 @@ async fn seed_task_with_analysis_gaps(pool: &PgPool, organization_id: Uuid) -> (
     sqlx::query(
         r#"
         INSERT INTO readiness_story_projections
-            (id, organization_id, title, description, story_points, acceptance_criteria, created_at, updated_at)
+            (id, project_id, organization_id, title, description, status, story_points, acceptance_criteria, created_at, updated_at)
         VALUES
-            ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+            ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
         "#,
     )
     .bind(story_id)
+    .bind(project_id)
     .bind(organization_id)
     .bind("Spec Test Story")
     .bind(story_description)
+    .bind("ready")
     .bind(Some(5_i32))
     .bind(Json(json!([
         {
@@ -234,9 +344,9 @@ async fn seed_task_with_analysis_gaps(pool: &PgPool, organization_id: Uuid) -> (
     sqlx::query(
         r#"
         INSERT INTO readiness_task_projections
-            (id, story_id, organization_id, title, description, acceptance_criteria_refs, estimated_hours, created_at, updated_at)
+            (id, story_id, organization_id, title, description, status, acceptance_criteria_refs, estimated_hours, created_at, updated_at)
         VALUES
-            ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+            ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
         "#,
     )
     .bind(task_id)
@@ -244,6 +354,7 @@ async fn seed_task_with_analysis_gaps(pool: &PgPool, organization_id: Uuid) -> (
     .bind(organization_id)
     .bind("Spec Test Task Missing Detail")
     .bind(task_description)
+    .bind("available")
     .bind(Vec::<String>::new())
     .bind(Option::<i32>::None)
     .execute(pool)
@@ -252,16 +363,17 @@ async fn seed_task_with_analysis_gaps(pool: &PgPool, organization_id: Uuid) -> (
 
     sqlx::query(
         r#"
-        INSERT INTO acceptance_criteria
-            (id, story_id, organization_id, ac_id, given, "when", "then")
+        INSERT INTO criteria
+            (id, story_id, organization_id, ac_id, description, given, "when", "then")
         VALUES
-            ($1, $2, $3, $4, $5, $6, $7)
+            ($1, $2, $3, $4, $5, $6, $7, $8)
         "#,
     )
     .bind(Uuid::new_v4())
     .bind(story_id)
     .bind(organization_id)
     .bind("AC-READY-1")
+    .bind("AC coverage for readiness contract tests")
     .bind("Given a poorly defined task")
     .bind("When readiness analysis runs")
     .bind("Then recommend linking to AC-READY-1")
@@ -338,15 +450,17 @@ async fn analyze_task_returns_required_contract_fields() {
         .await
         .expect("request execution failed");
 
-    assert_eq!(
-        response.status(),
-        StatusCode::OK,
-        "Analysis must return 200 on success"
-    );
-
+    let status = response.status();
     let body = to_bytes(response.into_body(), usize::MAX)
         .await
         .expect("failed to read response body");
+    if status != StatusCode::OK {
+        panic!(
+            "Analysis must return 200 on success. Got {} with body: {}",
+            status,
+            String::from_utf8_lossy(&body)
+        );
+    }
     let analysis: Value = serde_json::from_slice(&body).expect("analysis response must be JSON");
 
     let clarity_score = analysis
@@ -500,10 +614,17 @@ async fn get_task_analysis_returns_latest_result() {
         .await
         .expect("analysis request failed");
 
-    assert_eq!(analyze_response.status(), StatusCode::OK);
+    let analyze_status = analyze_response.status();
     let analyze_body = to_bytes(analyze_response.into_body(), usize::MAX)
         .await
         .expect("analysis body should deserialize");
+    if analyze_status != StatusCode::OK {
+        panic!(
+            "Analyze request failed with status {} body: {}",
+            analyze_status,
+            String::from_utf8_lossy(&analyze_body)
+        );
+    }
     let analyze_json: Value = serde_json::from_slice(&analyze_body).expect("analysis JSON parse");
     let expected_clarity = analyze_json["clarityScore"]["score"]
         .as_i64()
@@ -525,25 +646,32 @@ async fn get_task_analysis_returns_latest_result() {
         .await
         .expect("get analysis request failed");
 
-    assert_eq!(
-        get_response.status(),
-        StatusCode::OK,
-        "GET analysis must return 200"
-    );
+    let get_status = get_response.status();
     let persisted_body = to_bytes(get_response.into_body(), usize::MAX)
         .await
         .expect("failed to read persisted analysis body");
+    if get_status != StatusCode::OK {
+        panic!(
+            "GET analysis must return 200. Got {} with body: {}",
+            get_status,
+            String::from_utf8_lossy(&persisted_body)
+        );
+    }
     let persisted_json: Value =
         serde_json::from_slice(&persisted_body).expect("persisted analysis JSON parse");
 
     assert_eq!(
         persisted_json["clarityScore"]["score"].as_i64(),
         Some(expected_clarity),
-        "GET endpoint must return the latest clarity score"
+        "GET endpoint must return the latest clarity score. Persisted body: {}, Analyze body: {}",
+        persisted_json,
+        analyze_json
     );
     assert_eq!(
         persisted_json["recommendations"], analyze_json["recommendations"],
-        "Persisted recommendations should match the last analysis result"
+        "Persisted recommendations should match the last analysis result.\nPersisted: {}\nAnalyzed: {}",
+        persisted_json["recommendations"],
+        analyze_json["recommendations"]
     );
 }
 
@@ -591,7 +719,14 @@ async fn concurrent_task_analysis_requests_are_consistent() {
     let mut clarity_scores = Vec::new();
     while let Some(result) = join_set.join_next().await {
         let (status, body) = result.expect("concurrent join must succeed");
-        assert_eq!(status, StatusCode::OK, "Concurrent analysis must succeed");
+        if status != StatusCode::OK {
+            eprintln!(
+                "Concurrent analysis failed with status {} body: {}",
+                status,
+                String::from_utf8_lossy(&body)
+            );
+            panic!("Concurrent analysis must succeed");
+        }
         let json: Value = serde_json::from_slice(&body).expect("analysis JSON parse");
         let clarity = json["clarityScore"]["score"]
             .as_i64()
@@ -603,7 +738,8 @@ async fn concurrent_task_analysis_requests_are_consistent() {
         clarity_scores
             .windows(2)
             .all(|window| window[0] == window[1]),
-        "Clarity score must be deterministic across concurrent requests"
+        "Clarity score must be deterministic across concurrent requests. Scores: {:?}",
+        clarity_scores
     );
 }
 

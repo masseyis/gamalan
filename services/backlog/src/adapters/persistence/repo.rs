@@ -184,11 +184,13 @@ pub async fn update_story(pool: &PgPool, story: &Story) -> Result<(), AppError> 
 
     for ac in &story.acceptance_criteria {
         sqlx::query(
-            "INSERT INTO acceptance_criteria (id, story_id, description, given, when_clause, then_clause)
-             VALUES ($1, $2, $3, $4, $5, $6)",
+            "INSERT INTO acceptance_criteria (id, story_id, organization_id, ac_id, description, given, when_clause, then_clause)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
         )
         .bind(ac.id)
         .bind(story.id)
+        .bind(story.organization_id)
+        .bind(ac.id.to_string())
         .bind(&ac.description)
         .bind(&ac.given)
         .bind(&ac.when)
@@ -248,11 +250,13 @@ pub async fn update_story_with_transaction(
 
     for ac in &story.acceptance_criteria {
         sqlx::query(
-            "INSERT INTO acceptance_criteria (id, story_id, description, given, when_clause, then_clause)
-             VALUES ($1, $2, $3, $4, $5, $6)",
+            "INSERT INTO acceptance_criteria (id, story_id, organization_id, ac_id, description, given, when_clause, then_clause)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
         )
         .bind(ac.id)
         .bind(story.id)
+        .bind(story.organization_id)
+        .bind(ac.id.to_string())
         .bind(&ac.description)
         .bind(&ac.given)
         .bind(&ac.when)

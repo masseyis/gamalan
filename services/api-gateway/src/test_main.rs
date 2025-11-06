@@ -37,7 +37,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let backlog_usecases = backlog::build_usecases(pool.clone(), event_publisher);
     let readiness_llm: Arc<dyn readiness::application::ports::LlmService> =
         Arc::new(readiness::adapters::integrations::MockLlmService);
-    let readiness_usecases = readiness::build_usecases(pool.clone(), event_bus.clone(), readiness_llm);
+    let readiness_usecases =
+        readiness::build_usecases(pool.clone(), event_bus.clone(), readiness_llm).await;
 
     let prompt_backlog_service = Arc::new(api_gateway::PromptBacklogServiceAdapter {
         backlog: backlog_usecases.clone(),
