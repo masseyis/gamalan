@@ -1,4 +1,5 @@
 use crate::domain::task::{Task, TaskStatus};
+use std::cmp::Ordering;
 use uuid::Uuid;
 
 /// Represents a task recommendation for a user or agent
@@ -22,6 +23,8 @@ pub struct RecommendationFilters {
     pub role: Option<String>,
     /// Exclude tasks owned by user
     pub exclude_user_id: Option<Uuid>,
+    /// Current user requesting recommendations (used to prioritize owned tasks)
+    pub current_user_id: Option<Uuid>,
     /// Maximum number of recommendations
     pub limit: Option<usize>,
 }
@@ -106,88 +109,119 @@ impl TaskRecommender {
         tasks: Vec<Task>,
         filters: &RecommendationFilters,
     ) -> Vec<TaskRecommendation> {
-        let mut recommendations: Vec<TaskRecommendation> = tasks
-            .into_iter()
-            // Only recommend available tasks
-            .filter(|task| task.status == TaskStatus::Available)
-            // Apply user exclusion filter
-            .filter(|task| {
-                if let Some(exclude_user_id) = filters.exclude_user_id {
-                    task.owner_user_id.is_none() || task.owner_user_id != Some(exclude_user_id)
-                } else {
-                    true
-                }
-            })
-            // Apply story filter
-            .filter(|task| {
-                if let Some(ref story_ids) = filters.story_ids {
-                    story_ids.contains(&task.story_id)
-                } else {
-                    true
-                }
-            })
-            // Apply role filter (basic keyword matching in title/description)
-            .filter(|task| {
-                if let Some(ref role) = filters.role {
-                    let role_lower = role.to_lowercase();
-                    let title_lower = task.title.to_lowercase();
-                    let desc_lower = task
-                        .description
-                        .as_ref()
-                        .map(|d| d.to_lowercase())
-                        .unwrap_or_default();
+        let mut recommendations: Vec<(bool, TaskRecommendation)> = Vec::new();
 
-                    // Match role keywords in task title or description
-                    match role_lower.as_str() {
-                        "dev" | "developer" => {
-                            title_lower.contains("implement")
-                                || title_lower.contains("create")
-                                || title_lower.contains("build")
-                                || title_lower.contains("add ")
-                                || desc_lower.contains("implement")
-                                || !title_lower.contains("test")
-                        }
-                        "qa" | "tester" => {
-                            title_lower.contains("test")
-                                || title_lower.contains("verify")
-                                || title_lower.contains("e2e")
-                                || desc_lower.contains("test")
-                        }
-                        "po" | "product" => {
-                            title_lower.contains("review")
-                                || title_lower.contains("accept")
-                                || title_lower.contains("validate")
-                        }
-                        _ => true, // Unknown role, include all tasks
-                    }
-                } else {
-                    true
+        for task in tasks.into_iter() {
+            if let Some(exclude_user_id) = filters.exclude_user_id {
+                if task.owner_user_id == Some(exclude_user_id) {
+                    continue;
                 }
-            })
-            .map(|task| {
+            }
+
+            let is_current_user_owner = filters
+                .current_user_id
+                .map(|user_id| {
+                    task.owner_user_id == Some(user_id)
+                        && matches!(task.status, TaskStatus::Owned | TaskStatus::InProgress)
+                })
+                .unwrap_or(false);
+
+            if is_current_user_owner {
                 let score = self.strategy.score_task(&task);
-                let reason = self.strategy.explain_score(&task);
+                let reason = format!(
+                    "Currently assigned to you. {}",
+                    self.strategy.explain_score(&task)
+                );
+
+                recommendations.push((
+                    true,
+                    TaskRecommendation {
+                        task,
+                        score,
+                        reason,
+                    },
+                ));
+                continue;
+            }
+
+            if task.status != TaskStatus::Available {
+                continue;
+            }
+
+            if let Some(ref story_ids) = filters.story_ids {
+                if !story_ids.contains(&task.story_id) {
+                    continue;
+                }
+            }
+
+            if let Some(ref role) = filters.role {
+                let role_lower = role.to_lowercase();
+                let title_lower = task.title.to_lowercase();
+                let desc_lower = task
+                    .description
+                    .as_ref()
+                    .map(|d| d.to_lowercase())
+                    .unwrap_or_default();
+
+                let role_match = match role_lower.as_str() {
+                    "dev" | "developer" => {
+                        title_lower.contains("implement")
+                            || title_lower.contains("create")
+                            || title_lower.contains("build")
+                            || title_lower.contains("add ")
+                            || desc_lower.contains("implement")
+                            || !title_lower.contains("test")
+                    }
+                    "qa" | "tester" => {
+                        title_lower.contains("test")
+                            || title_lower.contains("verify")
+                            || title_lower.contains("e2e")
+                            || desc_lower.contains("test")
+                    }
+                    "po" | "product" => {
+                        title_lower.contains("review")
+                            || title_lower.contains("accept")
+                            || title_lower.contains("validate")
+                    }
+                    _ => true, // Unknown role, include all tasks
+                };
+
+                if !role_match {
+                    continue;
+                }
+            }
+
+            let score = self.strategy.score_task(&task);
+            let reason = self.strategy.explain_score(&task);
+
+            recommendations.push((
+                false,
                 TaskRecommendation {
                     task,
                     score,
                     reason,
-                }
-            })
-            .collect();
-
-        // Sort by score (highest first)
-        recommendations.sort_by(|a, b| {
-            b.score
-                .partial_cmp(&a.score)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
-
-        // Apply limit
-        if let Some(limit) = filters.limit {
-            recommendations.truncate(limit);
+                },
+            ));
         }
 
-        recommendations
+        recommendations.sort_by(
+            |(owned_a, rec_a), (owned_b, rec_b)| match owned_b.cmp(owned_a) {
+                Ordering::Equal => rec_b
+                    .score
+                    .partial_cmp(&rec_a.score)
+                    .unwrap_or(Ordering::Equal),
+                other => other,
+            },
+        );
+
+        let mut sorted: Vec<TaskRecommendation> =
+            recommendations.into_iter().map(|(_, rec)| rec).collect();
+
+        if let Some(limit) = filters.limit {
+            sorted.truncate(limit);
+        }
+
+        sorted
     }
 }
 
@@ -325,6 +359,7 @@ mod tests {
 
         let mut owned_task = create_test_task("Owned task", Some(2), 1);
         owned_task.owner_user_id = Some(user_id);
+        owned_task.status = TaskStatus::Owned;
 
         let tasks = vec![owned_task, create_test_task("Available task", Some(2), 1)];
 
@@ -337,5 +372,30 @@ mod tests {
 
         assert_eq!(recommendations.len(), 1);
         assert_eq!(recommendations[0].task.title, "Available task");
+    }
+
+    #[test]
+    fn test_prioritizes_tasks_owned_by_current_user() {
+        let recommender = TaskRecommender::with_default_strategy();
+        let user_id = Uuid::new_v4();
+
+        let mut my_task = create_test_task("My owned task", Some(2), 1);
+        my_task.owner_user_id = Some(user_id);
+        my_task.status = TaskStatus::Owned;
+
+        let tasks = vec![create_test_task("Available task", Some(3), 3), my_task];
+
+        let filters = RecommendationFilters {
+            current_user_id: Some(user_id),
+            ..Default::default()
+        };
+
+        let recommendations = recommender.recommend(tasks, &filters);
+
+        assert_eq!(recommendations.len(), 2);
+        assert_eq!(recommendations[0].task.title, "My owned task");
+        assert!(recommendations[0]
+            .reason
+            .contains("Currently assigned to you"));
     }
 }
