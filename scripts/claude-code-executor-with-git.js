@@ -377,26 +377,26 @@ async function createBranch(task) {
 
   if (isWorktree) {
     console.log('📂 Detected git worktree environment');
-    // In a worktree, we're already on a dedicated branch path
-    // Just need to pull latest and create our branch
+    // In a worktree, we're on a workspace branch (e.g., dev-1-workspace)
+    // We need to create task branches from origin/main, NOT from workspace branch
     const currentBranch = await getCurrentBranch();
-    console.log(`   Current branch: ${currentBranch}`);
+    console.log(`   Current workspace branch: ${currentBranch}`);
 
     // Clean up any uncommitted changes before operations
     await cleanupGitState();
 
-    // Pull latest changes
+    // Fetch latest from origin to ensure we have fresh refs
+    console.log('🔄 Fetching latest from origin...');
     try {
-      await pullWithConflictResolution(GIT_BASE_BRANCH);
+      await execCommand('git', ['fetch', 'origin', GIT_BASE_BRANCH]);
     } catch (error) {
-      if (error.message.includes('merge conflict')) {
-        throw error; // Conflict resolution failed
-      }
-      console.log('⚠️  Could not pull from origin (may be new repo or no remote)');
+      console.log('⚠️  Could not fetch from origin (may be new repo or no remote)');
     }
 
-    // Create and checkout new branch
-    await execCommand('git', ['checkout', '-b', branchName]);
+    // Create branch from origin/main, NOT from current workspace branch
+    // This keeps workspace branches clean and ensures all task branches start from the same point
+    console.log(`🌿 Creating task branch from origin/${GIT_BASE_BRANCH}...`);
+    await execCommand('git', ['checkout', '-b', branchName, `origin/${GIT_BASE_BRANCH}`]);
   } else {
     console.log('📁 Standard git repository (not worktree)');
 
@@ -473,12 +473,29 @@ async function cleanupBranch(branchName) {
 
   if (isWorktree) {
     // In a worktree, we can't checkout main (it's in use by another worktree)
-    // Just delete the branch and let the worktree manager handle cleanup
+    // Return to workspace branch and optionally delete the task branch
     try {
-      await execCommand('git', ['branch', '-D', branchName]);
-      console.log(`✅ Branch ${branchName} deleted`);
+      // Get the workspace branch name (format: <agent-name>-workspace)
+      const worktreeBranches = await execCommand('git', ['branch', '--list', '*-workspace'], { silent: true });
+      const workspaceBranch = worktreeBranches.stdout.trim().split('\n')[0]?.replace('*', '').trim();
+
+      if (workspaceBranch) {
+        console.log(`🔄 Returning to workspace branch: ${workspaceBranch}`);
+        await execCommand('git', ['checkout', workspaceBranch]);
+      } else {
+        console.log('⚠️  No workspace branch found, staying on current branch');
+      }
+
+      // Optionally delete the task branch (but don't fail if it can't be deleted)
+      // The branch might still be needed if the PR hasn't been merged yet
+      try {
+        await execCommand('git', ['branch', '-D', branchName]);
+        console.log(`✅ Task branch ${branchName} deleted`);
+      } catch (error) {
+        console.log(`ℹ️  Task branch ${branchName} kept (PR may still be open)`);
+      }
     } catch (error) {
-      console.error(`⚠️  Could not delete branch: ${error.message}`);
+      console.error(`⚠️  Could not cleanup: ${error.message}`);
     }
   } else {
     // In a standard repo, checkout main first, then delete the branch
