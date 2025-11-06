@@ -10,7 +10,6 @@ export interface TaskCardProps {
   task: Task
   story?: Story
   isMyTask: boolean
-  showStoryTitle?: boolean
 }
 
 const STATUS_CONFIG = {
@@ -54,7 +53,7 @@ const STATUS_CONFIG = {
  * - Shows owner name for tasks owned by others
  * - Visual distinction for available tasks
  */
-export function TaskCard({ task, story, isMyTask, showStoryTitle = false }: TaskCardProps) {
+export function TaskCard({ task, story, isMyTask }: TaskCardProps) {
   const statusConfig = STATUS_CONFIG[task.status]
   const StatusIcon = statusConfig.icon
   const isAvailable = task.status === 'available' && !task.ownerUserId
@@ -78,12 +77,17 @@ export function TaskCard({ task, story, isMyTask, showStoryTitle = false }: Task
               <StatusIcon className={cn('h-4 w-4 flex-shrink-0', statusConfig.color)} />
               <div className="flex flex-col gap-1 flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-xs font-mono">
-                    {task.id.slice(0, 8)}
+                  <Badge
+                    variant="outline"
+                    className="text-xs font-mono"
+                    data-testid="task-id"
+                  >
+                    {task.id}
                   </Badge>
                   <Badge
                     className={cn('text-xs', statusConfig.bgColor, statusConfig.color)}
                     variant="secondary"
+                    data-testid="task-status-badge"
                   >
                     {statusConfig.label}
                   </Badge>
@@ -98,9 +102,9 @@ export function TaskCard({ task, story, isMyTask, showStoryTitle = false }: Task
             )}
           </div>
 
-          {/* Story Title (if shown) */}
-          {showStoryTitle && story && (
-            <div className="text-xs text-muted-foreground">
+          {/* Story Title */}
+          {story && (
+            <div className="text-xs text-muted-foreground" data-testid="task-story">
               <span className="font-medium">Story:</span> {story.title}
             </div>
           )}
@@ -119,11 +123,9 @@ export function TaskCard({ task, story, isMyTask, showStoryTitle = false }: Task
           <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
             <div className="flex items-center gap-2">
               {task.ownerUserId ? (
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1" data-testid="task-owner">
                   <User className="h-3 w-3" />
-                  <span>
-                    {isMyTask ? 'You' : `Owned by ${task.ownerUserId}`}
-                  </span>
+                  <span>{isMyTask ? 'You' : task.ownerUserId}</span>
                 </div>
               ) : (
                 <span className="text-green-600 font-medium">Available to claim</span>
@@ -131,10 +133,9 @@ export function TaskCard({ task, story, isMyTask, showStoryTitle = false }: Task
             </div>
 
             {task.acceptanceCriteriaRefs.length > 0 && (
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1" data-testid="task-ac-refs">
                 <span className="font-medium">
-                  {task.acceptanceCriteriaRefs.length} AC
-                  {task.acceptanceCriteriaRefs.length !== 1 ? 's' : ''}
+                  {task.acceptanceCriteriaRefs.join(', ')}
                 </span>
               </div>
             )}

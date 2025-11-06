@@ -90,7 +90,8 @@ impl From<TaskRow> for Task {
 pub struct AcceptanceCriteriaRow {
     pub id: Uuid,
     pub story_id: Uuid,
-    pub description: String,
+    #[sqlx(rename = "ac_id")]
+    pub ac_id: String,
     pub given: String,
     #[sqlx(rename = "when_clause")]
     pub when_clause: String,
@@ -101,9 +102,13 @@ pub struct AcceptanceCriteriaRow {
 
 impl From<AcceptanceCriteriaRow> for AcceptanceCriteria {
     fn from(row: AcceptanceCriteriaRow) -> Self {
+        let description = format!(
+            "Given {}, when {}, then {}",
+            row.given, row.when_clause, row.then_clause
+        );
         AcceptanceCriteria {
             id: row.id,
-            description: row.description,
+            description,
             given: row.given,
             when: row.when_clause,
             then: row.then_clause,

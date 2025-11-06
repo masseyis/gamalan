@@ -2,9 +2,12 @@ import React from 'react'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, beforeEach } from 'vitest'
-import { ClarityScoreVisualization } from '@/components/tasks/ClarityScoreVisualization'
+import {
+  ClarityScoreVisualization,
+  type ClarityScoreVisualizationProps,
+} from '@/components/tasks/ClarityScoreVisualization'
 
-const baseProps = {
+const baseProps: ClarityScoreVisualizationProps = {
   taskId: 'task-clarity-123',
   clarityScore: {
     score: 62,

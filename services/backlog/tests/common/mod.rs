@@ -33,6 +33,47 @@ pub async fn setup_test_db() -> PgPool {
         EXTENSIONS_ENABLED.store(true, Ordering::Relaxed);
     }
 
+    // Apply migrations and schema compatibility patches for legacy snapshots
+    if let Err(err) = sqlx::migrate!("../../db/migrations").run(&pool).await {
+        eprintln!(
+            "Backlog test migration attempt failed (continuing with compatibility patches): {err}"
+        );
+    }
+
+    sqlx::query(
+        r#"
+        ALTER TABLE IF EXISTS projects
+            ADD COLUMN IF NOT EXISTS organization_id UUID,
+            ADD COLUMN IF NOT EXISTS description TEXT,
+            ADD COLUMN IF NOT EXISTS team_id UUID,
+            ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+        "#,
+    )
+    .execute(&pool)
+    .await
+    .ok();
+
+    sqlx::query(
+        r#"
+        ALTER TABLE IF EXISTS stories
+            ADD COLUMN IF NOT EXISTS project_id UUID,
+            ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'draft',
+            ADD COLUMN IF NOT EXISTS story_points INTEGER,
+            ADD COLUMN IF NOT EXISTS sprint_id UUID,
+            ADD COLUMN IF NOT EXISTS assigned_to_user_id UUID,
+            ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ,
+            ADD COLUMN IF NOT EXISTS labels TEXT[] DEFAULT '{}'::TEXT[],
+            ADD COLUMN IF NOT EXISTS readiness_override BOOLEAN DEFAULT FALSE,
+            ADD COLUMN IF NOT EXISTS readiness_override_by UUID,
+            ADD COLUMN IF NOT EXISTS readiness_override_reason TEXT,
+            ADD COLUMN IF NOT EXISTS readiness_override_at TIMESTAMPTZ;
+        "#,
+    )
+    .execute(&pool)
+    .await
+    .ok();
+
     // Use full cleanup to ensure test isolation - each test must set up its own data
     clean_test_data(&pool)
         .await

@@ -2,11 +2,17 @@
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { TaskStatus } from '@/lib/types/story'
 import { Filter, X } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 export type GroupByOption = 'story' | 'status'
 
@@ -82,6 +88,7 @@ export function SprintTaskFilters({
                 size="sm"
                 onClick={handleClearFilters}
                 className="h-8 text-muted-foreground hover:text-foreground"
+                data-testid="clear-filters"
               >
                 <X className="h-4 w-4 mr-1" />
                 Clear filters
@@ -90,7 +97,7 @@ export function SprintTaskFilters({
           </div>
 
           {/* Status Filters */}
-          <div data-testid="status-filters">
+          <div data-testid="filter-status">
             <Label className="text-sm font-medium mb-3 block">
               Filter by status
             </Label>
@@ -102,6 +109,7 @@ export function SprintTaskFilters({
                     checked={selectedStatuses.includes(option.value)}
                     onCheckedChange={() => handleStatusToggle(option.value)}
                     aria-label={option.label}
+                    data-testid={`status-option-${option.value}`}
                   />
                   <label
                     htmlFor={`status-${option.value}`}
@@ -111,8 +119,10 @@ export function SprintTaskFilters({
                       <span className={`w-2 h-2 rounded-full ${option.color}`} />
                       {option.label}
                     </span>
-                    <span className="text-muted-foreground">
-                      {taskCounts[option.value]}
+                    <span className="text-muted-foreground" data-testid={`count-${option.value}`}>
+                      <span data-testid={`filter-badge-${option.value}`}>
+                        {taskCounts[option.value]}
+                      </span>
                     </span>
                   </label>
                 </div>
@@ -123,28 +133,24 @@ export function SprintTaskFilters({
           {/* Group By Controls */}
           <div data-testid="group-by-controls">
             <Label className="text-sm font-medium mb-3 block">Group by</Label>
-            <RadioGroup value={groupBy} onValueChange={(value) => onGroupChange(value as GroupByOption)} aria-label="Group by">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="flex items-center space-x-3 p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors">
-                  <RadioGroupItem value="story" id="group-story" aria-label="Group by Story" />
-                  <label
-                    htmlFor="group-story"
-                    className="flex-1 text-sm font-medium cursor-pointer"
-                  >
-                    Group by Story
-                  </label>
-                </div>
-                <div className="flex items-center space-x-3 p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors">
-                  <RadioGroupItem value="status" id="group-status" aria-label="Group by Status" />
-                  <label
-                    htmlFor="group-status"
-                    className="flex-1 text-sm font-medium cursor-pointer"
-                  >
-                    Group by Status
-                  </label>
-                </div>
-              </div>
-            </RadioGroup>
+            <Select value={groupBy} onValueChange={(value) => onGroupChange(value as GroupByOption)}>
+              <SelectTrigger data-testid="group-by-select" aria-label="Group by">
+                <SelectValue placeholder="Select grouping" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="story" data-testid="group-option-story">
+                  Story
+                </SelectItem>
+                <SelectItem value="status" data-testid="group-option-status">
+                  Status
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-2">
+              {groupBy === 'story'
+                ? 'Tasks grouped by their parent story'
+                : 'Tasks grouped by current status'}
+            </p>
           </div>
         </div>
       </CardContent>

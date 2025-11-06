@@ -2,6 +2,7 @@ import '@testing-library/jest-dom'
 import { expect, afterEach, beforeAll, afterAll, vi } from 'vitest'
 import { cleanup } from '@testing-library/react'
 import React from 'react'
+import './test-storage-polyfill'
 import { server } from '../mocks/server'
 
 // Mock Clerk module to use our test wrapper hooks

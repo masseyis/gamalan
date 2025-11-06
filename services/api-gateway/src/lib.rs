@@ -184,6 +184,18 @@ pub fn build_readiness_router(
             "/api/v1/readiness/projections/hydrate",
             post(readiness_handlers::rehydrate_projections),
         )
+        .route(
+            "/api/v1/readiness/tasks/{task_id}/analyze",
+            post(readiness_handlers::analyze_task),
+        )
+        .route(
+            "/api/v1/readiness/tasks/{task_id}/analysis",
+            get(readiness_handlers::get_task_analysis),
+        )
+        .route(
+            "/api/v1/readiness/tasks/{task_id}/enrich",
+            post(readiness_handlers::enrich_task),
+        )
         .with_state(state)
         .layer(Extension(verifier))
         .layer(TraceLayer::new_for_http())

@@ -202,16 +202,18 @@ describe('SprintTaskBoard Integration - AC2: Filtering and Grouping', () => {
     it('should group tasks by story by default', () => {
       render(<SprintTaskBoardIntegration stories={mockStories} currentUserId="user-1" />)
 
-      // Story groups should be visible
-      expect(screen.getByText('User Authentication')).toBeInTheDocument()
-      expect(screen.getByText('Dashboard Widgets')).toBeInTheDocument()
-
       // Story 1 should show 3 tasks
       const story1Group = screen.getByTestId('story-group-story-1')
+      expect(
+        within(story1Group).getByRole('heading', { name: 'User Authentication' })
+      ).toBeInTheDocument()
       expect(within(story1Group).getByText('3 tasks')).toBeInTheDocument()
 
       // Story 2 should show 2 tasks
       const story2Group = screen.getByTestId('story-group-story-2')
+      expect(
+        within(story2Group).getByRole('heading', { name: 'Dashboard Widgets' })
+      ).toBeInTheDocument()
       expect(within(story2Group).getByText('2 tasks')).toBeInTheDocument()
     })
 
@@ -219,8 +221,10 @@ describe('SprintTaskBoard Integration - AC2: Filtering and Grouping', () => {
       render(<SprintTaskBoardIntegration stories={mockStories} currentUserId="user-1" />)
 
       // Switch to group by status
-      const statusRadio = screen.getByRole('radio', { name: /group by status/i })
-      fireEvent.click(statusRadio)
+      const groupByTrigger = screen.getByTestId('group-by-select')
+      fireEvent.click(groupByTrigger)
+      const statusOption = screen.getByTestId('group-option-status')
+      fireEvent.click(statusOption)
 
       // Status groups should be visible
       expect(screen.getByTestId('status-group-available')).toBeInTheDocument()
@@ -241,8 +245,10 @@ describe('SprintTaskBoard Integration - AC2: Filtering and Grouping', () => {
       expect(screen.getByText('Add widget data')).toBeInTheDocument()
 
       // Switch to group by status
-      const statusRadio = screen.getByRole('radio', { name: /group by status/i })
-      fireEvent.click(statusRadio)
+      const statusTrigger = screen.getByTestId('group-by-select')
+      fireEvent.click(statusTrigger)
+      const statusOption = screen.getByTestId('group-option-status')
+      fireEvent.click(statusOption)
 
       // Should still show same filtered tasks, now grouped by status
       expect(screen.getByText('Write tests')).toBeInTheDocument()
@@ -284,8 +290,10 @@ describe('SprintTaskBoard Integration - AC2: Filtering and Grouping', () => {
       render(<SprintTaskBoardIntegration stories={mockStories} currentUserId="user-1" />)
 
       // Switch to status grouping
-      const statusRadio = screen.getByRole('radio', { name: /group by status/i })
-      fireEvent.click(statusRadio)
+      const groupByTrigger = screen.getByTestId('group-by-select')
+      fireEvent.click(groupByTrigger)
+      const statusOption = screen.getByTestId('group-option-status')
+      fireEvent.click(statusOption)
 
       // Available should show 2 tasks
       const availableGroup = screen.getByTestId('status-group-available')
@@ -345,8 +353,14 @@ describe('SprintTaskBoard Integration - AC2: Filtering and Grouping', () => {
       render(<SprintTaskBoardIntegration stories={mockStories} currentUserId="user-1" />)
 
       // Step 1: Verify initial state - grouped by story, all tasks visible
-      expect(screen.getByText('User Authentication')).toBeInTheDocument()
-      expect(screen.getByText('Dashboard Widgets')).toBeInTheDocument()
+      const initialStory1Group = screen.getByTestId('story-group-story-1')
+      const initialStory2Group = screen.getByTestId('story-group-story-2')
+      expect(
+        within(initialStory1Group).getByRole('heading', { name: 'User Authentication' })
+      ).toBeInTheDocument()
+      expect(
+        within(initialStory2Group).getByRole('heading', { name: 'Dashboard Widgets' })
+      ).toBeInTheDocument()
       expect(screen.getAllByText(/task/).length).toBeGreaterThan(0)
 
       // Step 2: Apply available filter
@@ -368,8 +382,10 @@ describe('SprintTaskBoard Integration - AC2: Filtering and Grouping', () => {
       expect(screen.getByText('Add widget data')).toBeInTheDocument()
 
       // Step 4: Switch to status grouping
-      const statusRadio = screen.getByRole('radio', { name: /group by status/i })
-      fireEvent.click(statusRadio)
+      const statusTrigger = screen.getByTestId('group-by-select')
+      fireEvent.click(statusTrigger)
+      const statusOption = screen.getByTestId('group-option-status')
+      fireEvent.click(statusOption)
 
       // Should still show same tasks but grouped by status
       expect(screen.getByTestId('status-group-available')).toBeInTheDocument()
@@ -388,14 +404,15 @@ describe('SprintTaskBoard Integration - AC2: Filtering and Grouping', () => {
       expect(screen.getByTestId('status-group-completed')).toBeInTheDocument()
 
       // Step 6: Switch back to story grouping
-      const storyRadio = screen.getByRole('radio', { name: /group by story/i })
-      fireEvent.click(storyRadio)
+      fireEvent.click(statusTrigger)
+      const storyOption = screen.getByTestId('group-option-story')
+      fireEvent.click(storyOption)
 
       // Should be back to initial state
-      expect(screen.getByText('User Authentication')).toBeInTheDocument()
-      expect(screen.getByText('Dashboard Widgets')).toBeInTheDocument()
-
       const story1Group = screen.getByTestId('story-group-story-1')
+      expect(
+        within(story1Group).getByRole('heading', { name: 'User Authentication' })
+      ).toBeInTheDocument()
       expect(within(story1Group).getByText('3 tasks')).toBeInTheDocument()
     })
   })
