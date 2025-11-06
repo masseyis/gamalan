@@ -90,25 +90,18 @@ impl From<TaskRow> for Task {
 pub struct AcceptanceCriteriaRow {
     pub id: Uuid,
     pub story_id: Uuid,
-    #[sqlx(rename = "ac_id")]
-    pub ac_id: String,
+    pub description: String,
     pub given: String,
-    #[sqlx(rename = "when_clause")]
     pub when_clause: String,
-    #[sqlx(rename = "then_clause")]
     pub then_clause: String,
     pub created_at: DateTime<Utc>,
 }
 
 impl From<AcceptanceCriteriaRow> for AcceptanceCriteria {
     fn from(row: AcceptanceCriteriaRow) -> Self {
-        let description = format!(
-            "Given {}, when {}, then {}",
-            row.given, row.when_clause, row.then_clause
-        );
         AcceptanceCriteria {
             id: row.id,
-            description,
+            description: row.description,
             given: row.given,
             when: row.when_clause,
             then: row.then_clause,
@@ -147,4 +140,30 @@ pub struct LabelRow {
     #[allow(dead_code)]
     pub id: Uuid,
     pub name: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Utc;
+
+    #[test]
+    fn acceptance_criteria_row_conversion_preserves_fields() {
+        let row = AcceptanceCriteriaRow {
+            id: Uuid::new_v4(),
+            story_id: Uuid::new_v4(),
+            description: "System responds accurately".to_string(),
+            given: "a user is authenticated".to_string(),
+            when_clause: "they request data".to_string(),
+            then_clause: "the system returns a 200 response".to_string(),
+            created_at: Utc::now(),
+        };
+
+        let ac = AcceptanceCriteria::from(row);
+
+        assert_eq!(ac.description, "System responds accurately");
+        assert_eq!(ac.given, "a user is authenticated");
+        assert_eq!(ac.when, "they request data");
+        assert_eq!(ac.then, "the system returns a 200 response");
+    }
 }
