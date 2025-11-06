@@ -12,17 +12,21 @@ Battra now includes an intelligent task recommendation system that enables auton
 
 **Components:**
 - `TaskRecommendation` - struct containing task, score, and explanation
-- `RecommendationFilters` - filtering options (sprint, project, role, etc.)
+- `RecommendationFilters` - filtering options (sprint, project, role, etc.) plus the
+  `current_user_id` used to prioritize tasks already owned by the requesting agent
 - `RecommendationStrategy` trait - pluggable scoring strategies
 - `DefaultRecommendationStrategy` - default scoring implementation
 - `TaskRecommender` - main recommendation engine
 
-**Scoring Logic:**
+**Scoring & Ordering Logic:**
 ```rust
 - Base score: 100.0
 - Estimated hours penalty: -2.0 per hour (prefer smaller tasks)
 - Age bonus: +0.5 per day (prefer older tasks)
 - Role matching: keyword-based filtering
+- Contributor-first ordering: tasks currently owned by the requesting user are always
+  returned first (unless `exclude_mine=true`) and include a reason noting they are already
+  assigned to you.
 ```
 
 **Role Filters:**
@@ -73,6 +77,10 @@ pub async fn get_recommended_tasks(
 - `role: Option<String>` - Filter by role (dev/qa/po)
 - `exclude_mine: Option<bool>` - Exclude tasks I own
 - `limit: Option<usize>` - Max recommendations to return
+
+Regardless of filters, the API automatically puts any tasks already owned by the
+requesting user at the top of the response so agents resume in-flight work before
+grabbing new tasks. Set `exclude_mine=true` if you explicitly want to skip your tasks.
 
 ### 5. API Gateway - Route Registration
 

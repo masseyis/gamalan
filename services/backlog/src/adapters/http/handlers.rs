@@ -501,6 +501,7 @@ pub async fn get_recommended_tasks(
         } else {
             None
         },
+        current_user_id: Some(user_id),
         limit: query.limit,
     };
 
