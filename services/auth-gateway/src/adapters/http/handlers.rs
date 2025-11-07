@@ -504,7 +504,7 @@ pub async fn update_current_user_role(
     };
 
     user_usecases
-        .update_user_role_by_external_id(&auth.sub, role, specialty)
+        .update_user_role_by_sub(&auth.sub, role, specialty)
         .await?;
 
     Ok(StatusCode::NO_CONTENT)

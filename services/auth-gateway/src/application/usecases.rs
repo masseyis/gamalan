@@ -73,15 +73,14 @@ impl UserUsecases {
         Ok(user)
     }
 
-    pub async fn update_user_role_by_external_id(
+    pub async fn update_user_role_by_sub(
         &self,
-        external_id: &str,
+        sub: &str,
         role: UserRole,
         specialty: Option<ContributorSpecialty>,
     ) -> Result<User, AppError> {
         let mut user = self
-            .user_repo
-            .get_user_by_external_id(external_id)
+            .get_user_by_sub(sub)
             .await?
             .ok_or(AppError::NotFound("User not found".to_string()))?;
 
@@ -645,5 +644,45 @@ mod tests {
 
         assert_eq!(result.external_id, uuid_like_external);
         assert_eq!(result.id, user.id);
+    }
+
+    #[tokio::test]
+    async fn update_user_role_by_sub_prefers_internal_id() {
+        let user = build_user("external-uuid-match");
+        let user_id = user.id;
+
+        let repo = Arc::new(MockUserRepo {
+            users_by_id: HashMap::from([(user_id, user.clone())]),
+            users_by_external: HashMap::new(),
+        });
+
+        let usecases = UserUsecases::new(repo);
+        let updated = usecases
+            .update_user_role_by_sub(&user_id.to_string(), UserRole::ProductOwner, None)
+            .await
+            .expect("update should succeed");
+
+        assert_eq!(updated.id, user_id);
+        assert_eq!(updated.role, UserRole::ProductOwner);
+    }
+
+    #[tokio::test]
+    async fn update_user_role_by_sub_falls_back_to_external() {
+        let uuid_like_external = Uuid::new_v4().to_string();
+        let user = build_user(&uuid_like_external);
+
+        let repo = Arc::new(MockUserRepo {
+            users_by_id: HashMap::new(),
+            users_by_external: HashMap::from([(uuid_like_external.clone(), user.clone())]),
+        });
+
+        let usecases = UserUsecases::new(repo);
+        let updated = usecases
+            .update_user_role_by_sub(&uuid_like_external, UserRole::ManagingContributor, None)
+            .await
+            .expect("update should succeed");
+
+        assert_eq!(updated.external_id, uuid_like_external);
+        assert_eq!(updated.role, UserRole::ManagingContributor);
     }
 }
