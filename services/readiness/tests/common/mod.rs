@@ -208,7 +208,7 @@ pub async fn build_readiness_router_for_tests(pool: PgPool) -> Router {
     let llm_service = Arc::new(MockLlmService::new()) as Arc<dyn LlmService>;
 
     // Build usecases
-    let usecases = readiness::build_usecases(pool.clone(), event_bus, llm_service);
+    let usecases = readiness::build_usecases(pool.clone(), event_bus, llm_service).await;
 
     // Wrap in ReadinessAppState
     let state = ReadinessAppState {
@@ -245,19 +245,22 @@ pub async fn create_test_story(
     description: Option<&str>,
 ) -> Uuid {
     let story_id = Uuid::new_v4();
+    let project_id = Uuid::new_v4();
 
     // Insert into stories table (used by joins in criteria queries)
     sqlx::query(
         r#"
         INSERT INTO stories
-        (id, organization_id, title, description, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, NOW(), NOW())
+        (id, project_id, organization_id, title, description, status, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
         "#,
     )
     .bind(story_id)
+    .bind(project_id)
     .bind(org_id)
     .bind(title)
     .bind(description)
+    .bind("draft")
     .execute(pool)
     .await
     .expect("Failed to create test story in stories table");
@@ -266,14 +269,16 @@ pub async fn create_test_story(
     sqlx::query(
         r#"
         INSERT INTO readiness_story_projections
-        (id, organization_id, title, description, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, NOW(), NOW())
+        (id, project_id, organization_id, title, description, status, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
         "#,
     )
     .bind(story_id)
+    .bind(project_id)
     .bind(org_id)
     .bind(title)
     .bind(description)
+    .bind("draft")
     .execute(pool)
     .await
     .expect("Failed to create test story in readiness_story_projections");
@@ -295,15 +300,16 @@ pub async fn create_test_criteria(
 
     sqlx::query(
         r#"
-        INSERT INTO acceptance_criteria
-        (id, story_id, organization_id, ac_id, given, "when", "then")
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        INSERT INTO criteria
+        (id, story_id, organization_id, ac_id, description, given, "when", "then")
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         "#,
     )
     .bind(id)
     .bind(story_id)
     .bind(org_id)
     .bind(ac_id)
+    .bind(format!("Acceptance criteria {ac_id}"))
     .bind(given)
     .bind(when)
     .bind(then)
@@ -336,8 +342,8 @@ pub async fn create_test_task(
     sqlx::query(
         r#"
         INSERT INTO readiness_task_projections
-        (id, story_id, organization_id, title, description, acceptance_criteria_refs, estimated_hours, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+        (id, story_id, organization_id, title, description, status, acceptance_criteria_refs, estimated_hours, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
         "#,
     )
     .bind(task_id)
@@ -345,6 +351,7 @@ pub async fn create_test_task(
     .bind(org_id)
     .bind(title)
     .bind(description)
+    .bind("available")
     .bind(&ac_refs) // Bind as &Vec<String> for TEXT[] type
     .bind(estimated_hours.map(|h| h as i32))
     .execute(pool)

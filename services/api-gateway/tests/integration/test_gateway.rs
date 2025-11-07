@@ -95,7 +95,7 @@ async fn create_test_app() -> Router {
     let readiness_llm: Arc<dyn readiness::application::ports::LlmService> =
         Arc::new(readiness::adapters::integrations::MockLlmService);
     let readiness_usecases =
-        readiness::build_usecases(pool.clone(), event_bus.clone(), readiness_llm);
+        readiness::build_usecases(pool.clone(), event_bus.clone(), readiness_llm).await;
 
     let prompt_backlog_service = Arc::new(api_gateway::PromptBacklogServiceAdapter {
         backlog: backlog_usecases.clone(),
@@ -151,6 +151,9 @@ async fn create_test_app() -> Router {
 
 #[tokio::test]
 async fn test_gateway_health_check() {
+    let _guard = crate::contract::test_task_analysis_contract::shared_db_lock()
+        .lock()
+        .await;
     let app = create_test_app().await;
 
     let response = app
@@ -171,6 +174,9 @@ async fn test_gateway_health_check() {
 
 #[tokio::test]
 async fn test_gateway_readiness_check() {
+    let _guard = crate::contract::test_task_analysis_contract::shared_db_lock()
+        .lock()
+        .await;
     let app = create_test_app().await;
 
     let response = app
@@ -191,6 +197,9 @@ async fn test_gateway_readiness_check() {
 
 #[tokio::test]
 async fn test_auth_service_routing() {
+    let _guard = crate::contract::test_task_analysis_contract::shared_db_lock()
+        .lock()
+        .await;
     let app = create_test_app().await;
 
     // Test that auth service routes are reachable (should return 401 for unauthenticated requests)
@@ -212,6 +221,9 @@ async fn test_auth_service_routing() {
 
 #[tokio::test]
 async fn test_api_v1_routing() {
+    let _guard = crate::contract::test_task_analysis_contract::shared_db_lock()
+        .lock()
+        .await;
     let app = create_test_app().await;
 
     // Test projects service routing
@@ -231,6 +243,9 @@ async fn test_api_v1_routing() {
 
 #[tokio::test]
 async fn test_cors_headers() {
+    let _guard = crate::contract::test_task_analysis_contract::shared_db_lock()
+        .lock()
+        .await;
     let app = create_test_app().await;
 
     let response = app
@@ -258,6 +273,9 @@ async fn test_cors_headers() {
 
 #[tokio::test]
 async fn test_not_found_route() {
+    let _guard = crate::contract::test_task_analysis_contract::shared_db_lock()
+        .lock()
+        .await;
     let app = create_test_app().await;
 
     let response = app
@@ -275,6 +293,9 @@ async fn test_not_found_route() {
 
 #[tokio::test]
 async fn test_method_not_allowed() {
+    let _guard = crate::contract::test_task_analysis_contract::shared_db_lock()
+        .lock()
+        .await;
     let app = create_test_app().await;
 
     let response = app
@@ -293,6 +314,9 @@ async fn test_method_not_allowed() {
 
 #[tokio::test]
 async fn test_request_tracing_headers() {
+    let _guard = crate::contract::test_task_analysis_contract::shared_db_lock()
+        .lock()
+        .await;
     let app = create_test_app().await;
 
     let response = app
@@ -316,6 +340,9 @@ async fn test_request_tracing_headers() {
 // Load testing helpers - would be used with tools like K6 or Artillery
 #[tokio::test]
 async fn test_concurrent_requests() {
+    let _guard = crate::contract::test_task_analysis_contract::shared_db_lock()
+        .lock()
+        .await;
     let app = create_test_app().await;
 
     let handles: Vec<_> = (0..10)
@@ -343,6 +370,9 @@ async fn test_concurrent_requests() {
 
 #[tokio::test]
 async fn test_large_request_handling() {
+    let _guard = crate::contract::test_task_analysis_contract::shared_db_lock()
+        .lock()
+        .await;
     let app = create_test_app().await;
 
     // Test with a large JSON payload
@@ -374,6 +404,9 @@ async fn test_large_request_handling() {
 // Performance benchmarks - would be expanded for actual performance testing
 #[tokio::test]
 async fn test_response_time_benchmark() {
+    let _guard = crate::contract::test_task_analysis_contract::shared_db_lock()
+        .lock()
+        .await;
     let app = create_test_app().await;
 
     let start = std::time::Instant::now();
@@ -406,6 +439,9 @@ async fn test_response_time_benchmark() {
 
 #[tokio::test]
 async fn test_cross_service_project_to_backlog_workflow() {
+    let _guard = crate::contract::test_task_analysis_contract::shared_db_lock()
+        .lock()
+        .await;
     let app = create_test_app().await;
 
     // Step 1: Create a project (unauthorized - should fail)
@@ -434,6 +470,9 @@ async fn test_cross_service_project_to_backlog_workflow() {
 #[tokio::test]
 #[ignore = "TODO: Requires full authentication integration - test in staging environment"]
 async fn test_cross_service_story_to_readiness_workflow() {
+    let _guard = crate::contract::test_task_analysis_contract::shared_db_lock()
+        .lock()
+        .await;
     let app = create_test_app().await;
     let project_id = Uuid::new_v4();
 
@@ -479,6 +518,9 @@ async fn test_cross_service_story_to_readiness_workflow() {
 #[tokio::test]
 #[ignore = "TODO: Requires full authentication integration - test in staging environment"]
 async fn test_cross_service_backlog_to_prompt_builder_workflow() {
+    let _guard = crate::contract::test_task_analysis_contract::shared_db_lock()
+        .lock()
+        .await;
     let app = create_test_app().await;
     let project_id = Uuid::new_v4();
     let _story_id = Uuid::new_v4();
@@ -506,6 +548,9 @@ async fn test_cross_service_backlog_to_prompt_builder_workflow() {
 #[tokio::test]
 #[ignore = "TODO: Requires full authentication integration - test in staging environment"]
 async fn test_cross_service_context_orchestrator_integration() {
+    let _guard = crate::contract::test_task_analysis_contract::shared_db_lock()
+        .lock()
+        .await;
     let app = create_test_app().await;
     let story_id = Uuid::new_v4();
 
@@ -535,6 +580,9 @@ async fn test_cross_service_context_orchestrator_integration() {
 
 #[tokio::test]
 async fn test_gateway_health_endpoints() {
+    let _guard = crate::contract::test_task_analysis_contract::shared_db_lock()
+        .lock()
+        .await;
     let app = create_test_app().await;
 
     // Test main gateway health endpoints only (services no longer have individual health endpoints)
@@ -566,6 +614,9 @@ async fn test_gateway_health_endpoints() {
 
 #[tokio::test]
 async fn test_service_path_routing_isolation() {
+    let _guard = crate::contract::test_task_analysis_contract::shared_db_lock()
+        .lock()
+        .await;
     let app = create_test_app().await;
 
     // Test that services don't interfere with each other's routing
@@ -604,6 +655,9 @@ async fn test_service_path_routing_isolation() {
 
 #[tokio::test]
 async fn test_concurrent_cross_service_requests() {
+    let _guard = crate::contract::test_task_analysis_contract::shared_db_lock()
+        .lock()
+        .await;
     let app = create_test_app().await;
 
     let endpoints = ["/health", "/ready"];
@@ -634,6 +688,9 @@ async fn test_concurrent_cross_service_requests() {
 
 #[tokio::test]
 async fn test_gateway_performance_under_load() {
+    let _guard = crate::contract::test_task_analysis_contract::shared_db_lock()
+        .lock()
+        .await;
     let app = create_test_app().await;
 
     let start = std::time::Instant::now();
@@ -695,6 +752,9 @@ async fn test_gateway_performance_under_load() {
 #[tokio::test]
 #[ignore = "TODO: Update test after removing individual service health endpoints - architecture uses centralized health checks"]
 async fn test_database_sharing_across_services() {
+    let _guard = crate::contract::test_task_analysis_contract::shared_db_lock()
+        .lock()
+        .await;
     let app = create_test_app().await;
 
     // This test verifies that all services share the same database instance

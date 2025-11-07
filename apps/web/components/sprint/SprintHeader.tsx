@@ -44,6 +44,12 @@ export function SprintHeader({ sprint, stories }: SprintHeaderProps) {
     }
   }, [stories])
 
+  // Deduplicate stories to avoid counting duplicates that may appear in data responses
+  const uniqueStoryCount = useMemo(() => {
+    const uniqueStoryIds = new Set(stories.map((story) => story.id))
+    return uniqueStoryIds.size
+  }, [stories])
+
   // Format dates for display - use specific format to match test expectations
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -99,7 +105,7 @@ export function SprintHeader({ sprint, stories }: SprintHeaderProps) {
                   <Target className="h-5 w-5 text-muted-foreground mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground mb-1">Stories in sprint</p>
                   <p className="text-2xl font-bold text-foreground" data-testid="story-count">
-                    {stories.length} {stories.length === 1 ? 'story' : 'stories'}
+                    {uniqueStoryCount} {uniqueStoryCount === 1 ? 'story' : 'stories'}
                   </p>
                 </div>
               </CardContent>

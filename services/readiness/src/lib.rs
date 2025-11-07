@@ -17,13 +17,15 @@ use std::sync::Arc;
 
 pub use config::AppConfig;
 
-pub fn build_usecases(
+pub async fn build_usecases(
     pool: PgPool,
     event_bus: Arc<EventBus>,
     llm_service: Arc<dyn LlmService>,
 ) -> Arc<ReadinessUsecases> {
     let pool = Arc::new(pool);
-    projections::ProjectionWorker::spawn(pool.clone(), event_bus);
+    let store = projections::ProjectionStore::new(pool.clone());
+    store.hydrate().await;
+    projections::ProjectionWorker::spawn(store.clone(), event_bus);
 
     let story_service = Arc::new(projections::ProjectionStoryService::new(pool.clone()))
         as Arc<dyn application::ports::StoryService>;

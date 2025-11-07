@@ -4,6 +4,12 @@ import { SprintHeader } from '@/components/sprint/SprintHeader'
 import { Sprint } from '@/lib/types/team'
 import { Story, Task } from '@/lib/types/story'
 
+/**
+ * AC5 (d4d41a1f-ba1f-49a6-95a1-8b2831fccdc3): Sprint context header displays
+ * sprint name, date range with days remaining, progress indicator, and the
+ * total number of stories in the sprint.
+ */
+
 describe('SprintHeader', () => {
   let mockSprint: Sprint
   let mockStories: Story[]
@@ -178,6 +184,23 @@ describe('SprintHeader', () => {
 
       const storyCount = screen.getByTestId('story-count')
       expect(storyCount).toHaveTextContent('1 story')
+    })
+
+    it('should count unique stories when duplicate records are provided', () => {
+      const duplicateStory: Story = {
+        ...mockStories[0],
+        tasks: mockStories[0].tasks?.map((task) => ({
+          ...task,
+          id: `${task.id}-duplicate`,
+        } as Task)),
+      }
+
+      const storiesWithDuplicates = [...mockStories, duplicateStory]
+
+      render(<SprintHeader sprint={mockSprint} stories={storiesWithDuplicates} />)
+
+      const storyCount = screen.getByTestId('story-count')
+      expect(storyCount).toHaveTextContent('2 stories')
     })
 
     it('should calculate and display task progress correctly', () => {

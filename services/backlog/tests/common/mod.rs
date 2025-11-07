@@ -7,13 +7,19 @@ use backlog::adapters::http::handlers as backlog_handlers;
 use backlog::adapters::http::BacklogAppState;
 use backlog::adapters::websocket::WebSocketManager;
 use event_bus::{EventBus, EventPublisher};
-use sqlx::PgPool;
+use sqlx::{
+    migrate::{MigrateError, Migrator},
+    PgPool,
+};
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
 };
 use tokio::sync::Mutex;
 use tower_http::trace::TraceLayer;
+
+static EXTENSIONS_ENABLED: AtomicBool = AtomicBool::new(false);
+static MIGRATOR: Migrator = sqlx::migrate!("../../db/migrations");
 
 /// Setup test database with targeted data cleanup
 /// This function connects to the TEST_DATABASE_URL and ensures clean test state without being too aggressive
@@ -27,18 +33,13 @@ pub async fn setup_test_db() -> PgPool {
         .expect("Failed to connect to test database");
 
     // Ensure database extensions are enabled (only once per test run)
-    static EXTENSIONS_ENABLED: AtomicBool = AtomicBool::new(false);
     if !EXTENSIONS_ENABLED.load(Ordering::Relaxed) {
         enable_database_extensions(&pool).await.ok();
         EXTENSIONS_ENABLED.store(true, Ordering::Relaxed);
     }
 
-    // Apply migrations and schema compatibility patches for legacy snapshots
-    if let Err(err) = sqlx::migrate!("../../db/migrations").run(&pool).await {
-        eprintln!(
-            "Backlog test migration attempt failed (continuing with compatibility patches): {err}"
-        );
-    }
+    // Apply migrations with automatic repair for drifted local databases
+    run_migrations_with_repair(&pool).await;
 
     sqlx::query(
         r#"
@@ -74,12 +75,60 @@ pub async fn setup_test_db() -> PgPool {
     .await
     .ok();
 
+    ensure_acceptance_criteria_schema(&pool).await;
+    ensure_task_analysis_storage(&pool).await;
+
     // Use full cleanup to ensure test isolation - each test must set up its own data
     clean_test_data(&pool)
         .await
         .expect("Failed to clean test data");
 
     pool
+}
+
+async fn run_migrations_with_repair(pool: &PgPool) {
+    if let Err(err) = MIGRATOR.run(pool).await {
+        eprintln!(
+            "Backlog test migration attempt failed (continuing with compatibility patches): {err}"
+        );
+
+        if should_reset_schema(&err) {
+            reset_database_schema(pool)
+                .await
+                .expect("Failed to reset backlog test schema");
+            enable_database_extensions(pool).await.ok();
+            MIGRATOR
+                .run(pool)
+                .await
+                .expect("Failed to run backlog migrations after schema reset");
+        }
+    }
+}
+
+fn should_reset_schema(err: &MigrateError) -> bool {
+    matches!(
+        err,
+        MigrateError::VersionMissing(_)
+            | MigrateError::VersionMismatch(_)
+            | MigrateError::VersionNotPresent(_)
+            | MigrateError::VersionTooOld(_, _)
+            | MigrateError::VersionTooNew(_, _)
+            | MigrateError::Dirty(_)
+    )
+}
+
+async fn reset_database_schema(pool: &PgPool) -> Result<(), sqlx::Error> {
+    sqlx::query("DROP SCHEMA IF EXISTS public CASCADE")
+        .execute(pool)
+        .await?;
+    sqlx::query("CREATE SCHEMA public").execute(pool).await?;
+    sqlx::query("GRANT ALL ON SCHEMA public TO postgres")
+        .execute(pool)
+        .await?;
+    sqlx::query("GRANT ALL ON SCHEMA public TO public")
+        .execute(pool)
+        .await?;
+    Ok(())
 }
 
 async fn enable_database_extensions(pool: &PgPool) -> Result<(), sqlx::Error> {
@@ -90,6 +139,105 @@ async fn enable_database_extensions(pool: &PgPool) -> Result<(), sqlx::Error> {
         .ok(); // Ignore errors, extension might already exist
 
     Ok(())
+}
+
+async fn ensure_acceptance_criteria_schema(pool: &PgPool) {
+    sqlx::query(
+        r#"
+        ALTER TABLE IF EXISTS acceptance_criteria
+            ADD COLUMN IF NOT EXISTS organization_id UUID,
+            ADD COLUMN IF NOT EXISTS ac_id TEXT,
+            ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+        "#,
+    )
+    .execute(pool)
+    .await
+    .ok();
+
+    sqlx::query(
+        r#"
+        UPDATE acceptance_criteria
+        SET ac_id = id::text
+        WHERE ac_id IS NULL
+        "#,
+    )
+    .execute(pool)
+    .await
+    .ok();
+
+    sqlx::query(
+        r#"
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_acceptance_criteria_story_ac_id
+            ON acceptance_criteria(story_id, ac_id)
+            WHERE ac_id IS NOT NULL
+        "#,
+    )
+    .execute(pool)
+    .await
+    .ok();
+
+    sqlx::query("DROP TABLE IF EXISTS criteria CASCADE")
+        .execute(pool)
+        .await
+        .ok();
+    sqlx::query("DROP VIEW IF EXISTS criteria CASCADE")
+        .execute(pool)
+        .await
+        .ok();
+
+    sqlx::query(
+        r#"
+        CREATE VIEW criteria AS
+        SELECT
+            id,
+            story_id,
+            organization_id,
+            ac_id,
+            description,
+            given,
+            when_clause AS "when",
+            then_clause AS "then",
+            created_at,
+            updated_at
+        FROM acceptance_criteria
+        "#,
+    )
+    .execute(pool)
+    .await
+    .ok();
+}
+
+async fn ensure_task_analysis_storage(pool: &PgPool) {
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS task_analyses (
+            id UUID PRIMARY KEY,
+            task_id UUID NOT NULL,
+            story_id UUID NOT NULL,
+            organization_id UUID,
+            analysis_json JSONB NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await
+    .ok();
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_task_analyses_task_id ON task_analyses(task_id)")
+        .execute(pool)
+        .await
+        .ok();
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_task_analyses_story_id ON task_analyses(story_id)")
+        .execute(pool)
+        .await
+        .ok();
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_task_analyses_org_id ON task_analyses(organization_id)",
+    )
+    .execute(pool)
+    .await
+    .ok();
 }
 
 pub async fn build_backlog_router_for_tests(pool: PgPool) -> Router {

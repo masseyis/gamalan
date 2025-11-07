@@ -6,13 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { TaskStatus } from '@/lib/types/story'
 import { Filter, X } from 'lucide-react'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 
 export type GroupByOption = 'story' | 'status'
 
@@ -97,55 +91,64 @@ export function SprintTaskFilters({
           </div>
 
           {/* Status Filters */}
-          <div data-testid="filter-status">
-            <Label className="text-sm font-medium mb-3 block">
-              Filter by status
-            </Label>
-            <div className="space-y-3">
-              {STATUS_OPTIONS.map((option) => (
-                <div key={option.value} className="flex items-center space-x-3">
-                  <Checkbox
-                    id={`status-${option.value}`}
-                    checked={selectedStatuses.includes(option.value)}
-                    onCheckedChange={() => handleStatusToggle(option.value)}
-                    aria-label={option.label}
-                    data-testid={`status-option-${option.value}`}
-                  />
-                  <label
-                    htmlFor={`status-${option.value}`}
-                    className="flex-1 text-sm font-medium cursor-pointer flex items-center justify-between"
-                  >
-                    <span className="flex items-center gap-2">
-                      <span className={`w-2 h-2 rounded-full ${option.color}`} />
-                      {option.label}
-                    </span>
-                    <span className="text-muted-foreground" data-testid={`count-${option.value}`}>
-                      <span data-testid={`filter-badge-${option.value}`}>
-                        {taskCounts[option.value]}
+          <div data-testid="status-filters">
+            <div data-testid="filter-status">
+              <Label className="text-sm font-medium mb-3 block">
+                Filter by status
+              </Label>
+              <div className="space-y-3">
+                {STATUS_OPTIONS.map((option) => (
+                  <div key={option.value} className="flex items-center space-x-3">
+                    <Checkbox
+                      id={`status-${option.value}`}
+                      checked={selectedStatuses.includes(option.value)}
+                      onCheckedChange={() => handleStatusToggle(option.value)}
+                      aria-label={option.label}
+                      data-testid={`status-option-${option.value}`}
+                    />
+                    <label
+                      htmlFor={`status-${option.value}`}
+                      className="flex-1 text-sm font-medium cursor-pointer flex items-center justify-between"
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${option.color}`} />
+                        {option.label}
                       </span>
-                    </span>
-                  </label>
-                </div>
-              ))}
+                      <span className="text-muted-foreground" data-testid={`count-${option.value}`}>
+                        <span data-testid={`filter-badge-${option.value}`}>
+                          {taskCounts[option.value]}
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
           {/* Group By Controls */}
           <div data-testid="group-by-controls">
             <Label className="text-sm font-medium mb-3 block">Group by</Label>
-            <Select value={groupBy} onValueChange={(value) => onGroupChange(value as GroupByOption)}>
-              <SelectTrigger data-testid="group-by-select" aria-label="Group by">
-                <SelectValue placeholder="Select grouping" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="story" data-testid="group-option-story">
-                  Story
-                </SelectItem>
-                <SelectItem value="status" data-testid="group-option-status">
-                  Status
-                </SelectItem>
-              </SelectContent>
-            </Select>
+            <RadioGroup
+              value={groupBy}
+              onValueChange={(value) => onGroupChange(value as GroupByOption)}
+              className="grid gap-2 sm:grid-cols-2"
+              aria-label="Group tasks"
+              data-testid="group-by-select"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem id="group-by-story" value="story" data-testid="group-option-story" />
+                <label htmlFor="group-by-story" className="text-sm font-medium cursor-pointer">
+                  Group by Story
+                </label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem id="group-by-status" value="status" data-testid="group-option-status" />
+                <label htmlFor="group-by-status" className="text-sm font-medium cursor-pointer">
+                  Group by Status
+                </label>
+              </div>
+            </RadioGroup>
             <p className="text-xs text-muted-foreground mt-2">
               {groupBy === 'story'
                 ? 'Tasks grouped by their parent story'
