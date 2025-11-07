@@ -377,26 +377,29 @@ async function createBranch(task) {
 
   if (isWorktree) {
     console.log('📂 Detected git worktree environment');
-    // In a worktree, we're already on a dedicated branch path
-    // Just need to pull latest and create our branch
+    // In a worktree, we're on a workspace branch (e.g., dev-1-workspace)
+    // We need to create task branches from origin/main, NOT from workspace branch
     const currentBranch = await getCurrentBranch();
-    console.log(`   Current branch: ${currentBranch}`);
+    console.log(`   Current workspace branch: ${currentBranch}`);
 
     // Clean up any uncommitted changes before operations
     await cleanupGitState();
 
-    // Pull latest changes
+    // Fetch latest from origin to ensure we have fresh refs
+    console.log('🔄 Fetching latest from origin...');
     try {
-      await pullWithConflictResolution(GIT_BASE_BRANCH);
+      await execCommand('git', ['fetch', 'origin', GIT_BASE_BRANCH]);
     } catch (error) {
-      if (error.message.includes('merge conflict')) {
-        throw error; // Conflict resolution failed
-      }
-      console.log('⚠️  Could not pull from origin (may be new repo or no remote)');
+      console.log('⚠️  Could not fetch from origin (may be new repo or no remote)');
     }
 
-    // Create and checkout new branch
-    await execCommand('git', ['checkout', '-b', branchName]);
+    // Get the base branch ref (origin/main if available, else local main)
+    const baseBranchRef = await getBaseBranchRef();
+
+    // Create branch from base ref, NOT from current workspace branch
+    // This keeps workspace branches clean and ensures all task branches start from the same point
+    console.log(`🌿 Creating task branch from ${baseBranchRef}...`);
+    await execCommand('git', ['checkout', '-b', branchName, baseBranchRef]);
   } else {
     console.log('📁 Standard git repository (not worktree)');
 
@@ -466,6 +469,53 @@ async function getCurrentBranch() {
   }
 }
 
+async function getWorktreeWorkspaceBranch() {
+  try {
+    // Get the git directory path to extract worktree name
+    const gitDirResult = await execCommand('git', ['rev-parse', '--git-dir'], { silent: true });
+    const gitDir = gitDirResult.stdout.trim();
+
+    // Extract agent name from worktree path
+    // Format: '../.git/worktrees/agent-name' or similar
+    const worktreeMatch = gitDir.match(/\/worktrees\/([^\/]+)$/);
+
+    if (worktreeMatch) {
+      const agentName = worktreeMatch[1];
+      const expectedBranch = `${agentName}-workspace`;
+
+      // Verify this branch exists
+      try {
+        await execCommand('git', ['rev-parse', '--verify', expectedBranch], { silent: true });
+        return expectedBranch;
+      } catch {
+        // Branch doesn't exist, continue to fallback
+      }
+    }
+
+    // Fallback: check if current branch is a workspace branch
+    const currentBranch = await getCurrentBranch();
+    if (currentBranch && currentBranch.endsWith('-workspace')) {
+      return currentBranch;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function getBaseBranchRef() {
+  // Try to use origin/main first (preferred for worktrees to avoid conflicts)
+  try {
+    await execCommand('git', ['rev-parse', '--verify', `origin/${GIT_BASE_BRANCH}`], { silent: true });
+    return `origin/${GIT_BASE_BRANCH}`;
+  } catch {
+    // Fall back to local main if origin doesn't exist (new repo or no remote)
+    console.log(`ℹ️  origin/${GIT_BASE_BRANCH} not found, using local ${GIT_BASE_BRANCH}`);
+    return GIT_BASE_BRANCH;
+  }
+}
+
 async function cleanupBranch(branchName) {
   console.log('\n🧹 Cleaning up branch...');
 
@@ -473,12 +523,28 @@ async function cleanupBranch(branchName) {
 
   if (isWorktree) {
     // In a worktree, we can't checkout main (it's in use by another worktree)
-    // Just delete the branch and let the worktree manager handle cleanup
+    // Return to workspace branch and optionally delete the task branch
     try {
-      await execCommand('git', ['branch', '-D', branchName]);
-      console.log(`✅ Branch ${branchName} deleted`);
+      // Get the workspace branch name for this specific worktree
+      const workspaceBranch = await getWorktreeWorkspaceBranch();
+
+      if (workspaceBranch) {
+        console.log(`🔄 Returning to workspace branch: ${workspaceBranch}`);
+        await execCommand('git', ['checkout', workspaceBranch]);
+      } else {
+        console.log('⚠️  No workspace branch found, staying on current branch');
+      }
+
+      // Optionally delete the task branch (but don't fail if it can't be deleted)
+      // The branch might still be needed if the PR hasn't been merged yet
+      try {
+        await execCommand('git', ['branch', '-D', branchName]);
+        console.log(`✅ Task branch ${branchName} deleted`);
+      } catch (error) {
+        console.log(`ℹ️  Task branch ${branchName} kept (PR may still be open)`);
+      }
     } catch (error) {
-      console.error(`⚠️  Could not delete branch: ${error.message}`);
+      console.error(`⚠️  Could not cleanup: ${error.message}`);
     }
   } else {
     // In a standard repo, checkout main first, then delete the branch
