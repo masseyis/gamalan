@@ -393,10 +393,13 @@ async function createBranch(task) {
       console.log('⚠️  Could not fetch from origin (may be new repo or no remote)');
     }
 
-    // Create branch from origin/main, NOT from current workspace branch
+    // Get the base branch ref (origin/main if available, else local main)
+    const baseBranchRef = await getBaseBranchRef();
+
+    // Create branch from base ref, NOT from current workspace branch
     // This keeps workspace branches clean and ensures all task branches start from the same point
-    console.log(`🌿 Creating task branch from origin/${GIT_BASE_BRANCH}...`);
-    await execCommand('git', ['checkout', '-b', branchName, `origin/${GIT_BASE_BRANCH}`]);
+    console.log(`🌿 Creating task branch from ${baseBranchRef}...`);
+    await execCommand('git', ['checkout', '-b', branchName, baseBranchRef]);
   } else {
     console.log('📁 Standard git repository (not worktree)');
 
@@ -498,6 +501,18 @@ async function getWorktreeWorkspaceBranch() {
     return null;
   } catch {
     return null;
+  }
+}
+
+async function getBaseBranchRef() {
+  // Try to use origin/main first (preferred for worktrees to avoid conflicts)
+  try {
+    await execCommand('git', ['rev-parse', '--verify', `origin/${GIT_BASE_BRANCH}`], { silent: true });
+    return `origin/${GIT_BASE_BRANCH}`;
+  } catch {
+    // Fall back to local main if origin doesn't exist (new repo or no remote)
+    console.log(`ℹ️  origin/${GIT_BASE_BRANCH} not found, using local ${GIT_BASE_BRANCH}`);
+    return GIT_BASE_BRANCH;
   }
 }
 

@@ -138,6 +138,18 @@ lazygit
 
 This ensures each worktree returns to its **own** workspace branch, not a random one.
 
+### Issue: "Branch creation fails with 'origin/main' not found"
+
+**Cause:** Repository has no remote configured, or remote hasn't been fetched yet.
+
+**Solution:** Fixed! The executor now:
+1. Attempts to fetch from `origin/main` (with graceful failure)
+2. Checks if `origin/main` ref exists using `git rev-parse`
+3. Falls back to local `main` if remote is unavailable
+4. Creates task branch from whichever ref is available
+
+This allows the executor to work in repos without remotes (e.g., fresh clones, local-only repos).
+
 ### Issue: "Workspace branches have commits"
 
 **Cause:** Old executor logic merged main into workspace branches.
