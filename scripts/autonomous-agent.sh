@@ -345,8 +345,12 @@ log_info "  Poll Interval: ${POLL_INTERVAL}s"
       continue
     fi
 
-    # Shuffle and iterate over candidates to avoid repeat loops
-    mapfile -t candidate_tasks < <(echo "$task_batch" | jq -c '.[]')
+    # Build candidate list compatible with older bash versions
+    candidate_tasks=()
+    while IFS= read -r candidate_line; do
+      [ -z "$candidate_line" ] && continue
+      candidate_tasks+=("$candidate_line")
+    done < <(echo "$task_batch" | jq -c '.[]')
 
     if [ ${#candidate_tasks[@]} -eq 0 ]; then
       log_warning "Recommendation list empty after parsing. Waiting ${POLL_INTERVAL}s..."
@@ -354,10 +358,13 @@ log_info "  Poll Interval: ${POLL_INTERVAL}s"
       continue
     fi
 
-    mapfile -t shuffled_candidates < <(printf '%s\n' "${candidate_tasks[@]}" | shuf)
-
     selected_task=""
-    for candidate in "${shuffled_candidates[@]}"; do
+    candidate_count=${#candidate_tasks[@]}
+    start_index=$((RANDOM % candidate_count))
+
+    for ((offset = 0; offset < candidate_count; offset++)); do
+      idx=$(((start_index + offset) % candidate_count))
+      candidate="${candidate_tasks[$idx]}"
       candidate_id=$(echo "$candidate" | jq -r '.task.id')
       if [ ${#skipped_tasks[@]} -gt 0 ] && printf '%s\n' "${skipped_tasks[@]}" | grep -q "^${candidate_id}$"; then
         continue
