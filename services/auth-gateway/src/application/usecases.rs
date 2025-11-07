@@ -36,6 +36,16 @@ impl UserUsecases {
         self.user_repo.get_user_by_id(id).await
     }
 
+    pub async fn get_user_by_sub(&self, sub: &str) -> Result<Option<User>, AppError> {
+        if let Ok(uuid) = Uuid::parse_str(sub) {
+            if let Some(user) = self.user_repo.get_user_by_id(&uuid).await? {
+                return Ok(Some(user));
+            }
+        }
+
+        self.user_repo.get_user_by_external_id(sub).await
+    }
+
     pub async fn search_users(&self, query: &str, limit: usize) -> Result<Vec<User>, AppError> {
         if query.trim().is_empty() {
             return Ok(Vec::new());
@@ -63,15 +73,14 @@ impl UserUsecases {
         Ok(user)
     }
 
-    pub async fn update_user_role_by_external_id(
+    pub async fn update_user_role_by_sub(
         &self,
-        external_id: &str,
+        sub: &str,
         role: UserRole,
         specialty: Option<ContributorSpecialty>,
     ) -> Result<User, AppError> {
         let mut user = self
-            .user_repo
-            .get_user_by_external_id(external_id)
+            .get_user_by_sub(sub)
             .await?
             .ok_or(AppError::NotFound("User not found".to_string()))?;
 
@@ -549,5 +558,131 @@ impl SprintUsecases {
 
         sprint.complete_story_points(points)?;
         self.sprint_repo.update_sprint(&sprint).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use async_trait::async_trait;
+    use std::collections::HashMap;
+
+    struct MockUserRepo {
+        users_by_id: HashMap<Uuid, User>,
+        users_by_external: HashMap<String, User>,
+    }
+
+    #[async_trait]
+    impl UserRepository for MockUserRepo {
+        async fn upsert_user(&self, _user: &User) -> Result<(), AppError> {
+            Ok(())
+        }
+
+        async fn get_user_by_external_id(
+            &self,
+            external_id: &str,
+        ) -> Result<Option<User>, AppError> {
+            Ok(self.users_by_external.get(external_id).cloned())
+        }
+
+        async fn get_user_by_id(&self, id: &Uuid) -> Result<Option<User>, AppError> {
+            Ok(self.users_by_id.get(id).cloned())
+        }
+
+        async fn search_users(&self, _query: &str, _limit: usize) -> Result<Vec<User>, AppError> {
+            Ok(Vec::new())
+        }
+    }
+
+    fn build_user(external_id: &str) -> User {
+        User::new(
+            external_id.to_string(),
+            format!("{external_id}@example.com"),
+            UserRole::Contributor,
+            None,
+        )
+        .expect("valid user")
+    }
+
+    #[tokio::test]
+    async fn get_user_by_sub_prefers_internal_id() {
+        let user = build_user("external-123");
+        let user_id = user.id;
+
+        let repo = Arc::new(MockUserRepo {
+            users_by_id: HashMap::from([(user_id, user.clone())]),
+            users_by_external: HashMap::new(),
+        });
+
+        let usecases = UserUsecases::new(repo);
+        let result = usecases
+            .get_user_by_sub(&user_id.to_string())
+            .await
+            .expect("lookup should succeed")
+            .expect("user should be found");
+
+        assert_eq!(result.id, user_id);
+        assert_eq!(result.external_id, user.external_id);
+    }
+
+    #[tokio::test]
+    async fn get_user_by_sub_falls_back_to_external_id() {
+        let uuid_like_external = Uuid::new_v4().to_string();
+        let user = build_user(&uuid_like_external);
+
+        let repo = Arc::new(MockUserRepo {
+            users_by_id: HashMap::new(),
+            users_by_external: HashMap::from([(uuid_like_external.clone(), user.clone())]),
+        });
+
+        let usecases = UserUsecases::new(repo);
+        let result = usecases
+            .get_user_by_sub(&uuid_like_external)
+            .await
+            .expect("lookup should succeed")
+            .expect("user should be found via external id");
+
+        assert_eq!(result.external_id, uuid_like_external);
+        assert_eq!(result.id, user.id);
+    }
+
+    #[tokio::test]
+    async fn update_user_role_by_sub_prefers_internal_id() {
+        let user = build_user("external-uuid-match");
+        let user_id = user.id;
+
+        let repo = Arc::new(MockUserRepo {
+            users_by_id: HashMap::from([(user_id, user.clone())]),
+            users_by_external: HashMap::new(),
+        });
+
+        let usecases = UserUsecases::new(repo);
+        let updated = usecases
+            .update_user_role_by_sub(&user_id.to_string(), UserRole::ProductOwner, None)
+            .await
+            .expect("update should succeed");
+
+        assert_eq!(updated.id, user_id);
+        assert_eq!(updated.role, UserRole::ProductOwner);
+    }
+
+    #[tokio::test]
+    async fn update_user_role_by_sub_falls_back_to_external() {
+        let uuid_like_external = Uuid::new_v4().to_string();
+        let user = build_user(&uuid_like_external);
+
+        let repo = Arc::new(MockUserRepo {
+            users_by_id: HashMap::new(),
+            users_by_external: HashMap::from([(uuid_like_external.clone(), user.clone())]),
+        });
+
+        let usecases = UserUsecases::new(repo);
+        let updated = usecases
+            .update_user_role_by_sub(&uuid_like_external, UserRole::ManagingContributor, None)
+            .await
+            .expect("update should succeed");
+
+        assert_eq!(updated.external_id, uuid_like_external);
+        assert_eq!(updated.role, UserRole::ManagingContributor);
     }
 }

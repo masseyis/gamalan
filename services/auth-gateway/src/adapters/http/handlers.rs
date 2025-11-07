@@ -485,15 +485,10 @@ pub async fn get_current_user(
     AuthenticatedWithOrg { auth, .. }: AuthenticatedWithOrg,
     Extension(user_usecases): Extension<Arc<UserUsecases>>,
 ) -> Result<Json<CurrentUserResponse>, AppError> {
-    // Try to parse sub as UUID first (API key auth uses internal ID)
-    // If it fails, treat as external_id (JWT auth uses Clerk ID)
-    let user = if let Ok(uuid) = Uuid::parse_str(&auth.sub) {
-        user_usecases.get_user_by_id(&uuid).await?
-    } else {
-        user_usecases.get_user_by_external_id(&auth.sub).await?
-    };
-
-    let user = user.ok_or(AppError::NotFound("User not found".to_string()))?;
+    let user = user_usecases
+        .get_user_by_sub(&auth.sub)
+        .await?
+        .ok_or(AppError::NotFound("User not found".to_string()))?;
     Ok(Json(CurrentUserResponse::from(user)))
 }
 
@@ -509,7 +504,7 @@ pub async fn update_current_user_role(
     };
 
     user_usecases
-        .update_user_role_by_external_id(&auth.sub, role, specialty)
+        .update_user_role_by_sub(&auth.sub, role, specialty)
         .await?;
 
     Ok(StatusCode::NO_CONTENT)
