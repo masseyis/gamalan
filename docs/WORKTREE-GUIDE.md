@@ -126,6 +126,18 @@ lazygit
 
 **Solution:** Fixed! Agents now create task branches directly from `origin/main`. Update to latest executor script.
 
+### Issue: "Wrong workspace branch detected after cleanup"
+
+**Cause:** Multiple workspace branches exist (from previous agents or failed cleanups), and the executor picks the wrong one.
+
+**Solution:** Fixed! The executor now:
+1. Extracts the agent name from the worktree's git directory path (e.g., `../agents/dev-1/.git` → `dev-1`)
+2. Constructs the expected workspace branch name (`dev-1-workspace`)
+3. Verifies the branch exists before checking it out
+4. Falls back to current branch if it's a workspace branch
+
+This ensures each worktree returns to its **own** workspace branch, not a random one.
+
 ### Issue: "Workspace branches have commits"
 
 **Cause:** Old executor logic merged main into workspace branches.

@@ -466,6 +466,41 @@ async function getCurrentBranch() {
   }
 }
 
+async function getWorktreeWorkspaceBranch() {
+  try {
+    // Get the git directory path to extract worktree name
+    const gitDirResult = await execCommand('git', ['rev-parse', '--git-dir'], { silent: true });
+    const gitDir = gitDirResult.stdout.trim();
+
+    // Extract agent name from worktree path
+    // Format: '../.git/worktrees/agent-name' or similar
+    const worktreeMatch = gitDir.match(/\/worktrees\/([^\/]+)$/);
+
+    if (worktreeMatch) {
+      const agentName = worktreeMatch[1];
+      const expectedBranch = `${agentName}-workspace`;
+
+      // Verify this branch exists
+      try {
+        await execCommand('git', ['rev-parse', '--verify', expectedBranch], { silent: true });
+        return expectedBranch;
+      } catch {
+        // Branch doesn't exist, continue to fallback
+      }
+    }
+
+    // Fallback: check if current branch is a workspace branch
+    const currentBranch = await getCurrentBranch();
+    if (currentBranch && currentBranch.endsWith('-workspace')) {
+      return currentBranch;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 async function cleanupBranch(branchName) {
   console.log('\n🧹 Cleaning up branch...');
 
@@ -475,9 +510,8 @@ async function cleanupBranch(branchName) {
     // In a worktree, we can't checkout main (it's in use by another worktree)
     // Return to workspace branch and optionally delete the task branch
     try {
-      // Get the workspace branch name (format: <agent-name>-workspace)
-      const worktreeBranches = await execCommand('git', ['branch', '--list', '*-workspace'], { silent: true });
-      const workspaceBranch = worktreeBranches.stdout.trim().split('\n')[0]?.replace('*', '').trim();
+      // Get the workspace branch name for this specific worktree
+      const workspaceBranch = await getWorktreeWorkspaceBranch();
 
       if (workspaceBranch) {
         console.log(`🔄 Returning to workspace branch: ${workspaceBranch}`);
