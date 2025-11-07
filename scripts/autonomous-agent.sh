@@ -19,6 +19,7 @@ ROLE="${3:-dev}"
 PROJECT_ID="${4:-${BATTRA_PROJECT_ID}}"
 POLL_INTERVAL="${POLL_INTERVAL:-30}"  # seconds
 MAX_ITERATIONS="${MAX_ITERATIONS:-0}"  # 0 = infinite
+RECOMMENDATION_BATCH_SIZE="${RECOMMENDATION_BATCH_SIZE:-5}"  # number of tasks to consider per cycle
 
 # Validation
 if [ -z "$API_KEY" ]; then
@@ -98,8 +99,9 @@ api_delete() {
 }
 
 # Get recommended tasks
-get_recommended_task() {
-  local response=$(api_get "tasks/recommended?sprint_id=$SPRINT_ID&role=$ROLE&exclude_mine=false&limit=1")
+get_recommended_tasks() {
+  local limit="${1:-$RECOMMENDATION_BATCH_SIZE}"
+  local response=$(api_get "tasks/recommended?sprint_id=$SPRINT_ID&role=$ROLE&exclude_mine=false&limit=${limit}")
 
   # Check if we got any tasks
   if [ "$(echo "$response" | jq 'length')" -eq 0 ]; then
@@ -308,7 +310,8 @@ log_info "  Role: $ROLE"
 if [ "$ROLE" = "po" ]; then
   log_info "  Project ID: $PROJECT_ID"
 fi
-  log_info "  Poll Interval: ${POLL_INTERVAL}s"
+log_info "  Poll Interval: ${POLL_INTERVAL}s"
+  log_info "  Recommendation batch size: ${RECOMMENDATION_BATCH_SIZE}"
   echo ""
 
   while true; do
@@ -334,21 +337,48 @@ fi
       continue
     fi
 
-    # Get recommended task
+    # Get recommended tasks
     log_info "Fetching recommended tasks..."
-    if ! task_data=$(get_recommended_task); then
+    if ! task_batch=$(get_recommended_tasks "$RECOMMENDATION_BATCH_SIZE"); then
       log_warning "No tasks available. Waiting ${POLL_INTERVAL}s..."
       sleep $POLL_INTERVAL
       continue
     fi
 
-    # Parse task details
-    task_id=$(echo "$task_data" | jq -r '.[0].task.id')
-    task_title=$(echo "$task_data" | jq -r '.[0].task.title')
-    task_description=$(echo "$task_data" | jq -r '.[0].task.description // empty')
-    task_story_id=$(echo "$task_data" | jq -r '.[0].task.story_id')
-    task_score=$(echo "$task_data" | jq -r '.[0].score')
-    task_reason=$(echo "$task_data" | jq -r '.[0].reason')
+    # Shuffle and iterate over candidates to avoid repeat loops
+    mapfile -t candidate_tasks < <(echo "$task_batch" | jq -c '.[]')
+
+    if [ ${#candidate_tasks[@]} -eq 0 ]; then
+      log_warning "Recommendation list empty after parsing. Waiting ${POLL_INTERVAL}s..."
+      sleep $POLL_INTERVAL
+      continue
+    fi
+
+    mapfile -t shuffled_candidates < <(printf '%s\n' "${candidate_tasks[@]}" | shuf)
+
+    selected_task=""
+    for candidate in "${shuffled_candidates[@]}"; do
+      candidate_id=$(echo "$candidate" | jq -r '.task.id')
+      if [ ${#skipped_tasks[@]} -gt 0 ] && printf '%s\n' "${skipped_tasks[@]}" | grep -q "^${candidate_id}$"; then
+        continue
+      fi
+      selected_task="$candidate"
+      break
+    done
+
+    if [ -z "$selected_task" ]; then
+      log_warning "All recommended tasks are currently skipped. Waiting ${POLL_INTERVAL}s before requesting new recommendations..."
+      sleep $POLL_INTERVAL
+      continue
+    fi
+
+    # Parse selected task details
+    task_id=$(echo "$selected_task" | jq -r '.task.id')
+    task_title=$(echo "$selected_task" | jq -r '.task.title')
+    task_description=$(echo "$selected_task" | jq -r '.task.description // empty')
+    task_story_id=$(echo "$selected_task" | jq -r '.task.story_id')
+    task_score=$(echo "$selected_task" | jq -r '.score')
+    task_reason=$(echo "$selected_task" | jq -r '.reason')
 
     # Check if we've already tried and failed this task
     if [ ${#skipped_tasks[@]} -gt 0 ] && printf '%s\n' "${skipped_tasks[@]}" | grep -q "^${task_id}$"; then
