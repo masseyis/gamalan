@@ -459,12 +459,10 @@ pub struct ProjectionWorker {
 }
 
 impl ProjectionWorker {
-    pub fn spawn(pool: Arc<PgPool>, event_bus: Arc<EventBus>) -> Self {
-        let store = ProjectionStore::new(pool.clone());
+    pub fn spawn(store: ProjectionStore, event_bus: Arc<EventBus>) -> Self {
         let subscription = event_bus.subscribe();
 
         let handle = tokio::spawn(async move {
-            store.hydrate().await;
             loop {
                 let envelope = subscription.recv().await;
                 store.handle_event(&envelope).await;

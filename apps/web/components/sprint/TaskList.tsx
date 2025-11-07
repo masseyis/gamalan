@@ -116,14 +116,17 @@ export function TaskList({
       {nonEmptyGroups.map(([groupId, group]) => {
         const groupTestId =
           groupBy === 'story' ? `story-group-${groupId}` : `status-group-${groupId}`
+        const legacyStatusGroupTestId = groupBy === 'status' ? `group-${groupId}` : undefined
 
-        return (
-          <Card key={groupId} data-testid={groupTestId}>
+        const card = (
+          <Card data-testid={groupTestId}>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg font-semibold">{group.label}</CardTitle>
                 <Badge variant="secondary" data-testid={`group-count-${groupId}`}>
-                  {group.tasks.length} {group.tasks.length === 1 ? 'task' : 'tasks'}
+                  <span data-testid={`badge-group-${groupId}`}>
+                    {group.tasks.length} {group.tasks.length === 1 ? 'task' : 'tasks'}
+                  </span>
                 </Badge>
               </div>
             </CardHeader>
@@ -135,11 +138,26 @@ export function TaskList({
                     task={task}
                     story={story}
                     isMyTask={task.ownerUserId === currentUserId}
+                    showStoryContext={groupBy !== 'story'}
                   />
                 ))}
               </div>
             </CardContent>
           </Card>
+        )
+
+        if (legacyStatusGroupTestId) {
+          return (
+            <div key={groupId} data-testid={legacyStatusGroupTestId}>
+              {card}
+            </div>
+          )
+        }
+
+        return (
+          <div key={groupId}>
+            {card}
+          </div>
         )
       })}
     </div>

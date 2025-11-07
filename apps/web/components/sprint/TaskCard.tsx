@@ -10,7 +10,12 @@ export interface TaskCardProps {
   task: Task
   story?: Story
   isMyTask: boolean
+  showStoryContext?: boolean
 }
+
+const OWNER_DISPLAY_THRESHOLD = 16
+const OWNER_DISPLAY_LENGTH = 8
+const TASK_ID_DISPLAY_LENGTH = 8
 
 const STATUS_CONFIG = {
   available: {
@@ -53,10 +58,19 @@ const STATUS_CONFIG = {
  * - Shows owner name for tasks owned by others
  * - Visual distinction for available tasks
  */
-export function TaskCard({ task, story, isMyTask }: TaskCardProps) {
+export function TaskCard({ task, story, isMyTask, showStoryContext = true }: TaskCardProps) {
   const statusConfig = STATUS_CONFIG[task.status]
   const StatusIcon = statusConfig.icon
   const isAvailable = task.status === 'available' && !task.ownerUserId
+  const ownerLabel = task.ownerUserId
+    ? task.ownerUserId.length > OWNER_DISPLAY_THRESHOLD
+      ? task.ownerUserId.slice(0, OWNER_DISPLAY_LENGTH)
+      : task.ownerUserId
+    : null
+  const taskIdDisplay =
+    task.id.length > TASK_ID_DISPLAY_LENGTH ? task.id.slice(0, TASK_ID_DISPLAY_LENGTH) : task.id
+  const acCount = task.acceptanceCriteriaRefs.length
+  const acLabel = acCount === 1 ? '1 AC' : `${acCount} ACs`
 
   return (
     <Card
@@ -81,8 +95,9 @@ export function TaskCard({ task, story, isMyTask }: TaskCardProps) {
                     variant="outline"
                     className="text-xs font-mono"
                     data-testid="task-id"
+                    title={task.id}
                   >
-                    {task.id}
+                    {taskIdDisplay}
                   </Badge>
                   <Badge
                     className={cn('text-xs', statusConfig.bgColor, statusConfig.color)}
@@ -103,9 +118,9 @@ export function TaskCard({ task, story, isMyTask }: TaskCardProps) {
           </div>
 
           {/* Story Title */}
-          {story && (
+          {story && showStoryContext && (
             <div className="text-xs text-muted-foreground" data-testid="task-story">
-              <span className="font-medium">Story:</span> {story.title}
+              <span className="font-medium">{`Story: ${story.title}`}</span>
             </div>
           )}
 
@@ -125,17 +140,19 @@ export function TaskCard({ task, story, isMyTask }: TaskCardProps) {
               {task.ownerUserId ? (
                 <div className="flex items-center gap-1" data-testid="task-owner">
                   <User className="h-3 w-3" />
-                  <span>{isMyTask ? 'You' : task.ownerUserId}</span>
+                  <span title={isMyTask ? undefined : task.ownerUserId}>
+                    {isMyTask ? 'You' : `Owned by ${ownerLabel}`}
+                  </span>
                 </div>
               ) : (
                 <span className="text-green-600 font-medium">Available to claim</span>
               )}
             </div>
 
-            {task.acceptanceCriteriaRefs.length > 0 && (
+            {acCount > 0 && (
               <div className="flex items-center gap-1" data-testid="task-ac-refs">
-                <span className="font-medium">
-                  {task.acceptanceCriteriaRefs.join(', ')}
+                <span className="font-medium" title={task.acceptanceCriteriaRefs.join(', ')}>
+                  {acLabel}
                 </span>
               </div>
             )}

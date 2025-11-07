@@ -25,6 +25,10 @@ interface GroupedTasks {
   [key: string]: TaskWithStory[]
 }
 
+const OWNER_DISPLAY_THRESHOLD = 16
+const OWNER_DISPLAY_LENGTH = 8
+const TASK_ID_DISPLAY_LENGTH = 8
+
 const STATUS_CONFIG: Record<
   TaskStatus,
   { label: string; icon: React.ReactNode; color: string; bgColor: string }
@@ -137,8 +141,19 @@ export function SprintTaskList({
     const config = STATUS_CONFIG[task.status]
     const isMyTask = currentUserId && task.ownerUserId === currentUserId
     const isAvailable = task.status === 'available' && !task.ownerUserId
-    const isOthersTask = task.ownerUserId && !isMyTask
     const isClaiming = claimingTaskId === task.id
+    const ownerLabel = task.ownerUserId
+      ? task.ownerUserId.length > OWNER_DISPLAY_THRESHOLD
+        ? task.ownerUserId.slice(0, OWNER_DISPLAY_LENGTH)
+        : task.ownerUserId
+      : null
+    const taskIdDisplay =
+      task.id.length > TASK_ID_DISPLAY_LENGTH
+        ? task.id.slice(0, TASK_ID_DISPLAY_LENGTH)
+        : task.id
+    const acCount = task.acceptanceCriteriaRefs.length
+    const acLabel = acCount === 1 ? '1 AC' : `${acCount} ACs`
+    const shouldShowStoryContext = groupBy !== 'story'
 
     // Determine border styling based on task status
     let borderClasses = ''
@@ -167,9 +182,11 @@ export function SprintTaskList({
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <h4 className="font-medium text-foreground break-words">{task.title}</h4>
-                <p className="text-xs text-muted-foreground mt-1" data-testid="task-story">
-                  {task.story.title}
-                </p>
+                {shouldShowStoryContext && (
+                  <p className="text-xs text-muted-foreground mt-1" data-testid="task-story">
+                    {`Story: ${task.story.title}`}
+                  </p>
+                )}
               </div>
               <Badge
                 variant="outline"
@@ -185,24 +202,26 @@ export function SprintTaskList({
             <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
               {/* Task ID */}
               <div className="flex items-center gap-1">
-                <span className="font-mono" data-testid="task-id">
-                  {task.id}
-                </span>
+                  <span className="font-mono" data-testid="task-id" title={task.id}>
+                    {taskIdDisplay}
+                  </span>
               </div>
 
               {/* Owner */}
               {task.ownerUserId && (
                 <div className="flex items-center gap-1" data-testid="task-owner">
                   <User className="h-3 w-3" />
-                  <span>{isMyTask ? 'You' : task.ownerUserId}</span>
+                  <span title={isMyTask ? undefined : task.ownerUserId}>
+                    {isMyTask ? 'You' : `Owned by ${ownerLabel}`}
+                  </span>
                 </div>
               )}
 
               {/* AC References */}
-              {task.acceptanceCriteriaRefs.length > 0 && (
+              {acCount > 0 && (
                 <div className="flex items-center gap-1" data-testid="task-ac-refs">
-                  <span className="font-medium">
-                    {task.acceptanceCriteriaRefs.join(', ')}
+                  <span className="font-medium" title={task.acceptanceCriteriaRefs.join(', ')}>
+                    {acLabel}
                   </span>
                 </div>
               )}
@@ -260,7 +279,9 @@ export function SprintTaskList({
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-foreground">{groupTitle}</h3>
           <Badge variant="secondary" data-testid={`group-count-${groupKey}`}>
-            {taskCount} {taskLabel}
+            <span data-testid={`badge-${groupKey}`}>
+              {taskCount} {taskLabel}
+            </span>
           </Badge>
         </div>
         <div className="space-y-2">{tasks.map(renderTaskCard)}</div>
