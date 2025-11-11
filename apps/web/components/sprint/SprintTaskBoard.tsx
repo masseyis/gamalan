@@ -212,14 +212,13 @@ export function SprintTaskBoard({
     hasOptimisticUpdate.current = true
 
     try {
-      // Find the current task status
-      const currentTask = stories
-        .find((story) => story.id === storyId)
-        ?.tasks?.find((task) => task.id === taskId)
-
-      // If task is in 'owned' status, start work first before completing
-      if (currentTask?.status === 'owned') {
+      // Try to start work first if needed, backend will handle state transitions
+      // If task is already in progress, startTaskWork will fail gracefully
+      try {
         await backlogApi.startTaskWork(taskId)
+      } catch (startError) {
+        // Ignore errors from startTaskWork - task may already be in progress
+        // The completeTaskWork call will fail if the state is invalid
       }
 
       // Now complete the task work
@@ -329,6 +328,12 @@ export function SprintTaskBoard({
   }
 
   const handleOwnershipTaken = (event: any) => {
+    // Skip WebSocket updates during optimistic updates to prevent race conditions
+    if (hasOptimisticUpdate.current) {
+      console.log('[SprintTaskBoard] Skipping WebSocket update during optimistic update')
+      return
+    }
+
     setStories((prevStories) =>
       prevStories.map((story) => {
         if (story.id === event.story_id) {
@@ -354,6 +359,12 @@ export function SprintTaskBoard({
   }
 
   const handleOwnershipReleased = (event: any) => {
+    // Skip WebSocket updates during optimistic updates to prevent race conditions
+    if (hasOptimisticUpdate.current) {
+      console.log('[SprintTaskBoard] Skipping WebSocket update during optimistic update')
+      return
+    }
+
     setStories((prevStories) =>
       prevStories.map((story) => {
         if (story.id === event.story_id) {
@@ -379,6 +390,12 @@ export function SprintTaskBoard({
   }
 
   const handleStatusChanged = (event: any) => {
+    // Skip WebSocket updates during optimistic updates to prevent race conditions
+    if (hasOptimisticUpdate.current) {
+      console.log('[SprintTaskBoard] Skipping WebSocket update during optimistic update')
+      return
+    }
+
     setStories((prevStories) =>
       prevStories.map((story) => {
         if (story.id === event.story_id) {
