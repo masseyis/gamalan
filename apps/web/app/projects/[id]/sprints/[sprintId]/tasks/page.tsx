@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { useUser } from '@clerk/nextjs'
+import { useAuth } from '@clerk/nextjs'
 import Link from 'next/link'
 import { ArrowLeft, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { SprintTaskBoard } from '@/components/sprint/SprintTaskBoard'
 import { backlogApi } from '@/lib/api/backlog'
 import { sprintsApi } from '@/lib/api/teams'
+import { useUserContext } from '@/components/providers/UserContextProvider'
 
 /**
  * Sprint Task Board Page
@@ -33,12 +34,16 @@ import { sprintsApi } from '@/lib/api/teams'
 export default function SprintTaskBoardPage() {
   const params = useParams()
   const router = useRouter()
-  const { user, isLoaded } = useUser()
+  const { user, isLoading: userLoading } = useUserContext()
+  const { isLoaded: isClerkLoaded, isSignedIn } = useAuth()
 
   const projectId = params.id as string
   const sprintId = params.sprintId as string
 
-  // Fetch sprint data
+  // Wait for Clerk to load and have a signed-in user before making authenticated API calls
+  const canMakeAuthenticatedCalls = isClerkLoaded && isSignedIn
+
+  // Fetch sprint data (wait for Clerk auth to be ready)
   const {
     data: sprint,
     isLoading: sprintLoading,
@@ -47,10 +52,10 @@ export default function SprintTaskBoardPage() {
   } = useQuery({
     queryKey: ['sprint', projectId, sprintId],
     queryFn: () => sprintsApi.getSprint(projectId, sprintId),
-    enabled: !!projectId && !!sprintId,
+    enabled: !!projectId && !!sprintId && canMakeAuthenticatedCalls,
   })
 
-  // Fetch stories with tasks for this sprint
+  // Fetch stories with tasks for this sprint (wait for Clerk auth to be ready)
   const {
     data: stories,
     isLoading: storiesLoading,
@@ -59,10 +64,10 @@ export default function SprintTaskBoardPage() {
   } = useQuery({
     queryKey: ['stories', projectId, sprintId],
     queryFn: () => backlogApi.getStories(projectId, sprintId, undefined, { includeTasks: true }),
-    enabled: !!projectId && !!sprintId,
+    enabled: !!projectId && !!sprintId && canMakeAuthenticatedCalls,
   })
 
-  const isLoading = sprintLoading || storiesLoading || !isLoaded
+  const isLoading = sprintLoading || storiesLoading || userLoading
   const error = sprintError || storiesError
 
   // Handle refresh from WebSocket events
@@ -92,8 +97,8 @@ export default function SprintTaskBoardPage() {
     )
   }
 
-  // Error state
-  if (error || !sprint) {
+  // Error state (only show if not loading)
+  if (!isLoading && (error || !sprint)) {
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto py-8">
@@ -127,6 +132,11 @@ export default function SprintTaskBoardPage() {
         </div>
       </div>
     )
+  }
+
+  // If no sprint data yet, show nothing (loading state already handled above)
+  if (!sprint) {
+    return null
   }
 
   // Main content
