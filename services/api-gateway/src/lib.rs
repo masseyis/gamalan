@@ -25,13 +25,18 @@ pub type PromptBuilderUsecases = prompt_builder::application::PromptBuilderUseca
 
 pub fn build_backlog_router(
     backlog_usecases: Arc<BacklogUsecases>,
+    pool: PgPool,
     verifier: Arc<Mutex<JwtVerifier>>,
 ) -> Router {
     // Create WebSocket manager for real-time updates
     let ws_manager = Arc::new(WebSocketManager::new(100));
 
-    // Create state with both usecases and WebSocket manager
-    let state = Arc::new(BacklogAppState::new(backlog_usecases, ws_manager.clone()));
+    // Create state with usecases, WebSocket manager, and database pool
+    let state = Arc::new(BacklogAppState::new(
+        backlog_usecases,
+        ws_manager.clone(),
+        pool,
+    ));
     let trace_layer =
         TraceLayer::new_for_http().make_span_with(|request: &axum::http::Request<_>| {
             let org_id = request

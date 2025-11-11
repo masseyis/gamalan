@@ -127,7 +127,8 @@ async fn build_gateway_app_with_pool() -> (Router, PgPool) {
 
     let auth_router = auth_gateway::create_auth_router(pool.clone(), verifier.clone()).await;
     let projects_router = projects::create_projects_router(pool.clone(), verifier.clone()).await;
-    let backlog_router = api_gateway::build_backlog_router(backlog_usecases, verifier.clone());
+    let backlog_router =
+        api_gateway::build_backlog_router(backlog_usecases, pool.clone(), verifier.clone());
     let readiness_router =
         api_gateway::build_readiness_router(pool.clone(), readiness_usecases, verifier.clone());
     let prompt_builder_router =

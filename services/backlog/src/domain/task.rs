@@ -145,6 +145,13 @@ impl Task {
             )));
         }
 
+        tracing::info!(
+            task_id = %self.id,
+            new_owner_user_id = %user_id,
+            previous_owner = ?self.owner_user_id,
+            "Taking task ownership - setting owner_user_id"
+        );
+
         self.status = TaskStatus::Owned;
         self.owner_user_id = Some(user_id);
         self.owned_at = Some(Utc::now());
@@ -206,7 +213,21 @@ impl Task {
     /// Complete the task
     pub fn complete(&mut self, user_id: Uuid) -> Result<(), AppError> {
         // Only the owner can complete the task
+        tracing::info!(
+            task_id = %self.id,
+            provided_user_id = %user_id,
+            task_owner_user_id = ?self.owner_user_id,
+            ownership_match = %(self.owner_user_id == Some(user_id)),
+            "Checking task completion ownership"
+        );
+
         if self.owner_user_id != Some(user_id) {
+            tracing::warn!(
+                task_id = %self.id,
+                provided_user_id = %user_id,
+                task_owner_user_id = ?self.owner_user_id,
+                "Ownership check FAILED - user is not the owner"
+            );
             return Err(AppError::BadRequest(
                 "Only the task owner can complete the task".to_string(),
             ));

@@ -99,7 +99,8 @@ async fn main(
     )
     .await;
 
-    let backlog_router = build_backlog_router(backlog_usecases.clone(), verifier.clone());
+    let backlog_router =
+        build_backlog_router(backlog_usecases.clone(), pool.clone(), verifier.clone());
     let readiness_router =
         build_readiness_router(pool.clone(), readiness_usecases.clone(), verifier.clone());
     let prompt_builder_router =

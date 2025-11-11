@@ -492,6 +492,17 @@ pub async fn get_current_user(
     Ok(Json(CurrentUserResponse::from(user)))
 }
 
+pub async fn get_user_by_id(
+    Extension(user_usecases): Extension<Arc<UserUsecases>>,
+    Path(user_id): Path<Uuid>,
+) -> Result<Json<CurrentUserResponse>, AppError> {
+    let user = user_usecases
+        .get_user_by_id(&user_id)
+        .await?
+        .ok_or(AppError::NotFound("User not found".to_string()))?;
+    Ok(Json(CurrentUserResponse::from(user)))
+}
+
 pub async fn update_current_user_role(
     AuthenticatedWithOrg { auth, .. }: AuthenticatedWithOrg,
     Extension(user_usecases): Extension<Arc<UserUsecases>>,

@@ -245,13 +245,13 @@ pub async fn build_backlog_router_for_tests(pool: PgPool) -> Router {
         Arc::new(Mutex::new(JwtVerifier::new_test_verifier())) as Arc<Mutex<JwtVerifier>>;
     let event_bus = Arc::new(EventBus::new());
     let event_publisher: Arc<dyn EventPublisher> = event_bus.clone();
-    let usecases = backlog::build_usecases(pool, event_publisher);
+    let usecases = backlog::build_usecases(pool.clone(), event_publisher);
 
     // Create WebSocketManager for tests (capacity doesn't matter for tests)
     let ws_manager = Arc::new(WebSocketManager::new(100));
 
-    // Wrap in BacklogAppState
-    let state = Arc::new(BacklogAppState::new(usecases, ws_manager));
+    // Wrap in BacklogAppState with pool for user ID resolution
+    let state = Arc::new(BacklogAppState::new(usecases, ws_manager, pool));
 
     Router::new()
         .route(

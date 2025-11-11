@@ -10,12 +10,31 @@ use axum::{
 use common::AppError;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use uuid::Uuid;
 
-fn resolve_user_uuid(subject: &str) -> Uuid {
-    Uuid::parse_str(subject)
-        .unwrap_or_else(|_| Uuid::new_v5(&Uuid::NAMESPACE_URL, subject.as_bytes()))
+/// Resolve Clerk user ID (external_id) to internal database UUID
+/// This queries the users table to get the correct internal ID
+async fn resolve_user_id(pool: &sqlx::PgPool, clerk_id: &str) -> Result<Uuid, AppError> {
+    let result = sqlx::query_scalar::<_, Uuid>("SELECT id FROM users WHERE external_id = $1")
+        .bind(clerk_id)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| {
+            error!(clerk_id = %clerk_id, error = %e, "Failed to lookup user by external_id");
+            AppError::InternalServerError
+        })?;
+
+    match result {
+        Some(id) => {
+            info!(clerk_id = %clerk_id, user_id = %id, "Resolved user ID from database");
+            Ok(id)
+        }
+        None => {
+            warn!(clerk_id = %clerk_id, "User not found in database - may need webhook sync");
+            Err(AppError::Unauthorized("User not found".to_string()))
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -351,7 +370,7 @@ pub async fn override_story_ready(
     Json(payload): Json<OverrideStoryReadyRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let org_id = org_context.effective_organization_uuid();
-    let user_id = resolve_user_uuid(&auth.sub);
+    let user_id = resolve_user_id(&state.pool, &auth.sub).await?;
 
     let story = state
         .usecases
@@ -435,7 +454,7 @@ pub async fn get_user_owned_tasks(
     AuthenticatedWithOrg { org_context, auth }: AuthenticatedWithOrg,
     State(state): State<Arc<BacklogAppState>>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user_id = resolve_user_uuid(&auth.sub);
+    let user_id = resolve_user_id(&state.pool, &auth.sub).await?;
 
     let tasks = state
         .usecases
@@ -470,7 +489,7 @@ pub async fn get_recommended_tasks(
 ) -> Result<impl IntoResponse, AppError> {
     use crate::domain::RecommendationFilters;
 
-    let user_id = resolve_user_uuid(&auth.sub);
+    let user_id = resolve_user_id(&state.pool, &auth.sub).await?;
 
     // Parse story_ids if provided
     let story_ids = if let Some(ids_str) = query.story_ids {
@@ -527,7 +546,7 @@ pub async fn take_task_ownership(
     Path(task_id): Path<Uuid>,
     State(state): State<Arc<BacklogAppState>>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user_id = resolve_user_uuid(&auth.sub);
+    let user_id = resolve_user_id(&state.pool, &auth.sub).await?;
 
     let task = state
         .usecases
@@ -557,7 +576,7 @@ pub async fn release_task_ownership(
     Path(task_id): Path<Uuid>,
     State(state): State<Arc<BacklogAppState>>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user_id = resolve_user_uuid(&auth.sub);
+    let user_id = resolve_user_id(&state.pool, &auth.sub).await?;
 
     let task = state
         .usecases
@@ -590,7 +609,7 @@ pub async fn start_task_work(
     Path(task_id): Path<Uuid>,
     State(state): State<Arc<BacklogAppState>>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user_id = resolve_user_uuid(&auth.sub);
+    let user_id = resolve_user_id(&state.pool, &auth.sub).await?;
 
     state
         .usecases
@@ -611,7 +630,15 @@ pub async fn complete_task_work(
     Path(task_id): Path<Uuid>,
     State(state): State<Arc<BacklogAppState>>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user_id = resolve_user_uuid(&auth.sub);
+    let user_id = resolve_user_id(&state.pool, &auth.sub).await?;
+
+    info!(
+        task_id = %task_id,
+        clerk_id = %auth.sub,
+        resolved_user_id = %user_id,
+        org_id = ?org_context.effective_organization_uuid(),
+        "Attempting to complete task work"
+    );
 
     state
         .usecases
@@ -633,7 +660,7 @@ pub async fn set_task_estimate(
     State(state): State<Arc<BacklogAppState>>,
     Json(payload): Json<SetTaskEstimateRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user_id = resolve_user_uuid(&auth.sub);
+    let user_id = resolve_user_id(&state.pool, &auth.sub).await?;
 
     state
         .usecases
@@ -661,7 +688,7 @@ pub async fn update_task_status(
     Json(payload): Json<UpdateTaskStatusRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let org_id = org_context.effective_organization_uuid();
-    let user_id = resolve_user_uuid(&auth.sub);
+    let user_id = resolve_user_id(&state.pool, &auth.sub).await?;
 
     let status = TaskStatus::from_str(&payload.status)
         .ok_or_else(|| AppError::BadRequest(format!("Invalid status: {}", payload.status)))?;

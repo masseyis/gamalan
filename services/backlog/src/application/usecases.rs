@@ -513,6 +513,14 @@ impl BacklogUsecases {
             .await?
             .ok_or_else(|| AppError::NotFound("Task not found".to_string()))?;
 
+        tracing::info!(
+            task_id = %task_id,
+            user_id = %user_id,
+            task_owner = ?task.owner_user_id,
+            task_status = ?task.status,
+            "Before calling task.complete() - checking ownership"
+        );
+
         task.complete(user_id)?;
         repo::update_task(&self.pool, &task).await?;
         let record = Self::task_record(&task);
