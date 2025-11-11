@@ -35,7 +35,12 @@ vi.mock('@clerk/nextjs', () => ({
 vi.mock('@/lib/api/projects')
 vi.mock('@/lib/api/backlog')
 vi.mock('@/lib/api/teams')
-vi.mock('@/components/providers/UserContextProvider')
+vi.mock('@/components/providers/UserContextProvider', () => ({
+  useRoles: vi.fn(),
+  useUserContext: vi.fn(),
+  useTeamContext: vi.fn(),
+  UserContextProvider: ({ children }: { children: React.ReactNode }) => children,
+}))
 
 // Mock toast
 vi.mock('@/hooks/use-toast', () => ({

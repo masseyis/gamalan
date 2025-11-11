@@ -30,6 +30,34 @@ vi.mock('@/hooks/use-toast', () => ({
   })),
 }))
 
+// Mock UserContext provider
+vi.mock('@/components/providers/UserContextProvider', () => ({
+  useRoles: vi.fn(() => ({
+    user: { id: 'user-1', role: 'contributor' },
+    isContributor: true,
+    isProductOwner: false,
+    isSponsor: false,
+    isManagingContributor: false,
+  })),
+  useUserContext: vi.fn(() => ({
+    user: { id: 'user-1', role: 'contributor' },
+    isLoading: false,
+    error: null,
+  })),
+  UserContextProvider: ({ children }: { children: React.ReactNode }) => children,
+}))
+
+// Mock TanStack Query
+vi.mock('@tanstack/react-query', () => ({
+  useQuery: vi.fn(() => ({
+    data: [],
+    isLoading: false,
+    error: null,
+  })),
+  QueryClient: vi.fn(),
+  QueryClientProvider: ({ children }: { children: React.ReactNode }) => children,
+}))
+
 describe('SprintHeader Integration with SprintTaskBoard', () => {
   let mockSprint: Sprint
   let mockStories: Story[]

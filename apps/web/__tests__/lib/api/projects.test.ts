@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { projectsApi } from '@/lib/api/projects'
-import { projectsClient } from '@/lib/api/client'
+import { authGatewayClient } from '@/lib/api/client'
 
 // Mock the API client setup
 vi.mock('@/lib/api/client', () => ({
@@ -72,11 +72,11 @@ describe('Projects API', () => {
         },
       ]
 
-      vi.mocked(projectsClient.get).mockResolvedValue(mockProjects)
+      vi.mocked(authGatewayClient.get).mockResolvedValue(mockProjects)
 
       const result = await projectsApi.getProjects()
 
-      expect(projectsClient.get).toHaveBeenCalledWith('/projects')
+      expect(authGatewayClient.get).toHaveBeenCalledWith('/projects')
       expect(result).toEqual(mockProjects)
     })
   })
@@ -92,11 +92,11 @@ describe('Projects API', () => {
         updatedAt: '2024-01-01T00:00:00Z',
       }
 
-      vi.mocked(projectsClient.get).mockResolvedValue(mockProject)
+      vi.mocked(authGatewayClient.get).mockResolvedValue(mockProject)
 
       const result = await projectsApi.getProject(projectId)
 
-      expect(projectsClient.get).toHaveBeenCalledWith(`/projects/${projectId}`)
+      expect(authGatewayClient.get).toHaveBeenCalledWith(`/projects/${projectId}`)
       expect(result).toEqual(mockProject)
     })
   })
@@ -114,11 +114,11 @@ describe('Projects API', () => {
         updatedAt: '2024-01-01T00:00:00Z',
       }
 
-      vi.mocked(projectsClient.post).mockResolvedValue(mockResponse)
+      vi.mocked(authGatewayClient.post).mockResolvedValue(mockResponse)
 
       const result = await projectsApi.createProject(createData)
 
-      expect(projectsClient.post).toHaveBeenCalledWith('/projects', createData)
+      expect(authGatewayClient.post).toHaveBeenCalledWith('/projects', createData)
       expect(result).toEqual(mockResponse)
     })
   })
@@ -131,11 +131,11 @@ describe('Projects API', () => {
         description: 'Updated description',
       }
 
-      vi.mocked(projectsClient.put).mockResolvedValue(undefined)
+      vi.mocked(authGatewayClient.put).mockResolvedValue(undefined)
 
       await projectsApi.updateProject(projectId, updateData)
 
-      expect(projectsClient.put).toHaveBeenCalledWith(`/projects/${projectId}`, updateData)
+      expect(authGatewayClient.put).toHaveBeenCalledWith(`/projects/${projectId}`, updateData)
     })
   })
 
@@ -143,11 +143,11 @@ describe('Projects API', () => {
     it('should delete a project', async () => {
       const projectId = 'test-id'
 
-      vi.mocked(projectsClient.delete).mockResolvedValue(undefined)
+      vi.mocked(authGatewayClient.delete).mockResolvedValue(undefined)
 
       await projectsApi.deleteProject(projectId)
 
-      expect(projectsClient.delete).toHaveBeenCalledWith(`/projects/${projectId}`)
+      expect(authGatewayClient.delete).toHaveBeenCalledWith(`/projects/${projectId}`)
     })
   })
 
@@ -159,11 +159,11 @@ describe('Projects API', () => {
         notifications: true,
       }
 
-      vi.mocked(projectsClient.patch).mockResolvedValue(undefined)
+      vi.mocked(authGatewayClient.patch).mockResolvedValue(undefined)
 
       await projectsApi.updateProjectSettings(projectId, settings)
 
-      expect(projectsClient.patch).toHaveBeenCalledWith(`/projects/${projectId}/settings`, settings)
+      expect(authGatewayClient.patch).toHaveBeenCalledWith(`/projects/${projectId}/settings`, settings)
     })
   })
 })
