@@ -14,6 +14,11 @@ vi.mock('@clerk/nextjs', () => ({
     user: { id: 'user-1' },
     isLoaded: true,
   })),
+  useAuth: vi.fn(() => ({
+    getToken: vi.fn(() => Promise.resolve('mock-token')),
+    userId: 'user-1',
+    isLoaded: true,
+  })),
 }))
 
 // Mock Next.js navigation
@@ -37,9 +42,22 @@ vi.mock('@/lib/api/projects')
 vi.mock('@/lib/api/backlog')
 vi.mock('@/lib/api/teams')
 vi.mock('@/components/providers/UserContextProvider', () => ({
-  useRoles: vi.fn(),
-  useUserContext: vi.fn(),
-  useTeamContext: vi.fn(),
+  useRoles: vi.fn(() => ({
+    user: { id: 'user-1', role: 'contributor' },
+    isContributor: true,
+    isProductOwner: false,
+    isSponsor: false,
+    isManagingContributor: false,
+  })),
+  useUserContext: vi.fn(() => ({
+    user: { id: 'user-1', role: 'contributor' },
+    isLoading: false,
+    error: null,
+  })),
+  useTeamContext: vi.fn(() => ({
+    teamMemberships: [],
+    getTeamRole: vi.fn(),
+  })),
   UserContextProvider: ({ children }: { children: React.ReactNode }) => children,
 }))
 

@@ -69,7 +69,7 @@
   },
   "devDependencies": {
     "@clerk/testing": "^1.12.6",
-    "@playwright/test": "^1.55.0",
+    "@playwright/test": "^1.56.1",
     "@tailwindcss/typography": "^0.5.16",
     "@testing-library/jest-dom": "^6.4.2",
     "@testing-library/react": "^14.2.2",
