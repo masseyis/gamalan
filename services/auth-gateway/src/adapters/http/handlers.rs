@@ -493,6 +493,7 @@ pub async fn get_current_user(
 }
 
 pub async fn get_user_by_id(
+    AuthenticatedWithOrg { .. }: AuthenticatedWithOrg,
     Extension(user_usecases): Extension<Arc<UserUsecases>>,
     Path(user_id): Path<Uuid>,
 ) -> Result<Json<CurrentUserResponse>, AppError> {

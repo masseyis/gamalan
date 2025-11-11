@@ -100,7 +100,7 @@ export function SprintTaskBoard({
   // Sync local state when initialStories prop changes (from refetch)
   // Only sync if we don't have a pending optimistic update
   useEffect(() => {
-    if (!hasOptimisticUpdate.current && initialStories.length > 0) {
+    if (!hasOptimisticUpdate.current) {
       console.log('[SprintTaskBoard] Syncing stories from prop update')
       setStories(initialStories)
     }
