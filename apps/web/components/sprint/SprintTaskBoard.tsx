@@ -262,6 +262,52 @@ export function SprintTaskBoard({
     }
   }
 
+  const handleReleaseOwnership = async (taskId: string, storyId: string) => {
+    setClaimingTaskId(taskId)
+    hasOptimisticUpdate.current = true
+
+    try {
+      await backlogApi.releaseTaskOwnership(taskId)
+
+      setStories((prevStories) =>
+        prevStories.map((story) =>
+          story.id === storyId
+            ? {
+                ...story,
+                tasks: story.tasks?.map((task) =>
+                  task.id === taskId
+                    ? { ...task, ownerUserId: undefined, status: 'available' as TaskStatus }
+                    : task
+                ),
+              }
+            : story
+        )
+      )
+
+      toast({
+        title: 'Task released',
+        description: 'The task is now available for others to claim',
+      })
+
+      // Refetch to sync with server
+      onRefresh?.()
+
+      // Allow prop updates again after refetch completes
+      setTimeout(() => {
+        hasOptimisticUpdate.current = false
+      }, 1000)
+    } catch (error) {
+      hasOptimisticUpdate.current = false
+      toast({
+        title: 'Unable to release task',
+        description: error instanceof Error ? error.message : 'An unexpected error occurred',
+        variant: 'destructive',
+      })
+    } finally {
+      setClaimingTaskId(null)
+    }
+  }
+
   const handleWebSocketEvent = (event: TaskWebSocketEvent) => {
     console.log('[SprintTaskBoard] Task event received:', event)
 
@@ -388,6 +434,7 @@ export function SprintTaskBoard({
         currentUserId={currentUserId}
         onTakeOwnership={handleTakeOwnership}
         onCompleteTask={handleCompleteTask}
+        onReleaseOwnership={handleReleaseOwnership}
         claimingTaskId={claimingTaskId}
         userLookup={userLookup}
       />
