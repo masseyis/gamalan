@@ -74,10 +74,10 @@ export function TaskClarityScoreVisualization({
       {/* Score Gauge */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium">Clarity Score</h3>
+          <h3 className="text-sm font-medium" data-testid="clarity-score-label">Clarity Score</h3>
           <span
             className={cn('text-2xl font-bold', getScoreColor(score))}
-            data-testid="clarity-score"
+            data-testid="clarity-score clarity-score-value"
           >
             {score}
           </span>
