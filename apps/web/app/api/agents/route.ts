@@ -9,6 +9,7 @@ const execAsync = promisify(exec);
 const REPO_ROOT = path.resolve(process.cwd(), '../../');
 const LOG_DIR = path.join(REPO_ROOT, 'logs/autonomous-agents');
 const PID_DIR = LOG_DIR;
+const WORKTREE_BASE = path.resolve(REPO_ROOT, '../agents');
 
 const AGENT_ROLES = ['dev', 'qa', 'po', 'devops', 'documenter'];
 const AGENT_KEYS = {
@@ -25,6 +26,36 @@ interface AgentStatus {
   pid?: number;
   logFile: string;
   enabled: boolean;
+}
+
+// Ensure worktrees are set up for all agents
+async function ensureWorktrees(): Promise<void> {
+  try {
+    // Check if worktrees already exist
+    const { stdout } = await execAsync('git worktree list', { cwd: REPO_ROOT });
+
+    // Count how many agent worktrees we have
+    const worktreeCount = (stdout.match(/\/agents\//g) || []).length;
+
+    if (worktreeCount >= AGENT_ROLES.length) {
+      // Worktrees already set up
+      return;
+    }
+
+    // Set up worktrees using the setup script
+    console.log('Setting up agent worktrees...');
+    const setupScript = path.join(REPO_ROOT, 'scripts/setup-agent-worktrees.sh');
+    await execAsync(`${setupScript} ${AGENT_ROLES.length}`, { cwd: REPO_ROOT });
+    console.log('Agent worktrees ready');
+  } catch (error) {
+    console.error('Failed to ensure worktrees:', error);
+    throw new Error('Failed to set up agent worktrees. Please run scripts/setup-agent-worktrees.sh manually.');
+  }
+}
+
+// Get worktree path for an agent role
+function getWorktreePath(role: string, index: number = 1): string {
+  return path.join(WORKTREE_BASE, `${role}-${index}`);
 }
 
 // Get status of all agents
@@ -78,6 +109,9 @@ async function startAgent(
   if (!apiKey) {
     throw new Error(`Unknown role: ${role}`);
   }
+
+  // Ensure worktrees are set up before starting any agent
+  await ensureWorktrees();
 
   // Validate configuration
   const mode = aiMode || 'claude-cli';
@@ -144,10 +178,22 @@ async function startAgent(
       break;
   }
 
+  // Determine worktree index for this role (currently just use 1)
+  // In the future, could support multiple agents per role
+  const worktreeIndex = 1;
+  const worktreePath = getWorktreePath(role, worktreeIndex);
+
+  // Verify worktree exists
+  try {
+    await fs.access(worktreePath);
+  } catch {
+    throw new Error(`Worktree not found at ${worktreePath}. Setup may have failed.`);
+  }
+
   const child = spawn(scriptPath, [apiKey, sprint, role], {
     detached: true,
     stdio: ['ignore', 'pipe', 'pipe'],
-    cwd: REPO_ROOT,
+    cwd: worktreePath, // Run agent in its worktree
     env,
   });
 
