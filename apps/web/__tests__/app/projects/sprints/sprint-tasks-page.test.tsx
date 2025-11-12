@@ -320,8 +320,8 @@ describe('SprintTasksPage', () => {
       expect(screen.getByText('Design dashboard layout')).toBeInTheDocument()
     })
 
-    // Task owned by user-2 should show owner
-    expect(screen.getByText(/Owned by user-2/i)).toBeInTheDocument()
+    // Task owned by user-2 should show owner (displayed as "Unknown · user-2" when no userLookup)
+    expect(screen.getByText(/Unknown · user-2/i)).toBeInTheDocument()
   })
 
   it('AC d4d41a1f: displays sprint name in header', async () => {
