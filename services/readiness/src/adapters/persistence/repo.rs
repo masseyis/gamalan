@@ -27,7 +27,7 @@ pub async fn create_criteria(
 
     for criterion in criteria {
         sqlx::query(
-            "INSERT INTO criteria (id, story_id, ac_id, given, \"when\", \"then\") \
+            "INSERT INTO acceptance_criteria (id, story_id, ac_id, given, \"when\", \"then\") \
              VALUES ($1, $2, $3, $4, $5, $6) \
              ON CONFLICT (story_id, ac_id) DO UPDATE SET \
              given = EXCLUDED.given, \"when\" = EXCLUDED.\"when\", \"then\" = EXCLUDED.\"then\"",
@@ -64,7 +64,7 @@ pub async fn get_criteria_by_story(
 ) -> Result<Vec<AcceptanceCriterion>, AppError> {
     let rows = sqlx::query_as::<_, AcceptanceCriterionRow>(
         "SELECT c.id, c.story_id, s.organization_id, c.ac_id, c.given, c.\"when\" AS \"when\", c.\"then\" AS \"then\" \
-         FROM criteria c \
+         FROM acceptance_criteria c \
          JOIN stories s ON s.id = c.story_id \
          WHERE c.story_id = $1 \
            AND ($2::UUID IS NULL OR s.organization_id = $2 OR (s.organization_id IS NULL AND $2 IS NULL)) \
@@ -197,7 +197,7 @@ pub async fn update_criterion(
     criterion: &AcceptanceCriterion,
 ) -> Result<(), AppError> {
     sqlx::query(
-        "UPDATE criteria SET given = $3, \"when\" = $4, \"then\" = $5 \
+        "UPDATE acceptance_criteria SET given = $3, \"when\" = $4, \"then\" = $5 \
          WHERE id = $1 AND story_id = $2",
     )
     .bind(criterion.id)
@@ -220,7 +220,7 @@ pub async fn delete_criteria_by_story(
     story_id: Uuid,
     _organization_id: Option<Uuid>,
 ) -> Result<(), AppError> {
-    sqlx::query("DELETE FROM criteria WHERE story_id = $1")
+    sqlx::query("DELETE FROM acceptance_criteria WHERE story_id = $1")
         .bind(story_id)
         .execute(pool)
         .await
@@ -240,7 +240,7 @@ pub async fn get_criterion_by_story_and_ac_id(
 ) -> Result<Option<AcceptanceCriterion>, AppError> {
     let row = sqlx::query_as::<_, AcceptanceCriterionRow>(
         "SELECT c.id, c.story_id, s.organization_id, c.ac_id, c.given, c.\"when\" AS \"when\", c.\"then\" AS \"then\" \
-         FROM criteria c \
+         FROM acceptance_criteria c \
          JOIN stories s ON s.id = c.story_id \
          WHERE c.story_id = $1 \
            AND ($2::UUID IS NULL OR s.organization_id = $2 OR (s.organization_id IS NULL AND $2 IS NULL)) \

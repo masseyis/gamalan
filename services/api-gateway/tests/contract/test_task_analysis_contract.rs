@@ -318,17 +318,15 @@ async fn seed_task_with_analysis_gaps(pool: &PgPool, organization_id: Uuid) -> (
     sqlx::query(
         r#"
         INSERT INTO readiness_story_projections
-            (id, project_id, organization_id, title, description, status, story_points, acceptance_criteria, created_at, updated_at)
+            (id, organization_id, title, description, story_points, acceptance_criteria, created_at, updated_at)
         VALUES
-            ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+            ($1, $2, $3, $4, $5, $6, NOW(), NOW())
         "#,
     )
     .bind(story_id)
-    .bind(project_id)
     .bind(organization_id)
     .bind("Spec Test Story")
     .bind(story_description)
-    .bind("ready")
     .bind(Some(5_i32))
     .bind(Json(json!([
         {
@@ -345,9 +343,9 @@ async fn seed_task_with_analysis_gaps(pool: &PgPool, organization_id: Uuid) -> (
     sqlx::query(
         r#"
         INSERT INTO readiness_task_projections
-            (id, story_id, organization_id, title, description, status, acceptance_criteria_refs, estimated_hours, created_at, updated_at)
+            (id, story_id, organization_id, title, description, acceptance_criteria_refs, estimated_hours, created_at, updated_at)
         VALUES
-            ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+            ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
         "#,
     )
     .bind(task_id)
@@ -355,7 +353,6 @@ async fn seed_task_with_analysis_gaps(pool: &PgPool, organization_id: Uuid) -> (
     .bind(organization_id)
     .bind("Spec Test Task Missing Detail")
     .bind(task_description)
-    .bind("available")
     .bind(Vec::<String>::new())
     .bind(Option::<i32>::None)
     .execute(pool)
@@ -364,17 +361,16 @@ async fn seed_task_with_analysis_gaps(pool: &PgPool, organization_id: Uuid) -> (
 
     sqlx::query(
         r#"
-        INSERT INTO criteria
-            (id, story_id, organization_id, ac_id, description, given, "when", "then")
+        INSERT INTO acceptance_criteria
+            (id, story_id, organization_id, ac_id, given, "when", "then")
         VALUES
-            ($1, $2, $3, $4, $5, $6, $7, $8)
+            ($1, $2, $3, $4, $5, $6, $7)
         "#,
     )
     .bind(Uuid::new_v4())
     .bind(story_id)
     .bind(organization_id)
     .bind("AC-READY-1")
-    .bind("AC coverage for readiness contract tests")
     .bind("Given a poorly defined task")
     .bind("When readiness analysis runs")
     .bind("Then recommend linking to AC-READY-1")
