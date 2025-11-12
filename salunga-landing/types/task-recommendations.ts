@@ -55,10 +55,18 @@ export interface CategorizedRecommendations {
   isExpanded: boolean
 }
 
+export interface DimensionScore {
+  dimension: 'technical' | 'specificity' | 'completeness' | 'testability'
+  score: number // 0-100
+  label: string
+  description: string
+}
+
 export interface TaskClarityScore {
   score: number // 0-100
   level: 'poor' | 'fair' | 'good' | 'excellent'
   improvementPotential: number
+  dimensions: DimensionScore[]
 }
 
 export interface TaskRecommendationsPanelProps {
