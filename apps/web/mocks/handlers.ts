@@ -70,6 +70,12 @@ export const handlers = [
     })
   }),
 
+  http.put('*/projects/:id', async ({ params, request }) => {
+    const body = (await request.json()) as any
+    // Return void (no content) for PUT operations in this API design
+    return new HttpResponse(null, { status: 204 })
+  }),
+
   http.patch('*/projects/:id', async ({ params, request }) => {
     const body = (await request.json()) as any
     // Return void (no content) for PATCH operations in this API design

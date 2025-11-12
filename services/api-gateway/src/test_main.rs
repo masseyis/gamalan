@@ -66,9 +66,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     )
     .await;
 
-    let backlog_router = api_gateway::build_backlog_router(backlog_usecases, verifier.clone());
+    let backlog_router = api_gateway::build_backlog_router(backlog_usecases, pool.clone(), verifier.clone());
     let readiness_router =
-        api_gateway::build_readiness_router(readiness_usecases, verifier.clone());
+        api_gateway::build_readiness_router(pool.clone(), readiness_usecases, verifier.clone());
     let prompt_builder_router = api_gateway::build_prompt_builder_router(
         prompt_builder_usecases,
         verifier.clone(),

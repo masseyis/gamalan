@@ -205,8 +205,10 @@ export class ApiClient {
                   externalOrgId && orgMapping ? (orgMapping[externalOrgId] ?? null) : null
                 const organizationName = organization?.name ?? null
 
+                // Don't send X-User-Id - backend derives user from JWT
+                // Only send organization context headers
                 applyUserContextHeaders(config.headers as Record<string, any>, {
-                  userId: user?.id ?? (config.headers['X-User-Id'] as string | undefined),
+                  userId: undefined,
                   organizationId: internalOrgId,
                   organizationExternalId: externalOrgId,
                   organizationName,

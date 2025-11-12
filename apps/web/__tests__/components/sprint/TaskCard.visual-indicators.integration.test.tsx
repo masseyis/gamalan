@@ -221,13 +221,11 @@ describe('Sprint Task Board - AC3: Visual Indicators Integration', () => {
         />
       )
 
-      // Check for "Owned by" text - there are two tasks owned by others
-      const ownedByTexts = screen.getAllByText(/Owned by/)
-      expect(ownedByTexts).toHaveLength(2)
-
-      // Verify the specific user IDs are shown
-      expect(screen.getByText(/other-user-456/)).toBeInTheDocument()
-      expect(screen.getByText(/other-user-789/)).toBeInTheDocument()
+      // Verify the specific user IDs are shown (displayed as "Unknown · {shortId}")
+      // The component shows "Unknown · {shortId}" when userLookup is not provided
+      // Both user IDs "other-user-456" and "other-user-789" are truncated to "other-us" (8 chars)
+      const unknownUserLabels = screen.getAllByText(/Unknown · other-us/)
+      expect(unknownUserLabels).toHaveLength(2)
     })
 
     it('should show "You" for my tasks instead of user ID', () => {

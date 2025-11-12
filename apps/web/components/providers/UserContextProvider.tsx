@@ -4,7 +4,17 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { useAuth, useUser } from '@clerk/nextjs'
 import { usersApi, roleHelpers } from '@/lib/api/users'
 import { teamsApi } from '@/lib/api/teams'
-import { setGlobalAuthToken, setGlobalApiKey } from '@/lib/api/client'
+import {
+  setGlobalAuthToken,
+  setGlobalApiKey,
+  projectsClient,
+  backlogClient,
+  readinessClient,
+  promptBuilderClient,
+  orchestratorClient,
+  authGatewayClient,
+  sprintClient,
+} from '@/lib/api/client'
 import { normalizeUserId } from '@/lib/utils/uuid'
 import {
   User,
@@ -74,6 +84,22 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
     }
   }, [])
 
+  // Helper to clear user context on all API clients
+  // Note: We don't set X-User-Id headers anymore - the backend derives user from JWT
+  const clearAllClientsUserContext = useCallback(() => {
+    const clients = [
+      projectsClient,
+      backlogClient,
+      readinessClient,
+      promptBuilderClient,
+      orchestratorClient,
+      authGatewayClient,
+      sprintClient,
+    ]
+
+    clients.forEach((client) => client.clearUserContext())
+  }, [])
+
   const clearOrganizationMapping = useCallback(() => {
     setOrganizations([])
     setOrganizationMap({})
@@ -114,6 +140,7 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
   const fetchUserContext = useCallback(async () => {
     if (!isClerkLoaded || !isSignedIn) {
       setUser(null)
+      clearAllClientsUserContext()
       setTeamMemberships([])
       clearOrganizationMapping()
       return
@@ -127,6 +154,7 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
       if (!token) {
         setGlobalAuthToken()
         setUser(null)
+        clearAllClientsUserContext()
         setTeamMemberships([])
         clearOrganizationMapping()
         return
@@ -175,15 +203,18 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
       }
 
       if (resolvedUser) {
-        const normalizedId = normalizeUserId(
-          resolvedUser.id ?? resolvedUser.externalId ?? resolvedUser.email
-        )
+        // If user came from backend, use their ID as-is (already correct internal UUID)
+        // Only normalize if we're using the fallback (Clerk-only) user
+        const userId = userProfile
+          ? resolvedUser.id // Backend user - use ID directly
+          : normalizeUserId(resolvedUser.id ?? resolvedUser.externalId ?? resolvedUser.email) // Fallback - normalize Clerk ID
+
         const externalId =
           resolvedUser.externalId ?? resolvedUser.id ?? resolvedUser.email ?? 'unknown'
 
         const finalUser: User = {
           ...resolvedUser,
-          id: normalizedId,
+          id: userId,
           externalId,
         }
 
@@ -204,6 +235,7 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
         }
       } else {
         setUser(null)
+        clearAllClientsUserContext()
         setTeamMemberships([])
       }
     } catch (err) {
@@ -221,6 +253,7 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
     isSignedIn,
     clearOrganizationMapping,
     updateOrganizationMapping,
+    clearAllClientsUserContext,
   ])
 
   // Update user role

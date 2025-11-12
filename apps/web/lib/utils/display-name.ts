@@ -24,7 +24,7 @@ function deriveFromEmail(email?: string | null): string | undefined {
   if (!email) return undefined
   const localPart = email.split('@')[0]
   if (!localPart) return undefined
-  const cleaned = localPart.replace(/[._-]+/g, ' ').trim()
+  const cleaned = localPart.replace(/[._\-+]+/g, ' ').trim()
   if (!cleaned) return undefined
   return titleCase(cleaned)
 }

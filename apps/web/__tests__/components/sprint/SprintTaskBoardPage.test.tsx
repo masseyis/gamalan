@@ -16,6 +16,26 @@ vi.mock('@/lib/hooks/useTaskWebSocket', () => ({
   })),
 }))
 
+// Mock UserContext provider
+vi.mock('@/components/providers/UserContextProvider', () => ({
+  useRoles: vi.fn(() => ({
+    user: { id: 'user-1', role: 'contributor' },
+    isContributor: true,
+    isProductOwner: false,
+    isSponsor: false,
+    isManagingContributor: false,
+  })),
+  useUserContext: vi.fn(() => ({
+    user: { id: 'user-1', role: 'contributor' },
+    isLoading: false,
+    error: null,
+  })),
+  UserContextProvider: ({ children }: { children: React.ReactNode }) => children,
+}))
+
+// Don't mock TanStack Query - let it work normally
+// We'll control the data through the API mocks instead
+
 const mockSprint = {
   id: 'sprint-1',
   teamId: 'team-1',
@@ -119,6 +139,14 @@ describe('SprintTaskBoardPage', () => {
       refresh: vi.fn(),
       prefetch: vi.fn(),
     } as any)
+
+    // Mock useAuth from Clerk (needed for canMakeAuthenticatedCalls)
+    vi.spyOn(clerk, 'useAuth').mockReturnValue({
+      isLoaded: true,
+      isSignedIn: true,
+      userId: 'user-123',
+    } as any)
+
     vi.spyOn(clerk, 'useUser').mockReturnValue({
       user: {
         id: 'user-123',

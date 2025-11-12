@@ -244,19 +244,25 @@ describe('Projects API Integration with Clerk Authentication', () => {
         updatedAt: Date.now(),
       }
 
-      // Update MSW handler to verify organization header
+      // Set up organization ID mapping (external Clerk ID -> internal backend ID)
+      window.__SALUNGA_ORG_ID_MAP = {
+        'org_different_456': 'internal_org_456',
+      }
+
+      // Capture headers for verification
+      let capturedOrgHeader: string | null = null
+
+      // Update MSW handler to capture organization header
       server.use(
         http.get('*/projects', ({ request }) => {
-          const orgHeader = request.headers.get('X-Organization-Id')
-
-          expect(orgHeader).toBe('org_different_456')
+          capturedOrgHeader = request.headers.get('X-Organization-Id')
 
           return HttpResponse.json([
             {
               id: 'proj_org2_123',
               name: 'Org 2 Project',
               description: 'Project in different org',
-              organizationId: 'org_different_456',
+              organizationId: 'internal_org_456',
               createdAt: '2024-01-01T00:00:00Z',
               updatedAt: '2024-01-01T00:00:00Z',
             },
@@ -266,24 +272,27 @@ describe('Projects API Integration with Clerk Authentication', () => {
 
       const projects = await projectsApi.getProjects()
 
+      // Verify the organization header was sent correctly (should be internal ID from mapping)
+      expect(capturedOrgHeader).toBe('internal_org_456')
       expect(projects).toHaveLength(1)
-      expect(projects[0].organizationId).toBe('org_different_456')
+      expect(projects[0].organizationId).toBe('internal_org_456')
     })
 
     it('should handle personal context when no organization is selected', async () => {
       // Remove organization to test personal context
       window.Clerk.organization = null
 
-      // Update MSW handler to verify personal context headers
+      // Capture headers for verification
+      let capturedContextType: string | null = null
+      let capturedUserHeader: string | null = null
+      let capturedOrgHeader: string | null = null
+
+      // Update MSW handler to capture personal context headers
       server.use(
         http.get('*/projects', ({ request }) => {
-          const contextType = request.headers.get('X-Context-Type')
-          const userHeader = request.headers.get('X-User-Id')
-          const orgHeader = request.headers.get('X-Organization-Id')
-
-          expect(contextType).toBe('personal')
-          expect(userHeader).toBe('user_test123')
-          expect(orgHeader).toBeNull()
+          capturedContextType = request.headers.get('X-Context-Type')
+          capturedUserHeader = request.headers.get('X-User-Id')
+          capturedOrgHeader = request.headers.get('X-Organization-Id')
 
           return HttpResponse.json([
             {
@@ -299,6 +308,13 @@ describe('Projects API Integration with Clerk Authentication', () => {
       )
 
       const projects = await projectsApi.getProjects()
+
+      // Verify the personal context headers were sent correctly
+      expect(capturedContextType).toBe('personal')
+      // In production mode, userId is undefined, so normalizeUserId returns anonymous UUID
+      // The backend derives the actual user from the JWT token
+      expect(capturedUserHeader).toBe('732de8c6-25e8-524f-9905-e88659bfd9d6') // uuidV5('anonymous')
+      expect(capturedOrgHeader).toBeNull()
 
       expect(projects).toHaveLength(1)
       expect(projects[0].organizationId).toBeNull()

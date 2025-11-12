@@ -35,7 +35,25 @@ vi.mock('@clerk/nextjs', () => ({
 vi.mock('@/lib/api/projects')
 vi.mock('@/lib/api/backlog')
 vi.mock('@/lib/api/teams')
-vi.mock('@/components/providers/UserContextProvider')
+vi.mock('@/components/providers/UserContextProvider', () => ({
+  useRoles: vi.fn(() => ({
+    user: { id: 'user-1', role: 'contributor' },
+    isContributor: true,
+    isProductOwner: false,
+    isSponsor: false,
+    isManagingContributor: false,
+  })),
+  useUserContext: vi.fn(() => ({
+    user: { id: 'user-1', role: 'contributor' },
+    isLoading: false,
+    error: null,
+  })),
+  useTeamContext: vi.fn(() => ({
+    teamMemberships: [],
+    getTeamRole: vi.fn(),
+  })),
+  UserContextProvider: ({ children }: { children: React.ReactNode }) => children,
+}))
 
 // Mock toast
 vi.mock('@/hooks/use-toast', () => ({
@@ -302,8 +320,8 @@ describe('SprintTasksPage', () => {
       expect(screen.getByText('Design dashboard layout')).toBeInTheDocument()
     })
 
-    // Task owned by user-2 should show owner
-    expect(screen.getByText(/Owned by user-2/i)).toBeInTheDocument()
+    // Task owned by user-2 should show owner (displayed as "Unknown · user-2" when no userLookup)
+    expect(screen.getByText(/Unknown · user-2/i)).toBeInTheDocument()
   })
 
   it('AC d4d41a1f: displays sprint name in header', async () => {

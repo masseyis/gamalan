@@ -1,4 +1,4 @@
-import { useAuth } from '@clerk/nextjs'
+import { useAuth, useUser } from '@clerk/nextjs'
 import { useEffect, useRef, useState } from 'react'
 
 export interface TaskEvent {
@@ -36,6 +36,7 @@ interface UseTaskWebSocketOptions {
 
 export function useTaskWebSocket(options: UseTaskWebSocketOptions = {}) {
   const { getToken } = useAuth()
+  const { isLoaded: isClerkLoaded, isSignedIn } = useUser()
   const [isConnected, setIsConnected] = useState(false)
   const wsRef = useRef<WebSocket | null>(null)
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>()
@@ -43,7 +44,13 @@ export function useTaskWebSocket(options: UseTaskWebSocketOptions = {}) {
   const maxReconnectAttempts = 5
 
   useEffect(() => {
+    // Don't connect until Clerk is loaded and user is signed in
+    if (!isClerkLoaded || !isSignedIn) {
+      return
+    }
+
     let isMounted = true
+    let isCleaningUp = false
 
     const connect = async () => {
       try {
@@ -90,6 +97,9 @@ export function useTaskWebSocket(options: UseTaskWebSocketOptions = {}) {
         }
 
         ws.onerror = (error) => {
+          // Don't report errors during cleanup (navigation)
+          if (isCleaningUp || !isMounted) return
+
           // Only log on first attempt to reduce console noise
           if (reconnectAttempts.current === 0) {
             console.warn('[WebSocket] Connection failed - backend may not be running')
@@ -98,7 +108,8 @@ export function useTaskWebSocket(options: UseTaskWebSocketOptions = {}) {
         }
 
         ws.onclose = () => {
-          if (!isMounted) return
+          // Don't trigger reconnect logic during cleanup
+          if (!isMounted || isCleaningUp) return
 
           setIsConnected(false)
           options.onDisconnect?.()
@@ -125,7 +136,9 @@ export function useTaskWebSocket(options: UseTaskWebSocketOptions = {}) {
 
         wsRef.current = ws
       } catch (error) {
-        console.error('[WebSocket] Connection error:', error)
+        if (!isCleaningUp) {
+          console.error('[WebSocket] Connection error:', error)
+        }
       }
     }
 
@@ -133,15 +146,20 @@ export function useTaskWebSocket(options: UseTaskWebSocketOptions = {}) {
 
     return () => {
       isMounted = false
+      isCleaningUp = true
+
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current)
       }
       if (wsRef.current) {
+        // Close without triggering error handlers
+        wsRef.current.onclose = null
+        wsRef.current.onerror = null
         wsRef.current.close()
         wsRef.current = null
       }
     }
-  }, [getToken, options])
+  }, [getToken, options, isClerkLoaded, isSignedIn])
 
   return {
     isConnected,

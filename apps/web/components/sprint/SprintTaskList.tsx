@@ -6,7 +6,9 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Story, Task, TaskStatus } from '@/lib/types/story'
 import { GroupByOption } from './SprintTaskFilters'
-import { CheckCircle2, Circle, Clock, User } from 'lucide-react'
+import { CheckCircle2, Circle, Clock, User as UserIcon } from 'lucide-react'
+import { formatUserDisplayName } from '@/lib/utils/display-name'
+import type { User } from '@/lib/types'
 
 export interface SprintTaskListProps {
   stories: Story[]
@@ -14,7 +16,10 @@ export interface SprintTaskListProps {
   groupBy: GroupByOption
   currentUserId?: string
   onTakeOwnership?: (taskId: string, storyId: string) => void
+  onCompleteTask?: (taskId: string, storyId: string) => void
+  onReleaseOwnership?: (taskId: string, storyId: string) => void
   claimingTaskId?: string | null
+  userLookup?: Map<string, User>
 }
 
 interface TaskWithStory extends Task {
@@ -41,7 +46,7 @@ const STATUS_CONFIG: Record<
   },
   owned: {
     label: 'Owned',
-    icon: <User className="h-4 w-4" />,
+    icon: <UserIcon className="h-4 w-4" />,
     color: 'text-yellow-600',
     bgColor: 'bg-yellow-50 border-yellow-200',
   },
@@ -79,7 +84,10 @@ export function SprintTaskList({
   groupBy,
   currentUserId,
   onTakeOwnership,
+  onCompleteTask,
+  onReleaseOwnership,
   claimingTaskId,
+  userLookup,
 }: SprintTaskListProps) {
   // Flatten tasks and attach story information
   const tasksWithStories = useMemo((): TaskWithStory[] => {
@@ -142,11 +150,25 @@ export function SprintTaskList({
     const isMyTask = currentUserId && task.ownerUserId === currentUserId
     const isAvailable = task.status === 'available' && !task.ownerUserId
     const isClaiming = claimingTaskId === task.id
-    const ownerLabel = task.ownerUserId
-      ? task.ownerUserId.length > OWNER_DISPLAY_THRESHOLD
-        ? task.ownerUserId.slice(0, OWNER_DISPLAY_LENGTH)
-        : task.ownerUserId
-      : null
+
+    // Get owner display name from userLookup if available
+    let ownerLabel: string | null = null
+    if (task.ownerUserId) {
+      const ownerUser = userLookup?.get(task.ownerUserId)
+      if (ownerUser) {
+        ownerLabel = formatUserDisplayName({
+          name: null,
+          email: ownerUser.email,
+          role: ownerUser.role,
+          id: ownerUser.id,
+        })
+      } else {
+        // Fallback: Show "Unknown User" with truncated ID
+        const shortId = task.ownerUserId.slice(0, OWNER_DISPLAY_LENGTH)
+        ownerLabel = `Unknown · ${shortId}`
+      }
+    }
+
     const taskIdDisplay =
       task.id.length > TASK_ID_DISPLAY_LENGTH
         ? task.id.slice(0, TASK_ID_DISPLAY_LENGTH)
@@ -210,9 +232,9 @@ export function SprintTaskList({
               {/* Owner */}
               {task.ownerUserId && (
                 <div className="flex items-center gap-1" data-testid="task-owner">
-                  <User className="h-3 w-3" />
+                  <UserIcon className="h-3 w-3" />
                   <span title={isMyTask ? undefined : task.ownerUserId}>
-                    {isMyTask ? 'You' : `Owned by ${ownerLabel}`}
+                    {isMyTask ? 'You' : ownerLabel}
                   </span>
                 </div>
               )}
@@ -246,6 +268,35 @@ export function SprintTaskList({
                 >
                   {isClaiming ? 'Claiming...' : "I'm on it"}
                 </Button>
+              </div>
+            )}
+
+            {isMyTask && task.status !== 'completed' && (onCompleteTask || onReleaseOwnership) && (
+              <div className="flex items-center justify-end gap-2 text-sm">
+                {onReleaseOwnership && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onReleaseOwnership(task.id, task.story.id)}
+                    disabled={isClaiming}
+                    data-testid={`release-ownership-${task.id}`}
+                    className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                  >
+                    {isClaiming ? 'Releasing...' : 'Give up'}
+                  </Button>
+                )}
+                {onCompleteTask && (
+                  <Button
+                    size="sm"
+                    variant="default"
+                    onClick={() => onCompleteTask(task.id, task.story.id)}
+                    disabled={isClaiming}
+                    data-testid={`complete-task-${task.id}`}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    {isClaiming ? 'Completing...' : 'Done it'}
+                  </Button>
+                )}
               </div>
             )}
           </div>

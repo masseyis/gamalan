@@ -21,6 +21,7 @@ use crate::adapters::http::handlers::{
     get_team_members,
     get_teams_by_organization,
     get_teams_for_context,
+    get_user_by_id,
     get_user_organizations,
     get_user_organizations_me,
     get_user_teams,
@@ -81,6 +82,7 @@ pub async fn create_auth_router(
         .route("/users/me/role", patch(update_current_user_role))
         .route("/users/me/organizations", get(get_user_organizations_me))
         .route("/users/search", get(search_users))
+        .route("/users/{user_id}", get(get_user_by_id))
         .route(
             "/organizations/{org_id}/members",
             post(add_member_to_organization),
