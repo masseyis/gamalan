@@ -115,10 +115,22 @@ async function startAgent(
   const scriptPath = path.join(REPO_ROOT, 'scripts/autonomous-agent.sh');
 
   // Build environment variables
+  //
+  // NOTE: UI-started agents currently run from the main repository directory
+  // with USE_WORKTREE=false. This is simpler but means all agents share the
+  // same working directory and git state.
+  //
+  // For better isolation, agents should run in separate worktrees like the
+  // multi-agent-sprint.sh orchestrator does. To implement this:
+  // 1. Call scripts/setup-agent-worktrees.sh before starting agents
+  // 2. Set cwd to the worktree path (e.g., /path/to/gamalan/agents/{role}-1)
+  // 3. Set USE_WORKTREE=true
+  //
+  // See scripts/multi-agent-sprint.sh for reference implementation.
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     BATTRA_API_BASE: process.env.BATTRA_API_BASE || 'http://localhost:8000/api/v1',
-    USE_WORKTREE: 'true',
+    USE_WORKTREE: 'false', // Disable worktree safety check for UI-started agents
     GIT_WORKFLOW_ENABLED: 'true',
     GIT_PR_BASE_BRANCH: 'main',
     MAX_ITERATIONS: '0', // Infinite
