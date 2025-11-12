@@ -320,7 +320,7 @@ function NavigationContent({
             {hasActiveSprintContext || teamsLoading || teamSprintsLoading ? (
               <>
                 <div className="h-6 w-px bg-border/50 mx-1" />
-                {canNavigateToSprintBoard ? (
+                {canNavigateToSprintBoard && activeSprint ? (
                   <Link
                     href={`/projects/${projectIdForLink!}/sprints/${activeSprint.id}/tasks`}
                     prefetch={false}
