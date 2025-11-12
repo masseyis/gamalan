@@ -86,16 +86,27 @@ The UI manages these autonomous agents:
   - `claude` CLI installed (for Claude Code CLI mode - recommended)
   - OR valid Anthropic API key (for API mode)
 
+## Worktree Isolation
+
+Each agent runs in its own isolated git worktree for safety:
+
+- **Automatic setup**: Worktrees are created automatically on first agent start
+- **Location**: `/path/to/gamalan/agents/{role}-1/`
+- **Isolation**: Each agent has its own working directory and git state
+- **Safety**: Prevents conflicts between agents working on different tasks
+
+The UI automatically calls `scripts/setup-agent-worktrees.sh` if worktrees don't exist.
+
 ## Environment Variables
 
 The agents inherit these environment variables from the parent process:
 
 ```bash
 BATTRA_API_BASE="http://localhost:8000/api/v1"
-USE_WORKTREE="true"
+USE_WORKTREE="true"          # Enforces worktree isolation
 GIT_WORKFLOW_ENABLED="true"
 GIT_PR_BASE_BRANCH="main"
-MAX_ITERATIONS="0"  # Infinite
+MAX_ITERATIONS="0"            # Infinite
 POLL_INTERVAL="30"
 ```
 
