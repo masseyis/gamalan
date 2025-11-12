@@ -162,7 +162,7 @@ function NavigationContent({
   let activeSprint = null
   let activeTeam = null
   let effectiveTeamId = undefined
-  let projectIdForLink = projectInTeam?.id || firstTeamWithActiveSprintId?.id // Fallback to teamId if no project
+  const projectIdForLink = projectInTeam?.id
 
   if (firstTeamWithActiveSprintId?.currentSprint?.status === 'active') {
     // Team already has currentSprint populated
@@ -177,6 +177,9 @@ function NavigationContent({
       effectiveTeamId = firstTeamWithActiveSprintId.id
     }
   }
+
+  const hasActiveSprintContext = Boolean(activeSprint && effectiveTeamId)
+  const canNavigateToSprintBoard = Boolean(hasActiveSprintContext && projectIdForLink)
 
   // Debug: Log sprint resolution
   console.log('[Navigation Debug] Sprint resolution:', {
@@ -217,10 +220,13 @@ function NavigationContent({
     userTeamsCount: userTeams?.length ?? 0,
     activeTeam: activeTeam ? { id: activeTeam.id, name: activeTeam.name } : null,
     effectiveTeamId,
+    projectIdForLink,
     activeSprint: activeSprint ? { id: activeSprint.id, name: activeSprint.name, status: activeSprint.status } : null,
     daysRemaining,
     isOnSprintBoard,
-    shouldShowButton: (activeSprint && effectiveTeamId) || teamsLoading || teamSprintsLoading,
+    hasActiveSprintContext,
+    canNavigateToSprintBoard,
+    shouldShowButton: canNavigateToSprintBoard || teamsLoading || teamSprintsLoading,
   })
 
   // Primary navigation (always visible)
@@ -311,12 +317,12 @@ function NavigationContent({
             })}
 
             {/* Sprint Task Board (shows user's active sprint) */}
-            {(activeSprint && effectiveTeamId) || teamsLoading || teamSprintsLoading ? (
+            {hasActiveSprintContext || teamsLoading || teamSprintsLoading ? (
               <>
                 <div className="h-6 w-px bg-border/50 mx-1" />
-                {activeSprint && effectiveTeamId ? (
+                {canNavigateToSprintBoard ? (
                   <Link
-                    href={`/projects/${projectIdForLink}/sprints/${activeSprint.id}/tasks`}
+                    href={`/projects/${projectIdForLink!}/sprints/${activeSprint.id}/tasks`}
                     prefetch={false}
                   >
                     <Button
@@ -345,6 +351,26 @@ function NavigationContent({
                       )}
                     </Button>
                   </Link>
+                ) : hasActiveSprintContext ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled
+                    className="gap-2 opacity-60"
+                  >
+                    <Kanban className="h-4 w-4" />
+                    <span className="hidden xl:inline">Sprint Board Unavailable</span>
+                    <span className="xl:hidden">Sprint</span>
+                    {daysRemaining !== null && daysRemaining <= 7 && (
+                      <Badge
+                        variant="secondary"
+                        className="ml-1 px-1.5 py-0 text-xs font-normal"
+                      >
+                        <Clock className="h-3 w-3 mr-0.5" />
+                        {daysRemaining}d
+                      </Badge>
+                    )}
+                  </Button>
                 ) : (
                   <Button
                     variant="ghost"
