@@ -28,29 +28,62 @@ interface AgentStatus {
   enabled: boolean;
 }
 
-// Ensure worktrees are set up for all agents
+// Mutex to prevent concurrent worktree initialization
+// CRITICAL: The setup script removes and recreates worktree directories.
+// If two agents start concurrently, both will see worktreeCount=0 and try to run
+// the script, causing the second run to delete the first agent's files mid-execution.
+// This mutex ensures only one setup runs at a time; other calls wait for completion.
+let worktreeSetupPromise: Promise<void> | null = null;
+let worktreesInitialized = false;
+
+// Ensure worktrees are set up for all agents (with mutex to prevent concurrent execution)
 async function ensureWorktrees(): Promise<void> {
-  try {
-    // Check if worktrees already exist
-    const { stdout } = await execAsync('git worktree list', { cwd: REPO_ROOT });
-
-    // Count how many agent worktrees we have
-    const worktreeCount = (stdout.match(/\/agents\//g) || []).length;
-
-    if (worktreeCount >= AGENT_ROLES.length) {
-      // Worktrees already set up
-      return;
-    }
-
-    // Set up worktrees using the setup script
-    console.log('Setting up agent worktrees...');
-    const setupScript = path.join(REPO_ROOT, 'scripts/setup-agent-worktrees.sh');
-    await execAsync(`${setupScript} ${AGENT_ROLES.length}`, { cwd: REPO_ROOT });
-    console.log('Agent worktrees ready');
-  } catch (error) {
-    console.error('Failed to ensure worktrees:', error);
-    throw new Error('Failed to set up agent worktrees. Please run scripts/setup-agent-worktrees.sh manually.');
+  // Fast path: already initialized
+  if (worktreesInitialized) {
+    return;
   }
+
+  // If setup is already in progress, wait for it
+  if (worktreeSetupPromise) {
+    return worktreeSetupPromise;
+  }
+
+  // Start setup and cache the promise so concurrent calls wait
+  worktreeSetupPromise = (async () => {
+    try {
+      // Double-check in case another call completed while we were waiting
+      if (worktreesInitialized) {
+        return;
+      }
+
+      // Check if worktrees already exist
+      const { stdout } = await execAsync('git worktree list', { cwd: REPO_ROOT });
+
+      // Count how many agent worktrees we have
+      const worktreeCount = (stdout.match(/\/agents\//g) || []).length;
+
+      if (worktreeCount >= AGENT_ROLES.length) {
+        // Worktrees already set up
+        worktreesInitialized = true;
+        return;
+      }
+
+      // Set up worktrees using the setup script
+      console.log('Setting up agent worktrees...');
+      const setupScript = path.join(REPO_ROOT, 'scripts/setup-agent-worktrees.sh');
+      await execAsync(`${setupScript} ${AGENT_ROLES.length}`, { cwd: REPO_ROOT });
+      console.log('Agent worktrees ready');
+
+      worktreesInitialized = true;
+    } catch (error) {
+      console.error('Failed to ensure worktrees:', error);
+      // Reset the promise so retry is possible
+      worktreeSetupPromise = null;
+      throw new Error('Failed to set up agent worktrees. Please run scripts/setup-agent-worktrees.sh manually.');
+    }
+  })();
+
+  return worktreeSetupPromise;
 }
 
 // Get worktree path for an agent role
