@@ -27,6 +27,70 @@
  */
 
 const { spawn } = require('child_process');
+const path = require('path');
+
+// Track child processes for cleanup
+const childProcesses = new Set();
+
+// Cleanup function to kill all spawned processes
+function cleanupChildProcesses() {
+  if (childProcesses.size === 0) return;
+
+  console.log(`\n🧹 Cleaning up ${childProcesses.size} child process(es)...`);
+
+  for (const childPid of childProcesses) {
+    try {
+      // Kill the process group (includes children of children)
+      process.kill(-childPid, 'SIGTERM');
+    } catch (error) {
+      // Process may already be dead, that's fine
+      try {
+        // Try killing just the process
+        process.kill(childPid, 'SIGTERM');
+      } catch (e) {
+        // Ignore errors
+      }
+    }
+  }
+
+  // Wait a moment for graceful shutdown
+  const timeout = setTimeout(() => {}, 1000);
+
+  // Force kill any remaining processes
+  for (const childPid of childProcesses) {
+    try {
+      process.kill(-childPid, 'SIGKILL');
+    } catch (error) {
+      try {
+        process.kill(childPid, 'SIGKILL');
+      } catch (e) {
+        // Ignore errors
+      }
+    }
+  }
+
+  clearTimeout(timeout);
+  childProcesses.clear();
+  console.log('✅ Child processes cleaned up');
+}
+
+// Register cleanup handlers
+process.on('exit', cleanupChildProcesses);
+process.on('SIGINT', () => {
+  console.log('\n🛑 Received SIGINT, cleaning up...');
+  cleanupChildProcesses();
+  process.exit(130);
+});
+process.on('SIGTERM', () => {
+  console.log('\n🛑 Received SIGTERM, cleaning up...');
+  cleanupChildProcesses();
+  process.exit(143);
+});
+process.on('uncaughtException', (error) => {
+  console.error('\n❌ Uncaught exception:', error);
+  cleanupChildProcesses();
+  process.exit(1);
+});
 
 // Configuration
 const TASK_ID = process.argv[2];
@@ -123,16 +187,40 @@ async function apiPost(endpoint, data) {
 // Git helpers
 function execCommand(command, args, options = {}) {
   return new Promise((resolve, reject) => {
-    const proc = spawn(command, args, { stdio: options.silent ? 'pipe' : 'inherit', ...options });
+    const spawnOptions = {
+      stdio: options.silent ? 'pipe' : 'inherit',
+      detached: false, // Don't create a new process group (we manage cleanup ourselves)
+      ...options
+    };
+
+    const proc = spawn(command, args, spawnOptions);
     let stdout = '';
     let stderr = '';
+
+    // Track this process for cleanup
+    if (proc.pid) {
+      childProcesses.add(proc.pid);
+    }
 
     if (proc.stdout) proc.stdout.on('data', (data) => (stdout += data.toString()));
     if (proc.stderr) proc.stderr.on('data', (data) => (stderr += data.toString()));
 
     proc.on('close', (code) => {
+      // Remove from tracking when it exits
+      if (proc.pid) {
+        childProcesses.delete(proc.pid);
+      }
+
       if (code === 0) resolve({ success: true, stdout, stderr });
       else reject(new Error(`Command failed with code ${code}: ${stderr}`));
+    });
+
+    proc.on('error', (error) => {
+      // Remove from tracking on error
+      if (proc.pid) {
+        childProcesses.delete(proc.pid);
+      }
+      reject(error);
     });
   });
 }
@@ -1142,6 +1230,11 @@ async function invokeClaudeCLI(prompt) {
         stdio: ['pipe', 'pipe', 'pipe']
       });
 
+      // Track Claude process for cleanup
+      if (claude.pid) {
+        childProcesses.add(claude.pid);
+      }
+
       let stdout = '';
       let stderr = '';
 
@@ -1156,6 +1249,11 @@ async function invokeClaudeCLI(prompt) {
       });
 
       claude.on('close', (code) => {
+        // Remove from tracking when it exits
+        if (claude.pid) {
+          childProcesses.delete(claude.pid);
+        }
+
         if (code === 0) {
           resolve(stdout);
         } else {
@@ -1164,6 +1262,10 @@ async function invokeClaudeCLI(prompt) {
       });
 
       claude.on('error', (error) => {
+        // Remove from tracking on error
+        if (claude.pid) {
+          childProcesses.delete(claude.pid);
+        }
         reject(error);
       });
 
@@ -1239,6 +1341,11 @@ async function invokeCodexCLI(prompt) {
         env
       });
 
+      // Track Codex process for cleanup
+      if (codex.pid) {
+        childProcesses.add(codex.pid);
+      }
+
       let stdout = '';
       let stderr = '';
 
@@ -1255,6 +1362,11 @@ async function invokeCodexCLI(prompt) {
       });
 
       codex.on('close', (code) => {
+        // Remove from tracking when it exits
+        if (codex.pid) {
+          childProcesses.delete(codex.pid);
+        }
+
         if (code === 0) {
           resolve(stdout);
         } else {
@@ -1263,6 +1375,10 @@ async function invokeCodexCLI(prompt) {
       });
 
       codex.on('error', (error) => {
+        // Remove from tracking on error
+        if (codex.pid) {
+          childProcesses.delete(codex.pid);
+        }
         reject(error);
       });
     });

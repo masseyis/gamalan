@@ -170,16 +170,35 @@ AGENT_PIDS=()
 
 # Cleanup function
 cleanup() {
-  log_info "Stopping all agents..."
+  log_info "Stopping all agents and cleaning up test processes..."
 
+  # First, stop all agent processes
   for pid in "${AGENT_PIDS[@]}"; do
     if kill -0 $pid 2>/dev/null; then
       log_info "Stopping agent (PID: $pid)"
-      kill $pid 2>/dev/null || true
+      # Send TERM signal and wait briefly
+      kill -TERM $pid 2>/dev/null || true
     fi
   done
 
-  log_success "All agents stopped"
+  # Wait a moment for agents to exit gracefully
+  sleep 2
+
+  # Force kill any remaining agents
+  for pid in "${AGENT_PIDS[@]}"; do
+    if kill -0 $pid 2>/dev/null; then
+      log_warning "Force killing agent (PID: $pid)"
+      kill -KILL $pid 2>/dev/null || true
+    fi
+  done
+
+  # Now clean up any orphaned test processes
+  log_info "Cleaning up orphaned test processes..."
+  if [ -f "$SCRIPT_DIR/cleanup-test-processes.sh" ]; then
+    "$SCRIPT_DIR/cleanup-test-processes.sh" --force 2>/dev/null || true
+  fi
+
+  log_success "All agents and test processes cleaned up"
   exit 0
 }
 
@@ -423,6 +442,22 @@ run_parallel() {
   wait
 }
 
+# Periodic cleanup task (runs in background)
+start_periodic_cleanup() {
+  (
+    while true; do
+      sleep 300  # Every 5 minutes
+      if [ -f "$SCRIPT_DIR/cleanup-test-processes.sh" ]; then
+        # Silently clean up any orphaned processes
+        "$SCRIPT_DIR/cleanup-test-processes.sh" --force >/dev/null 2>&1 || true
+      fi
+    done
+  ) &
+  local cleanup_pid=$!
+  AGENT_PIDS+=($cleanup_pid)
+  log_info "Started periodic cleanup task (PID: $cleanup_pid)"
+}
+
 # Main execution
 main() {
   log_info "=== Multi-Agent Sprint Execution ==="
@@ -456,6 +491,10 @@ main() {
   setup_worktrees
   echo ""
 
+  # Start periodic cleanup task
+  start_periodic_cleanup
+  echo ""
+
   # Run in selected mode
   if [ "$PARALLEL_MODE" = true ]; then
     run_parallel
@@ -464,6 +503,9 @@ main() {
   fi
 
   log_success "Sprint execution completed"
+
+  # Final cleanup
+  cleanup
 }
 
 # Run main
