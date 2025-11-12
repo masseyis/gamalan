@@ -67,7 +67,7 @@ export default function SprintTaskBoardPage() {
     enabled: !!projectId && !!sprintId && canMakeAuthenticatedCalls,
   })
 
-  const isLoading = sprintLoading || storiesLoading || userLoading
+  const isLoading = !isClerkLoaded || sprintLoading || storiesLoading || userLoading
   const error = sprintError || storiesError
 
   // Handle refresh from WebSocket events
