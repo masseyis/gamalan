@@ -1,0 +1,106 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e4]:
+      - link "Battra AI" [active] [ref=e6] [cursor=pointer]:
+        - /url: /assistant
+        - img [ref=e8]
+        - generic [ref=e10]: Battra AI
+      - generic [ref=e11]:
+        - link "Dashboard" [ref=e12] [cursor=pointer]:
+          - /url: /dashboard
+          - button "Dashboard" [ref=e13]:
+            - img
+            - text: Dashboard
+        - link "Projects" [ref=e14] [cursor=pointer]:
+          - /url: /projects
+          - button "Projects" [ref=e15]:
+            - img
+            - text: Projects
+        - link "Assistant" [ref=e16] [cursor=pointer]:
+          - /url: /assistant
+          - button "Assistant" [ref=e17]:
+            - img
+            - text: Assistant
+        - button [ref=e19] [cursor=pointer]:
+          - img
+          - img
+      - generic [ref=e20]:
+        - button [ref=e21] [cursor=pointer]:
+          - img
+        - button "New" [ref=e24] [cursor=pointer]:
+          - img
+          - generic [ref=e25]: New
+        - button "Sign In" [ref=e27] [cursor=pointer]
+  - main [ref=e28]:
+    - generic [ref=e30]:
+      - generic [ref=e31]:
+        - heading "Welcome to Salunga" [level=1] [ref=e32]
+        - paragraph [ref=e33]: AI-Enhanced Agile Project Management
+      - generic [ref=e35]:
+        - generic [ref=e36]:
+          - generic [ref=e38]:
+            - heading "Sign in to Gamalan" [level=1] [ref=e39]
+            - paragraph [ref=e40]: Welcome back! Please sign in to continue
+          - generic [ref=e41]:
+            - generic [ref=e43]:
+              - button "Sign in with Apple" [ref=e44] [cursor=pointer]:
+                - img "Sign in with Apple" [ref=e45]
+              - button "Sign in with GitHub" [ref=e46] [cursor=pointer]:
+                - img "Sign in with GitHub" [ref=e47]
+              - button "Sign in with Google" [ref=e48] [cursor=pointer]:
+                - img "Sign in with Google" [ref=e49]
+            - paragraph [ref=e52]: or
+            - generic [ref=e54]:
+              - generic [ref=e55]:
+                - generic [ref=e58]:
+                  - generic [ref=e60]: Email address
+                  - textbox "Email address" [ref=e61]:
+                    - /placeholder: Enter your email address
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic: Password
+                      - generic:
+                        - textbox "Password":
+                          - /placeholder: Enter your password
+                        - button "Show password":
+                          - img
+              - button "Continue" [ref=e64] [cursor=pointer]:
+                - generic [ref=e65]:
+                  - text: Continue
+                  - img [ref=e66]
+        - generic [ref=e68]:
+          - generic [ref=e69]:
+            - generic [ref=e70]: Don’t have an account?
+            - link "Sign up" [ref=e71] [cursor=pointer]:
+              - /url: http://localhost:3000/sign-up#/?redirect_url=http%3A%2F%2Flocalhost%3A3000%2Fbrand
+          - generic [ref=e73]:
+            - generic [ref=e75]:
+              - paragraph [ref=e76]: Secured by
+              - link "Clerk logo" [ref=e77] [cursor=pointer]:
+                - /url: https://go.clerk.com/components
+                - img [ref=e78]
+            - paragraph [ref=e83]: Development mode
+  - generic [ref=e84]:
+    - img [ref=e86]
+    - button "Open Tanstack query devtools" [ref=e135] [cursor=pointer]:
+      - img [ref=e136]
+  - region "Notifications (F8)":
+    - list
+  - generic [ref=e189] [cursor=pointer]:
+    - button "Open Next.js Dev Tools" [ref=e190]:
+      - img [ref=e191]
+    - generic [ref=e195]:
+      - button "Open issues overlay" [ref=e196]:
+        - generic [ref=e197]:
+          - generic [ref=e198]: "0"
+          - generic [ref=e199]: "1"
+        - generic [ref=e200]: Issue
+      - button "Collapse issues badge" [ref=e201]:
+        - img [ref=e202]
+  - alert [ref=e204]
+```
