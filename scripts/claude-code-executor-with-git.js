@@ -1106,9 +1106,18 @@ grep -ri "display.*sprint.*name" __tests__/ tests/
 
 ## Step 3: Verify Quality (REQUIRED)
 
+### ⚠️ IMPORTANT: Skip E2E/Playwright Tests
+
+**The E2E/Playwright tests are currently broken and will hang/fail.**
+
+- ❌ DO NOT run \`pnpm test:e2e\`
+- ❌ DO NOT run \`pnpm exec playwright test\`
+- ❌ DO NOT run any test commands with "e2e" or "playwright" in them
+- ✅ Focus on unit tests and integration tests only
+
 ### For Frontend Tasks:
 \`\`\`bash
-# 1. Run relevant tests
+# 1. Run relevant tests (unit/integration only, NOT e2e)
 pnpm test <test-file-name> --run
 
 # 2. Type check
@@ -1122,7 +1131,7 @@ pnpm lint
 
 ### For Backend/Rust Tasks:
 \`\`\`bash
-# 1. Run relevant tests
+# 1. Run relevant tests (unit/integration only)
 cargo test --package <service-name>
 
 # 2. Format check
