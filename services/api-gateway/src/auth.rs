@@ -72,7 +72,7 @@ pub async fn api_key_auth(
 
         // Make the resolved claims available to the downstream extractor.
         req.extensions_mut().insert(ApiKeyAuthClaims {
-            sub: record.user_id.clone(),
+            sub: record.user_external_id.clone(),
             email: record.email.clone(),
             org_id: record.organization_id.clone(),
             org_slug: record.organization_external_id.clone(),
@@ -114,6 +114,7 @@ fn extract_api_key<B>(req: &Request<B>) -> Option<&str> {
 
 struct ApiKeyRecord {
     user_id: String,
+    user_external_id: String,
     email: Option<String>,
     organization_id: Option<String>,
     organization_external_id: Option<String>,
@@ -127,6 +128,7 @@ async fn lookup_api_key(pool: &PgPool, token: &str) -> Result<ApiKeyRecord, AppE
         r#"
         SELECT
             api_keys.user_id,
+            users.external_id AS user_external_id,
             users.email,
             api_keys.organization_id,
             organizations.external_id AS organization_external_id,
@@ -168,6 +170,13 @@ async fn lookup_api_key(pool: &PgPool, token: &str) -> Result<ApiKeyRecord, AppE
                 operation: "lookup_api_key".to_string(),
                 context: Box::new(context.clone().with_context("column", "user_id")),
             })?;
+        let user_external_id: String =
+            row.try_get("user_external_id")
+                .map_err(|e| AppError::DatabaseError {
+                    message: e.to_string(),
+                    operation: "lookup_api_key".to_string(),
+                    context: Box::new(context.clone().with_context("column", "user_external_id")),
+                })?;
         let email: Option<String> = row.try_get("email").map_err(|e| AppError::DatabaseError {
             message: e.to_string(),
             operation: "lookup_api_key".to_string(),
@@ -208,6 +217,7 @@ async fn lookup_api_key(pool: &PgPool, token: &str) -> Result<ApiKeyRecord, AppE
 
         return Ok(ApiKeyRecord {
             user_id: user_id.to_string(),
+            user_external_id,
             email,
             organization_id: organization_id.map(|id| id.to_string()),
             organization_external_id,
