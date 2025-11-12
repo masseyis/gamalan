@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef } from 'react'
+import { isAxiosError } from 'axios'
 import { SprintTaskFilters, type GroupByOption } from './SprintTaskFilters'
 import { SprintTaskList } from './SprintTaskList'
 import { SprintHeader } from './SprintHeader'
 import { useTaskWebSocket, type TaskWebSocketEvent } from '@/lib/hooks/useTaskWebSocket'
 import { useToast } from '@/hooks/use-toast'
-import { Story, TaskStatus } from '@/lib/types/story'
+import { Story, TaskStatus, type TaskOwnershipResponse } from '@/lib/types/story'
 import { Sprint } from '@/lib/types/team'
 import { backlogApi } from '@/lib/api/backlog'
 import { usersApi } from '@/lib/api/users'
@@ -18,6 +19,34 @@ export interface SprintTaskBoardProps {
   stories: Story[]
   currentUserId?: string
   onRefresh?: () => void
+}
+
+type ApiErrorResponse = { error?: { message?: string } }
+
+const extractErrorMessage = (error: unknown): string | undefined => {
+  if (isAxiosError(error)) {
+    const apiMessage = (error.response?.data as ApiErrorResponse | undefined)?.error?.message
+    return apiMessage ?? error.message
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message
+  }
+
+  return undefined
+}
+
+const isAlreadyInProgressError = (error: unknown): boolean => {
+  const message = extractErrorMessage(error)
+  if (!message) {
+    return false
+  }
+
+  const normalized = message.toLowerCase()
+  return (
+    normalized.includes('current status: inprogress') ||
+    normalized.includes('already in progress')
+  )
 }
 
 /**
@@ -212,17 +241,38 @@ export function SprintTaskBoard({
     hasOptimisticUpdate.current = true
 
     try {
-      // Try to start work first if needed, backend will handle state transitions
-      // If task is already in progress, startTaskWork will fail gracefully
+      let startWorkResponse: TaskOwnershipResponse | null = null
+      let skippedStartValidation = false
+
       try {
-        await backlogApi.startTaskWork(taskId)
+        startWorkResponse = await backlogApi.startTaskWork(taskId)
       } catch (startError) {
-        // Ignore errors from startTaskWork - task may already be in progress
-        // The completeTaskWork call will fail if the state is invalid
+        if (isAlreadyInProgressError(startError)) {
+          skippedStartValidation = true
+          console.debug(
+            '[SprintTaskBoard] startTaskWork reported already in progress, continuing to completion',
+            { taskId }
+          )
+        } else {
+          console.error('[SprintTaskBoard] Failed to start task work', { taskId, startError })
+          throw new Error(extractErrorMessage(startError) ?? 'Failed to start task work')
+        }
       }
 
-      // Now complete the task work
-      await backlogApi.completeTaskWork(taskId)
+      if (!skippedStartValidation) {
+        if (!startWorkResponse?.success) {
+          throw new Error(
+            startWorkResponse?.message ?? 'Failed to start task work. Please try again.'
+          )
+        }
+      }
+
+      const completeResponse = await backlogApi.completeTaskWork(taskId)
+      if (!completeResponse?.success) {
+        throw new Error(
+          completeResponse?.message ?? 'Failed to complete task work. Please try again.'
+        )
+      }
 
       setStories((prevStories) =>
         prevStories.map((story) =>
@@ -251,9 +301,10 @@ export function SprintTaskBoard({
       }, 1000)
     } catch (error) {
       hasOptimisticUpdate.current = false
+      console.error('[SprintTaskBoard] Unable to complete task', { taskId, error })
       toast({
         title: 'Unable to complete task',
-        description: error instanceof Error ? error.message : 'An unexpected error occurred',
+        description: extractErrorMessage(error) ?? 'An unexpected error occurred',
         variant: 'destructive',
       })
     } finally {
