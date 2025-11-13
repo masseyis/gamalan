@@ -1,7 +1,8 @@
 use auth_clerk::JwtVerifier;
 use axum::{routing::post, Extension, Router};
 use readiness::adapters::http::handlers::{
-    add_criteria, evaluate_readiness, generate_criteria, get_criteria, ReadinessAppState,
+    add_criteria, analyze_task, evaluate_readiness, generate_criteria, get_criteria,
+    get_task_analysis, ReadinessAppState,
 };
 use readiness::application::ports::LlmService;
 use readiness::domain::AcceptanceCriterion;
@@ -221,6 +222,11 @@ pub async fn build_readiness_router_for_tests(pool: PgPool) -> Router {
         .route("/criteria/{story_id}/generate", post(generate_criteria))
         .route("/criteria/{story_id}", axum::routing::get(get_criteria))
         .route("/criteria/{story_id}", post(add_criteria))
+        .route("/tasks/{task_id}/analyze", post(analyze_task))
+        .route(
+            "/tasks/{task_id}/analysis",
+            axum::routing::get(get_task_analysis),
+        )
         .with_state(state)
         .layer(Extension(verifier))
         .layer(TraceLayer::new_for_http())
@@ -245,22 +251,19 @@ pub async fn create_test_story(
     description: Option<&str>,
 ) -> Uuid {
     let story_id = Uuid::new_v4();
-    let project_id = Uuid::new_v4();
 
     // Insert into stories table (used by joins in criteria queries)
     sqlx::query(
         r#"
         INSERT INTO stories
-        (id, project_id, organization_id, title, description, status, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+        (id, organization_id, title, description, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, NOW(), NOW())
         "#,
     )
     .bind(story_id)
-    .bind(project_id)
     .bind(org_id)
     .bind(title)
     .bind(description)
-    .bind("draft")
     .execute(pool)
     .await
     .expect("Failed to create test story in stories table");
@@ -269,16 +272,14 @@ pub async fn create_test_story(
     sqlx::query(
         r#"
         INSERT INTO readiness_story_projections
-        (id, project_id, organization_id, title, description, status, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+        (id, organization_id, title, description, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, NOW(), NOW())
         "#,
     )
     .bind(story_id)
-    .bind(project_id)
     .bind(org_id)
     .bind(title)
     .bind(description)
-    .bind("draft")
     .execute(pool)
     .await
     .expect("Failed to create test story in readiness_story_projections");
@@ -301,15 +302,14 @@ pub async fn create_test_criteria(
     sqlx::query(
         r#"
         INSERT INTO criteria
-        (id, story_id, organization_id, ac_id, description, given, "when", "then")
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        (id, story_id, organization_id, ac_id, given, "when", "then")
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         "#,
     )
     .bind(id)
     .bind(story_id)
     .bind(org_id)
     .bind(ac_id)
-    .bind(format!("Acceptance criteria {ac_id}"))
     .bind(given)
     .bind(when)
     .bind(then)
@@ -342,8 +342,8 @@ pub async fn create_test_task(
     sqlx::query(
         r#"
         INSERT INTO readiness_task_projections
-        (id, story_id, organization_id, title, description, status, acceptance_criteria_refs, estimated_hours, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+        (id, story_id, organization_id, title, description, acceptance_criteria_refs, estimated_hours, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
         "#,
     )
     .bind(task_id)
@@ -351,7 +351,6 @@ pub async fn create_test_task(
     .bind(org_id)
     .bind(title)
     .bind(description)
-    .bind("available")
     .bind(&ac_refs) // Bind as &Vec<String> for TEXT[] type
     .bind(estimated_hours.map(|h| h as i32))
     .execute(pool)
@@ -359,4 +358,16 @@ pub async fn create_test_task(
     .expect("Failed to create test task");
 
     task_id
+}
+
+/// Simplified helper to create a test task with fewer parameters (for tests that don't need AC refs)
+#[allow(dead_code)]
+pub async fn create_simple_test_task(
+    pool: &PgPool,
+    story_id: Uuid,
+    org_id: Uuid,
+    title: &str,
+    description: Option<&str>,
+) -> Uuid {
+    create_test_task(pool, story_id, org_id, title, description, &[], None).await
 }
