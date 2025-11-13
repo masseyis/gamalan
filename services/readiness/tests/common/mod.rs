@@ -197,6 +197,31 @@ impl LlmService for MockLlmService {
 
         Ok(criteria)
     }
+
+    async fn analyze_task(
+        &self,
+        task_info: &readiness::application::ports::TaskInfo,
+        _ac_refs: &[AcceptanceCriterion],
+    ) -> Result<readiness::domain::TaskClarityAnalysis, common::AppError> {
+        // Simple mock for integration tests
+        Ok(readiness::domain::TaskClarityAnalysis::new(
+            task_info.id,
+            75,
+            vec![],
+            vec![],
+            vec![],
+        ))
+    }
+
+    async fn suggest_tasks(
+        &self,
+        _story_info: &readiness::application::ports::StoryInfo,
+        _github_context: &str,
+        _existing_tasks: &[readiness::application::ports::TaskInfo],
+    ) -> Result<Vec<readiness::domain::TaskSuggestion>, common::AppError> {
+        // Simple mock for integration tests
+        Ok(vec![])
+    }
 }
 
 pub async fn build_readiness_router_for_tests(pool: PgPool) -> Router {

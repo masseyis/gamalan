@@ -854,6 +854,31 @@ mod tests {
                 "system responds correctly".to_string(),
             )?])
         }
+
+        async fn analyze_task(
+            &self,
+            task_info: &crate::application::ports::TaskInfo,
+            _ac_refs: &[AcceptanceCriterion],
+        ) -> Result<crate::domain::TaskClarityAnalysis, AppError> {
+            // Simple mock for tests
+            Ok(crate::domain::TaskClarityAnalysis::new(
+                task_info.id,
+                75,
+                vec![],
+                vec![],
+                vec![],
+            ))
+        }
+
+        async fn suggest_tasks(
+            &self,
+            _story_info: &crate::application::ports::StoryInfo,
+            _github_context: &str,
+            _existing_tasks: &[crate::application::ports::TaskInfo],
+        ) -> Result<Vec<crate::domain::TaskSuggestion>, AppError> {
+            // Simple mock for tests
+            Ok(vec![])
+        }
     }
 
     fn setup_usecases() -> ReadinessUsecases {

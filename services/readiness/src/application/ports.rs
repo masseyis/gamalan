@@ -1,5 +1,6 @@
 use crate::domain::{
     AcceptanceCriterion, FileNode, ReadinessEvaluation, SearchResult, TaskAnalysis,
+    TaskClarityAnalysis, TaskSuggestion,
 };
 use async_trait::async_trait;
 use common::AppError;
@@ -84,6 +85,26 @@ pub trait LlmService: Send + Sync {
         &self,
         story_info: &StoryInfo,
     ) -> Result<Vec<AcceptanceCriterion>, AppError>;
+
+    /// Analyze a task for clarity and provide recommendations
+    ///
+    /// AC Reference: e0261453-8f72-4b08-8290-d8fb7903c869 (clarity scoring)
+    async fn analyze_task(
+        &self,
+        task_info: &TaskInfo,
+        ac_refs: &[AcceptanceCriterion],
+    ) -> Result<TaskClarityAnalysis, AppError>;
+
+    /// Generate task suggestions for a story with GitHub context
+    ///
+    /// AC Reference: e0261453-8f72-4b08-8290-d8fb7903c869 (clarity scoring)
+    /// AC Reference: 5649e91e-043f-4097-916b-9907620bff3e (GitHub integration)
+    async fn suggest_tasks(
+        &self,
+        story_info: &StoryInfo,
+        github_context: &str,
+        existing_tasks: &[TaskInfo],
+    ) -> Result<Vec<TaskSuggestion>, AppError>;
 }
 
 #[async_trait]
