@@ -1,4 +1,6 @@
-use crate::domain::{AcceptanceCriterion, ReadinessEvaluation, TaskAnalysis};
+use crate::domain::{
+    AcceptanceCriterion, FileNode, ReadinessEvaluation, SearchResult, TaskAnalysis,
+};
 use async_trait::async_trait;
 use common::AppError;
 use uuid::Uuid;
@@ -92,4 +94,31 @@ pub trait TaskAnalysisRepository: Send + Sync {
         task_id: Uuid,
         organization_id: Option<Uuid>,
     ) -> Result<Option<TaskAnalysis>, AppError>;
+}
+
+/// GitHub integration service for accessing repository structure and searching code
+///
+/// AC Reference: 5649e91e-043f-4097-916b-9907620bff3e (GitHub integration)
+#[async_trait]
+pub trait GitHubService: Send + Sync {
+    /// Get the file tree structure for a project's repository
+    ///
+    /// Returns a flattened list of files and directories, excluding common
+    /// generated/ignored patterns (node_modules, target, .git, etc.)
+    async fn get_repo_structure(
+        &self,
+        project_id: Uuid,
+        organization_id: Uuid,
+    ) -> Result<Vec<FileNode>, AppError>;
+
+    /// Search for code patterns within a project's repository
+    ///
+    /// Queries the GitHub API to find code matching the given search term.
+    /// Returns snippets showing the matched code with line numbers.
+    async fn search_code(
+        &self,
+        project_id: Uuid,
+        organization_id: Uuid,
+        query: &str,
+    ) -> Result<Vec<SearchResult>, AppError>;
 }
