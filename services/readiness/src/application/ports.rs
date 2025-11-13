@@ -143,3 +143,90 @@ pub trait GitHubService: Send + Sync {
         query: &str,
     ) -> Result<Vec<SearchResult>, AppError>;
 }
+
+/// Repository for storing and retrieving task clarity analyses
+///
+/// AC Reference: e0261453-8f72-4b08-8290-d8fb7903c869 (clarity scoring)
+#[async_trait]
+pub trait TaskClarityRepository: Send + Sync {
+    /// Save a task clarity analysis (creates or updates)
+    async fn save_analysis(
+        &self,
+        analysis: &TaskClarityAnalysis,
+        organization_id: Uuid,
+    ) -> Result<(), AppError>;
+
+    /// Get the latest analysis for a task
+    async fn get_latest_analysis(
+        &self,
+        task_id: Uuid,
+        organization_id: Uuid,
+    ) -> Result<Option<TaskClarityAnalysis>, AppError>;
+
+    /// Get all analyses for a story
+    async fn get_story_analyses(
+        &self,
+        story_id: Uuid,
+        organization_id: Uuid,
+    ) -> Result<Vec<TaskClarityAnalysis>, AppError>;
+}
+
+/// Story analysis summary projection (CQRS read model)
+#[derive(Debug, Clone)]
+pub struct StoryAnalysisSummary {
+    pub story_id: Uuid,
+    pub organization_id: Uuid,
+    pub total_tasks: i32,
+    pub analyzed_tasks: i32,
+    pub avg_clarity_score: Option<i32>,
+    pub tasks_ai_ready: i32,
+    pub tasks_needing_improvement: i32,
+    pub common_issues: Vec<String>,
+}
+
+/// Repository for story-level analysis summaries
+///
+/// AC Reference: e0261453-8f72-4b08-8290-d8fb7903c869 (clarity scoring)
+#[async_trait]
+pub trait StoryAnalysisSummaryRepository: Send + Sync {
+    /// Get or create summary for a story
+    async fn get_summary(
+        &self,
+        story_id: Uuid,
+        organization_id: Uuid,
+    ) -> Result<Option<StoryAnalysisSummary>, AppError>;
+
+    /// Update summary (triggered by task analysis events)
+    async fn update_summary(&self, story_id: Uuid, organization_id: Uuid) -> Result<(), AppError>;
+}
+
+/// Repository for task suggestions pending approval
+///
+/// AC Reference: e0261453-8f72-4b08-8290-d8fb7903c869 (clarity scoring)
+/// AC Reference: 5649e91e-043f-4097-916b-9907620bff3e (GitHub integration)
+#[async_trait]
+pub trait TaskSuggestionRepository: Send + Sync {
+    /// Save a batch of task suggestions
+    async fn save_suggestions(
+        &self,
+        story_id: Uuid,
+        organization_id: Uuid,
+        batch_id: Uuid,
+        suggestions: &[TaskSuggestion],
+    ) -> Result<(), AppError>;
+
+    /// Get pending suggestions for a story
+    async fn get_pending_suggestions(
+        &self,
+        story_id: Uuid,
+        organization_id: Uuid,
+    ) -> Result<Vec<TaskSuggestion>, AppError>;
+
+    /// Approve or reject a suggestion
+    async fn update_suggestion_status(
+        &self,
+        suggestion_id: Uuid,
+        status: &str,
+        reviewed_by: &str,
+    ) -> Result<(), AppError>;
+}
