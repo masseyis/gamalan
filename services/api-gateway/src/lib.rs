@@ -201,6 +201,27 @@ pub fn build_readiness_router(
             "/api/v1/readiness/tasks/{task_id}/enrich",
             post(readiness_handlers::enrich_task),
         )
+        // Story-level task readiness routes
+        .route(
+            "/api/v1/readiness/stories/{story_id}/suggest-tasks",
+            post(readiness_handlers::suggest_tasks_for_story),
+        )
+        .route(
+            "/api/v1/readiness/stories/{story_id}/analyze-tasks",
+            post(readiness_handlers::analyze_story_tasks),
+        )
+        .route(
+            "/api/v1/readiness/stories/{story_id}/analysis-summary",
+            get(readiness_handlers::get_story_analysis_summary),
+        )
+        .route(
+            "/api/v1/readiness/stories/{story_id}/suggestions",
+            get(readiness_handlers::get_pending_suggestions),
+        )
+        .route(
+            "/api/v1/readiness/suggestions/{suggestion_id}/approve",
+            post(readiness_handlers::approve_suggestion),
+        )
         .with_state(state)
         .layer(Extension(verifier))
         .layer(TraceLayer::new_for_http())
