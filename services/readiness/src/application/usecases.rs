@@ -665,26 +665,28 @@ impl ReadinessUsecases {
     pub async fn suggest_tasks_for_story(
         &self,
         story_id: Uuid,
-        organization_id: Uuid,
+        organization_id: Option<Uuid>,
         project_id: Uuid,
     ) -> Result<Vec<TaskSuggestion>, AppError> {
         // Get story info
         let story_info = self
             .story_service
-            .get_story_info(story_id, Some(organization_id))
+            .get_story_info(story_id, organization_id)
             .await?
             .ok_or_else(|| AppError::NotFound(format!("Story {} not found", story_id)))?;
 
         // Get existing tasks for context
         let existing_tasks = self
             .story_service
-            .get_tasks_for_story(story_id, Some(organization_id))
+            .get_tasks_for_story(story_id, organization_id)
             .await?;
 
         // Get GitHub context (file tree)
+        let org_id = organization_id
+            .ok_or_else(|| AppError::BadRequest("Organization ID required".to_string()))?;
         let file_nodes = self
             .github_service
-            .get_repo_structure(project_id, organization_id)
+            .get_repo_structure(project_id, org_id)
             .await?;
 
         let github_context = format!(
@@ -705,7 +707,7 @@ impl ReadinessUsecases {
         // Save suggestions to database with batch ID
         let batch_id = Uuid::new_v4();
         self.task_suggestion_repo
-            .save_suggestions(story_id, organization_id, batch_id, &suggestions)
+            .save_suggestions(story_id, org_id, batch_id, &suggestions)
             .await?;
 
         Ok(suggestions)
@@ -717,19 +719,22 @@ impl ReadinessUsecases {
     pub async fn analyze_story_tasks(
         &self,
         story_id: Uuid,
-        organization_id: Uuid,
+        organization_id: Option<Uuid>,
     ) -> Result<Vec<TaskClarityAnalysis>, AppError> {
         // Get all tasks for the story
         let tasks = self
             .story_service
-            .get_tasks_for_story(story_id, Some(organization_id))
+            .get_tasks_for_story(story_id, organization_id)
             .await?;
 
         // Get acceptance criteria for the story
         let criteria = self
             .criteria_repo
-            .get_criteria_by_story(story_id, Some(organization_id))
+            .get_criteria_by_story(story_id, organization_id)
             .await?;
+
+        let org_id = organization_id
+            .ok_or_else(|| AppError::BadRequest("Organization ID required".to_string()))?;
 
         let mut analyses = Vec::new();
 
@@ -750,7 +755,7 @@ impl ReadinessUsecases {
 
             // Save analysis
             self.task_clarity_repo
-                .save_analysis(&analysis, organization_id)
+                .save_analysis(&analysis, org_id)
                 .await?;
 
             analyses.push(analysis);
@@ -758,7 +763,7 @@ impl ReadinessUsecases {
 
         // Update story analysis summary projection
         self.story_summary_repo
-            .update_summary(story_id, organization_id)
+            .update_summary(story_id, org_id)
             .await?;
 
         Ok(analyses)
@@ -770,11 +775,11 @@ impl ReadinessUsecases {
     pub async fn get_story_analysis_summary(
         &self,
         story_id: Uuid,
-        organization_id: Uuid,
+        organization_id: Option<Uuid>,
     ) -> Result<Option<StoryAnalysisSummary>, AppError> {
-        self.story_summary_repo
-            .get_summary(story_id, organization_id)
-            .await
+        let org_id = organization_id
+            .ok_or_else(|| AppError::BadRequest("Organization ID required".to_string()))?;
+        self.story_summary_repo.get_summary(story_id, org_id).await
     }
 
     /// Get pending task suggestions for a story
@@ -784,10 +789,12 @@ impl ReadinessUsecases {
     pub async fn get_pending_suggestions(
         &self,
         story_id: Uuid,
-        organization_id: Uuid,
+        organization_id: Option<Uuid>,
     ) -> Result<Vec<TaskSuggestion>, AppError> {
+        let org_id = organization_id
+            .ok_or_else(|| AppError::BadRequest("Organization ID required".to_string()))?;
         self.task_suggestion_repo
-            .get_pending_suggestions(story_id, organization_id)
+            .get_pending_suggestions(story_id, org_id)
             .await
     }
 
