@@ -1,7 +1,9 @@
 use auth_clerk::JwtVerifier;
 use axum::{routing::post, Extension, Router};
 use readiness::adapters::http::handlers::{
-    add_criteria, evaluate_readiness, generate_criteria, get_criteria, ReadinessAppState,
+    add_criteria, analyze_story_tasks, approve_suggestion, evaluate_readiness, generate_criteria,
+    get_criteria, get_pending_suggestions, get_story_analysis_summary, suggest_tasks_for_story,
+    ReadinessAppState,
 };
 use readiness::application::ports::LlmService;
 use readiness::domain::AcceptanceCriterion;
@@ -246,6 +248,27 @@ pub async fn build_readiness_router_for_tests(pool: PgPool) -> Router {
         .route("/criteria/{story_id}/generate", post(generate_criteria))
         .route("/criteria/{story_id}", axum::routing::get(get_criteria))
         .route("/criteria/{story_id}", post(add_criteria))
+        // Story-level task readiness routes
+        .route(
+            "/api/v1/readiness/stories/{story_id}/suggest-tasks",
+            post(suggest_tasks_for_story),
+        )
+        .route(
+            "/api/v1/readiness/stories/{story_id}/analyze-tasks",
+            post(analyze_story_tasks),
+        )
+        .route(
+            "/api/v1/readiness/stories/{story_id}/analysis-summary",
+            axum::routing::get(get_story_analysis_summary),
+        )
+        .route(
+            "/api/v1/readiness/stories/{story_id}/suggestions",
+            axum::routing::get(get_pending_suggestions),
+        )
+        .route(
+            "/api/v1/readiness/suggestions/{suggestion_id}/approve",
+            post(approve_suggestion),
+        )
         .with_state(state)
         .layer(Extension(verifier))
         .layer(TraceLayer::new_for_http())
@@ -345,7 +368,7 @@ pub async fn create_test_criteria(
     id
 }
 
-/// Helper to create a test task in readiness_task_projections
+/// Helper to create a test task in readiness_task_projections (full version)
 #[allow(dead_code)]
 pub async fn create_test_task(
     pool: &PgPool,
@@ -384,4 +407,16 @@ pub async fn create_test_task(
     .expect("Failed to create test task");
 
     task_id
+}
+
+/// Helper to create a simple test task (for backward compatibility with existing tests)
+#[allow(dead_code)]
+pub async fn create_simple_test_task(
+    pool: &PgPool,
+    story_id: Uuid,
+    org_id: Uuid,
+    title: &str,
+    description: Option<&str>,
+) -> Uuid {
+    create_test_task(pool, story_id, org_id, title, description, &[], None).await
 }

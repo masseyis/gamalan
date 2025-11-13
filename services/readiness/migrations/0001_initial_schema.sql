@@ -4,9 +4,11 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- Stories table (shared with other services, used for joins)
 CREATE TABLE IF NOT EXISTS stories (
     id UUID PRIMARY KEY,
+    project_id UUID,
     organization_id UUID,
     title TEXT NOT NULL,
     description TEXT,
+    status TEXT NOT NULL DEFAULT 'draft',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -14,9 +16,11 @@ CREATE TABLE IF NOT EXISTS stories (
 -- Readiness story projections table
 CREATE TABLE IF NOT EXISTS readiness_story_projections (
     id UUID PRIMARY KEY,
+    project_id UUID,
     organization_id UUID,
     title TEXT NOT NULL,
     description TEXT,
+    status TEXT NOT NULL DEFAULT 'draft',
     story_points INTEGER,
     acceptance_criteria JSONB DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -29,6 +33,7 @@ CREATE TABLE IF NOT EXISTS acceptance_criteria (
     story_id UUID NOT NULL,
     organization_id UUID,
     ac_id TEXT NOT NULL,
+    description TEXT,
     given TEXT NOT NULL,
     "when" TEXT NOT NULL,
     "then" TEXT NOT NULL,
@@ -66,6 +71,7 @@ CREATE TABLE IF NOT EXISTS readiness_task_projections (
     organization_id UUID,
     title TEXT NOT NULL,
     description TEXT,
+    status TEXT NOT NULL DEFAULT 'available',
     acceptance_criteria_refs TEXT[] DEFAULT '{}',
     estimated_hours INTEGER,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
