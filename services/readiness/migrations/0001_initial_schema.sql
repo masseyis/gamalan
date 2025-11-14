@@ -99,25 +99,6 @@ CREATE TABLE IF NOT EXISTS story_analysis_summaries (
     UNIQUE(story_id, organization_id)
 );
 
--- Task suggestions table
-CREATE TABLE IF NOT EXISTS task_suggestions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    story_id UUID NOT NULL,
-    organization_id UUID NOT NULL,
-    suggestion_batch_id UUID NOT NULL,
-    title TEXT NOT NULL,
-    description TEXT NOT NULL,
-    acceptance_criteria_refs TEXT[] NOT NULL DEFAULT '{}',
-    estimated_hours INTEGER,
-    relevant_files TEXT[] NOT NULL DEFAULT '{}',
-    confidence REAL,
-    status TEXT NOT NULL DEFAULT 'pending',
-    reviewed_by UUID,
-    reviewed_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
 -- Create indexes
 DO $$
 BEGIN
@@ -163,18 +144,6 @@ BEGIN
 
     IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_story_analysis_summaries_org_id') THEN
         CREATE INDEX idx_story_analysis_summaries_org_id ON story_analysis_summaries(organization_id);
-    END IF;
-
-    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_task_suggestions_story_id') THEN
-        CREATE INDEX idx_task_suggestions_story_id ON task_suggestions(story_id);
-    END IF;
-
-    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_task_suggestions_org_id') THEN
-        CREATE INDEX idx_task_suggestions_org_id ON task_suggestions(organization_id);
-    END IF;
-
-    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_task_suggestions_status') THEN
-        CREATE INDEX idx_task_suggestions_status ON task_suggestions(status);
     END IF;
 END $$;
 

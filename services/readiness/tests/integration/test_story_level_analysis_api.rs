@@ -539,10 +539,18 @@ async fn test_approve_suggestion() {
 
     // Should return either 204 (if found) or 404 (if not found)
     // Since suggestion doesn't exist in this test, we accept both
-    assert!(
-        response.status() == StatusCode::NO_CONTENT || response.status() == StatusCode::NOT_FOUND,
-        "Should return 204 or 404"
-    );
+    let status = response.status();
+    if status != StatusCode::NO_CONTENT && status != StatusCode::NOT_FOUND {
+        // Read the body to see the actual error
+        let body_bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let body_str = String::from_utf8_lossy(&body_bytes);
+        panic!(
+            "Should return 204 or 404, got: {}. Body: {}",
+            status, body_str
+        );
+    }
 }
 
 // ============================================================================

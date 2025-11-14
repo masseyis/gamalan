@@ -881,7 +881,7 @@ impl TaskSuggestionRepository for PgPool {
         status: &str,
         reviewed_by: &str,
     ) -> Result<(), AppError> {
-        sqlx::query(
+        let result = sqlx::query(
             "UPDATE task_suggestions \
              SET status = $2, reviewed_at = NOW(), reviewed_by = $3 \
              WHERE id = $1",
@@ -899,6 +899,13 @@ impl TaskSuggestionRepository for PgPool {
             );
             AppError::InternalServerError
         })?;
+
+        if result.rows_affected() == 0 {
+            return Err(AppError::NotFound(format!(
+                "Task suggestion {} not found",
+                suggestion_id
+            )));
+        }
 
         Ok(())
     }
