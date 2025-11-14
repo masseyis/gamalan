@@ -120,7 +120,6 @@ CREATE OR REPLACE VIEW ai_ready_tasks AS
 SELECT
     ta.id,
     ta.task_id,
-    ta.story_id,
     ta.organization_id,
     ta.overall_score,
     ta.clarity_level,

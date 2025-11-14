@@ -721,6 +721,19 @@ impl ReadinessUsecases {
         story_id: Uuid,
         organization_id: Option<Uuid>,
     ) -> Result<Vec<TaskClarityAnalysis>, AppError> {
+        // First verify the story exists and belongs to this organization
+        let story = self
+            .story_service
+            .get_story_info(story_id, organization_id)
+            .await?;
+
+        if story.is_none() {
+            return Err(AppError::NotFound(format!(
+                "Story {} not found or does not belong to this organization",
+                story_id
+            )));
+        }
+
         // Get all tasks for the story
         let tasks = self
             .story_service

@@ -1,9 +1,9 @@
 use auth_clerk::JwtVerifier;
 use axum::{routing::post, Extension, Router};
 use readiness::adapters::http::handlers::{
-    add_criteria, analyze_story_tasks, approve_suggestion, evaluate_readiness, generate_criteria,
-    get_criteria, get_pending_suggestions, get_story_analysis_summary, suggest_tasks_for_story,
-    ReadinessAppState,
+    add_criteria, analyze_story_tasks, analyze_task, approve_suggestion, evaluate_readiness,
+    generate_criteria, get_criteria, get_pending_suggestions, get_story_analysis_summary,
+    get_task_analysis, suggest_tasks_for_story, ReadinessAppState,
 };
 use readiness::application::ports::LlmService;
 use readiness::domain::AcceptanceCriterion;
@@ -248,6 +248,15 @@ pub async fn build_readiness_router_for_tests(pool: PgPool) -> Router {
         .route("/criteria/{story_id}/generate", post(generate_criteria))
         .route("/criteria/{story_id}", axum::routing::get(get_criteria))
         .route("/criteria/{story_id}", post(add_criteria))
+        // Task-level readiness routes
+        .route(
+            "/api/v1/readiness/tasks/{task_id}/analyze",
+            post(analyze_task),
+        )
+        .route(
+            "/api/v1/readiness/tasks/{task_id}/analysis",
+            axum::routing::get(get_task_analysis),
+        )
         // Story-level task readiness routes
         .route(
             "/api/v1/readiness/stories/{story_id}/suggest-tasks",

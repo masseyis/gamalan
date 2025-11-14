@@ -5,7 +5,8 @@ use crate::application::ports::{
     TaskSuggestionRepository,
 };
 use crate::domain::{
-    AcceptanceCriterion, ReadinessEvaluation, TaskAnalysis, TaskClarityAnalysis, TaskSuggestion,
+    AcceptanceCriterion, GapType, ReadinessEvaluation, Recommendation, TaskAnalysis,
+    TaskClarityAnalysis, TaskSuggestion,
 };
 use async_trait::async_trait;
 use common::AppError;
@@ -421,20 +422,48 @@ impl ReadinessEvaluationRepository for PgPool {
 #[async_trait]
 impl TaskAnalysisRepository for PgPool {
     async fn save_analysis(&self, analysis: &TaskAnalysis) -> Result<(), AppError> {
-        let analysis_json = serde_json::to_value(analysis).map_err(|err| {
-            error!(error = %err, task_id = %analysis.task_id, "Failed to serialize task analysis");
-            AppError::InternalServerError
-        })?;
+        // For TaskAnalysis, we need to convert recommendations to TEXT[]
+        let recommendation_texts: Vec<String> = analysis
+            .recommendations
+            .iter()
+            .map(|r| r.message.clone())
+            .collect();
+
+        // TaskAnalysis uses the old schema approach - we'll use clarity_score, summary, and recommendations
+        // Map to the new schema columns as best we can
+        let clarity_level = if analysis.clarity_score >= 80 {
+            "excellent"
+        } else if analysis.clarity_score >= 60 {
+            "good"
+        } else if analysis.clarity_score >= 40 {
+            "fair"
+        } else {
+            "poor"
+        };
+
+        // Create empty dimensions since TaskAnalysis doesn't have them
+        let dimensions_json = serde_json::json!({});
 
         sqlx::query(
-            "INSERT INTO task_analyses (id, task_id, story_id, organization_id, analysis_json, created_at) \
-             VALUES ($1, $2, $3, $4, $5, NOW())",
+            "INSERT INTO task_analyses \
+             (id, task_id, organization_id, overall_score, clarity_level, dimensions, recommendations, flagged_terms, created_at) \
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW()) \
+             ON CONFLICT (task_id, organization_id) DO UPDATE SET \
+             overall_score = EXCLUDED.overall_score, \
+             clarity_level = EXCLUDED.clarity_level, \
+             dimensions = EXCLUDED.dimensions, \
+             recommendations = EXCLUDED.recommendations, \
+             flagged_terms = EXCLUDED.flagged_terms, \
+             created_at = NOW()",
         )
         .bind(Uuid::new_v4())
         .bind(analysis.task_id)
-        .bind(analysis.story_id)
         .bind(analysis.organization_id)
-        .bind(analysis_json)
+        .bind(analysis.clarity_score)
+        .bind(clarity_level)
+        .bind(dimensions_json)
+        .bind(&recommendation_texts)
+        .bind(&analysis.missing_elements) // Use missing_elements as flagged_terms
         .execute(self)
         .await
         .map_err(|err| {
@@ -454,8 +483,18 @@ impl TaskAnalysisRepository for PgPool {
         task_id: Uuid,
         organization_id: Option<Uuid>,
     ) -> Result<Option<TaskAnalysis>, AppError> {
-        let row = sqlx::query(
-            "SELECT analysis_json FROM task_analyses \
+        #[derive(sqlx::FromRow)]
+        struct TaskAnalysisRow {
+            task_id: Uuid,
+            organization_id: Option<Uuid>,
+            overall_score: i32,
+            recommendations: Vec<String>,
+            flagged_terms: Vec<String>,
+        }
+
+        let row = sqlx::query_as::<_, TaskAnalysisRow>(
+            "SELECT task_id, organization_id, overall_score, recommendations, flagged_terms \
+             FROM task_analyses \
              WHERE task_id = $1 AND (organization_id = $2 OR ($2 IS NULL AND organization_id IS NULL)) \
              ORDER BY created_at DESC \
              LIMIT 1",
@@ -470,12 +509,28 @@ impl TaskAnalysisRepository for PgPool {
         })?;
 
         if let Some(row) = row {
-            let analysis_json: Value = row.get("analysis_json");
-            let analysis: TaskAnalysis = serde_json::from_value(analysis_json).map_err(|err| {
-                error!(error = %err, %task_id, "Failed to deserialize task analysis");
-                AppError::InternalServerError
-            })?;
-            Ok(Some(analysis))
+            // Convert TEXT[] back to Vec<Recommendation>
+            let recommendations: Vec<Recommendation> = row
+                .recommendations
+                .into_iter()
+                .map(|message| Recommendation {
+                    gap_type: GapType::VagueLanguage, // Default gap type since we lost this info
+                    message,
+                    specific_suggestions: vec![],
+                    ac_references: vec![],
+                })
+                .collect();
+
+            Ok(Some(TaskAnalysis {
+                id: Uuid::new_v4(), // Generate new ID since it's not stored
+                task_id: row.task_id,
+                story_id: Uuid::nil(), // Not stored in new schema
+                organization_id: row.organization_id,
+                clarity_score: row.overall_score,
+                missing_elements: row.flagged_terms,
+                summary: "Stored analysis".to_string(), // Default summary
+                recommendations,
+            }))
         } else {
             Ok(None)
         }
