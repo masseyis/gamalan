@@ -489,16 +489,17 @@ impl StoryService for ProjectionStoryService {
     async fn get_story_info(
         &self,
         story_id: Uuid,
-        _organization_id: Option<Uuid>,
+        organization_id: Option<Uuid>,
     ) -> Result<Option<StoryInfo>, AppError> {
         let row = sqlx::query_as::<_, StoryProjectionRow>(
             r#"
             SELECT id, title, description, story_points
             FROM readiness_story_projections
-            WHERE id = $1
+            WHERE id = $1 AND (organization_id = $2 OR $2 IS NULL)
             "#,
         )
         .bind(story_id)
+        .bind(organization_id)
         .fetch_optional(&*self.pool)
         .await
         .map_err(|err| {
@@ -517,17 +518,18 @@ impl StoryService for ProjectionStoryService {
     async fn get_tasks_for_story(
         &self,
         story_id: Uuid,
-        _organization_id: Option<Uuid>,
+        organization_id: Option<Uuid>,
     ) -> Result<Vec<TaskInfo>, AppError> {
         let rows = sqlx::query_as::<_, TaskProjectionRow>(
             r#"
             SELECT id, story_id, title, description, acceptance_criteria_refs, estimated_hours
             FROM readiness_task_projections
-            WHERE story_id = $1
+            WHERE story_id = $1 AND (organization_id = $2 OR $2 IS NULL)
             ORDER BY created_at
             "#,
         )
         .bind(story_id)
+        .bind(organization_id)
         .fetch_all(&*self.pool)
         .await
         .map_err(|err| {
@@ -551,16 +553,17 @@ impl StoryService for ProjectionStoryService {
     async fn get_task_info(
         &self,
         task_id: Uuid,
-        _organization_id: Option<Uuid>,
+        organization_id: Option<Uuid>,
     ) -> Result<Option<TaskInfo>, AppError> {
         let row = sqlx::query_as::<_, TaskProjectionRow>(
             r#"
             SELECT id, story_id, title, description, acceptance_criteria_refs, estimated_hours
             FROM readiness_task_projections
-            WHERE id = $1
+            WHERE id = $1 AND (organization_id = $2 OR $2 IS NULL)
             "#,
         )
         .bind(task_id)
+        .bind(organization_id)
         .fetch_optional(&*self.pool)
         .await
         .map_err(|err| {
