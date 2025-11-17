@@ -25,7 +25,7 @@ export async function suggestTasksForStory(
   projectId: string
 ): Promise<void> {
   await readinessClient.post<void>(`/stories/${storyId}/suggest-tasks`, {
-    project_id: projectId,
+    projectId: projectId,
   })
 }
 
@@ -43,7 +43,7 @@ export async function approveSuggestion(
   suggestionId: string,
   reviewedBy: string
 ): Promise<void> {
-  await readinessClient.post<void>(`/suggestions/${suggestionId}/approve`, { reviewed_by: reviewedBy })
+  await readinessClient.post<void>(`/suggestions/${suggestionId}/approve`, { reviewedBy })
 }
 
 export const readinessApi = {
