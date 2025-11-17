@@ -1,0 +1,86 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e4]:
+      - link "Battra AI" [ref=e6]:
+        - /url: /assistant
+        - img [ref=e8]
+        - generic [ref=e10]: Battra AI
+      - generic [ref=e11]:
+        - button [active] [ref=e12] [cursor=pointer]:
+          - img
+        - button [ref=e15] [cursor=pointer]:
+          - img
+        - button "Sign In" [ref=e17] [cursor=pointer]
+  - main [ref=e18]:
+    - generic [ref=e20]:
+      - generic [ref=e21]:
+        - heading "Welcome to Salunga" [level=1] [ref=e22]
+        - paragraph [ref=e23]: AI-Enhanced Agile Project Management
+      - generic [ref=e25]:
+        - generic [ref=e26]:
+          - generic [ref=e28]:
+            - heading "Sign in to Gamalan" [level=1] [ref=e29]
+            - paragraph [ref=e30]: Welcome back! Please sign in to continue
+          - generic [ref=e31]:
+            - generic [ref=e33]:
+              - button "Sign in with Apple" [ref=e34] [cursor=pointer]:
+                - img "Sign in with Apple" [ref=e35]
+              - button "Sign in with GitHub" [ref=e36] [cursor=pointer]:
+                - img "Sign in with GitHub" [ref=e37]
+              - button "Sign in with Google" [ref=e38] [cursor=pointer]:
+                - img "Sign in with Google" [ref=e39]
+            - paragraph [ref=e42]: or
+            - generic [ref=e44]:
+              - generic [ref=e45]:
+                - generic [ref=e48]:
+                  - generic [ref=e50]: Email address
+                  - textbox "Email address" [ref=e51]:
+                    - /placeholder: Enter your email address
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic: Password
+                      - generic:
+                        - textbox "Password":
+                          - /placeholder: Enter your password
+                        - button "Show password":
+                          - img
+              - button "Continue" [ref=e54] [cursor=pointer]:
+                - generic [ref=e55]:
+                  - text: Continue
+                  - img [ref=e56]
+        - generic [ref=e58]:
+          - generic [ref=e59]:
+            - generic [ref=e60]: Don’t have an account?
+            - link "Sign up" [ref=e61] [cursor=pointer]:
+              - /url: http://localhost:3000/sign-up#/?redirect_url=http%3A%2F%2Flocalhost%3A3000%2Fbrand
+          - generic [ref=e63]:
+            - generic [ref=e65]:
+              - paragraph [ref=e66]: Secured by
+              - link "Clerk logo" [ref=e67] [cursor=pointer]:
+                - /url: https://go.clerk.com/components
+                - img [ref=e68]
+            - paragraph [ref=e73]: Development mode
+  - generic [ref=e74]:
+    - img [ref=e76]
+    - button "Open Tanstack query devtools" [ref=e144] [cursor=pointer]:
+      - img [ref=e145]
+  - region "Notifications (F8)":
+    - list
+  - generic [ref=e217] [cursor=pointer]:
+    - button "Open Next.js Dev Tools" [ref=e218]:
+      - img [ref=e219]
+    - generic [ref=e224]:
+      - button "Open issues overlay" [ref=e225]:
+        - generic [ref=e226]:
+          - generic [ref=e227]: "0"
+          - generic [ref=e228]: "1"
+        - generic [ref=e229]: Issue
+      - button "Collapse issues badge" [ref=e230]:
+        - img [ref=e231]
+  - alert [ref=e233]
+```
