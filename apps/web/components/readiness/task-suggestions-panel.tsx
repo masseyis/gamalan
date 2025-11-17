@@ -201,6 +201,7 @@ function TaskSuggestionCard({
  */
 export function TaskSuggestionsPanel({
   storyId,
+  projectId,
   onSuggestionApproved,
   className,
 }: TaskSuggestionsPanelProps) {

@@ -180,6 +180,7 @@ export const AI_READY_THRESHOLD = 80
  */
 export interface StoryAnalysisSummaryProps {
   storyId: string
+  projectId: string
   onAnalyzeAll?: () => Promise<void>
   onSuggestTasks?: () => Promise<void>
   className?: string
@@ -190,6 +191,7 @@ export interface StoryAnalysisSummaryProps {
  */
 export interface TaskSuggestionsPanelProps {
   storyId: string
+  projectId: string
   onSuggestionApproved?: (suggestionId: string) => void
   className?: string
 }

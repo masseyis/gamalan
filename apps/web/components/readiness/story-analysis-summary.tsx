@@ -47,6 +47,7 @@ function getClarityScoreBgColor(score: number): string {
  */
 export function StoryAnalysisSummary({
   storyId,
+  projectId,
   onAnalyzeAll,
   onSuggestTasks,
   className,
@@ -91,7 +92,7 @@ export function StoryAnalysisSummary({
       if (onSuggestTasks) {
         await onSuggestTasks()
       } else {
-        await readinessApi.suggestTasksForStory(storyId)
+        await readinessApi.suggestTasksForStory(storyId, projectId)
       }
       await refetch()
       queryClient.invalidateQueries({ queryKey: ['task-suggestions', storyId] })
@@ -100,7 +101,7 @@ export function StoryAnalysisSummary({
     } finally {
       setIsLoading(false)
     }
-  }, [onSuggestTasks, storyId, refetch, queryClient])
+  }, [onSuggestTasks, storyId, projectId, refetch, queryClient])
 
   // Loading state
   if (isLoading) {

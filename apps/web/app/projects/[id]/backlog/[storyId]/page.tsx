@@ -935,11 +935,11 @@ export default function StoryDetailPage() {
 
               {/* Story-Level Task Readiness Analysis */}
               {tasks.length > 0 && (
-                <StoryAnalysisSummary storyId={storyId} />
+                <StoryAnalysisSummary storyId={storyId} projectId={projectId} />
               )}
 
               {/* AI Task Suggestions */}
-              <TaskSuggestionsPanel storyId={storyId} />
+              <TaskSuggestionsPanel storyId={storyId} projectId={projectId} />
 
               {/* Story Stats */}
               <Card>

@@ -20,8 +20,13 @@ export async function analyzeStoryTasks(storyId: string): Promise<void> {
 /**
  * Get AI-generated task suggestions for a story
  */
-export async function suggestTasksForStory(storyId: string): Promise<void> {
-  await readinessClient.post<void>(`/stories/${storyId}/suggest-tasks`, {})
+export async function suggestTasksForStory(
+  storyId: string,
+  projectId: string
+): Promise<void> {
+  await readinessClient.post<void>(`/stories/${storyId}/suggest-tasks`, {
+    project_id: projectId,
+  })
 }
 
 /**
