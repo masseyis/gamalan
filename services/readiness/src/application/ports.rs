@@ -1,4 +1,7 @@
-use crate::domain::{AcceptanceCriterion, ReadinessEvaluation, TaskAnalysis};
+use crate::domain::{
+    AcceptanceCriterion, FileNode, ReadinessEvaluation, SearchResult, TaskAnalysis,
+    TaskClarityAnalysis, TaskSuggestion,
+};
 use async_trait::async_trait;
 use common::AppError;
 use uuid::Uuid;
@@ -82,6 +85,26 @@ pub trait LlmService: Send + Sync {
         &self,
         story_info: &StoryInfo,
     ) -> Result<Vec<AcceptanceCriterion>, AppError>;
+
+    /// Analyze a task for clarity and provide recommendations
+    ///
+    /// AC Reference: e0261453-8f72-4b08-8290-d8fb7903c869 (clarity scoring)
+    async fn analyze_task(
+        &self,
+        task_info: &TaskInfo,
+        ac_refs: &[AcceptanceCriterion],
+    ) -> Result<TaskClarityAnalysis, AppError>;
+
+    /// Generate task suggestions for a story with GitHub context
+    ///
+    /// AC Reference: e0261453-8f72-4b08-8290-d8fb7903c869 (clarity scoring)
+    /// AC Reference: 5649e91e-043f-4097-916b-9907620bff3e (GitHub integration)
+    async fn suggest_tasks(
+        &self,
+        story_info: &StoryInfo,
+        github_context: &str,
+        existing_tasks: &[TaskInfo],
+    ) -> Result<Vec<TaskSuggestion>, AppError>;
 }
 
 #[async_trait]
@@ -92,4 +115,118 @@ pub trait TaskAnalysisRepository: Send + Sync {
         task_id: Uuid,
         organization_id: Option<Uuid>,
     ) -> Result<Option<TaskAnalysis>, AppError>;
+}
+
+/// GitHub integration service for accessing repository structure and searching code
+///
+/// AC Reference: 5649e91e-043f-4097-916b-9907620bff3e (GitHub integration)
+#[async_trait]
+pub trait GitHubService: Send + Sync {
+    /// Get the file tree structure for a project's repository
+    ///
+    /// Returns a flattened list of files and directories, excluding common
+    /// generated/ignored patterns (node_modules, target, .git, etc.)
+    async fn get_repo_structure(
+        &self,
+        project_id: Uuid,
+        organization_id: Uuid,
+    ) -> Result<Vec<FileNode>, AppError>;
+
+    /// Search for code patterns within a project's repository
+    ///
+    /// Queries the GitHub API to find code matching the given search term.
+    /// Returns snippets showing the matched code with line numbers.
+    async fn search_code(
+        &self,
+        project_id: Uuid,
+        organization_id: Uuid,
+        query: &str,
+    ) -> Result<Vec<SearchResult>, AppError>;
+}
+
+/// Repository for storing and retrieving task clarity analyses
+///
+/// AC Reference: e0261453-8f72-4b08-8290-d8fb7903c869 (clarity scoring)
+#[async_trait]
+pub trait TaskClarityRepository: Send + Sync {
+    /// Save a task clarity analysis (creates or updates)
+    async fn save_analysis(
+        &self,
+        analysis: &TaskClarityAnalysis,
+        organization_id: Uuid,
+    ) -> Result<(), AppError>;
+
+    /// Get the latest analysis for a task
+    async fn get_latest_analysis(
+        &self,
+        task_id: Uuid,
+        organization_id: Uuid,
+    ) -> Result<Option<TaskClarityAnalysis>, AppError>;
+
+    /// Get all analyses for a story
+    async fn get_story_analyses(
+        &self,
+        story_id: Uuid,
+        organization_id: Uuid,
+    ) -> Result<Vec<TaskClarityAnalysis>, AppError>;
+}
+
+/// Story analysis summary projection (CQRS read model)
+#[derive(Debug, Clone)]
+pub struct StoryAnalysisSummary {
+    pub story_id: Uuid,
+    pub organization_id: Uuid,
+    pub total_tasks: i32,
+    pub analyzed_tasks: i32,
+    pub avg_clarity_score: Option<i32>,
+    pub tasks_ai_ready: i32,
+    pub tasks_needing_improvement: i32,
+    pub common_issues: Vec<String>,
+}
+
+/// Repository for story-level analysis summaries
+///
+/// AC Reference: e0261453-8f72-4b08-8290-d8fb7903c869 (clarity scoring)
+#[async_trait]
+pub trait StoryAnalysisSummaryRepository: Send + Sync {
+    /// Get or create summary for a story
+    async fn get_summary(
+        &self,
+        story_id: Uuid,
+        organization_id: Uuid,
+    ) -> Result<Option<StoryAnalysisSummary>, AppError>;
+
+    /// Update summary (triggered by task analysis events)
+    async fn update_summary(&self, story_id: Uuid, organization_id: Uuid) -> Result<(), AppError>;
+}
+
+/// Repository for task suggestions pending approval
+///
+/// AC Reference: e0261453-8f72-4b08-8290-d8fb7903c869 (clarity scoring)
+/// AC Reference: 5649e91e-043f-4097-916b-9907620bff3e (GitHub integration)
+#[async_trait]
+pub trait TaskSuggestionRepository: Send + Sync {
+    /// Save a batch of task suggestions
+    async fn save_suggestions(
+        &self,
+        story_id: Uuid,
+        organization_id: Uuid,
+        batch_id: Uuid,
+        suggestions: &[TaskSuggestion],
+    ) -> Result<(), AppError>;
+
+    /// Get pending suggestions for a story
+    async fn get_pending_suggestions(
+        &self,
+        story_id: Uuid,
+        organization_id: Uuid,
+    ) -> Result<Vec<TaskSuggestion>, AppError>;
+
+    /// Approve or reject a suggestion
+    async fn update_suggestion_status(
+        &self,
+        suggestion_id: Uuid,
+        status: &str,
+        reviewed_by: &str,
+    ) -> Result<(), AppError>;
 }

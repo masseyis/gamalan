@@ -4,9 +4,11 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- Stories table (shared with other services, used for joins)
 CREATE TABLE IF NOT EXISTS stories (
     id UUID PRIMARY KEY,
+    project_id UUID,
     organization_id UUID,
     title TEXT NOT NULL,
     description TEXT,
+    status TEXT NOT NULL DEFAULT 'draft',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -14,9 +16,11 @@ CREATE TABLE IF NOT EXISTS stories (
 -- Readiness story projections table
 CREATE TABLE IF NOT EXISTS readiness_story_projections (
     id UUID PRIMARY KEY,
+    project_id UUID,
     organization_id UUID,
     title TEXT NOT NULL,
     description TEXT,
+    status TEXT NOT NULL DEFAULT 'draft',
     story_points INTEGER,
     acceptance_criteria JSONB DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -29,6 +33,7 @@ CREATE TABLE IF NOT EXISTS acceptance_criteria (
     story_id UUID NOT NULL,
     organization_id UUID,
     ac_id TEXT NOT NULL,
+    description TEXT,
     given TEXT NOT NULL,
     "when" TEXT NOT NULL,
     "then" TEXT NOT NULL,
@@ -53,10 +58,14 @@ CREATE TABLE IF NOT EXISTS readiness_evaluations (
 CREATE TABLE IF NOT EXISTS task_analyses (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     task_id UUID NOT NULL,
-    story_id UUID NOT NULL,
-    organization_id UUID,
-    analysis_json JSONB NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    organization_id UUID NOT NULL,
+    overall_score INTEGER NOT NULL,
+    clarity_level TEXT NOT NULL,
+    dimensions JSONB NOT NULL,
+    recommendations TEXT[] NOT NULL DEFAULT '{}',
+    flagged_terms TEXT[] NOT NULL DEFAULT '{}',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(task_id, organization_id)
 );
 
 -- Readiness task projections table
@@ -66,10 +75,28 @@ CREATE TABLE IF NOT EXISTS readiness_task_projections (
     organization_id UUID,
     title TEXT NOT NULL,
     description TEXT,
+    status TEXT NOT NULL DEFAULT 'available',
     acceptance_criteria_refs TEXT[] DEFAULT '{}',
     estimated_hours INTEGER,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Story analysis summaries table
+CREATE TABLE IF NOT EXISTS story_analysis_summaries (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    story_id UUID NOT NULL,
+    organization_id UUID NOT NULL,
+    total_tasks INTEGER NOT NULL DEFAULT 0,
+    analyzed_tasks INTEGER NOT NULL DEFAULT 0,
+    avg_clarity_score INTEGER,
+    tasks_ai_ready INTEGER NOT NULL DEFAULT 0,
+    tasks_needing_improvement INTEGER NOT NULL DEFAULT 0,
+    common_issues TEXT[] NOT NULL DEFAULT '{}',
+    last_analyzed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(story_id, organization_id)
 );
 
 -- Create indexes
@@ -99,10 +126,6 @@ BEGIN
         CREATE INDEX idx_task_analyses_task_id ON task_analyses(task_id);
     END IF;
 
-    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_task_analyses_story_id') THEN
-        CREATE INDEX idx_task_analyses_story_id ON task_analyses(story_id);
-    END IF;
-
     IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_task_analyses_org_id') THEN
         CREATE INDEX idx_task_analyses_org_id ON task_analyses(organization_id);
     END IF;
@@ -113,6 +136,14 @@ BEGIN
 
     IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_readiness_task_projections_org_id') THEN
         CREATE INDEX idx_readiness_task_projections_org_id ON readiness_task_projections(organization_id);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_story_analysis_summaries_story_id') THEN
+        CREATE INDEX idx_story_analysis_summaries_story_id ON story_analysis_summaries(story_id);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_story_analysis_summaries_org_id') THEN
+        CREATE INDEX idx_story_analysis_summaries_org_id ON story_analysis_summaries(organization_id);
     END IF;
 END $$;
 

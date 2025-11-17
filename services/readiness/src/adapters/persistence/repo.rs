@@ -1,8 +1,13 @@
 use crate::adapters::persistence::models::{AcceptanceCriterionRow, ReadinessEvaluationRow};
 use crate::application::ports::{
-    AcceptanceCriteriaRepository, ReadinessEvaluationRepository, TaskAnalysisRepository,
+    AcceptanceCriteriaRepository, ReadinessEvaluationRepository, StoryAnalysisSummary,
+    StoryAnalysisSummaryRepository, TaskAnalysisRepository, TaskClarityRepository,
+    TaskSuggestionRepository,
 };
-use crate::domain::{AcceptanceCriterion, ReadinessEvaluation, TaskAnalysis};
+use crate::domain::{
+    AcceptanceCriterion, GapType, ReadinessEvaluation, Recommendation, TaskAnalysis,
+    TaskClarityAnalysis, TaskSuggestion,
+};
 use async_trait::async_trait;
 use common::AppError;
 use event_bus::AcceptanceCriterionRecord;
@@ -417,20 +422,48 @@ impl ReadinessEvaluationRepository for PgPool {
 #[async_trait]
 impl TaskAnalysisRepository for PgPool {
     async fn save_analysis(&self, analysis: &TaskAnalysis) -> Result<(), AppError> {
-        let analysis_json = serde_json::to_value(analysis).map_err(|err| {
-            error!(error = %err, task_id = %analysis.task_id, "Failed to serialize task analysis");
-            AppError::InternalServerError
-        })?;
+        // For TaskAnalysis, we need to convert recommendations to TEXT[]
+        let recommendation_texts: Vec<String> = analysis
+            .recommendations
+            .iter()
+            .map(|r| r.message.clone())
+            .collect();
+
+        // TaskAnalysis uses the old schema approach - we'll use clarity_score, summary, and recommendations
+        // Map to the new schema columns as best we can
+        let clarity_level = if analysis.clarity_score >= 80 {
+            "excellent"
+        } else if analysis.clarity_score >= 60 {
+            "good"
+        } else if analysis.clarity_score >= 40 {
+            "fair"
+        } else {
+            "poor"
+        };
+
+        // Create empty dimensions since TaskAnalysis doesn't have them
+        let dimensions_json = serde_json::json!({});
 
         sqlx::query(
-            "INSERT INTO task_analyses (id, task_id, story_id, organization_id, analysis_json, created_at) \
-             VALUES ($1, $2, $3, $4, $5, NOW())",
+            "INSERT INTO task_analyses \
+             (id, task_id, organization_id, overall_score, clarity_level, dimensions, recommendations, flagged_terms, created_at) \
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW()) \
+             ON CONFLICT (task_id, organization_id) DO UPDATE SET \
+             overall_score = EXCLUDED.overall_score, \
+             clarity_level = EXCLUDED.clarity_level, \
+             dimensions = EXCLUDED.dimensions, \
+             recommendations = EXCLUDED.recommendations, \
+             flagged_terms = EXCLUDED.flagged_terms, \
+             created_at = NOW()",
         )
         .bind(Uuid::new_v4())
         .bind(analysis.task_id)
-        .bind(analysis.story_id)
         .bind(analysis.organization_id)
-        .bind(analysis_json)
+        .bind(analysis.clarity_score)
+        .bind(clarity_level)
+        .bind(dimensions_json)
+        .bind(&recommendation_texts)
+        .bind(&analysis.missing_elements) // Use missing_elements as flagged_terms
         .execute(self)
         .await
         .map_err(|err| {
@@ -450,8 +483,18 @@ impl TaskAnalysisRepository for PgPool {
         task_id: Uuid,
         organization_id: Option<Uuid>,
     ) -> Result<Option<TaskAnalysis>, AppError> {
-        let row = sqlx::query(
-            "SELECT analysis_json FROM task_analyses \
+        #[derive(sqlx::FromRow)]
+        struct TaskAnalysisRow {
+            task_id: Uuid,
+            organization_id: Option<Uuid>,
+            overall_score: i32,
+            recommendations: Vec<String>,
+            flagged_terms: Vec<String>,
+        }
+
+        let row = sqlx::query_as::<_, TaskAnalysisRow>(
+            "SELECT task_id, organization_id, overall_score, recommendations, flagged_terms \
+             FROM task_analyses \
              WHERE task_id = $1 AND (organization_id = $2 OR ($2 IS NULL AND organization_id IS NULL)) \
              ORDER BY created_at DESC \
              LIMIT 1",
@@ -466,14 +509,404 @@ impl TaskAnalysisRepository for PgPool {
         })?;
 
         if let Some(row) = row {
-            let analysis_json: Value = row.get("analysis_json");
-            let analysis: TaskAnalysis = serde_json::from_value(analysis_json).map_err(|err| {
-                error!(error = %err, %task_id, "Failed to deserialize task analysis");
-                AppError::InternalServerError
-            })?;
-            Ok(Some(analysis))
+            // Convert TEXT[] back to Vec<Recommendation>
+            let recommendations: Vec<Recommendation> = row
+                .recommendations
+                .into_iter()
+                .map(|message| Recommendation {
+                    gap_type: GapType::VagueLanguage, // Default gap type since we lost this info
+                    message,
+                    specific_suggestions: vec![],
+                    ac_references: vec![],
+                })
+                .collect();
+
+            Ok(Some(TaskAnalysis {
+                id: Uuid::new_v4(), // Generate new ID since it's not stored
+                task_id: row.task_id,
+                story_id: Uuid::nil(), // Not stored in new schema
+                organization_id: row.organization_id,
+                clarity_score: row.overall_score,
+                missing_elements: row.flagged_terms,
+                summary: "Stored analysis".to_string(), // Default summary
+                recommendations,
+            }))
         } else {
             Ok(None)
         }
+    }
+}
+
+/// TaskClarityRepository implementation for PgPool
+///
+/// AC Reference: e0261453-8f72-4b08-8290-d8fb7903c869 (clarity scoring)
+#[async_trait]
+impl TaskClarityRepository for PgPool {
+    async fn save_analysis(
+        &self,
+        analysis: &TaskClarityAnalysis,
+        organization_id: Uuid,
+    ) -> Result<(), AppError> {
+        // Serialize dimensions, recommendations, and flagged terms
+        let dimensions_json = serde_json::to_value(&analysis.dimensions).map_err(|err| {
+            error!(error = %err, task_id = %analysis.task_id, "Failed to serialize dimensions");
+            AppError::InternalServerError
+        })?;
+
+        sqlx::query(
+            "INSERT INTO task_analyses \
+             (id, task_id, organization_id, overall_score, clarity_level, dimensions, recommendations, flagged_terms, created_at) \
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW()) \
+             ON CONFLICT (task_id, organization_id) DO UPDATE SET \
+             overall_score = EXCLUDED.overall_score, \
+             clarity_level = EXCLUDED.clarity_level, \
+             dimensions = EXCLUDED.dimensions, \
+             recommendations = EXCLUDED.recommendations, \
+             flagged_terms = EXCLUDED.flagged_terms, \
+             created_at = NOW()",
+        )
+        .bind(Uuid::new_v4())
+        .bind(analysis.task_id)
+        .bind(organization_id)
+        .bind(analysis.overall_score as i32)
+        .bind(format!("{:?}", analysis.level).to_lowercase())
+        .bind(dimensions_json)
+        .bind(&analysis.recommendations)
+        .bind(&analysis.flagged_terms)
+        .execute(self)
+        .await
+        .map_err(|err| {
+            error!(
+                error = %err,
+                task_id = %analysis.task_id,
+                "Failed to save task clarity analysis"
+            );
+            AppError::InternalServerError
+        })?;
+
+        Ok(())
+    }
+
+    async fn get_latest_analysis(
+        &self,
+        task_id: Uuid,
+        organization_id: Uuid,
+    ) -> Result<Option<TaskClarityAnalysis>, AppError> {
+        let row = sqlx::query(
+            "SELECT overall_score, clarity_level, dimensions, recommendations, flagged_terms, created_at \
+             FROM task_analyses \
+             WHERE task_id = $1 AND organization_id = $2 \
+             ORDER BY created_at DESC \
+             LIMIT 1",
+        )
+        .bind(task_id)
+        .bind(organization_id)
+        .fetch_optional(self)
+        .await
+        .map_err(|err| {
+            error!(error = %err, %task_id, "Failed to fetch latest task clarity analysis");
+            AppError::InternalServerError
+        })?;
+
+        if let Some(row) = row {
+            let overall_score: i32 = row.get("overall_score");
+            let dimensions_json: Value = row.get("dimensions");
+            let recommendations: Vec<String> = row.get("recommendations");
+            let flagged_terms: Vec<String> = row.get("flagged_terms");
+
+            let dimensions = serde_json::from_value(dimensions_json).map_err(|err| {
+                error!(error = %err, %task_id, "Failed to deserialize dimensions");
+                AppError::InternalServerError
+            })?;
+
+            Ok(Some(TaskClarityAnalysis::new(
+                task_id,
+                overall_score as u8,
+                dimensions,
+                recommendations,
+                flagged_terms,
+            )))
+        } else {
+            Ok(None)
+        }
+    }
+
+    async fn get_story_analyses(
+        &self,
+        story_id: Uuid,
+        organization_id: Uuid,
+    ) -> Result<Vec<TaskClarityAnalysis>, AppError> {
+        // Get all tasks for the story first
+        let task_rows = sqlx::query(
+            "SELECT t.id as task_id \
+             FROM readiness_task_projections t \
+             WHERE t.story_id = $1 AND t.organization_id = $2",
+        )
+        .bind(story_id)
+        .bind(organization_id)
+        .fetch_all(self)
+        .await
+        .map_err(|err| {
+            error!(error = %err, %story_id, "Failed to fetch tasks for story");
+            AppError::InternalServerError
+        })?;
+
+        let mut analyses = Vec::new();
+        for task_row in task_rows {
+            let task_id: Uuid = task_row.get("task_id");
+            if let Some(analysis) =
+                TaskClarityRepository::get_latest_analysis(self, task_id, organization_id).await?
+            {
+                analyses.push(analysis);
+            }
+        }
+
+        Ok(analyses)
+    }
+}
+
+/// StoryAnalysisSummaryRepository implementation for PgPool
+///
+/// AC Reference: e0261453-8f72-4b08-8290-d8fb7903c869 (clarity scoring)
+#[async_trait]
+impl StoryAnalysisSummaryRepository for PgPool {
+    async fn get_summary(
+        &self,
+        story_id: Uuid,
+        organization_id: Uuid,
+    ) -> Result<Option<StoryAnalysisSummary>, AppError> {
+        let row = sqlx::query(
+            "SELECT story_id, organization_id, total_tasks, analyzed_tasks, \
+             avg_clarity_score, tasks_ai_ready, tasks_needing_improvement, common_issues \
+             FROM story_analysis_summaries \
+             WHERE story_id = $1 AND organization_id = $2",
+        )
+        .bind(story_id)
+        .bind(organization_id)
+        .fetch_optional(self)
+        .await
+        .map_err(|err| {
+            error!(error = %err, %story_id, "Failed to fetch story analysis summary");
+            AppError::InternalServerError
+        })?;
+
+        if let Some(row) = row {
+            Ok(Some(StoryAnalysisSummary {
+                story_id: row.get("story_id"),
+                organization_id: row.get("organization_id"),
+                total_tasks: row.get("total_tasks"),
+                analyzed_tasks: row.get("analyzed_tasks"),
+                avg_clarity_score: row.get("avg_clarity_score"),
+                tasks_ai_ready: row.get("tasks_ai_ready"),
+                tasks_needing_improvement: row.get("tasks_needing_improvement"),
+                common_issues: row.get("common_issues"),
+            }))
+        } else {
+            Ok(None)
+        }
+    }
+
+    async fn update_summary(&self, story_id: Uuid, organization_id: Uuid) -> Result<(), AppError> {
+        // Calculate summary from task analyses
+        let analyses =
+            TaskClarityRepository::get_story_analyses(self, story_id, organization_id).await?;
+
+        let total_tasks = analyses.len() as i32;
+        let analyzed_tasks = total_tasks; // All fetched tasks have analyses
+        let avg_clarity_score = if !analyses.is_empty() {
+            Some(analyses.iter().map(|a| a.overall_score as i32).sum::<i32>() / total_tasks)
+        } else {
+            None
+        };
+
+        let tasks_ai_ready = analyses.iter().filter(|a| a.is_ai_ready()).count() as i32;
+        let tasks_needing_improvement = total_tasks - tasks_ai_ready;
+
+        // Extract common issues from recommendations
+        let mut issue_counts: std::collections::HashMap<String, usize> =
+            std::collections::HashMap::new();
+        for analysis in &analyses {
+            for recommendation in &analysis.recommendations {
+                *issue_counts.entry(recommendation.clone()).or_insert(0) += 1;
+            }
+        }
+
+        let mut common_issues: Vec<_> = issue_counts.into_iter().collect();
+        common_issues.sort_by(|a, b| b.1.cmp(&a.1));
+        let common_issues: Vec<String> = common_issues
+            .into_iter()
+            .take(5)
+            .map(|(issue, _)| issue)
+            .collect();
+
+        // Upsert summary
+        sqlx::query(
+            "INSERT INTO story_analysis_summaries \
+             (id, story_id, organization_id, total_tasks, analyzed_tasks, avg_clarity_score, \
+              tasks_ai_ready, tasks_needing_improvement, common_issues, last_analyzed_at, created_at, updated_at) \
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW(), NOW()) \
+             ON CONFLICT (story_id, organization_id) DO UPDATE SET \
+             total_tasks = EXCLUDED.total_tasks, \
+             analyzed_tasks = EXCLUDED.analyzed_tasks, \
+             avg_clarity_score = EXCLUDED.avg_clarity_score, \
+             tasks_ai_ready = EXCLUDED.tasks_ai_ready, \
+             tasks_needing_improvement = EXCLUDED.tasks_needing_improvement, \
+             common_issues = EXCLUDED.common_issues, \
+             last_analyzed_at = NOW(), \
+             updated_at = NOW()",
+        )
+        .bind(Uuid::new_v4())
+        .bind(story_id)
+        .bind(organization_id)
+        .bind(total_tasks)
+        .bind(analyzed_tasks)
+        .bind(avg_clarity_score)
+        .bind(tasks_ai_ready)
+        .bind(tasks_needing_improvement)
+        .bind(&common_issues)
+        .execute(self)
+        .await
+        .map_err(|err| {
+            error!(
+                error = %err,
+                %story_id,
+                "Failed to update story analysis summary"
+            );
+            AppError::InternalServerError
+        })?;
+
+        Ok(())
+    }
+}
+
+/// TaskSuggestionRepository implementation for PgPool
+///
+/// AC Reference: e0261453-8f72-4b08-8290-d8fb7903c869 (clarity scoring)
+/// AC Reference: 5649e91e-043f-4097-916b-9907620bff3e (GitHub integration)
+#[async_trait]
+impl TaskSuggestionRepository for PgPool {
+    async fn save_suggestions(
+        &self,
+        story_id: Uuid,
+        organization_id: Uuid,
+        batch_id: Uuid,
+        suggestions: &[TaskSuggestion],
+    ) -> Result<(), AppError> {
+        let mut tx = self.begin().await.map_err(|err| {
+            error!(
+                error = %err,
+                %story_id,
+                "Failed to begin transaction for task suggestions"
+            );
+            AppError::InternalServerError
+        })?;
+
+        for suggestion in suggestions {
+            sqlx::query(
+                "INSERT INTO task_suggestions \
+                 (id, story_id, organization_id, suggestion_batch_id, title, description, \
+                  acceptance_criteria_refs, estimated_hours, relevant_files, confidence, status, created_at) \
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'pending', NOW())",
+            )
+            .bind(Uuid::new_v4())
+            .bind(story_id)
+            .bind(organization_id)
+            .bind(batch_id)
+            .bind(&suggestion.title)
+            .bind(&suggestion.description)
+            .bind(&suggestion.acceptance_criteria_refs)
+            .bind(suggestion.estimated_hours.map(|h| h as i32))
+            .bind(&suggestion.relevant_files)
+            .bind(suggestion.confidence)
+            .execute(&mut *tx)
+            .await
+            .map_err(|err| {
+                error!(error = %err, %story_id, "Failed to save task suggestion");
+                AppError::InternalServerError
+            })?;
+        }
+
+        tx.commit().await.map_err(|err| {
+            error!(
+                error = %err,
+                %story_id,
+                "Failed to commit task suggestions transaction"
+            );
+            AppError::InternalServerError
+        })?;
+
+        Ok(())
+    }
+
+    async fn get_pending_suggestions(
+        &self,
+        story_id: Uuid,
+        organization_id: Uuid,
+    ) -> Result<Vec<TaskSuggestion>, AppError> {
+        let rows = sqlx::query(
+            "SELECT id, title, description, acceptance_criteria_refs, estimated_hours, \
+             relevant_files, confidence \
+             FROM task_suggestions \
+             WHERE story_id = $1 AND organization_id = $2 AND status = 'pending' \
+             ORDER BY confidence DESC, created_at DESC",
+        )
+        .bind(story_id)
+        .bind(organization_id)
+        .fetch_all(self)
+        .await
+        .map_err(|err| {
+            error!(error = %err, %story_id, "Failed to fetch pending task suggestions");
+            AppError::InternalServerError
+        })?;
+
+        let mut suggestions = Vec::new();
+        for row in rows {
+            let estimated_hours: Option<i32> = row.get("estimated_hours");
+            suggestions.push(TaskSuggestion::new(
+                row.get("title"),
+                row.get("description"),
+                row.get("acceptance_criteria_refs"),
+                estimated_hours.map(|h| h as u32),
+                row.get("relevant_files"),
+                row.get("confidence"),
+            ));
+        }
+
+        Ok(suggestions)
+    }
+
+    async fn update_suggestion_status(
+        &self,
+        suggestion_id: Uuid,
+        status: &str,
+        reviewed_by: &str,
+    ) -> Result<(), AppError> {
+        let result = sqlx::query(
+            "UPDATE task_suggestions \
+             SET status = $2, reviewed_at = NOW(), reviewed_by = $3 \
+             WHERE id = $1",
+        )
+        .bind(suggestion_id)
+        .bind(status)
+        .bind(reviewed_by)
+        .execute(self)
+        .await
+        .map_err(|err| {
+            error!(
+                error = %err,
+                %suggestion_id,
+                "Failed to update task suggestion status"
+            );
+            AppError::InternalServerError
+        })?;
+
+        if result.rows_affected() == 0 {
+            return Err(AppError::NotFound(format!(
+                "Task suggestion {} not found",
+                suggestion_id
+            )));
+        }
+
+        Ok(())
     }
 }

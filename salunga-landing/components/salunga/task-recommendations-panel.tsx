@@ -18,6 +18,7 @@ import { ChevronDown, ChevronRight, AlertCircle, CheckCircle, Info, Sparkles } f
 import { cn } from '@/lib/utils'
 import { SalungaCard, SalungaCardHeader, SalungaCardBody } from './card-layout'
 import { SalungaBadge } from './badge-variants'
+import { TaskClarityScoreVisualization } from './task-clarity-score'
 import {
   type TaskRecommendationsPanelProps,
   type TaskAnalysisData,
@@ -30,14 +31,14 @@ import {
 /**
  * Get severity badge variant based on severity level
  */
-function getSeverityVariant(severity: RecommendationSeverity): 'success' | 'warning' | 'danger' {
+function getSeverityVariant(severity: RecommendationSeverity): 'success' | 'warning' | 'error' {
   switch (severity) {
     case 'low':
       return 'success'
     case 'medium':
       return 'warning'
     case 'high':
-      return 'danger'
+      return 'error'
   }
 }
 
@@ -445,6 +446,32 @@ export function TaskRecommendationsPanel({
         score: 65,
         level: 'fair',
         improvementPotential: 35,
+        dimensions: [
+          {
+            dimension: 'technical',
+            score: 60,
+            label: 'Technical Details',
+            description: 'Includes file paths, functions, and technical approach',
+          },
+          {
+            dimension: 'specificity',
+            score: 70,
+            label: 'Specificity',
+            description: 'Uses concrete actions with measurable outcomes',
+          },
+          {
+            dimension: 'completeness',
+            score: 65,
+            label: 'Completeness',
+            description: 'Has necessary context and dependencies',
+          },
+          {
+            dimension: 'testability',
+            score: 65,
+            label: 'Testability',
+            description: 'Includes clear success criteria and test coverage',
+          },
+        ],
       },
       recommendations: mockRecommendations,
       categorizedRecommendations: categorized,
@@ -513,7 +540,10 @@ export function TaskRecommendationsPanel({
         </SalungaCardHeader>
         <SalungaCardBody className="space-y-4">
           {/* Clarity Score */}
-          <ClarityScoreDisplay score={mockAnalysisData.clarityScore.score} />
+          <TaskClarityScoreVisualization
+            clarityScore={mockAnalysisData.clarityScore}
+            showDimensions={true}
+          />
 
           {/* AI Compatibility Check */}
           <AICompatibilityCheck checks={aiCompatibilityChecks} />

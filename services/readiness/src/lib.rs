@@ -6,8 +6,9 @@ mod projections;
 
 use application::{
     ports::{
-        AcceptanceCriteriaRepository, LlmService, ReadinessEvaluationRepository,
-        TaskAnalysisRepository,
+        AcceptanceCriteriaRepository, GitHubService, LlmService, ReadinessEvaluationRepository,
+        StoryAnalysisSummaryRepository, TaskAnalysisRepository, TaskClarityRepository,
+        TaskSuggestionRepository,
     },
     ReadinessUsecases,
 };
@@ -32,13 +33,24 @@ pub async fn build_usecases(
     let criteria_repo: Arc<dyn AcceptanceCriteriaRepository> = pool.clone();
     let readiness_repo: Arc<dyn ReadinessEvaluationRepository> = pool.clone();
     let task_analysis_repo: Arc<dyn TaskAnalysisRepository> = pool.clone();
+    let task_clarity_repo: Arc<dyn TaskClarityRepository> = pool.clone();
+    let story_summary_repo: Arc<dyn StoryAnalysisSummaryRepository> = pool.clone();
+    let task_suggestion_repo: Arc<dyn TaskSuggestionRepository> = pool.clone();
+
+    // Use MockGitHubService for development
+    let github_service =
+        Arc::new(adapters::integrations::MockGitHubService) as Arc<dyn GitHubService>;
 
     Arc::new(ReadinessUsecases::new(
         criteria_repo,
         readiness_repo,
         task_analysis_repo,
+        task_clarity_repo,
+        story_summary_repo,
+        task_suggestion_repo,
         story_service,
         llm_service,
+        github_service,
     ))
 }
 

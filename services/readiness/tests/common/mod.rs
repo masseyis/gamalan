@@ -1,12 +1,13 @@
 use auth_clerk::JwtVerifier;
 use axum::{routing::post, Extension, Router};
 use readiness::adapters::http::handlers::{
-    add_criteria, evaluate_readiness, generate_criteria, get_criteria, ReadinessAppState,
+    add_criteria, analyze_story_tasks, analyze_task, approve_suggestion, evaluate_readiness,
+    generate_criteria, get_criteria, get_pending_suggestions, get_story_analysis_summary,
+    get_task_analysis, suggest_tasks_for_story, ReadinessAppState,
 };
 use readiness::application::ports::LlmService;
 use readiness::domain::AcceptanceCriterion;
 use sqlx::{Executor, PgPool};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex as StdMutex};
 use tokio::sync::Mutex;
 use tower_http::trace::TraceLayer;
@@ -22,14 +23,11 @@ pub async fn setup_test_db() -> PgPool {
         .await
         .expect("Failed to connect to test database");
 
-    // Run migrations (only once per test run)
-    static MIGRATIONS_RUN: AtomicBool = AtomicBool::new(false);
-    if !MIGRATIONS_RUN.load(Ordering::Relaxed) {
-        run_migrations(&pool)
-            .await
-            .expect("Failed to run migrations");
-        MIGRATIONS_RUN.store(true, Ordering::Relaxed);
-    }
+    // Always run migrations to ensure schema is up-to-date
+    // This drops and recreates all tables, ensuring clean state
+    run_migrations(&pool)
+        .await
+        .expect("Failed to run migrations");
 
     // Clean test data to ensure test isolation
     clean_test_data(&pool)
@@ -41,7 +39,29 @@ pub async fn setup_test_db() -> PgPool {
 
 async fn run_migrations(pool: &PgPool) -> Result<(), sqlx::Error> {
     // Drop existing tables and views to ensure clean slate (test environment only!)
-    // Drop tables that might be views or tables
+
+    // Drop migration 0002 objects first (views depend on tables)
+    let _ = sqlx::query("DROP VIEW IF EXISTS pending_task_suggestions CASCADE")
+        .execute(pool)
+        .await;
+
+    let _ = sqlx::query("DROP VIEW IF EXISTS ai_ready_tasks CASCADE")
+        .execute(pool)
+        .await;
+
+    let _ = sqlx::query("DROP TABLE IF EXISTS github_repo_configs CASCADE")
+        .execute(pool)
+        .await;
+
+    let _ = sqlx::query("DROP TABLE IF EXISTS task_suggestions CASCADE")
+        .execute(pool)
+        .await;
+
+    let _ = sqlx::query("DROP TABLE IF EXISTS story_analysis_summaries CASCADE")
+        .execute(pool)
+        .await;
+
+    // Drop migration 0001 objects
     let _ = sqlx::query("DROP VIEW IF EXISTS criteria CASCADE")
         .execute(pool)
         .await;
@@ -82,14 +102,16 @@ async fn run_migrations(pool: &PgPool) -> Result<(), sqlx::Error> {
         .execute(pool)
         .await?;
 
-    // Read and execute the migration file
-    let migration_sql = include_str!("../../migrations/0001_initial_schema.sql");
+    // Read and execute migration files in order
+    let migration_0001 = include_str!("../../migrations/0001_initial_schema.sql");
+    let migration_0002 = include_str!("../../migrations/0002_task_readiness_projections.sql");
 
     // Get a connection from the pool and execute multiple statements
     let mut conn = pool.acquire().await?;
 
-    // Execute the entire migration script (postgres supports multiple statements via PgConnection)
-    conn.execute(migration_sql).await?;
+    // Execute migrations in order (postgres supports multiple statements via PgConnection)
+    conn.execute(migration_0001).await?;
+    conn.execute(migration_0002).await?;
 
     Ok(())
 }
@@ -102,7 +124,23 @@ async fn clean_test_data(pool: &PgPool) -> Result<(), sqlx::Error> {
         .execute(pool)
         .await?;
 
-    // Clean readiness tables
+    // Clean readiness tables from migration 0002 (task readiness projections)
+    sqlx::query("TRUNCATE TABLE IF EXISTS task_suggestions CASCADE")
+        .execute(pool)
+        .await
+        .ok();
+
+    sqlx::query("TRUNCATE TABLE IF EXISTS story_analysis_summaries CASCADE")
+        .execute(pool)
+        .await
+        .ok();
+
+    sqlx::query("TRUNCATE TABLE IF EXISTS github_repo_configs CASCADE")
+        .execute(pool)
+        .await
+        .ok();
+
+    // Clean readiness tables from migration 0001
     sqlx::query("TRUNCATE TABLE IF EXISTS task_analyses CASCADE")
         .execute(pool)
         .await
@@ -197,6 +235,31 @@ impl LlmService for MockLlmService {
 
         Ok(criteria)
     }
+
+    async fn analyze_task(
+        &self,
+        task_info: &readiness::application::ports::TaskInfo,
+        _ac_refs: &[AcceptanceCriterion],
+    ) -> Result<readiness::domain::TaskClarityAnalysis, common::AppError> {
+        // Simple mock for integration tests
+        Ok(readiness::domain::TaskClarityAnalysis::new(
+            task_info.id,
+            75,
+            vec![],
+            vec![],
+            vec![],
+        ))
+    }
+
+    async fn suggest_tasks(
+        &self,
+        _story_info: &readiness::application::ports::StoryInfo,
+        _github_context: &str,
+        _existing_tasks: &[readiness::application::ports::TaskInfo],
+    ) -> Result<Vec<readiness::domain::TaskSuggestion>, common::AppError> {
+        // Simple mock for integration tests
+        Ok(vec![])
+    }
 }
 
 pub async fn build_readiness_router_for_tests(pool: PgPool) -> Router {
@@ -221,6 +284,36 @@ pub async fn build_readiness_router_for_tests(pool: PgPool) -> Router {
         .route("/criteria/{story_id}/generate", post(generate_criteria))
         .route("/criteria/{story_id}", axum::routing::get(get_criteria))
         .route("/criteria/{story_id}", post(add_criteria))
+        // Task-level readiness routes
+        .route(
+            "/api/v1/readiness/tasks/{task_id}/analyze",
+            post(analyze_task),
+        )
+        .route(
+            "/api/v1/readiness/tasks/{task_id}/analysis",
+            axum::routing::get(get_task_analysis),
+        )
+        // Story-level task readiness routes
+        .route(
+            "/api/v1/readiness/stories/{story_id}/suggest-tasks",
+            post(suggest_tasks_for_story),
+        )
+        .route(
+            "/api/v1/readiness/stories/{story_id}/analyze-tasks",
+            post(analyze_story_tasks),
+        )
+        .route(
+            "/api/v1/readiness/stories/{story_id}/analysis-summary",
+            axum::routing::get(get_story_analysis_summary),
+        )
+        .route(
+            "/api/v1/readiness/stories/{story_id}/suggestions",
+            axum::routing::get(get_pending_suggestions),
+        )
+        .route(
+            "/api/v1/readiness/suggestions/{suggestion_id}/approve",
+            post(approve_suggestion),
+        )
         .with_state(state)
         .layer(Extension(verifier))
         .layer(TraceLayer::new_for_http())
@@ -320,7 +413,7 @@ pub async fn create_test_criteria(
     id
 }
 
-/// Helper to create a test task in readiness_task_projections
+/// Helper to create a test task in readiness_task_projections (full version)
 #[allow(dead_code)]
 pub async fn create_test_task(
     pool: &PgPool,
@@ -359,4 +452,16 @@ pub async fn create_test_task(
     .expect("Failed to create test task");
 
     task_id
+}
+
+/// Helper to create a simple test task (for backward compatibility with existing tests)
+#[allow(dead_code)]
+pub async fn create_simple_test_task(
+    pool: &PgPool,
+    story_id: Uuid,
+    org_id: Uuid,
+    title: &str,
+    description: Option<&str>,
+) -> Uuid {
+    create_test_task(pool, story_id, org_id, title, description, &[], None).await
 }

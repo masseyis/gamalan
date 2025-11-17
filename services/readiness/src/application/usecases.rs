@@ -1,9 +1,11 @@
 use crate::application::ports::{
-    AcceptanceCriteriaRepository, LlmService, ReadinessEvaluationRepository, StoryService,
-    TaskAnalysisRepository,
+    AcceptanceCriteriaRepository, GitHubService, LlmService, ReadinessEvaluationRepository,
+    StoryAnalysisSummary, StoryAnalysisSummaryRepository, StoryService, TaskAnalysisRepository,
+    TaskClarityRepository, TaskSuggestionRepository,
 };
 use crate::domain::{
     AcceptanceCriterion, ReadinessCheck, ReadinessEvaluation, TaskAnalysis, TaskAnalyzer,
+    TaskClarityAnalysis, TaskSuggestion,
 };
 use chrono::{DateTime, Utc};
 use common::AppError;
@@ -14,8 +16,12 @@ pub struct ReadinessUsecases {
     criteria_repo: Arc<dyn AcceptanceCriteriaRepository>,
     readiness_repo: Arc<dyn ReadinessEvaluationRepository>,
     task_analysis_repo: Arc<dyn TaskAnalysisRepository>,
+    task_clarity_repo: Arc<dyn TaskClarityRepository>,
+    story_summary_repo: Arc<dyn StoryAnalysisSummaryRepository>,
+    task_suggestion_repo: Arc<dyn TaskSuggestionRepository>,
     story_service: Arc<dyn StoryService>,
     llm_service: Arc<dyn LlmService>,
+    github_service: Arc<dyn GitHubService>,
 }
 
 #[derive(Debug, Clone)]
@@ -36,15 +42,23 @@ impl ReadinessUsecases {
         criteria_repo: Arc<dyn AcceptanceCriteriaRepository>,
         readiness_repo: Arc<dyn ReadinessEvaluationRepository>,
         task_analysis_repo: Arc<dyn TaskAnalysisRepository>,
+        task_clarity_repo: Arc<dyn TaskClarityRepository>,
+        story_summary_repo: Arc<dyn StoryAnalysisSummaryRepository>,
+        task_suggestion_repo: Arc<dyn TaskSuggestionRepository>,
         story_service: Arc<dyn StoryService>,
         llm_service: Arc<dyn LlmService>,
+        github_service: Arc<dyn GitHubService>,
     ) -> Self {
         Self {
             criteria_repo,
             readiness_repo,
             task_analysis_repo,
+            task_clarity_repo,
+            story_summary_repo,
+            task_suggestion_repo,
             story_service,
             llm_service,
+            github_service,
         }
     }
 
@@ -643,6 +657,173 @@ impl ReadinessUsecases {
             original_description: task_info.description,
         })
     }
+
+    /// Generate task suggestions for a story using GitHub context
+    ///
+    /// AC Reference: e0261453-8f72-4b08-8290-d8fb7903c869 (clarity scoring)
+    /// AC Reference: 5649e91e-043f-4097-916b-9907620bff3e (GitHub integration)
+    pub async fn suggest_tasks_for_story(
+        &self,
+        story_id: Uuid,
+        organization_id: Option<Uuid>,
+        project_id: Uuid,
+    ) -> Result<Vec<TaskSuggestion>, AppError> {
+        // Get story info
+        let story_info = self
+            .story_service
+            .get_story_info(story_id, organization_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound(format!("Story {} not found", story_id)))?;
+
+        // Get existing tasks for context
+        let existing_tasks = self
+            .story_service
+            .get_tasks_for_story(story_id, organization_id)
+            .await?;
+
+        // Get GitHub context (file tree)
+        let org_id = organization_id
+            .ok_or_else(|| AppError::BadRequest("Organization ID required".to_string()))?;
+        let file_nodes = self
+            .github_service
+            .get_repo_structure(project_id, org_id)
+            .await?;
+
+        let github_context = format!(
+            "Repository structure:\n{}",
+            file_nodes
+                .iter()
+                .map(|node| format!("{} ({})", node.path, node.node_type))
+                .collect::<Vec<_>>()
+                .join("\n")
+        );
+
+        // Generate suggestions using LLM
+        let suggestions = self
+            .llm_service
+            .suggest_tasks(&story_info, &github_context, &existing_tasks)
+            .await?;
+
+        // Save suggestions to database with batch ID
+        let batch_id = Uuid::new_v4();
+        self.task_suggestion_repo
+            .save_suggestions(story_id, org_id, batch_id, &suggestions)
+            .await?;
+
+        Ok(suggestions)
+    }
+
+    /// Analyze all tasks in a story and update the story analysis summary
+    ///
+    /// AC Reference: e0261453-8f72-4b08-8290-d8fb7903c869 (clarity scoring)
+    pub async fn analyze_story_tasks(
+        &self,
+        story_id: Uuid,
+        organization_id: Option<Uuid>,
+    ) -> Result<Vec<TaskClarityAnalysis>, AppError> {
+        // First verify the story exists and belongs to this organization
+        let story = self
+            .story_service
+            .get_story_info(story_id, organization_id)
+            .await?;
+
+        if story.is_none() {
+            return Err(AppError::NotFound(format!(
+                "Story {} not found or does not belong to this organization",
+                story_id
+            )));
+        }
+
+        // Get all tasks for the story
+        let tasks = self
+            .story_service
+            .get_tasks_for_story(story_id, organization_id)
+            .await?;
+
+        // Get acceptance criteria for the story
+        let criteria = self
+            .criteria_repo
+            .get_criteria_by_story(story_id, organization_id)
+            .await?;
+
+        let org_id = organization_id
+            .ok_or_else(|| AppError::BadRequest("Organization ID required".to_string()))?;
+
+        let mut analyses = Vec::new();
+
+        // Analyze each task
+        for task_info in tasks {
+            // Filter criteria referenced by this task
+            let task_criteria: Vec<_> = criteria
+                .iter()
+                .filter(|c| task_info.acceptance_criteria_refs.contains(&c.ac_id))
+                .cloned()
+                .collect();
+
+            // Perform analysis
+            let analysis = self
+                .llm_service
+                .analyze_task(&task_info, &task_criteria)
+                .await?;
+
+            // Save analysis
+            self.task_clarity_repo
+                .save_analysis(&analysis, org_id)
+                .await?;
+
+            analyses.push(analysis);
+        }
+
+        // Update story analysis summary projection
+        self.story_summary_repo
+            .update_summary(story_id, org_id)
+            .await?;
+
+        Ok(analyses)
+    }
+
+    /// Get story analysis summary (aggregated metrics)
+    ///
+    /// AC Reference: e0261453-8f72-4b08-8290-d8fb7903c869 (clarity scoring)
+    pub async fn get_story_analysis_summary(
+        &self,
+        story_id: Uuid,
+        organization_id: Option<Uuid>,
+    ) -> Result<Option<StoryAnalysisSummary>, AppError> {
+        let org_id = organization_id
+            .ok_or_else(|| AppError::BadRequest("Organization ID required".to_string()))?;
+        self.story_summary_repo.get_summary(story_id, org_id).await
+    }
+
+    /// Get pending task suggestions for a story
+    ///
+    /// AC Reference: e0261453-8f72-4b08-8290-d8fb7903c869 (clarity scoring)
+    /// AC Reference: 5649e91e-043f-4097-916b-9907620bff3e (GitHub integration)
+    pub async fn get_pending_suggestions(
+        &self,
+        story_id: Uuid,
+        organization_id: Option<Uuid>,
+    ) -> Result<Vec<TaskSuggestion>, AppError> {
+        let org_id = organization_id
+            .ok_or_else(|| AppError::BadRequest("Organization ID required".to_string()))?;
+        self.task_suggestion_repo
+            .get_pending_suggestions(story_id, org_id)
+            .await
+    }
+
+    /// Approve a task suggestion
+    ///
+    /// AC Reference: e0261453-8f72-4b08-8290-d8fb7903c869 (clarity scoring)
+    /// AC Reference: 5649e91e-043f-4097-916b-9907620bff3e (GitHub integration)
+    pub async fn approve_suggestion(
+        &self,
+        suggestion_id: Uuid,
+        reviewed_by: &str,
+    ) -> Result<(), AppError> {
+        self.task_suggestion_repo
+            .update_suggestion_status(suggestion_id, "approved", reviewed_by)
+            .await
+    }
 }
 
 fn format_gwt_summary(given: &str, when_clause: &str, then_clause: &str) -> String {
@@ -854,21 +1035,162 @@ mod tests {
                 "system responds correctly".to_string(),
             )?])
         }
+
+        async fn analyze_task(
+            &self,
+            task_info: &crate::application::ports::TaskInfo,
+            _ac_refs: &[AcceptanceCriterion],
+        ) -> Result<crate::domain::TaskClarityAnalysis, AppError> {
+            // Simple mock for tests
+            Ok(crate::domain::TaskClarityAnalysis::new(
+                task_info.id,
+                75,
+                vec![],
+                vec![],
+                vec![],
+            ))
+        }
+
+        async fn suggest_tasks(
+            &self,
+            _story_info: &crate::application::ports::StoryInfo,
+            _github_context: &str,
+            _existing_tasks: &[crate::application::ports::TaskInfo],
+        ) -> Result<Vec<crate::domain::TaskSuggestion>, AppError> {
+            // Simple mock for tests
+            Ok(vec![])
+        }
+    }
+
+    #[derive(Default)]
+    struct MockTaskClarityRepository;
+
+    #[async_trait]
+    impl TaskClarityRepository for MockTaskClarityRepository {
+        async fn save_analysis(
+            &self,
+            _analysis: &TaskClarityAnalysis,
+            _organization_id: Uuid,
+        ) -> Result<(), AppError> {
+            Ok(())
+        }
+
+        async fn get_latest_analysis(
+            &self,
+            _task_id: Uuid,
+            _organization_id: Uuid,
+        ) -> Result<Option<TaskClarityAnalysis>, AppError> {
+            Ok(None)
+        }
+
+        async fn get_story_analyses(
+            &self,
+            _story_id: Uuid,
+            _organization_id: Uuid,
+        ) -> Result<Vec<TaskClarityAnalysis>, AppError> {
+            Ok(vec![])
+        }
+    }
+
+    #[derive(Default)]
+    struct MockStoryAnalysisSummaryRepository;
+
+    #[async_trait]
+    impl StoryAnalysisSummaryRepository for MockStoryAnalysisSummaryRepository {
+        async fn get_summary(
+            &self,
+            _story_id: Uuid,
+            _organization_id: Uuid,
+        ) -> Result<Option<StoryAnalysisSummary>, AppError> {
+            Ok(None)
+        }
+
+        async fn update_summary(
+            &self,
+            _story_id: Uuid,
+            _organization_id: Uuid,
+        ) -> Result<(), AppError> {
+            Ok(())
+        }
+    }
+
+    #[derive(Default)]
+    struct MockTaskSuggestionRepository;
+
+    #[async_trait]
+    impl TaskSuggestionRepository for MockTaskSuggestionRepository {
+        async fn save_suggestions(
+            &self,
+            _story_id: Uuid,
+            _organization_id: Uuid,
+            _batch_id: Uuid,
+            _suggestions: &[TaskSuggestion],
+        ) -> Result<(), AppError> {
+            Ok(())
+        }
+
+        async fn get_pending_suggestions(
+            &self,
+            _story_id: Uuid,
+            _organization_id: Uuid,
+        ) -> Result<Vec<TaskSuggestion>, AppError> {
+            Ok(vec![])
+        }
+
+        async fn update_suggestion_status(
+            &self,
+            _suggestion_id: Uuid,
+            _status: &str,
+            _reviewed_by: &str,
+        ) -> Result<(), AppError> {
+            Ok(())
+        }
+    }
+
+    #[derive(Default)]
+    struct MockGitHubService;
+
+    #[async_trait]
+    impl GitHubService for MockGitHubService {
+        async fn get_repo_structure(
+            &self,
+            _project_id: Uuid,
+            _organization_id: Uuid,
+        ) -> Result<Vec<crate::domain::FileNode>, AppError> {
+            Ok(vec![])
+        }
+
+        async fn search_code(
+            &self,
+            _project_id: Uuid,
+            _organization_id: Uuid,
+            _query: &str,
+        ) -> Result<Vec<crate::domain::SearchResult>, AppError> {
+            Ok(vec![])
+        }
     }
 
     fn setup_usecases() -> ReadinessUsecases {
         let criteria_repo = Arc::new(MockAcceptanceCriteriaRepository::default());
         let readiness_repo = Arc::new(MockReadinessEvaluationRepository);
         let task_analysis_repo = Arc::new(MockTaskAnalysisRepository);
+        let task_clarity_repo = Arc::new(MockTaskClarityRepository);
+        let story_summary_repo = Arc::new(MockStoryAnalysisSummaryRepository);
+        let task_suggestion_repo = Arc::new(MockTaskSuggestionRepository);
         let story_service = Arc::new(MockStoryService);
         let llm_service = Arc::new(MockLlmService);
+        let github_service = Arc::new(MockGitHubService);
 
         ReadinessUsecases::new(
             criteria_repo,
             readiness_repo,
             task_analysis_repo,
+            task_clarity_repo,
+            story_summary_repo,
+            task_suggestion_repo,
             story_service,
             llm_service,
+            github_service,
         )
     }
 

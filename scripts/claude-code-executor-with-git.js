@@ -103,6 +103,8 @@ const GIT_BASE_BRANCH = process.env.GIT_PR_BASE_BRANCH || 'main';
 const AUTO_MERGE = process.env.GIT_AUTO_MERGE === 'true';
 const PR_REVIEWERS = process.env.GIT_PR_REVIEWERS || '';
 const MAX_FIX_RETRIES = parseInt(process.env.MAX_FIX_RETRIES || '3', 10);
+const USE_WORKTREE = process.env.USE_WORKTREE !== 'false'; // Enable by default
+const WORKING_DIR = process.cwd(); // Capture at startup
 
 // Determine which AI coding assistant to use
 // Options: Claude CLI, Claude API, or Codex CLI
@@ -163,6 +165,28 @@ if (!TASK_ID || !API_KEY || !STORY_ID) {
   console.error('  ANTHROPIC_API_KEY - For Claude API mode');
   console.error('  CODEX_API_KEY - For Codex CLI authentication override');
   process.exit(1);
+}
+
+// Worktree safety check: ensure we're not running in main repo directory
+if (USE_WORKTREE) {
+  const fs = require('fs');
+  const mainRepoPath = path.resolve(__dirname, '..');
+
+  // Check if current directory is the main repo (has ai-agile in path but not agents/)
+  if (WORKING_DIR === mainRepoPath || !WORKING_DIR.includes('/agents/')) {
+    console.error('❌ SAFETY ERROR: Executor running in main repository directory!');
+    console.error('   Current directory:', WORKING_DIR);
+    console.error('   Expected: A worktree directory under /agents/');
+    console.error('');
+    console.error('   This prevents accidental commits to the main working directory.');
+    console.error('   Agents must run in isolated worktrees.');
+    console.error('');
+    console.error('   To fix: Ensure multi-agent-sprint.sh changes to worktree before running agent.');
+    console.error('   Or set USE_WORKTREE=false to disable this check (not recommended).');
+    process.exit(1);
+  }
+
+  console.log('✅ Worktree isolation verified:', WORKING_DIR);
 }
 
 // API helper
@@ -1168,7 +1192,10 @@ Follow guidelines in \`CLAUDE.md\`:
 
 # Working Directory
 
-${process.cwd()}
+${WORKING_DIR}
+
+**IMPORTANT**: You are working in an isolated git worktree. All git operations (commits, branches, etc.)
+will be confined to this directory. Do NOT attempt to modify files outside this directory.
 
 # CRITICAL INSTRUCTIONS - READ CAREFULLY
 

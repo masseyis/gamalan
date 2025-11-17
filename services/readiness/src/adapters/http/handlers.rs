@@ -1,7 +1,8 @@
-use crate::application::ports::StoryInfo;
+use crate::application::ports::{StoryAnalysisSummary, StoryInfo};
 use crate::application::{ReadinessUsecases, TaskEnrichmentSuggestion};
 use crate::domain::{
-    AcceptanceCriterion, GapType, ReadinessEvaluation, Recommendation, TaskAnalysis,
+    AcceptanceCriterion, ClarityLevel, GapType, ReadinessEvaluation, Recommendation, TaskAnalysis,
+    TaskClarityAnalysis, TaskSuggestion,
 };
 use crate::rebuild_projections;
 use auth_clerk::organization::AuthenticatedWithOrg;
@@ -193,6 +194,117 @@ struct TaskEnrichmentResponse {
     confidence: f32,
     reasoning: String,
     generated_at: String,
+}
+
+// Story-level task readiness DTOs
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SuggestTasksRequest {
+    pub project_id: Uuid,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskSuggestionResponse {
+    pub title: String,
+    pub description: String,
+    pub acceptance_criteria_refs: Vec<String>,
+    pub estimated_hours: Option<u32>,
+    pub relevant_files: Vec<String>,
+    pub confidence: f32,
+}
+
+impl From<TaskSuggestion> for TaskSuggestionResponse {
+    fn from(suggestion: TaskSuggestion) -> Self {
+        Self {
+            title: suggestion.title,
+            description: suggestion.description,
+            acceptance_criteria_refs: suggestion.acceptance_criteria_refs,
+            estimated_hours: suggestion.estimated_hours,
+            relevant_files: suggestion.relevant_files,
+            confidence: suggestion.confidence,
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskClarityAnalysisResponse {
+    pub task_id: Uuid,
+    pub overall_score: u8,
+    pub level: String,
+    pub is_ai_ready: bool,
+    pub dimensions: Vec<ClarityDimensionScore>,
+    pub recommendations: Vec<String>,
+    pub flagged_terms: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClarityDimensionScore {
+    pub name: String,
+    pub score: u8,
+}
+
+impl From<TaskClarityAnalysis> for TaskClarityAnalysisResponse {
+    fn from(analysis: TaskClarityAnalysis) -> Self {
+        let level_str = match analysis.level {
+            ClarityLevel::Poor => "poor",
+            ClarityLevel::Fair => "fair",
+            ClarityLevel::Good => "good",
+            ClarityLevel::Excellent => "excellent",
+        };
+
+        Self {
+            task_id: analysis.task_id,
+            overall_score: analysis.overall_score,
+            level: level_str.to_string(),
+            is_ai_ready: analysis.is_ai_ready(),
+            dimensions: analysis
+                .dimensions
+                .into_iter()
+                .map(|dim| ClarityDimensionScore {
+                    name: dim.dimension,
+                    score: dim.score,
+                })
+                .collect(),
+            recommendations: analysis.recommendations,
+            flagged_terms: analysis.flagged_terms,
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StoryAnalysisSummaryResponse {
+    pub story_id: Uuid,
+    pub total_tasks: i32,
+    pub analyzed_tasks: i32,
+    pub avg_clarity_score: Option<i32>,
+    pub tasks_ai_ready: i32,
+    pub tasks_needing_improvement: i32,
+    pub common_issues: Vec<String>,
+}
+
+impl From<StoryAnalysisSummary> for StoryAnalysisSummaryResponse {
+    fn from(summary: StoryAnalysisSummary) -> Self {
+        Self {
+            story_id: summary.story_id,
+            total_tasks: summary.total_tasks,
+            analyzed_tasks: summary.analyzed_tasks,
+            avg_clarity_score: summary.avg_clarity_score,
+            tasks_ai_ready: summary.tasks_ai_ready,
+            tasks_needing_improvement: summary.tasks_needing_improvement,
+            common_issues: summary.common_issues,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApproveSuggestionRequest {
+    pub reviewed_by: String,
 }
 
 impl TaskAnalysisResponse {
@@ -816,4 +928,232 @@ pub async fn enrich_task(
         .await?;
 
     Ok(Json(TaskEnrichmentResponse::from(suggestion)))
+}
+
+// Story-level task readiness handlers
+// AC Reference: e0261453-8f72-4b08-8290-d8fb7903c869 (clarity scoring)
+// AC Reference: 5649e91e-043f-4097-916b-9907620bff3e (GitHub integration)
+
+/// Generate task suggestions for a story using GitHub context
+///
+/// POST /stories/{story_id}/suggest-tasks
+pub async fn suggest_tasks_for_story(
+    auth: AuthenticatedWithOrg,
+    Path(story_id): Path<Uuid>,
+    State(state): State<ReadinessAppState>,
+    Json(payload): Json<SuggestTasksRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    let org_id = auth.org_context.effective_organization_uuid();
+    info!(
+        %story_id,
+        project_id = %payload.project_id,
+        org_id = ?org_id,
+        user = %auth.auth.sub,
+        "Generating task suggestions for story"
+    );
+
+    let suggestions = match state
+        .usecases
+        .suggest_tasks_for_story(story_id, org_id, payload.project_id)
+        .await
+    {
+        Ok(value) => value,
+        Err(err) => {
+            error!(
+                %story_id,
+                project_id = %payload.project_id,
+                org_id = ?org_id,
+                user = %auth.auth.sub,
+                error = %err,
+                "Failed to generate task suggestions"
+            );
+            return Err(err);
+        }
+    };
+
+    info!(
+        %story_id,
+        suggestions_count = suggestions.len(),
+        org_id = ?org_id,
+        "Generated task suggestions for story"
+    );
+
+    let responses: Vec<TaskSuggestionResponse> = suggestions
+        .into_iter()
+        .map(TaskSuggestionResponse::from)
+        .collect();
+
+    Ok((StatusCode::CREATED, Json(responses)))
+}
+
+/// Analyze all tasks in a story for clarity and AI readiness
+///
+/// POST /stories/{story_id}/analyze-tasks
+pub async fn analyze_story_tasks(
+    auth: AuthenticatedWithOrg,
+    Path(story_id): Path<Uuid>,
+    State(state): State<ReadinessAppState>,
+) -> Result<impl IntoResponse, AppError> {
+    let org_id = auth.org_context.effective_organization_uuid();
+    info!(
+        %story_id,
+        org_id = ?org_id,
+        user = %auth.auth.sub,
+        "Analyzing all tasks in story"
+    );
+
+    let analyses = match state.usecases.analyze_story_tasks(story_id, org_id).await {
+        Ok(value) => value,
+        Err(err) => {
+            error!(
+                %story_id,
+                org_id = ?org_id,
+                user = %auth.auth.sub,
+                error = %err,
+                "Failed to analyze story tasks"
+            );
+            return Err(err);
+        }
+    };
+
+    info!(
+        %story_id,
+        tasks_analyzed = analyses.len(),
+        org_id = ?org_id,
+        "Completed story task analysis"
+    );
+
+    let responses: Vec<TaskClarityAnalysisResponse> = analyses
+        .into_iter()
+        .map(TaskClarityAnalysisResponse::from)
+        .collect();
+
+    Ok(Json(responses))
+}
+
+/// Get story-level analysis summary with aggregated metrics
+///
+/// GET /stories/{story_id}/analysis-summary
+pub async fn get_story_analysis_summary(
+    auth: AuthenticatedWithOrg,
+    Path(story_id): Path<Uuid>,
+    State(state): State<ReadinessAppState>,
+) -> Result<impl IntoResponse, AppError> {
+    let org_id = auth.org_context.effective_organization_uuid();
+    info!(
+        %story_id,
+        org_id = ?org_id,
+        user = %auth.auth.sub,
+        "Fetching story analysis summary"
+    );
+
+    let summary = match state
+        .usecases
+        .get_story_analysis_summary(story_id, org_id)
+        .await
+    {
+        Ok(value) => value,
+        Err(err) => {
+            error!(
+                %story_id,
+                org_id = ?org_id,
+                user = %auth.auth.sub,
+                error = %err,
+                "Failed to fetch story analysis summary"
+            );
+            return Err(err);
+        }
+    };
+
+    let summary = summary.ok_or_else(|| {
+        AppError::NotFound(format!("No analysis summary found for story {}", story_id))
+    })?;
+
+    Ok(Json(StoryAnalysisSummaryResponse::from(summary)))
+}
+
+/// Get pending task suggestions for a story
+///
+/// GET /stories/{story_id}/suggestions
+pub async fn get_pending_suggestions(
+    auth: AuthenticatedWithOrg,
+    Path(story_id): Path<Uuid>,
+    State(state): State<ReadinessAppState>,
+) -> Result<impl IntoResponse, AppError> {
+    let org_id = auth.org_context.effective_organization_uuid();
+    info!(
+        %story_id,
+        org_id = ?org_id,
+        user = %auth.auth.sub,
+        "Fetching pending task suggestions"
+    );
+
+    let suggestions = match state
+        .usecases
+        .get_pending_suggestions(story_id, org_id)
+        .await
+    {
+        Ok(value) => value,
+        Err(err) => {
+            error!(
+                %story_id,
+                org_id = ?org_id,
+                user = %auth.auth.sub,
+                error = %err,
+                "Failed to fetch pending suggestions"
+            );
+            return Err(err);
+        }
+    };
+
+    let responses: Vec<TaskSuggestionResponse> = suggestions
+        .into_iter()
+        .map(TaskSuggestionResponse::from)
+        .collect();
+
+    Ok(Json(responses))
+}
+
+/// Approve a task suggestion
+///
+/// POST /suggestions/{suggestion_id}/approve
+pub async fn approve_suggestion(
+    auth: AuthenticatedWithOrg,
+    Path(suggestion_id): Path<Uuid>,
+    State(state): State<ReadinessAppState>,
+    Json(payload): Json<ApproveSuggestionRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    let org_id = auth.org_context.effective_organization_uuid();
+    info!(
+        %suggestion_id,
+        org_id = ?org_id,
+        user = %auth.auth.sub,
+        reviewed_by = %payload.reviewed_by,
+        "Approving task suggestion"
+    );
+
+    match state
+        .usecases
+        .approve_suggestion(suggestion_id, &payload.reviewed_by)
+        .await
+    {
+        Ok(_) => {
+            info!(
+                %suggestion_id,
+                org_id = ?org_id,
+                "Task suggestion approved"
+            );
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(err) => {
+            error!(
+                %suggestion_id,
+                org_id = ?org_id,
+                user = %auth.auth.sub,
+                error = %err,
+                "Failed to approve suggestion"
+            );
+            Err(err)
+        }
+    }
 }
