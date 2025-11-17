@@ -14,14 +14,14 @@ export async function getStoryAnalysisSummary(
  * Trigger analysis for all tasks in a story
  */
 export async function analyzeStoryTasks(storyId: string): Promise<void> {
-  await readinessClient.post<void>(`/stories/${storyId}/analyze-tasks`)
+  await readinessClient.post<void>(`/stories/${storyId}/analyze-tasks`, {})
 }
 
 /**
  * Get AI-generated task suggestions for a story
  */
 export async function suggestTasksForStory(storyId: string): Promise<void> {
-  await readinessClient.post<void>(`/stories/${storyId}/suggest-tasks`)
+  await readinessClient.post<void>(`/stories/${storyId}/suggest-tasks`, {})
 }
 
 /**
@@ -38,7 +38,7 @@ export async function approveSuggestion(
   suggestionId: string,
   reviewedBy: string
 ): Promise<void> {
-  await readinessClient.post<void>(`/suggestions/${suggestionId}/approve`, { reviewedBy })
+  await readinessClient.post<void>(`/suggestions/${suggestionId}/approve`, { reviewed_by: reviewedBy })
 }
 
 export const readinessApi = {
