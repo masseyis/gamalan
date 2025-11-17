@@ -249,23 +249,19 @@ export function StoryAnalysisSummary({
 
           {/* Action Buttons */}
           <div className="flex flex-wrap gap-3 pt-2 border-t">
-            {onAnalyzeAll && (
-              <Button
-                onClick={handleAnalyzeAll}
-                disabled={isLoading || analyzedTasks === totalTasks}
-                variant="outline"
-              >
-                <RefreshCw className={cn('w-4 h-4 mr-2', isLoading && 'animate-spin')} />
-                Analyze All Tasks
-              </Button>
-            )}
+            <Button
+              onClick={handleAnalyzeAll}
+              disabled={isLoading || analyzedTasks === totalTasks}
+              variant="outline"
+            >
+              <RefreshCw className={cn('w-4 h-4 mr-2', isLoading && 'animate-spin')} />
+              Analyze All Tasks
+            </Button>
 
-            {onSuggestTasks && (
-              <Button onClick={handleSuggestTasks} disabled={isLoading} variant="outline">
-                <Sparkles className="w-4 h-4 mr-2" />
-                Suggest Tasks
-              </Button>
-            )}
+            <Button onClick={handleSuggestTasks} disabled={isLoading} variant="outline">
+              <Sparkles className="w-4 h-4 mr-2" />
+              Suggest Tasks
+            </Button>
           </div>
         </CardContent>
       </Card>
