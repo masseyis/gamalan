@@ -245,7 +245,7 @@ describe('Projects API Integration with Clerk Authentication', () => {
       }
 
       // Set up organization ID mapping (external Clerk ID -> internal backend ID)
-      window.__SALUNGA_ORG_ID_MAP = {
+      window.__BATTRA_ORG_ID_MAP = {
         'org_different_456': 'internal_org_456',
       }
 

@@ -47,7 +47,7 @@ type ContextTypeHeader = 'organization' | 'personal'
 
 declare global {
   interface Window {
-    __SALUNGA_ORG_ID_MAP?: Record<string, string>
+    __BATTRA_ORG_ID_MAP?: Record<string, string>
   }
 }
 
@@ -198,7 +198,7 @@ export class ApiClient {
 
                 const contextType: ContextTypeHeader = organization ? 'organization' : 'personal'
                 const orgMapping =
-                  ((window as any).__SALUNGA_ORG_ID_MAP as Record<string, string> | undefined) ??
+                  ((window as any).__BATTRA_ORG_ID_MAP as Record<string, string> | undefined) ??
                   undefined
                 const externalOrgId = organization?.id ?? null
                 const internalOrgId =

@@ -19,7 +19,7 @@ export class AuthPage extends BasePage {
     this.passwordInput = page.locator('input[name="password"]')
     this.continueButton = page.locator('button:has-text("Continue")')
     this.forgotPasswordLink = page.locator('a:has-text("Forgot password")')
-    this.clerkSignInForm = page.locator('text=Sign in to Gamalan')
+    this.clerkSignInForm = page.locator('text=Sign in to Battra')
     this.clerkSignUpForm = page.locator('text=Create your account')
   }
 

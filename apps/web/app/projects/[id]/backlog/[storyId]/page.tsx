@@ -30,6 +30,8 @@ import { aiApi } from '@/lib/api/ai'
 import { AIAssistant } from '@/components/ai/ai-assistant'
 import { TaskOwnership } from '@/components/tasks/TaskOwnership'
 import { TaskAnalysisTrigger } from '@/components/tasks/TaskAnalysisTrigger'
+import { StoryAnalysisSummary } from '@/components/readiness/story-analysis-summary'
+import { TaskSuggestionsPanel } from '@/components/readiness/task-suggestions-panel'
 import { usePermissions, useRoles } from '@/components/providers/UserContextProvider'
 import { CanModifyBacklog, CanAcceptStories } from '@/components/guards/RoleGuard'
 import {
@@ -930,6 +932,14 @@ export default function StoryDetailPage() {
                 </CardContent>
                 </Card>
               )}
+
+              {/* Story-Level Task Readiness Analysis */}
+              {tasks.length > 0 && (
+                <StoryAnalysisSummary storyId={storyId} />
+              )}
+
+              {/* AI Task Suggestions */}
+              <TaskSuggestionsPanel storyId={storyId} />
 
               {/* Story Stats */}
               <Card>

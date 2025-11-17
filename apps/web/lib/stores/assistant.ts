@@ -264,7 +264,7 @@ export const useAssistantStore = create<AssistantStore>()(
       },
     }),
     {
-      name: 'salunga-assistant',
+      name: 'battra-assistant',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         // Only persist non-sensitive state

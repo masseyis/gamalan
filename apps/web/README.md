@@ -1,4 +1,4 @@
-# Salunga Web Application
+# Battra Web Application
 
 A modern, AI-enhanced agile project management web application built with Next.js 15, TypeScript, and cutting-edge technologies.
 
@@ -117,7 +117,7 @@ apps/web/
 
    ```bash
    git clone <repository-url>
-   cd salunga/apps/web
+   cd battra/apps/web
    ```
 
 2. **Install dependencies**
@@ -331,8 +331,8 @@ The application can be deployed to any Node.js hosting platform:
 
 ```dockerfile
 # See Dockerfile in the project root
-docker build -t salunga-web .
-docker run -p 3000:3000 salunga-web
+docker build -t battra-web .
+docker run -p 3000:3000 battra-web
 ```
 
 ## 🤝 Contributing
@@ -363,4 +363,4 @@ This project is licensed under the MIT License - see the [LICENSE](../../LICENSE
 
 ---
 
-Built with ❤️ by the Salunga team
+Built with ❤️ by the Battra team

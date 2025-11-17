@@ -125,3 +125,71 @@ export interface TaskEnrichmentRequest {
   includeRelatedTasks: boolean
   includeCodebaseContext: boolean
 }
+
+/**
+ * Story-Level Task Readiness Types
+ * Aggregates task readiness metrics across all tasks in a story
+ */
+
+/**
+ * Summary of task readiness analysis at story level
+ */
+export interface StoryAnalysisSummary {
+  storyId: string
+  totalTasks: number
+  analyzedTasks: number
+  avgClarityScore: number | null
+  tasksAiReady: number
+  tasksNeedingImprovement: number
+  commonIssues: string[]
+  lastAnalyzedAt?: string
+}
+
+/**
+ * AI-generated task suggestion
+ */
+export interface TaskSuggestion {
+  id: string
+  title: string
+  description: string
+  acceptanceCriteriaRefs: string[]
+  estimatedHours: number | null
+  relevantFiles: string[]
+  confidence: number
+  status: 'pending' | 'approved' | 'rejected'
+  reviewedBy?: string
+  reviewedAt?: string
+}
+
+/**
+ * Clarity score thresholds
+ */
+export const CLARITY_SCORE_THRESHOLDS = {
+  EXCELLENT: 80,
+  GOOD: 70,
+  FAIR: 40,
+} as const
+
+/**
+ * Minimum clarity score to be considered AI-ready
+ */
+export const AI_READY_THRESHOLD = 80
+
+/**
+ * Props for StoryAnalysisSummary component
+ */
+export interface StoryAnalysisSummaryProps {
+  storyId: string
+  onAnalyzeAll?: () => Promise<void>
+  onSuggestTasks?: () => Promise<void>
+  className?: string
+}
+
+/**
+ * Props for TaskSuggestionsPanel component
+ */
+export interface TaskSuggestionsPanelProps {
+  storyId: string
+  onSuggestionApproved?: (suggestionId: string) => void
+  className?: string
+}
